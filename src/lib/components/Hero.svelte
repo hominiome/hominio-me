@@ -41,29 +41,6 @@
     object-fit: contain;
   }
 
-  .overline {
-    font-size: 0.813rem;
-    font-weight: 600;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    color: #6b7280;
-    margin: 0 0 1.25rem 0;
-  }
-
-  .unlock-badge {
-    display: inline-block;
-    padding: 0.75rem 1.75rem;
-    background: rgba(79, 195, 195, 0.5);
-    color: #1a2847;
-    border-radius: 50px;
-    font-weight: 700;
-    font-size: 1.25rem;
-    letter-spacing: 0.02em;
-    margin: 0 0 1.5rem 0;
-    box-shadow: 0 2px 12px rgba(79, 195, 195, 0.3);
-    border: 2px solid #4fc3c3;
-  }
-
   .headline {
     font-size: 3rem;
     font-weight: 700;
@@ -111,11 +88,6 @@
   }
 
   @media (max-width: 768px) {
-    .unlock-badge {
-      font-size: 1.125rem;
-      padding: 0.65rem 1.5rem;
-    }
-
     .headline {
       font-size: 2.25rem;
     }
@@ -134,11 +106,6 @@
   }
 
   @media (max-width: 480px) {
-    .unlock-badge {
-      font-size: 1rem;
-      padding: 0.6rem 1.25rem;
-    }
-
     .headline {
       font-size: 1.875rem;
     }

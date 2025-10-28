@@ -123,16 +123,6 @@
     border: 2px solid #4fc3c3;
   }
 
-  .founder-overline {
-    font-size: 0.813rem;
-    font-weight: 600;
-    color: #6b7280;
-    margin: 0 0 0.75rem 0;
-    text-transform: uppercase;
-    letter-spacing: 0.15em;
-    text-align: center;
-  }
-
   .founder-title {
     font-size: 2rem;
     font-weight: 800;
@@ -148,14 +138,6 @@
     color: #6b7280;
     margin: 0 0 2rem 0;
     text-align: center;
-  }
-
-  .founder-intro {
-    font-size: 1.125rem;
-    color: #4fc3c3;
-    font-weight: 600;
-    text-align: center;
-    margin: 0 0 2rem 0;
   }
 
   .founder-intro-large {
@@ -206,12 +188,6 @@
     line-height: 1.8;
     color: #374151;
     margin: 0;
-  }
-
-  .analogy-text strong {
-    color: #1a2847;
-    font-weight: 700;
-    font-size: 1.05em;
   }
 
   .founder-text {
@@ -300,20 +276,12 @@
       margin: 3rem auto 2.5rem auto;
     }
 
-    .founder-overline {
-      font-size: 0.75rem;
-    }
-
     .founder-title {
       font-size: 1.75rem;
     }
 
     .founder-subtitle {
       font-size: 1.125rem;
-    }
-
-    .founder-intro {
-      font-size: 1rem;
     }
 
     .founder-intro-large {
