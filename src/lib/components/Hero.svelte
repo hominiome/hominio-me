@@ -7,8 +7,8 @@
   </div>
 
   <h1 class="headline">
-    We sponsor you to grow your impact startup vision —<br />
-    <span class="headline-sub">from 0 to 1 billion loyal fans in 10 years</span>
+    We sponsor you to grow your impact startup idea<br />
+    <span class="headline-sub">— from vision to reality</span>
   </h1>
 
   <div class="hero-intro">

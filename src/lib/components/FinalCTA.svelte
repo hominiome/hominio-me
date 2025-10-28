@@ -29,18 +29,18 @@
     <div class="cta-final-question">
       <p class="cta-call">Will you answer the call?</p>
       <a 
-        href="https://instagram.com/HominioNo1" 
+        href="https://instagram.com/samuelandert" 
         target="_blank" 
         rel="noopener noreferrer"
         class="cta-action-button"
       >
-        Message Me Now
+        Message Me to Apply
       </a>
     </div>
     
     <div class="cta-founder">
-      <img src="/hominiono1.jpg" alt="HominioNo1" class="founder-avatar" />
-      <p class="cta-signature">— HominioNo1, Founder</p>
+      <img src="/hominiono1.jpg" alt="Samuel Andert" class="founder-avatar" />
+      <p class="cta-signature">— Samuel Andert, Founder of Hominio</p>
     </div>
   </div>
 </div>
@@ -121,21 +121,21 @@
   .cta-action-button {
     display: inline-block;
     padding: 1.25rem 3rem;
-    background: linear-gradient(135deg, #4fc3c3 0%, #3da8a8 100%);
-    color: white;
+    background: linear-gradient(135deg, #f4d03f 0%, #f0c419 100%);
+    color: #1a2847;
     text-decoration: none;
     font-size: 1.25rem;
     font-weight: 700;
     border-radius: 50px;
-    box-shadow: 0 8px 32px rgba(79, 195, 195, 0.4);
+    box-shadow: inset 0 0 0 3px #1a2847, 0 8px 32px rgba(244, 208, 63, 0.4);
     transition: all 0.3s;
     letter-spacing: 0.02em;
   }
 
   .cta-action-button:hover {
     transform: translateY(-4px);
-    box-shadow: 0 12px 40px rgba(79, 195, 195, 0.6);
-    background: linear-gradient(135deg, #5dd3d3 0%, #4db8b8 100%);
+    box-shadow: inset 0 0 0 3px #1a2847, 0 12px 40px rgba(244, 208, 63, 0.6);
+    background: linear-gradient(135deg, #f7dc5f 0%, #f3cd39 100%);
   }
 
   .cta-founder {

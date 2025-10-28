@@ -18,13 +18,15 @@
       </p>
     </div>
     <div class="numbers-compact">
-      <span class="stat-item"><strong>1B</strong> Humans</span>
-      <span class="stat-divider">×</span>
-      <span class="stat-item"><strong>€1</strong> Each</span>
-      <span class="stat-divider">/</span>
-      <span class="stat-item"><strong>10</strong> Founders</span>
-      <span class="stat-divider">=</span>
-      <span class="stat-item highlight"
+      <div class="equation-top">
+        <span class="stat-item"><strong>1B</strong> Humans</span>
+        <span class="stat-divider">×</span>
+        <span class="stat-item"><strong>€1</strong> Each</span>
+        <span class="stat-divider">/</span>
+        <span class="stat-item"><strong>10</strong> Founders</span>
+      </div>
+      <span class="stat-divider equals-sign">=</span>
+      <span class="stat-item highlight result"
         ><strong>€100M</strong> per Founder</span
       >
     </div>
@@ -392,10 +394,26 @@
       gap: 0.5rem;
       padding: 1.5rem 1rem;
       font-size: 0.938rem;
+      align-items: center;
     }
 
-    .stat-divider {
-      display: none;
+    .equation-top {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .equals-sign {
+      display: block;
+      font-size: 1.5rem;
+      margin: 0.25rem 0;
+    }
+
+    .result {
+      display: block;
+      text-align: center;
     }
 
     .cup-section {

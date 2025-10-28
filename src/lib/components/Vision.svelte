@@ -20,13 +20,13 @@
 
   <!-- Founder Quote -->
   <div class="founder-quote">
-    <img src="/hominiono1.jpg" alt="HominioNo1" class="founder-image" />
+    <img src="/hominiono1.jpg" alt="Samuel Andert" class="founder-image" />
     <div class="quote-content">
       <blockquote class="quote-text">
         I see us building <em>civilization-upgrading visions</em> that reshape
         how we live and work tomorrow.
       </blockquote>
-      <p class="quote-author">— HominioNo1, Founder</p>
+      <p class="quote-author">— Samuel Andert, Founder of Hominio</p>
     </div>
   </div>
 </div>
