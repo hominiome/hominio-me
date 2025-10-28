@@ -1,28 +1,24 @@
-# sv
+# Hominio.me
 
-Everything you need to build a Svelte project, powered by [`sv`](https://github.com/sveltejs/cli).
+Landing page for Hominio Summit No1 - Europe's first startup tournament for purpose-driven founders.
 
-## Creating a project
+## Tech Stack
 
-If you're seeing this, you've probably already done this step. Congrats!
-
-```sh
-# create a new project in the current directory
-npx sv create
-
-# create a new project in my-app
-npx sv create my-app
-```
+- **Framework:** SvelteKit
+- **Runtime:** Bun
+- **Hosting:** Fly.io
+- **Adapter:** @sveltejs/adapter-node
 
 ## Developing
 
-Once you've created a project and installed dependencies with `npm install` (or `pnpm install` or `yarn`), start a development server:
+Install dependencies and start the development server:
 
 ```sh
-npm run dev
+bun install
+bun run dev
 
 # or start the server and open the app in a new browser tab
-npm run dev -- --open
+bun run dev -- --open
 ```
 
 ## Building
@@ -30,9 +26,94 @@ npm run dev -- --open
 To create a production version of your app:
 
 ```sh
-npm run build
+bun run build
 ```
 
-You can preview the production build with `npm run preview`.
+You can preview the production build with `bun run preview`.
 
-> To deploy your app, you may need to install an [adapter](https://svelte.dev/docs/kit/adapters) for your target environment.
+## Deploying to Fly.io
+
+This project is configured to deploy to Fly.io using Bun runtime.
+
+### Prerequisites
+
+1. Install [Fly CLI](https://fly.io/docs/flyctl/install/)
+2. Login to Fly.io: `flyctl auth login`
+
+### Initial Setup (already done)
+
+```sh
+# Create the app
+flyctl apps create hominio-me
+
+# Allocate IP addresses
+flyctl ips allocate-v4 --shared
+flyctl ips allocate-v6
+
+# Set up custom domain SSL certificates
+flyctl certs create hominio.me
+flyctl certs create www.hominio.me
+```
+
+### Deploy
+
+```sh
+# Deploy the app
+flyctl deploy --remote-only
+
+# Check deployment status
+flyctl status
+
+# View logs
+flyctl logs
+
+# Open the app in browser
+flyctl open
+```
+
+### DNS Configuration
+
+Update your DNS records at your domain registrar:
+
+**For hominio.me:**
+```
+Type: A
+Name: @
+Value: 66.241.124.145
+
+Type: AAAA  
+Name: @
+Value: 2a09:8280:1::aa:d39:0
+```
+
+**For www.hominio.me:**
+```
+Type: CNAME
+Name: www
+Value: 8neymxe.hominio-me.fly.dev
+```
+
+### Check SSL Certificate Status
+
+```sh
+flyctl certs check hominio.me
+flyctl certs check www.hominio.me
+```
+
+## Project Structure
+
+- `/src/routes/` - Pages and routes
+  - `+page.svelte` - Landing page
+  - `legal-notice/` - Site notice page
+  - `privacy-policy/` - Privacy policy page
+  - `social-media-privacy-policy/` - Social media privacy policy
+- `/src/lib/components/` - Reusable components
+  - `TextWrap.svelte` - Layout wrapper for legal pages
+- `/static/` - Static assets (logo, images)
+- `Dockerfile` - Bun-based Docker configuration for Fly.io
+- `fly.toml` - Fly.io deployment configuration
+
+## Live URLs
+
+- Production: https://hominio.me
+- Fly.io URL: https://hominio-me.fly.dev
