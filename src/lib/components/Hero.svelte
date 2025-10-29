@@ -7,8 +7,7 @@
   </div>
 
   <h1 class="headline">
-    We sponsor you to grow your impact startup idea<br />
-    <span class="headline-sub">— from vision to reality</span>
+    We pay you to compete for up to 1 million in seedfunding
   </h1>
 
   <div class="hero-intro">

@@ -5,7 +5,7 @@
   <div class="vision-section">
     <h3 class="vision-heading">Picture This</h3>
     <p class="vision-big-text">
-      <span class="number-inline">1 billion</span> humans,
+      <span class="number-inline">1 million</span> humans,
     </p>
     <p class="vision-big-text">
       bringing your vision of a greater tomorrow to life—

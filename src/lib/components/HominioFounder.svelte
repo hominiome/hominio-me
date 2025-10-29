@@ -32,11 +32,11 @@
     </p>
 
     <div class="revenue-model">
-      <h3 class="revenue-title">Our 50/50 Revenue Share</h3>
+      <h3 class="revenue-title">Win-Win: Fair 50/50 Revenue Share</h3>
       <p class="revenue-text">
-        We pay you from day one. Every €1 raised through community votes and
-        every summit ticket sold—we split it <strong>50/50</strong>. You earn
-        sustainable runway while you build step by step your vision in your time.
+        We pay you from day one. Every summit ticket you sell, you earn a <strong>50% revenue share</strong>. 
+        The €1 votes go <strong>100% into the funding pool</strong>—directly supporting the winner. 
+        You earn sustainable runway while you build step by step your vision in your time.
       </p>
     </div>
 

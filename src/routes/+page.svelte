@@ -2,7 +2,10 @@
   import Hero from "$lib/components/Hero.svelte";
   import Vision from "$lib/components/Vision.svelte";
   import HominioSummit from "$lib/components/HominioSummit.svelte";
+  import CompetitionPhases from "$lib/components/CompetitionPhases.svelte";
+  import HominioEvent from "$lib/components/HominioEvent.svelte";
   import HominioFounder from "$lib/components/HominioFounder.svelte";
+  import JourneyVision from "$lib/components/JourneyVision.svelte";
   import FinalCTA from "$lib/components/FinalCTA.svelte";
 </script>
 
@@ -10,8 +13,12 @@
   <div class="container">
     <Hero />
     <Vision />
+    <JourneyVision />
+
     <HominioSummit />
+    <HominioEvent />
     <HominioFounder />
+    <CompetitionPhases />
     <FinalCTA />
 
     <!-- Footer -->
