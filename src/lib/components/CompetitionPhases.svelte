@@ -53,7 +53,7 @@
       <div class="phase-number">64</div>
       <div class="phase-content">
         <div class="phase-main">
-          <h3 class="phase-title">1vs1 Round of 64</h3>
+          <h3 class="phase-title">Round of 64</h3>
           <p class="phase-timing">May</p>
           <p class="phase-description">
             1vs1 pitch battles · Best 1 proceeds
@@ -72,7 +72,7 @@
       <div class="phase-number">32</div>
       <div class="phase-content">
         <div class="phase-main">
-          <h3 class="phase-title">1vs1 Round of 32</h3>
+          <h3 class="phase-title">Round of 32</h3>
           <p class="phase-timing">June</p>
           <p class="phase-description">
             1vs1 pitch battles · Best 1 proceeds
@@ -91,7 +91,7 @@
       <div class="phase-number">16</div>
       <div class="phase-content">
         <div class="phase-main">
-          <h3 class="phase-title">1vs1 Round of 16</h3>
+          <h3 class="phase-title">Round of 16</h3>
           <p class="phase-timing">July - August</p>
           <p class="phase-description">
             1vs1 pitch battles · Best 1 proceeds
@@ -126,7 +126,7 @@
   </div>
 
   <div class="phases-footnote">
-    <p>* Estimated sponsoring amounts depend on your 50% revenue share from ticket sales. Final investment volume depends on the collective success of the 1€ community campaign.</p>
+    <p>* Estimated sponsoring amounts depend on your 30% revenue share from ticket sales. Final investment volume depends on the collective success of the 1€ community campaign.</p>
   </div>
 </div>
 
