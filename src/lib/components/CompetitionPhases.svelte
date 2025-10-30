@@ -118,7 +118,7 @@
           </p>
         </div>
         <div class="sponsoring-box final-box">
-          <div class="sponsoring-amount final-amount">€32k+*</div>
+          <div class="sponsoring-amount final-amount">€24k+*</div>
           <div class="sponsoring-label">est. sponsoring<br/>per founder</div>
         </div>
       </div>
