@@ -251,10 +251,6 @@
     z-index: 1;
   }
 
-  .phase-card.final .timeline-line {
-    display: none;
-  }
-
   .phase-content {
     flex: 1;
     background: white;

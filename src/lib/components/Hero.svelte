@@ -52,11 +52,6 @@
     margin-right: auto;
   }
 
-  .headline-sub {
-    font-size: 2rem;
-    font-weight: 600;
-  }
-
   .hero-intro {
     text-align: center;
     margin-top: 3rem;
@@ -91,10 +86,6 @@
       font-size: 2.25rem;
     }
 
-    .headline-sub {
-      font-size: 1.5rem;
-    }
-
     .hero-intro {
       margin-top: 2.5rem;
     }
@@ -107,10 +98,6 @@
   @media (max-width: 480px) {
     .headline {
       font-size: 1.875rem;
-    }
-
-    .headline-sub {
-      font-size: 1.25rem;
     }
 
     .logo {
