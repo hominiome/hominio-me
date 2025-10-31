@@ -1,8 +1,5 @@
 import { spawn, type ChildProcess } from 'child_process';
-import {
-    SECRET_ZERO_DEV_PG,
-    SECRET_ZERO_AUTH_SECRET
-} from '$env/static/private';
+import { env } from '$env/dynamic/private';
 
 let zeroProcess: ChildProcess | null = null;
 let isStarting = false;
@@ -19,9 +16,9 @@ export function startZero(): void {
 
     isStarting = true;
 
-    // Get environment variables from SvelteKit
-    const DATABASE_URL = SECRET_ZERO_DEV_PG;
-    const ZERO_AUTH_SECRET = SECRET_ZERO_AUTH_SECRET;
+    // Get environment variables from SvelteKit (read at runtime, not build time)
+    const DATABASE_URL = env.SECRET_ZERO_DEV_PG;
+    const ZERO_AUTH_SECRET = env.SECRET_ZERO_AUTH_SECRET;
 
     if (!DATABASE_URL) {
         console.error("❌ [Zero] SECRET_ZERO_DEV_PG environment variable is required");
