@@ -10,6 +10,19 @@ RUN cd /temp/dev && bun install
 
 # Build the app
 FROM base AS build
+
+# Accept build args (secrets from GitHub Actions)
+ARG SECRET_NEON_PG_AUTH
+ARG SECRET_GOOGLE_CLIENT_ID
+ARG SECRET_GOOGLE_CLIENT_SECRET
+ARG SECRET_AUTH_SECRET
+
+# Make them available as environment variables during build
+ENV SECRET_NEON_PG_AUTH=$SECRET_NEON_PG_AUTH
+ENV SECRET_GOOGLE_CLIENT_ID=$SECRET_GOOGLE_CLIENT_ID
+ENV SECRET_GOOGLE_CLIENT_SECRET=$SECRET_GOOGLE_CLIENT_SECRET
+ENV SECRET_AUTH_SECRET=$SECRET_AUTH_SECRET
+
 COPY --from=install /temp/dev/node_modules node_modules
 COPY . .
 RUN bun run build

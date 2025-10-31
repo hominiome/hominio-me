@@ -4,57 +4,43 @@ import { Kysely } from "kysely";
 import { NeonDialect } from "kysely-neon";
 import { neon } from "@neondatabase/serverless";
 import { getRequestEvent } from "$app/server";
-import { env } from "$env/dynamic/private";
+import {
+  SECRET_NEON_PG_AUTH,
+  SECRET_GOOGLE_CLIENT_ID,
+  SECRET_GOOGLE_CLIENT_SECRET,
+  SECRET_AUTH_SECRET,
+} from "$env/static/private";
 import { dev } from "$app/environment";
 
-// Lazy initialization - only create auth instance at runtime, not during build
-let _auth;
+// Initialize Kysely with Neon dialect
+const db = new Kysely({
+  dialect: new NeonDialect({
+    neon: neon(SECRET_NEON_PG_AUTH),
+  }),
+});
 
-function getAuth() {
-  if (_auth) return _auth;
+// Determine base URL
+const baseURL = dev
+  ? "http://localhost:5173"
+  : "https://hominio.me";
 
-  // Initialize Kysely with Neon dialect (only at runtime)
-  const db = new Kysely({
-    dialect: new NeonDialect({
-      neon: neon(env.SECRET_NEON_PG_AUTH),
-    }),
-  });
+// Auth secret
+const authSecret = SECRET_AUTH_SECRET || "dev-secret-key-change-in-production";
 
-  // Determine base URL
-  const baseURL = dev
-    ? "http://localhost:5173"
-    : "https://hominio.me";
-
-  // Generate a secret for dev (in production, use SECRET_AUTH_SECRET env var)
-  const authSecret = dev
-    ? "dev-secret-key-change-in-production"
-    : env.SECRET_AUTH_SECRET || "fallback-secret-please-set-env-var";
-
-  // BetterAuth configuration with explicit database setup
-  _auth = betterAuth({
-    database: {
-      db,
-      type: "postgres", // Explicitly specify database type
+// BetterAuth configuration with explicit database setup
+export const auth = betterAuth({
+  database: {
+    db,
+    type: "postgres",
+  },
+  baseURL,
+  secret: authSecret,
+  socialProviders: {
+    google: {
+      clientId: SECRET_GOOGLE_CLIENT_ID || "",
+      clientSecret: SECRET_GOOGLE_CLIENT_SECRET || "",
     },
-    baseURL,
-    secret: authSecret,
-    socialProviders: {
-      google: {
-        clientId: env.SECRET_GOOGLE_CLIENT_ID || "",
-        clientSecret: env.SECRET_GOOGLE_CLIENT_SECRET || "",
-      },
-    },
-    // SvelteKit cookies plugin (must be last in plugins array)
-    plugins: [sveltekitCookies(getRequestEvent)],
-  });
-
-  return _auth;
-}
-
-// Export a proxy that initializes auth lazily
-export const auth = new Proxy({}, {
-  get(target, prop) {
-    return getAuth()[prop];
-  }
+  },
+  plugins: [sveltekitCookies(getRequestEvent)],
 });
 

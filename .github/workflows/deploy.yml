@@ -14,7 +14,12 @@ jobs:
       
       - uses: superfly/flyctl-actions/setup-flyctl@master
       
-      - run: flyctl deploy --remote-only
+      - run: |
+          flyctl deploy --remote-only \
+            --build-arg SECRET_NEON_PG_AUTH="${{ secrets.SECRET_NEON_PG_AUTH }}" \
+            --build-arg SECRET_GOOGLE_CLIENT_ID="${{ secrets.SECRET_GOOGLE_CLIENT_ID }}" \
+            --build-arg SECRET_GOOGLE_CLIENT_SECRET="${{ secrets.SECRET_GOOGLE_CLIENT_SECRET }}" \
+            --build-arg SECRET_AUTH_SECRET="${{ secrets.SECRET_AUTH_SECRET }}"
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
 
