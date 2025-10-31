@@ -7,14 +7,11 @@ import { getRequestEvent } from "$app/server";
 import { env } from "$env/dynamic/private";
 import { dev } from "$app/environment";
 
-if (!env.SECRET_NEON_PG_AUTH) {
-  throw new Error("SECRET_NEON_PG_AUTH environment variable is required");
-}
-
 // Initialize Kysely with Neon dialect
+// env vars are only available at runtime (not during build)
 const db = new Kysely({
   dialect: new NeonDialect({
-    neon: neon(env.SECRET_NEON_PG_AUTH),
+    neon: neon(env.SECRET_NEON_PG_AUTH || ""),
   }),
 });
 
