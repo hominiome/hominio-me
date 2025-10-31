@@ -46,7 +46,7 @@ export async function GET({ request }) {
  * Simple JWT signing function using Web Crypto API
  * In production, consider using a library like jose for more features
  */
-async function signJWT(payload: any, secret: string) {
+async function signJWT(payload, secret) {
   // Encode header
   const header = {
     alg: "HS256",
@@ -81,7 +81,7 @@ async function signJWT(payload: any, secret: string) {
 /**
  * Base64 URL encode (JWT standard)
  */
-function base64UrlEncode(data: string | ArrayBuffer) {
+function base64UrlEncode(data) {
   if (data instanceof ArrayBuffer) {
     data = String.fromCharCode(...new Uint8Array(data));
   }

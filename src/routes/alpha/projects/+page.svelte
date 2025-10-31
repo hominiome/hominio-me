@@ -163,6 +163,7 @@
           class="modal-overlay"
           role="dialog"
           aria-modal="true"
+          tabindex="-1"
           onclick={(e) => {
             if (e.target === e.currentTarget) showCreateForm = false;
           }}
@@ -188,8 +189,9 @@
               class="space-y-5"
             >
               <div>
-                <label class="block text-navy/80 font-medium mb-2">Title</label>
+                <label for="project-title" class="block text-navy/80 font-medium mb-2">Title</label>
                 <input
+                  id="project-title"
                   type="text"
                   bind:value={newProject.title}
                   placeholder="My Amazing Project"
@@ -198,10 +200,11 @@
                 />
               </div>
               <div>
-                <label class="block text-navy/80 font-medium mb-2"
+                <label for="project-description" class="block text-navy/80 font-medium mb-2"
                   >Description</label
                 >
                 <textarea
+                  id="project-description"
                   bind:value={newProject.description}
                   placeholder="Tell us about your project..."
                   rows="4"
@@ -210,8 +213,9 @@
                 ></textarea>
               </div>
               <div>
-                <label class="block text-navy/80 font-medium mb-2">City</label>
+                <label for="project-city" class="block text-navy/80 font-medium mb-2">City</label>
                 <input
+                  id="project-city"
                   type="text"
                   bind:value={newProject.city}
                   placeholder="San Francisco"
@@ -222,7 +226,7 @@
 
               <!-- SDG Selection -->
               <div>
-                <label class="block text-navy/80 font-medium mb-2">
+                <label for="project-sdgs" class="block text-navy/80 font-medium mb-2">
                   Sustainable Development Goals (Select 1-3) *
                 </label>
                 <p class="text-sm text-navy/60 mb-3">
