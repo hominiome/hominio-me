@@ -1,6 +1,6 @@
 import { auth } from "$lib/auth.server.js";
 import { json } from "@sveltejs/kit";
-import { SECRET_ZERO_AUTH_SECRET } from "$env/static/private";
+import { env } from "$env/dynamic/private";
 
 /**
  * Zero Authentication Endpoint
@@ -25,7 +25,11 @@ export async function GET({ request }) {
       exp: Math.floor(Date.now() / 1000) + 60 * 60, // 1 hour expiry
     };
 
-    // Sign JWT with Zero auth secret
+    // Sign JWT with Zero auth secret (read at runtime, not build time)
+    const SECRET_ZERO_AUTH_SECRET = env.SECRET_ZERO_AUTH_SECRET;
+    if (!SECRET_ZERO_AUTH_SECRET) {
+      return json({ error: "Server configuration error" }, { status: 500 });
+    }
     const jwt = await signJWT(payload, SECRET_ZERO_AUTH_SECRET);
 
     return json({
@@ -42,7 +46,7 @@ export async function GET({ request }) {
  * Simple JWT signing function using Web Crypto API
  * In production, consider using a library like jose for more features
  */
-async function signJWT(payload, secret) {
+async function signJWT(payload: any, secret: string) {
   // Encode header
   const header = {
     alg: "HS256",
@@ -77,7 +81,7 @@ async function signJWT(payload, secret) {
 /**
  * Base64 URL encode (JWT standard)
  */
-function base64UrlEncode(data) {
+function base64UrlEncode(data: string | ArrayBuffer) {
   if (data instanceof ArrayBuffer) {
     data = String.fromCharCode(...new Uint8Array(data));
   }
