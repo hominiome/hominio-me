@@ -19,19 +19,17 @@ const db = new Kysely({
   }),
 });
 
-// Determine base URL
-const baseURL = dev ? "http://localhost:5173" : "https://hominio.me";
-
 // Auth secret
 const authSecret = SECRET_AUTH_SECRET || "dev-secret-key-change-in-production";
 
 // BetterAuth configuration with explicit database setup
+// Note: No baseURL specified - better-auth will use the current request origin
+// This allows it to work on both hominio.me and www.hominio.me
 export const auth = betterAuth({
   database: {
     db,
     type: "postgres",
   },
-  baseURL,
   secret: authSecret,
   socialProviders: {
     google: {
