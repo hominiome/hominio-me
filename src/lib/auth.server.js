@@ -4,21 +4,17 @@ import { Kysely } from "kysely";
 import { NeonDialect } from "kysely-neon";
 import { neon } from "@neondatabase/serverless";
 import { getRequestEvent } from "$app/server";
-import {
-  SECRET_NEON_PG_AUTH,
-  SECRET_GOOGLE_CLIENT_ID,
-  SECRET_GOOGLE_CLIENT_SECRET,
-} from "$env/static/private";
+import { env } from "$env/dynamic/private";
 import { dev } from "$app/environment";
 
-if (!SECRET_NEON_PG_AUTH) {
+if (!env.SECRET_NEON_PG_AUTH) {
   throw new Error("SECRET_NEON_PG_AUTH environment variable is required");
 }
 
 // Initialize Kysely with Neon dialect
 const db = new Kysely({
   dialect: new NeonDialect({
-    neon: neon(SECRET_NEON_PG_AUTH),
+    neon: neon(env.SECRET_NEON_PG_AUTH),
   }),
 });
 
@@ -30,7 +26,7 @@ const baseURL = dev
 // Generate a secret for dev (in production, use SECRET_AUTH_SECRET env var)
 const authSecret = dev
   ? "dev-secret-key-change-in-production"
-  : process.env.SECRET_AUTH_SECRET || "fallback-secret-please-set-env-var";
+  : env.SECRET_AUTH_SECRET || "fallback-secret-please-set-env-var";
 
 // BetterAuth configuration with explicit database setup
 export const auth = betterAuth({
@@ -42,8 +38,8 @@ export const auth = betterAuth({
   secret: authSecret,
   socialProviders: {
     google: {
-      clientId: SECRET_GOOGLE_CLIENT_ID || "",
-      clientSecret: SECRET_GOOGLE_CLIENT_SECRET || "",
+      clientId: env.SECRET_GOOGLE_CLIENT_ID || "",
+      clientSecret: env.SECRET_GOOGLE_CLIENT_SECRET || "",
     },
   },
   // SvelteKit cookies plugin (must be last in plugins array)
