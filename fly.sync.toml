@@ -32,6 +32,8 @@ destination = "/data"
 
 [env]
 ZERO_REPLICA_FILE = "/data/sync-replica.db"
+ZERO_PORT = "4848"
 # ZERO_UPSTREAM_DB will be set via Fly.io secrets
 # ZERO_AUTH_SECRET will be set via Fly.io secrets
+# ZERO_ADMIN_PASSWORD will be set via Fly.io secrets
 LOG_LEVEL = "info"

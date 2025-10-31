@@ -6,22 +6,28 @@ on:
       - main
 
 jobs:
-  deploy:
-    name: Deploy apps
+  deploy-sync:
+    name: Deploy sync service
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       
       - uses: superfly/flyctl-actions/setup-flyctl@master
       
-      # Deploy sync service (Zero cache server) first
-      - name: Deploy sync service
+      - name: Deploy sync service (Zero cache server)
         run: |
           flyctl deploy --config fly.sync.toml --remote-only
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+
+  deploy-main:
+    name: Deploy main app
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
       
-      # Deploy main app
+      - uses: superfly/flyctl-actions/setup-flyctl@master
+      
       - name: Deploy main app
         run: |
           flyctl deploy --remote-only \

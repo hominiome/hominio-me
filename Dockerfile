@@ -4,6 +4,12 @@ WORKDIR /app
 
 # Install dependencies
 FROM base AS install
+# Install Python and build tools needed for @rocicorp/zero-sqlite3 native compilation
+RUN apt-get update && apt-get install -y \
+    python3 \
+    python3-pip \
+    build-essential \
+    && rm -rf /var/lib/apt/lists/*
 RUN mkdir -p /temp/dev
 COPY package.json bun.lock* /temp/dev/
 RUN cd /temp/dev && bun install
