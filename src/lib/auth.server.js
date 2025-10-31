@@ -20,9 +20,7 @@ const db = new Kysely({
 });
 
 // Determine base URL
-const baseURL = dev
-  ? "http://localhost:5173"
-  : "https://hominio.me";
+const baseURL = dev ? "http://localhost:5173" : "https://hominio.me";
 
 // Auth secret
 const authSecret = SECRET_AUTH_SECRET || "dev-secret-key-change-in-production";
@@ -43,4 +41,3 @@ export const auth = betterAuth({
   },
   plugins: [sveltekitCookies(getRequestEvent)],
 });
-
