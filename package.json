@@ -5,12 +5,14 @@
 	"type": "module",
 	"scripts": {
 		"start": "node build",
-		"dev": "vite dev",
+		"dev": "bun run zero:migrate && vite dev",
 		"build": "vite build",
 		"preview": "vite preview",
 		"prepare": "svelte-kit sync || echo ''",
 		"check": "svelte-kit sync && svelte-check --tsconfig ./jsconfig.json",
-		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./jsconfig.json --watch"
+		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./jsconfig.json --watch",
+		"zero:migrate": "bun run scripts/zero-migrate.js",
+		"zero:cache": "bun run scripts/zero-cache.js"
 	},
 	"devDependencies": {
 		"@sveltejs/adapter-node": "^5.4.0",
@@ -26,8 +28,13 @@
 	},
 	"dependencies": {
 		"@neondatabase/serverless": "^1.0.2",
+		"@rocicorp/zero": "^0.24.2025101500",
 		"better-auth": "^1.3.34",
 		"kysely": "^0.28.8",
-		"kysely-neon": "^2.0.2"
-	}
+		"kysely-neon": "^2.0.2",
+		"nanoid": "^5.1.6"
+	},
+	"trustedDependencies": [
+		"@rocicorp/zero-sqlite3"
+	]
 }

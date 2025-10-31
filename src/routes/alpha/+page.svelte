@@ -1,4 +1,4 @@
-<script>
+<script lang="ts">
   import { goto } from "$app/navigation";
 
   // Session data from layout
@@ -9,34 +9,13 @@
   <div class="alpha-hero">
     <h1 class="alpha-title">Hominio Alpha</h1>
     <p class="alpha-tagline">
-      Be one of the first 1 million co-owners building the future of
-      purpose-driven startups.
+      A first alpha test run
     </p>
-
-    <div class="alpha-stats">
-      <div class="stat-item">
-        <span class="stat-number">1M</span>
-        <span class="stat-label">Co-Owners</span>
-      </div>
-      <div class="stat-divider">×</div>
-      <div class="stat-item">
-        <span class="stat-number">€1</span>
-        <span class="stat-label">Each</span>
-      </div>
-      <div class="stat-divider">=</div>
-      <div class="stat-item">
-        <span class="stat-number">€1M</span>
-        <span class="stat-label">For Startups</span>
-      </div>
-    </div>
 
     <div class="alpha-cta">
       {#if data.session}
         <button onclick={() => goto("/alpha/me")} class="btn btn-primary">
           Go to Profile
-        </button>
-        <button onclick={() => goto("/")} class="btn btn-secondary">
-          Back to Home
         </button>
       {:else}
         <button onclick={() => goto("/alpha/signup")} class="btn btn-primary">
@@ -54,19 +33,10 @@
       </p>
     {/if}
 
-    <div class="alpha-features">
-      <div class="feature">
-        <span class="feature-icon">🚀</span>
-        <span class="feature-text">Early Access</span>
-      </div>
-      <div class="feature">
-        <span class="feature-icon">🗳️</span>
-        <span class="feature-text">Vote on Decisions</span>
-      </div>
-      <div class="feature">
-        <span class="feature-icon">💰</span>
-        <span class="feature-text">Co-Ownership</span>
-      </div>
+    <div class="alpha-projects-link">
+      <a href="/alpha/projects" class="link-projects">
+        View Projects →
+      </a>
     </div>
   </div>
 </div>
@@ -79,12 +49,6 @@
     justify-content: center;
     padding: 2rem;
     background: linear-gradient(135deg, #f0fffe 0%, #fff9e6 100%);
-  }
-
-  .alpha-hero {
-    width: 100%;
-    max-width: 600px;
-    text-align: center;
   }
 
   .alpha-title {
@@ -107,46 +71,6 @@
     max-width: 500px;
     margin-left: auto;
     margin-right: auto;
-  }
-
-  .alpha-stats {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    gap: 1.5rem;
-    margin-bottom: 3rem;
-    padding: 2rem;
-    background: white;
-    border-radius: 16px;
-    border: 2px solid #4fc3c3;
-    box-shadow: 0 4px 16px rgba(79, 195, 195, 0.15);
-  }
-
-  .stat-item {
-    display: flex;
-    flex-direction: column;
-    gap: 0.25rem;
-  }
-
-  .stat-number {
-    font-size: 2rem;
-    font-weight: 900;
-    color: #4fc3c3;
-    line-height: 1;
-  }
-
-  .stat-label {
-    font-size: 0.75rem;
-    font-weight: 600;
-    color: #6b7280;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-  }
-
-  .stat-divider {
-    font-size: 2rem;
-    font-weight: 700;
-    color: #f4d03f;
   }
 
   .alpha-cta {
@@ -205,31 +129,28 @@
     color: #4fc3c3;
   }
 
-  .alpha-features {
-    display: flex;
-    justify-content: center;
-    gap: 2rem;
-    padding: 1.5rem;
-    background: white;
-    border-radius: 12px;
-    border: 1px solid #e5e7eb;
+  .alpha-projects-link {
+    text-align: center;
+    margin-top: 2rem;
   }
 
-  .feature {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 0.5rem;
-  }
-
-  .feature-icon {
-    font-size: 2rem;
-  }
-
-  .feature-text {
-    font-size: 0.875rem;
+  .link-projects {
+    display: inline-block;
+    color: #4fc3c3;
+    font-size: 1.125rem;
     font-weight: 600;
-    color: #6b7280;
+    text-decoration: none;
+    padding: 0.75rem 1.5rem;
+    border: 2px solid #4fc3c3;
+    border-radius: 12px;
+    transition: all 0.2s ease;
+  }
+
+  .link-projects:hover {
+    background: #4fc3c3;
+    color: white;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(79, 195, 195, 0.3);
   }
 
   @media (max-width: 640px) {
@@ -246,21 +167,6 @@
       margin-bottom: 2rem;
     }
 
-    .alpha-stats {
-      flex-direction: column;
-      gap: 0.75rem;
-      padding: 1.5rem;
-    }
-
-    .stat-number {
-      font-size: 1.5rem;
-    }
-
-    .stat-divider {
-      transform: rotate(90deg);
-      font-size: 1.5rem;
-    }
-
     .alpha-cta {
       flex-direction: column;
       width: 100%;
@@ -268,11 +174,6 @@
 
     .btn {
       width: 100%;
-    }
-
-    .alpha-features {
-      flex-direction: column;
-      gap: 1rem;
     }
   }
 </style>
