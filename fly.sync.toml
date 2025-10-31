@@ -1,0 +1,37 @@
+# fly.toml for sync service (Zero cache server)
+# This is a separate Fly.io app that runs the Zero cache server
+
+app = 'hominio-me-sync'
+primary_region = 'fra'
+
+[build]
+# Use official Zero Docker image
+image = "registry.hub.docker.com/rocicorp/zero:0.24.2025101500"
+
+[http_service]
+internal_port = 4848
+force_https = true
+auto_stop_machines = "off"
+min_machines_running = 1
+
+[[http_service.checks]]
+grace_period = "10s"
+interval = "30s"
+method = "GET"
+timeout = "5s"
+path = "/"
+
+[[vm]]
+memory = "2gb"
+cpu_kind = "shared"
+cpus = 2
+
+[mounts]
+source = "sync_sqlite_db"
+destination = "/data"
+
+[env]
+ZERO_REPLICA_FILE = "/data/sync-replica.db"
+# ZERO_UPSTREAM_DB will be set via Fly.io secrets
+# ZERO_AUTH_SECRET will be set via Fly.io secrets
+LOG_LEVEL = "info"

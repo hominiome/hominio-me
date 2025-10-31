@@ -7,14 +7,23 @@ on:
 
 jobs:
   deploy:
-    name: Deploy app
+    name: Deploy apps
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       
       - uses: superfly/flyctl-actions/setup-flyctl@master
       
-      - run: |
+      # Deploy sync service (Zero cache server) first
+      - name: Deploy sync service
+        run: |
+          flyctl deploy --config fly.sync.toml --remote-only
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+      
+      # Deploy main app
+      - name: Deploy main app
+        run: |
           flyctl deploy --remote-only \
             --build-arg SECRET_NEON_PG_AUTH="${{ secrets.SECRET_NEON_PG_AUTH }}" \
             --build-arg SECRET_GOOGLE_CLIENT_ID="${{ secrets.SECRET_GOOGLE_CLIENT_ID }}" \
