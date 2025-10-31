@@ -24,7 +24,7 @@
       </div>
       <span class="stat-divider equals-sign">=</span>
       <span class="stat-item highlight result"
-        ><strong>€1M</strong> for the Purpose-Driven Startup</span
+        ><strong>€1M</strong> for the Startup</span
       >
     </div>
   </div>

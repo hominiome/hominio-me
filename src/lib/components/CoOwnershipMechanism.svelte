@@ -18,8 +18,7 @@
       day one—each invested with €1, each with a voice, each helping you build.
     </p>
     <p class="value-text">
-      This is the better organizational form for any purpose-driven startup of
-      the future.
+      This is the better organizational form for any startup of the future.
     </p>
   </div>
 
