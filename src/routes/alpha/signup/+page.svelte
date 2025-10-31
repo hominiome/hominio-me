@@ -3,14 +3,16 @@
   import { onMount } from "svelte";
   import { goto } from "$app/navigation";
 
-  let session = $state(null);
   let loading = $state(true);
   let signingIn = $state(false);
 
   onMount(async () => {
-    // Check if user is already logged in
+    // Check if user is already logged in and redirect to profile
     const sessionData = await authClient.getSession();
-    session = sessionData.data;
+    if (sessionData?.data?.user) {
+      goto("/alpha/me");
+      return;
+    }
     loading = false;
   });
 
@@ -19,17 +21,12 @@
     try {
       await authClient.signIn.social({
         provider: "google",
-        callbackURL: "/signup-alpha",
+        callbackURL: "/alpha/me", // Redirect to profile after login
       });
     } catch (error) {
       console.error("Sign in error:", error);
       signingIn = false;
     }
-  }
-
-  async function signOut() {
-    await authClient.signOut();
-    session = null;
   }
 </script>
 
@@ -47,28 +44,6 @@
       <div class="loading-state">
         <div class="spinner"></div>
         <p>Loading...</p>
-      </div>
-    {:else if session?.user}
-      <div class="success-state">
-        <div class="success-icon">✓</div>
-        <h2 class="welcome-text">Welcome, {session.user.name}!</h2>
-        <p class="email-text">{session.user.email}</p>
-
-        <div class="user-info">
-          <p class="info-text">
-            You're now part of the alpha. We'll keep you updated on the Hominio
-            journey.
-          </p>
-        </div>
-
-        <div class="button-group">
-          <button onclick={() => goto("/")} class="btn btn-primary">
-            Back to Home
-          </button>
-          <button onclick={signOut} class="btn btn-secondary">
-            Sign Out
-          </button>
-        </div>
       </div>
     {:else}
       <div class="signin-state">
@@ -180,58 +155,6 @@
     }
   }
 
-  /* Success State */
-  .success-state {
-    text-align: center;
-  }
-
-  .success-icon {
-    width: 80px;
-    height: 80px;
-    background: #4fc3c3;
-    color: white;
-    font-size: 3rem;
-    font-weight: 900;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin: 0 auto 1.5rem;
-  }
-
-  .welcome-text {
-    font-size: 1.75rem;
-    font-weight: 800;
-    color: #111827;
-    margin: 0 0 0.5rem 0;
-  }
-
-  .email-text {
-    font-size: 1rem;
-    color: #6b7280;
-    margin: 0 0 2rem 0;
-  }
-
-  .user-info {
-    background: linear-gradient(135deg, #f0fffe 0%, white 100%);
-    border-radius: 12px;
-    padding: 1.5rem;
-    margin-bottom: 2rem;
-  }
-
-  .info-text {
-    font-size: 1rem;
-    line-height: 1.6;
-    color: #374151;
-    margin: 0;
-  }
-
-  .button-group {
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-  }
-
   /* Sign In State */
   .signin-state {
     display: flex;
@@ -325,40 +248,6 @@
     margin: 0;
   }
 
-  /* Buttons */
-  .btn {
-    width: 100%;
-    padding: 0.875rem 1.5rem;
-    border: none;
-    border-radius: 12px;
-    font-size: 1.063rem;
-    font-weight: 700;
-    cursor: pointer;
-    transition: all 0.2s ease;
-  }
-
-  .btn-primary {
-    background: #4fc3c3;
-    color: white;
-  }
-
-  .btn-primary:hover {
-    background: #3da8a8;
-    transform: translateY(-2px);
-    box-shadow: 0 4px 16px rgba(79, 195, 195, 0.3);
-  }
-
-  .btn-secondary {
-    background: white;
-    color: #6b7280;
-    border: 2px solid #e5e7eb;
-  }
-
-  .btn-secondary:hover {
-    border-color: #d1d5db;
-    background: #f9fafb;
-  }
-
   @media (max-width: 640px) {
     .signup-container {
       padding: 1rem;
@@ -374,10 +263,6 @@
 
     .signup-subtitle {
       font-size: 1rem;
-    }
-
-    .welcome-text {
-      font-size: 1.5rem;
     }
   }
 </style>
