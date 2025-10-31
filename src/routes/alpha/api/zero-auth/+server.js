@@ -87,4 +87,3 @@ function base64UrlEncode(data) {
   }
   return btoa(data).replace(/\+/g, "-").replace(/\//g, "_").replace(/=/g, "");
 }
-
