@@ -4,13 +4,14 @@ import { Kysely } from "kysely";
 import { NeonDialect } from "kysely-neon";
 import { neon } from "@neondatabase/serverless";
 import { getRequestEvent } from "$app/server";
-import {
-  SECRET_NEON_PG_AUTH,
-  SECRET_GOOGLE_CLIENT_ID,
-  SECRET_GOOGLE_CLIENT_SECRET,
-  SECRET_AUTH_SECRET,
-} from "$env/static/private";
+import { env } from "$env/dynamic/private";
 import { dev } from "$app/environment";
+
+// Get environment variables at runtime (not build time)
+const SECRET_NEON_PG_AUTH = env.SECRET_NEON_PG_AUTH;
+const SECRET_GOOGLE_CLIENT_ID = env.SECRET_GOOGLE_CLIENT_ID || "";
+const SECRET_GOOGLE_CLIENT_SECRET = env.SECRET_GOOGLE_CLIENT_SECRET || "";
+const SECRET_AUTH_SECRET = env.SECRET_AUTH_SECRET || "dev-secret-key-change-in-production";
 
 // Initialize Kysely with Neon dialect
 const db = new Kysely({
@@ -18,9 +19,6 @@ const db = new Kysely({
     neon: neon(SECRET_NEON_PG_AUTH),
   }),
 });
-
-// Auth secret
-const authSecret = SECRET_AUTH_SECRET || "dev-secret-key-change-in-production";
 
 // BetterAuth configuration with explicit database setup
 // Note: No baseURL specified - better-auth will use the current request origin
@@ -30,11 +28,11 @@ export const auth = betterAuth({
     db,
     type: "postgres",
   },
-  secret: authSecret,
+  secret: SECRET_AUTH_SECRET,
   socialProviders: {
     google: {
-      clientId: SECRET_GOOGLE_CLIENT_ID || "",
-      clientSecret: SECRET_GOOGLE_CLIENT_SECRET || "",
+      clientId: SECRET_GOOGLE_CLIENT_ID,
+      clientSecret: SECRET_GOOGLE_CLIENT_SECRET,
     },
   },
   plugins: [sveltekitCookies(getRequestEvent)],
