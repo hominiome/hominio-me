@@ -354,7 +354,7 @@
   }
 </script>
 
-<div class="min-h-screen bg-cream p-8">
+<div class="min-h-screen bg-cream p-4 md:p-8">
   {#if $session.isPending || loading}
     <div class="flex items-center justify-center min-h-screen">
       <div class="card p-8">
@@ -364,7 +364,7 @@
   {:else if $session.data}
     <div class="max-w-5xl mx-auto">
       <!-- Header -->
-      <div class="header-section mb-12">
+      <div class="header-section mb-8 md:mb-12">
         <div>
           <h1 class="text-6xl font-bold text-navy mb-3">Choose Your Voting Weight</h1>
           {#if !userIdentity}
@@ -375,7 +375,7 @@
         </div>
       </div>
 
-      <div class="space-y-8">
+      <div class="space-y-6 md:space-y-8">
         <!-- Success Message -->
         {#if successMessage}
           <div
@@ -402,7 +402,7 @@
         <!-- Options -->
         <div>
           <div
-            class="package-grid mb-8"
+            class="package-grid mb-6 md:mb-8"
           >
             {#each packages as pkg}
               {@const status = getPackageStatus(pkg.packageType)}
@@ -419,10 +419,14 @@
                     <!-- Prize Pool Increase Overlay Animation -->
                     <div class="purchase-overlay">
                       <div class="purchase-overlay-content">
-                        <span class="purchase-overlay-label">Prize Pool:</span>
-                        <span class="purchase-overlay-amount previous">{formatPrizePoolAmount(purchaseAnimation.newPool)}</span>
-                        <span class="purchase-overlay-plus">+</span>
-                        <span class="purchase-overlay-amount increase">{formatPrizePoolAmount(purchaseAnimation.increase)}</span>
+                        <div class="purchase-overlay-section">
+                          <span class="purchase-overlay-label">Prize Pool:</span>
+                          <span class="purchase-overlay-amount previous">{formatPrizePoolAmount(purchaseAnimation.newPool)}</span>
+                        </div>
+                        <div class="purchase-overlay-section increase">
+                          <span class="purchase-overlay-plus">+</span>
+                          <span class="purchase-overlay-amount increase">{formatPrizePoolAmount(purchaseAnimation.increase)}</span>
+                        </div>
                       </div>
                     </div>
                   {/if}
@@ -684,7 +688,13 @@
   .package-grid {
     display: grid;
     grid-template-columns: 1fr;
-    gap: 1rem;
+    gap: 0.75rem;
+  }
+
+  @media (max-width: 640px) {
+    .package-grid {
+      gap: 0.625rem;
+    }
   }
 
   @media (min-width: 768px) {
@@ -698,19 +708,21 @@
     .header-section {
       flex-direction: column;
       align-items: flex-start;
-      gap: 1.5rem;
+      gap: 1rem;
+      margin-bottom: 1.5rem;
     }
 
     .header-section h1 {
-      font-size: 2.5rem;
+      font-size: 2rem;
+      margin-bottom: 0.5rem;
     }
 
     .package-card {
-      padding: 1rem 1.25rem;
+      padding: 0.875rem 1rem;
       flex-direction: row;
       align-items: center;
       text-align: left;
-      gap: 1rem;
+      gap: 0.75rem;
       justify-content: space-between;
     }
 
@@ -725,14 +737,15 @@
       order: 2;
       flex-direction: row;
       gap: 0.125rem;
+      flex-shrink: 0;
     }
 
     .package-card .heart-count {
-      font-size: 1.5rem;
+      font-size: 1.375rem;
     }
 
     .package-card .heart-label {
-      font-size: 0.875rem;
+      font-size: 0.8125rem;
     }
 
     .package-card .package-name {
@@ -740,8 +753,9 @@
       flex: 1;
       margin: 0;
       min-height: auto;
-      font-size: 1rem;
+      font-size: 0.9375rem;
       text-align: left;
+      padding-right: 0.5rem;
     }
 
     .package-card .package-description {
@@ -756,29 +770,38 @@
       flex-direction: row;
       align-items: baseline;
       gap: 0.5rem;
-      font-size: 1.5rem;
+      font-size: 1.25rem;
+      flex-shrink: 0;
     }
 
     .package-card .buy-label {
       order: 7;
-      margin-left: auto;
+      margin-left: 0;
       flex-shrink: 0;
       width: auto;
       min-width: fit-content;
+      padding: 0.5rem 1rem;
+      font-size: 0.6875rem;
     }
   }
 
   @media (max-width: 640px) {
+    .header-section {
+      margin-bottom: 1rem;
+    }
+
     .header-section h1 {
-      font-size: 2rem;
+      font-size: 1.75rem;
+      margin-bottom: 0.375rem;
     }
 
     .header-section p {
-      font-size: 0.875rem;
+      font-size: 0.8125rem;
     }
 
     .package-card {
-      padding: 0.875rem 1rem;
+      padding: 0.75rem 0.875rem;
+      gap: 0.625rem;
     }
 
     .package-card .heart-icon {
@@ -795,16 +818,17 @@
     }
 
     .package-card .package-name {
-      font-size: 0.9375rem;
+      font-size: 0.875rem;
+      padding-right: 0.375rem;
     }
 
     .package-card .price {
-      font-size: 1.25rem;
+      font-size: 1.125rem;
     }
 
     .package-card .buy-label {
       font-size: 0.625rem;
-      padding: 0.375rem 1rem;
+      padding: 0.4375rem 0.875rem;
       width: auto;
       min-width: fit-content;
     }
@@ -836,12 +860,22 @@
     flex-direction: row;
     align-items: center;
     justify-content: center;
-    gap: 1rem;
+    gap: 1.5rem;
     color: #1a1a4e;
     padding: 0.5rem;
     width: 100%;
     min-height: 100%;
     flex-wrap: wrap;
+  }
+
+  .purchase-overlay-section {
+    display: flex;
+    align-items: baseline;
+    gap: 0.5rem;
+  }
+
+  .purchase-overlay-section.increase {
+    animation: countUpPurchase 1.5s ease-out;
   }
 
   .purchase-overlay-label {
@@ -859,7 +893,7 @@
   }
 
   .purchase-overlay-amount.previous {
-    color: rgba(26, 26, 78, 0.7);
+    color: #1a1a4e;
     font-size: 1.75rem;
   }
 
@@ -878,7 +912,11 @@
 
   @media (max-width: 768px) {
     .purchase-overlay-content {
-      gap: 0.75rem;
+      gap: 1rem;
+    }
+
+    .purchase-overlay-section {
+      gap: 0.375rem;
     }
 
     .purchase-overlay-label {
