@@ -23,86 +23,87 @@
     onToggleExpand,
     toggleVideo,
     voteOnMatch,
+    roundMatches = [], // All matches in the same round (for fallback endDate)
   } = $props();
 </script>
 
 <!-- Compact Match List Item -->
 {#if expandedMatch !== match.id}
-<button
-  onclick={onToggleExpand}
-  class="match-list-item"
-  class:voted-match={hasVoted && isActive}
->
-  <!-- Left: Project 1 -->
-  <div class="match-list-project-left">
-    <span
-      class="team-list-name"
-      class:winner-text={match.winnerId === match.project1Id}
-    >
-      {project1?.title || "TBD"}
-    </span>
-  </div>
-
-  <!-- Center: Scores and VS with Status Indicator -->
-  <div class="match-list-center">
-    <span class="team-list-votes">{votes1}</span>
-    <div class="vs-container">
-    <span class="match-list-vs">VS</span>
-      <!-- Match State Indicator - centered below VS -->
-      <div class="match-list-indicator">
-        {#if match.winnerId}
-          <svg
-            class="status-icon completed"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-          >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              d="M5 13l4 4L19 7"
-            />
-          </svg>
-        {:else if isActive}
-          <svg
-            class="status-icon pending"
-            viewBox="0 0 24 24"
-            fill="currentColor"
-          >
-            <circle cx="12" cy="12" r="6" />
-          </svg>
-        {:else}
-          <svg
-            class="status-icon waiting"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-          >
-            <rect x="3" y="3" width="18" height="18" rx="2" />
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              d="M8 7h8M8 12h8M8 17h4"
-            />
-          </svg>
-        {/if}
-      </div>
+  <button
+    onclick={onToggleExpand}
+    class="match-list-item"
+    class:voted-match={hasVoted && isActive}
+  >
+    <!-- Left: Project 1 -->
+    <div class="match-list-project-left">
+      <span
+        class="team-list-name"
+        class:winner-text={match.winnerId === match.project1Id}
+      >
+        {project1?.title || "TBD"}
+      </span>
     </div>
-    <span class="team-list-votes">{votes2}</span>
-  </div>
 
-  <!-- Right: Project 2 -->
-  <div class="match-list-project-right">
-    <span
-      class="team-list-name"
-      class:winner-text={match.winnerId === match.project2Id}
-    >
-      {project2?.title || "TBD"}
-    </span>
-  </div>
-</button>
+    <!-- Center: Scores and VS with Status Indicator -->
+    <div class="match-list-center">
+      <span class="team-list-votes">{votes1}</span>
+      <div class="vs-container">
+        <span class="match-list-vs">VS</span>
+        <!-- Match State Indicator - centered below VS -->
+        <div class="match-list-indicator">
+          {#if match.winnerId}
+            <svg
+              class="status-icon completed"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                d="M5 13l4 4L19 7"
+              />
+            </svg>
+          {:else if isActive}
+            <svg
+              class="status-icon pending"
+              viewBox="0 0 24 24"
+              fill="currentColor"
+            >
+              <circle cx="12" cy="12" r="6" />
+            </svg>
+          {:else}
+            <svg
+              class="status-icon waiting"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <rect x="3" y="3" width="18" height="18" rx="2" />
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                d="M8 7h8M8 12h8M8 17h4"
+              />
+            </svg>
+          {/if}
+        </div>
+      </div>
+      <span class="team-list-votes">{votes2}</span>
+    </div>
+
+    <!-- Right: Project 2 -->
+    <div class="match-list-project-right">
+      <span
+        class="team-list-name"
+        class:winner-text={match.winnerId === match.project2Id}
+      >
+        {project2?.title || "TBD"}
+      </span>
+    </div>
+  </button>
 {/if}
 
 <!-- Collapsible Match Detail -->

@@ -7,6 +7,8 @@
   import MatchDetail from "$lib/MatchDetail.svelte";
   import MatchListItem from "$lib/MatchListItem.svelte";
   import { showError, showInfo } from "$lib/toastStore.js";
+  import { getMatchEndDate } from "$lib/dateUtils.js";
+  import CountdownTimer from "$lib/CountdownTimer.svelte";
 
   const zeroContext = useZero();
   const session = authClient.useSession();
@@ -99,7 +101,17 @@
     }
 
     // Convert to array and sort by cup name, then round order
-    const roundOrder = { round_16: 1, quarter: 2, semi: 3, final: 4 };
+    const roundOrder = {
+      round_128: 1,
+      round_64: 2,
+      round_32: 3,
+      round_16: 4,
+      round_8: 4,
+      round_4: 4,
+      quarter: 5,
+      semi: 6,
+      final: 7,
+    };
     return Array.from(groups.values()).sort((a, b) => {
       if (a.cupName !== b.cupName) {
         return a.cupName.localeCompare(b.cupName);
@@ -250,8 +262,18 @@
 
   function getRoundLabel(round) {
     switch (round) {
+      case "round_4":
+        return "Round of 4";
+      case "round_8":
+        return "Round of 8";
       case "round_16":
         return "Round of 16";
+      case "round_32":
+        return "Round of 32";
+      case "round_64":
+        return "Round of 64";
+      case "round_128":
+        return "Round of 128";
       case "quarter":
         return "Quarter Finals";
       case "semi":
@@ -434,10 +456,6 @@
 </script>
 
 <div class="alpha-timeline-container">
-  <div class="alpha-header">
-    <h1 class="alpha-title">Active Matches</h1>
-  </div>
-
   {#if loading}
     <div class="loading-state">
       <p>Loading matches...</p>
@@ -447,19 +465,6 @@
       <p class="empty-message">
         {#if $session.data?.user}
           No active matches to vote on right now. Check back later!
-          <br />
-          <small
-            style="color: #999; font-size: 0.875rem; margin-top: 0.5rem; display: block;"
-          >
-            Debug: {allMatches.length} matches loaded, {cups.length} cups loaded,
-            {groupedMatches.length} groups
-            <br />
-            Match statuses: {[...new Set(allMatches.map((m) => m.status))].join(
-              ", "
-            )}
-            <br />
-            Cup statuses: {[...new Set(cups.map((c) => c.status))].join(", ")}
-          </small>
         {:else}
           <a href="/alpha/signup" class="link">Sign in</a> to see matches waiting
           for your vote.
@@ -468,12 +473,25 @@
     </div>
   {:else}
     <div class="timeline">
-      <!-- Debug info -->
       {#each groupedMatches as group (group.cupName + group.round)}
         <div class="match-group">
           <div class="group-header">
             <h3 class="group-title">{group.cupName}</h3>
             <span class="group-round">{getRoundLabel(group.round)}</span>
+            {#if group.matches.length > 0}
+              {@const roundEndDate = getMatchEndDate(
+                group.matches[0],
+                group.matches
+              )}
+              {#if roundEndDate}
+                <div class="group-countdown">
+                  <CountdownTimer
+                    endDate={roundEndDate}
+                    displayFormat="compact"
+                  />
+                </div>
+              {/if}
+            {/if}
           </div>
           <div class="group-matches">
             {#each group.matches as match (match.id)}
@@ -493,6 +511,7 @@
               {@const userVotingWeight = getUserVotingWeight()}
               {@const canVote = canUserVoteOnMatch(match)}
               {@const isExpanded = expandedMatch === match.id}
+              {@const roundMatches = group.matches}
 
               <div class="timeline-item">
                 {#if isExpanded}
@@ -514,6 +533,7 @@
                     {userVotingWeight}
                     {userVotedSide}
                     {canVote}
+                    {roundMatches}
                     {toggleVideo}
                     {voteOnMatch}
                   />
@@ -557,6 +577,7 @@
                     {userVotingWeight}
                     {userVotedSide}
                     {canVote}
+                    {roundMatches}
                     onToggleExpand={() => toggleMatchExpand(match.id)}
                     {toggleVideo}
                     {voteOnMatch}
@@ -578,19 +599,6 @@
     max-width: 1200px;
     margin: 0 auto;
     background: linear-gradient(135deg, #f0fffe 0%, #fff9e6 100%);
-  }
-
-  .alpha-header {
-    text-align: center;
-    margin-bottom: 3rem;
-  }
-
-  .alpha-title {
-    font-size: 2rem;
-    font-weight: 700;
-    color: #111827;
-    margin: 0;
-    letter-spacing: -0.02em;
   }
 
   .loading-state,
@@ -630,33 +638,53 @@
     display: flex;
     align-items: center;
     gap: 1rem;
-    padding: 0.75rem 1rem;
-    background: rgba(255, 255, 255, 0.8);
-    border-radius: 12px;
-    border: 1px solid rgba(26, 26, 78, 0.1);
+    padding: 1rem 1.5rem;
+    background: linear-gradient(
+      135deg,
+      rgba(26, 26, 78, 0.95) 0%,
+      rgba(26, 26, 78, 0.85) 100%
+    );
+    border-radius: 16px;
+    border: 2px solid rgba(78, 205, 196, 0.2);
+    box-shadow: 0 4px 12px rgba(26, 26, 78, 0.15);
+    margin-bottom: 0.5rem;
   }
 
   .group-title {
-    font-size: 1.25rem;
-    font-weight: 700;
-    color: #1a1a4e;
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: #ffffff;
     margin: 0;
+    letter-spacing: -0.02em;
+    flex: 1;
   }
 
   .group-round {
     font-size: 0.875rem;
-    color: #4ecdc4;
-    font-weight: 600;
-    padding: 0.25rem 0.75rem;
-    background: rgba(78, 205, 196, 0.1);
-    border-radius: 6px;
+    color: #1a1a4e;
+    font-weight: 700;
+    padding: 0.5rem 1rem;
+    background: linear-gradient(135deg, #f4d03f 0%, #fcd34d 100%);
+    border-radius: 20px;
+    border: 2px solid rgba(244, 208, 63, 0.3);
+    box-shadow: 0 2px 8px rgba(244, 208, 63, 0.3);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    white-space: nowrap;
+  }
+
+  .group-countdown {
+    margin-left: auto;
+    font-size: 0.875rem;
+    color: #ffffff;
+    font-weight: 500;
+    white-space: nowrap;
   }
 
   .group-matches {
     display: flex;
     flex-direction: column;
     gap: 1rem;
-    padding-left: 1rem;
   }
 
   .timeline-item {
@@ -691,8 +719,20 @@
       padding: 1rem;
     }
 
-    .alpha-title {
-      font-size: 1.5rem;
+    .group-header {
+      padding: 0.875rem 1.25rem;
+      flex-wrap: wrap;
+    }
+
+    .group-title {
+      font-size: 1.25rem;
+      flex: 1 1 100%;
+      margin-bottom: 0.5rem;
+    }
+
+    .group-round {
+      font-size: 0.75rem;
+      padding: 0.375rem 0.875rem;
     }
 
     .timeline {
