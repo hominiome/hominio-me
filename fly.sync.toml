@@ -13,14 +13,16 @@ internal_port = 4848
 force_https = true
 # Prevent auto-shutdown - Zero cache needs to stay running to maintain replication
 auto_stop_machines = "off"
-# Keep at least one machine running at all times for continuous replication
+# Keep exactly one machine running - multiple instances cause replication slot conflicts
 min_machines_running = 1
+max_machines_running = 1
 
 [[http_service.checks]]
-grace_period = "10s"
+# Increased grace period to allow Zero to fully initialize and avoid premature health check failures
+grace_period = "60s"
 interval = "30s"
 method = "GET"
-timeout = "5s"
+timeout = "10s"
 path = "/"
 
 [[vm]]
@@ -39,3 +41,5 @@ ZERO_PORT = "4848"
 # ZERO_AUTH_SECRET will be set via Fly.io secrets
 # ZERO_ADMIN_PASSWORD will be set via Fly.io secrets
 LOG_LEVEL = "info"
+# Increase connection timeout to handle high-latency database connections
+ZERO_DB_CONNECT_TIMEOUT = "15"
