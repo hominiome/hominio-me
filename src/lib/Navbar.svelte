@@ -91,14 +91,38 @@
     </div>
 
     <!-- Mobile Menu Button -->
-    <button class="mobile-menu-btn" onclick={toggleMobileMenu} aria-label="Toggle menu">
+    <button
+      class="mobile-menu-btn"
+      onclick={toggleMobileMenu}
+      aria-label="Toggle menu"
+    >
       {#if mobileMenuOpen}
-        <svg class="mobile-menu-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+        <svg
+          class="mobile-menu-icon"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M6 18L18 6M6 6l12 12"
+          />
         </svg>
       {:else}
-        <svg class="mobile-menu-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+        <svg
+          class="mobile-menu-icon"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M4 6h16M4 12h16M4 18h16"
+          />
         </svg>
       {/if}
     </button>
@@ -395,7 +419,6 @@
     color: #1a1a4e;
   }
 
-
   /* Responsive */
   @media (max-width: 768px) {
     .nav-container {
@@ -454,4 +477,3 @@
     }
   }
 </style>
-

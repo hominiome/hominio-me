@@ -7,6 +7,8 @@
   import { useZero } from "$lib/zero-utils";
   import { getOrCreateWallet } from "$lib/services/walletService";
   import fakeProjectsData from "$lib/fake-projects.json";
+  import { showSuccess, showError } from "$lib/toastStore.js";
+  import ConfirmDialog from "$lib/ConfirmDialog.svelte";
 
   const zeroContext = useZero();
   const session = authClient.useSession();
@@ -24,6 +26,7 @@
   let selectedMatch = $state<any>(null); // Match detail modal
   let isAdmin = $state(false);
   let checkingAdmin = $state(true);
+  let showEndRoundConfirm = $state(false);
 
   onMount(() => {
     let cupView: any;
@@ -237,12 +240,12 @@
       console.log(
         `✅ Added ${selectedProjects.length} projects to cup (${allProjects.length - projects.length} fake)`
       );
-      alert(
+      showSuccess(
         `🎉 Successfully added ${selectedProjects.length} projects to the cup!`
       );
     } catch (error) {
       console.error("Failed to add projects:", error);
-      alert("Failed to add projects. Please try again.");
+      showError("Failed to add projects. Please try again.");
     } finally {
       addingProjects = false;
     }
@@ -271,24 +274,23 @@
 
       const result = await response.json();
       console.log("✅ Cup started:", result);
-      alert("🎉 Cup started! Voting is now enabled.");
+      showSuccess("🎉 Cup started! Voting is now enabled.");
 
       // Zero will automatically sync the updated cup status
     } catch (error) {
       console.error("Failed to start cup:", error);
       const message = error instanceof Error ? error.message : "Unknown error";
-      alert(`Failed to start cup: ${message}`);
+      showError(`Failed to start cup: ${message}`);
     }
+  }
+
+  function requestEndRound() {
+    if (!cup || ending) return;
+    showEndRoundConfirm = true;
   }
 
   async function endCurrentRound() {
     if (!cup || ending) return;
-
-    const confirmed = confirm(
-      `Are you sure you want to end the current round?\n\nThis will:\n- Determine winners for all matches\n- Advance winners to the next round\n- Cannot be undone!`
-    );
-
-    if (!confirmed) return;
 
     ending = true;
 
@@ -308,10 +310,10 @@
 
       const result = await response.json();
       console.log("✅ Round ended successfully:", result);
-      alert(result.message);
+      showSuccess(result.message);
     } catch (error: any) {
       console.error("End round error:", error);
-      alert(`Failed to end round: ${error.message}`);
+      showError(`Failed to end round: ${error.message}`);
     } finally {
       ending = false;
     }
@@ -378,9 +380,10 @@
 
       const result = await response.json();
       console.log("✅ Winner determined:", result);
+      showSuccess("Winner determined successfully!");
     } catch (error: any) {
       console.error("Determine winner error:", error);
-      alert(`Failed to determine winner: ${error.message}`);
+      showError(`Failed to determine winner: ${error.message}`);
     } finally {
       determiningWinner = null;
     }
@@ -500,7 +503,7 @@
             automatically advance them to the next round.
           </p>
           <button
-            onclick={endCurrentRound}
+            onclick={requestEndRound}
             class="btn-primary"
             disabled={ending}
           >
@@ -711,6 +714,22 @@
     </div>
   </div>
 {/if}
+
+<!-- End Round Confirmation Dialog -->
+<ConfirmDialog
+  bind:open={showEndRoundConfirm}
+  title="End Current Round"
+  message="Are you sure you want to end the current round?
+
+This will:
+- Determine winners for all matches
+- Advance winners to the next round
+- Cannot be undone!"
+  confirmText="End Round"
+  cancelText="Cancel"
+  variant="danger"
+  onConfirm={endCurrentRound}
+/>
 
 <style>
   .bg-cream {

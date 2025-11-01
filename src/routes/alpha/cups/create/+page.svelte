@@ -1,6 +1,7 @@
 <script lang="ts">
   import { authClient } from "$lib/auth.client.js";
   import { goto } from "$app/navigation";
+  import { showSuccess, showError } from "$lib/toastStore.js";
   const session = authClient.useSession();
   let name = $state("");
   let description = $state("");
@@ -44,12 +45,14 @@
       const result = await response.json();
       console.log("✅ Cup created:", result.cupId);
 
+      showSuccess("Cup created successfully!");
+      
       // Redirect to cup admin page
       goto(`/alpha/cups/${result.cupId}/admin`);
     } catch (error) {
       console.error("Failed to create cup:", error);
       const message = error instanceof Error ? error.message : "Unknown error";
-      alert(`Failed to create cup: ${message}`);
+      showError(`Failed to create cup: ${message}`);
     } finally {
       creating = false;
     }

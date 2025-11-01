@@ -2,7 +2,6 @@ import { json } from "@sveltejs/kit";
 import { nanoid } from "nanoid";
 import { getSession } from "$lib/api-helpers.server.js";
 import { zeroDb } from "$lib/db.server.js";
-import { getOrCreateWallet } from "$lib/services/walletService.js";
 
 export async function POST({ request }) {
   // Require authentication (any authenticated user can create cups)
@@ -25,7 +24,38 @@ export async function POST({ request }) {
 
   try {
     // Create a wallet for the cup (for future prize pool functionality)
-    const cupWallet = await getOrCreateWallet(zeroDb, "cup", cupId);
+    // Check if wallet already exists
+    let cupWallet = await zeroDb
+      .selectFrom("wallet")
+      .selectAll()
+      .where("entityType", "=", "cup")
+      .where("entityId", "=", cupId)
+      .executeTakeFirst();
+
+    if (!cupWallet) {
+      // Create new wallet
+      const walletId = nanoid();
+      await zeroDb
+        .insertInto("wallet")
+        .values({
+          id: walletId,
+          entityType: "cup",
+          entityId: cupId,
+          balance: 0,
+          createdAt: now,
+          updatedAt: now,
+        })
+        .execute();
+      
+      cupWallet = {
+        id: walletId,
+        entityType: "cup",
+        entityId: cupId,
+        balance: 0,
+        createdAt: now,
+        updatedAt: now,
+      };
+    }
 
     // Create cup directly in database
     await zeroDb

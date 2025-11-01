@@ -7,6 +7,7 @@
   import { browser } from "$app/environment";
   import { env as publicEnv } from "$env/dynamic/public";
   import Navbar from "$lib/Navbar.svelte";
+  import ToastContainer from "$lib/ToastContainer.svelte";
 
   // Get session data from layout server and children snippet
   let { data, children } = $props<{
@@ -100,3 +101,5 @@
 <Navbar session={$session} {signInWithGoogle} />
 
 {@render children()}
+
+<ToastContainer />
