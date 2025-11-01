@@ -5,7 +5,10 @@ import { startZero, stopZero } from "$lib/zero-manager.server.ts";
 
 // Start Zero cache server when app starts (only in runtime, not during build)
 if (!building) {
-  startZero();
+  // Start Zero asynchronously - don't await to avoid blocking server startup
+  startZero().catch((error) => {
+    console.error("[Zero] Failed to start:", error);
+  });
   
   // Cleanup handlers for graceful shutdown
   process.on('SIGTERM', () => {

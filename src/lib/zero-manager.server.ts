@@ -1,5 +1,9 @@
 import { spawn, type ChildProcess } from 'child_process';
+import { exec } from 'child_process';
+import { promisify } from 'util';
 import { env } from '$env/dynamic/private';
+
+const execAsync = promisify(exec);
 
 let zeroProcess: ChildProcess | null = null;
 let isStarting = false;
@@ -10,18 +14,66 @@ let lastError: string | null = null;
 const MAX_RESTART_ATTEMPTS = 10; // Increased for production resilience
 const INITIAL_RESTART_DELAY = 2000; // 2 seconds
 const MAX_RESTART_DELAY = 30000; // Max 30 seconds delay
+const ZERO_PORT = 4848;
+const ZERO_CHANGE_STREAMER_PORT = 4849;
+
+/**
+ * Check if a port is in use
+ */
+async function isPortInUse(port: number): Promise<boolean> {
+    try {
+        const { stdout } = await execAsync(`lsof -ti:${port}`);
+        return stdout.trim().length > 0;
+    } catch {
+        return false;
+    }
+}
+
+/**
+ * Kill any process using the specified port
+ */
+async function killProcessOnPort(port: number): Promise<void> {
+    try {
+        const { stdout } = await execAsync(`lsof -ti:${port}`);
+        if (stdout.trim()) {
+            const pids = stdout.trim().split('\n');
+            for (const pid of pids) {
+                try {
+                    await execAsync(`kill -9 ${pid}`);
+                    console.log(`[Zero] Killed process ${pid} on port ${port}`);
+                } catch (error) {
+                    console.warn(`[Zero] Failed to kill process ${pid}: ${error}`);
+                }
+            }
+        }
+    } catch {
+        // Port not in use, nothing to kill
+    }
+}
 
 /**
  * Start the zero-cache process
  * Only starts once, safe to call multiple times
  */
-export function startZero(): void {
+export async function startZero(): Promise<void> {
     // Already running or starting
     if (zeroProcess || isStarting) {
         return;
     }
 
     isStarting = true;
+
+    // Check if ports are already in use (likely from a previous crashed instance)
+    const port4848InUse = await isPortInUse(ZERO_PORT);
+    const port4849InUse = await isPortInUse(ZERO_CHANGE_STREAMER_PORT);
+
+    if (port4848InUse || port4849InUse) {
+        console.warn(`[Zero] Ports ${ZERO_PORT} or ${ZERO_CHANGE_STREAMER_PORT} are already in use. Cleaning up...`);
+        await killProcessOnPort(ZERO_PORT);
+        await killProcessOnPort(ZERO_CHANGE_STREAMER_PORT);
+        // Wait a moment for ports to be released
+        await new Promise(resolve => setTimeout(resolve, 1000));
+    }
 
     // Get environment variables from SvelteKit (read at runtime, not build time)
     const DATABASE_URL = env.SECRET_ZERO_DEV_PG;
@@ -88,6 +140,18 @@ export function startZero(): void {
             // Store last error for debugging
             if (line.trim()) {
                 lastError = line.trim();
+            }
+            
+            // Detect port already in use error and handle it
+            if (line.includes('EADDRINUSE') || line.includes('address already in use')) {
+                console.error(`[Zero] Port conflict detected. Attempting to clean up...`);
+                // Kill processes on ports and restart after a delay
+                setTimeout(async () => {
+                    await killProcessOnPort(ZERO_PORT);
+                    await killProcessOnPort(ZERO_CHANGE_STREAMER_PORT);
+                    // Don't auto-restart immediately - let user restart manually or fix the issue
+                    console.error(`[Zero] Ports cleaned up. Please restart Zero manually.`);
+                }, 2000);
             }
         });
     });
