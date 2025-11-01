@@ -141,7 +141,7 @@ export async function startZero(): Promise<void> {
             if (line.trim()) {
                 lastError = line.trim();
             }
-            
+
             // Detect port already in use error and handle it
             if (line.includes('EADDRINUSE') || line.includes('address already in use')) {
                 console.error(`[Zero] Port conflict detected. Attempting to clean up...`);
