@@ -39,6 +39,10 @@ destination = "/data"
 ZERO_REPLICA_FILE = "/data/sync-replica.db"
 ZERO_PORT = "4848"
 # ZERO_UPSTREAM_DB will be set via Fly.io secrets
+# IMPORTANT: Must use DIRECT connection (not pooler) for replication slots!
+# Pooler connections don't support logical replication and will cause:
+# "terminating connection due to administrator command" errors
+# Use: bun scripts/convert-to-direct-connection.js <your-pooler-url>
 # ZERO_AUTH_SECRET will be set via Fly.io secrets
 # ZERO_ADMIN_PASSWORD will be set via Fly.io secrets
 LOG_LEVEL = "info"
