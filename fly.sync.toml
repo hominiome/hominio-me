@@ -5,8 +5,9 @@ app = 'hominio-me-sync'
 primary_region = 'fra'
 
 [build]
-# Use official Zero Docker image - latest version (pushed most recently)
-image = "registry.hub.docker.com/rocicorp/zero:0.22.3000000000"
+# Use official Zero Docker image - must match local @rocicorp/zero version for schema compatibility
+# Local version: ^0.24.2025101500
+image = "registry.hub.docker.com/rocicorp/zero:0.24.2025101500"
 
 [http_service]
 internal_port = 4848
