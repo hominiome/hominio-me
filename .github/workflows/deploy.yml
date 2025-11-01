@@ -11,9 +11,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      
+
       - uses: superfly/flyctl-actions/setup-flyctl@master
-      
+
       - name: Set Zero secrets
         run: |
           # Set secrets for sync service (directly from GitHub secrets)
@@ -25,13 +25,13 @@ jobs:
             --app hominio-me-sync
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
-      
+
       - name: Deploy sync service (Zero cache server)
         run: |
           flyctl deploy --config fly.sync.toml --remote-only --app hominio-me-sync
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
-      
+
       - name: Ensure exactly 1 machine (no auto-scaling)
         run: |
           # Explicitly set scale count to 1 to prevent auto-scaling
@@ -39,16 +39,24 @@ jobs:
           flyctl scale count 1 --app hominio-me-sync
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
-      
+
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
-      
+
       - name: Install dependencies
         run: |
           bun install
-      
+
+      - name: Run database migration
+        run: |
+          # Run migration script to add new columns and update publication
+          # This ensures the database schema matches the Zero schema definition
+          bun run scripts/zero-migrate.js
+        env:
+          SECRET_ZERO_DEV_PG: ${{ secrets.SECRET_ZERO_DEV_PG }}
+
       - name: Deploy Zero schema permissions
         run: |
           # Deploy schema permissions to ensure Zero server has latest schema
@@ -63,9 +71,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      
+
       - uses: superfly/flyctl-actions/setup-flyctl@master
-      
+
       - name: Deploy main app
         run: |
           flyctl deploy --remote-only \
@@ -75,4 +83,3 @@ jobs:
             --build-arg SECRET_AUTH_SECRET="${{ secrets.SECRET_AUTH_SECRET }}"
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
-
