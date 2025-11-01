@@ -529,13 +529,13 @@
     display: flex;
     flex-direction: column;
     gap: 1rem;
-    flex: 0 0 auto; /* Don't grow/shrink - fixed size */
+    flex: 1 1 auto; /* Allow growing to fill space */
     min-height: 0; /* Allow content to determine height */
   }
 
   /* Ensure consistent spacing between info section and video */
   .project-card > .project-info-section + .video-card {
-    margin-top: 0; /* Remove any default margin */
+    margin-top: auto; /* Push video to bottom */
   }
 
   /* Project Header (Avatar + Title + Founder) */
@@ -613,7 +613,7 @@
     flex: 0 0 auto; /* Fixed size, don't grow/shrink */
     margin-top: auto; /* Push video to bottom of card */
     min-height: 0; /* Allow flex shrinking */
-    order: 2; /* Ensure video comes after info section */
+    align-self: flex-end; /* Align to bottom */
   }
 
   /* Voters below progress bar */
@@ -1238,7 +1238,7 @@
     }
 
     .video-card {
-      margin-top: 0.5rem; /* Add spacing on mobile */
+      margin-top: auto; /* Keep pushed to bottom on mobile */
     }
 
     .progress-bar-wrapper {
@@ -1297,7 +1297,11 @@
     }
 
     .progress-percent {
-      font-size: 1rem;
+      font-size: 0.875rem;
+    }
+
+    .vote-count-inline {
+      font-size: 0.875rem;
     }
 
     .winner-badge {
@@ -1368,7 +1372,7 @@
     }
 
     .video-card {
-      margin-top: 0.375rem; /* Add spacing on very small screens */
+      margin-top: auto; /* Keep pushed to bottom on very small screens */
     }
 
     .progress-bar-wrapper {
@@ -1398,7 +1402,11 @@
     }
 
     .progress-percent {
-      font-size: 0.875rem; /* Smaller percentage text */
+      font-size: 0.75rem; /* Smaller percentage text */
+    }
+
+    .vote-count-inline {
+      font-size: 0.75rem;
     }
 
     .vote-label {

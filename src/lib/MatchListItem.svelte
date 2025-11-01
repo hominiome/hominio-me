@@ -26,25 +26,11 @@
 </script>
 
 <!-- Compact Match List Item -->
-<button onclick={onToggleExpand} class="match-list-item" class:voted-match={hasVoted && isActive}>
-  <!-- Far Left: Match State Indicator -->
-  <div class="match-list-indicator">
-    {#if match.winnerId}
-      <svg class="status-icon completed" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
-      </svg>
-    {:else if isActive}
-      <svg class="status-icon pending" viewBox="0 0 24 24" fill="currentColor">
-        <circle cx="12" cy="12" r="6" />
-      </svg>
-    {:else}
-      <svg class="status-icon waiting" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <rect x="3" y="3" width="18" height="18" rx="2" />
-        <path stroke-linecap="round" stroke-linejoin="round" d="M8 7h8M8 12h8M8 17h4" />
-      </svg>
-    {/if}
-  </div>
-
+<button
+  onclick={onToggleExpand}
+  class="match-list-item"
+  class:voted-match={hasVoted && isActive}
+>
   <!-- Left: Project 1 -->
   <div class="match-list-project-left">
     <span
@@ -55,10 +41,53 @@
     </span>
   </div>
 
-  <!-- Center: Scores and VS -->
+  <!-- Center: Scores and VS with Status Indicator -->
   <div class="match-list-center">
     <span class="team-list-votes">{votes1}</span>
-    <span class="match-list-vs">VS</span>
+    <div class="vs-container">
+      <span class="match-list-vs">VS</span>
+      <!-- Match State Indicator - centered below VS -->
+      <div class="match-list-indicator">
+        {#if match.winnerId}
+          <svg
+            class="status-icon completed"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              d="M5 13l4 4L19 7"
+            />
+          </svg>
+        {:else if isActive}
+          <svg
+            class="status-icon pending"
+            viewBox="0 0 24 24"
+            fill="currentColor"
+          >
+            <circle cx="12" cy="12" r="6" />
+          </svg>
+        {:else}
+          <svg
+            class="status-icon waiting"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+          >
+            <rect x="3" y="3" width="18" height="18" rx="2" />
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              d="M8 7h8M8 12h8M8 17h4"
+            />
+          </svg>
+        {/if}
+      </div>
+    </div>
     <span class="team-list-votes">{votes2}</span>
   </div>
 
@@ -69,13 +98,6 @@
       class:winner-text={match.winnerId === match.project2Id}
     >
       {project2?.title || "TBD"}
-    </span>
-  </div>
-
-  <!-- Far Right: Open Button -->
-  <div class="match-list-action">
-    <span class="open-match-btn">
-      {expandedMatch === match.id ? "Close" : "Open"}
     </span>
   </div>
 </button>
@@ -109,7 +131,7 @@
   /* Compact Match List */
   .match-list-item {
     display: grid;
-    grid-template-columns: auto 1fr auto 1fr auto;
+    grid-template-columns: 1fr auto 1fr;
     align-items: center;
     gap: 1rem 1.5rem;
     padding: 1rem 1.5rem;
@@ -119,11 +141,12 @@
     cursor: pointer;
     transition: all 0.2s;
     width: 100%;
+    position: relative;
   }
 
   @media (max-width: 768px) {
     .match-list-item {
-      grid-template-columns: auto 1fr auto 1fr auto;
+      grid-template-columns: 1fr auto 1fr;
       gap: 0.5rem 0.75rem;
       padding: 0.875rem 1rem;
       /* Prevent grid from collapsing - keep side-by-side layout */
@@ -145,12 +168,8 @@
       gap: 0.5rem; /* Reduce gap on mobile */
     }
 
-    .match-list-action {
-      /* Keep action button in place */
-    }
-
     .team-list-name {
-      font-size: 0.8125rem;
+      font-size: 0.75rem;
       max-width: 100%;
     }
 
@@ -164,19 +183,19 @@
       font-size: 0.7rem;
     }
 
-    .open-match-btn {
-      padding: 0.375rem 0.75rem;
-      font-size: 0.75rem;
-    }
-
     .match-list-indicator {
-      width: 24px;
-      height: 24px;
+      width: 12px;
+      height: 12px;
+      flex-shrink: 0;
     }
 
     .status-icon {
-      width: 16px;
-      height: 16px;
+      width: 10px;
+      height: 10px;
+    }
+
+    .vs-container {
+      gap: 0.125rem;
     }
   }
 
@@ -192,7 +211,7 @@
     }
 
     .team-list-name {
-      font-size: 0.75rem;
+      font-size: 0.6875rem;
     }
 
     .team-list-votes {
@@ -209,9 +228,18 @@
       gap: 0.375rem;
     }
 
-    .open-match-btn {
-      padding: 0.3125rem 0.625rem;
-      font-size: 0.6875rem;
+    .match-list-indicator {
+      width: 10px;
+      height: 10px;
+    }
+
+    .status-icon {
+      width: 8px;
+      height: 8px;
+    }
+
+    .vs-container {
+      gap: 0.125rem;
     }
   }
 
@@ -223,9 +251,9 @@
 
   /* Styling for voted matches - make them less prominent */
   .match-list-item.voted-match {
-    opacity: 0.6;
-    background: rgba(255, 255, 255, 0.7);
-    border-color: rgba(26, 26, 78, 0.05);
+    opacity: 0.85;
+    background: rgba(255, 255, 255, 0.9);
+    border-color: rgba(26, 26, 78, 0.1);
   }
 
   .match-list-item.voted-match:hover {
@@ -248,11 +276,6 @@
     color: rgba(26, 26, 78, 0.25);
   }
 
-  .match-list-item.voted-match .open-match-btn {
-    background: linear-gradient(135deg, rgba(78, 205, 196, 0.6) 0%, rgba(26, 26, 78, 0.6) 100%);
-    opacity: 0.8;
-  }
-
   /* Left: Project 1 */
   .match-list-project-left {
     text-align: left;
@@ -270,6 +293,14 @@
     flex-shrink: 0; /* Prevent scores from shrinking */
   }
 
+  /* VS Container with status indicator below */
+  .vs-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.25rem;
+  }
+
   /* Right: Project 2 */
   .match-list-project-right {
     text-align: right;
@@ -278,26 +309,20 @@
     overflow: hidden;
   }
 
-  /* Far Left: Match State Indicator */
+  /* Match State Indicator - centered below VS */
   .match-list-indicator {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 32px;
-    height: 32px;
-  }
-
-  /* Far Right: Action - Light Mode with Brand Colors */
-  .match-list-action {
-    display: flex;
-    align-items: center;
-    justify-self: end;
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
   }
 
   .team-list-name {
     font-weight: 600;
     color: #1a1a4e;
-    font-size: 1rem;
+    font-size: 0.875rem;
     white-space: nowrap; /* Prevent line breaks */
     overflow: hidden;
     text-overflow: ellipsis;
@@ -331,24 +356,9 @@
     flex-shrink: 0; /* Prevent VS from shrinking */
   }
 
-  .open-match-btn {
-    padding: 0.5rem 1rem;
-    background: linear-gradient(135deg, #4ecdc4 0%, #1a1a4e 100%);
-    color: white;
-    border-radius: 8px;
-    font-weight: 600;
-    font-size: 0.875rem;
-    transition: all 0.2s;
-  }
-
-  .match-list-item:hover .open-match-btn {
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(78, 205, 196, 0.3);
-  }
-
   .status-icon {
-    width: 20px;
-    height: 20px;
+    width: 12px;
+    height: 12px;
     display: block;
   }
 
@@ -381,4 +391,3 @@
     }
   }
 </style>
-

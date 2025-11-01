@@ -128,7 +128,7 @@
             </p>
           </div>
 
-          {#if $session.data}
+          {#if $session.data && isAdmin}
             <a href="/alpha/cups/create" class="btn-primary"> Create Cup </a>
           {/if}
     </div>
@@ -141,13 +141,13 @@
       <div class="card p-12 text-center">
         <h2 class="text-3xl font-bold text-navy mb-4">No Cups Yet</h2>
         <p class="text-navy/60 mb-6">
-          {#if $session.data}
+          {#if $session.data && isAdmin}
             Be the first to create a tournament cup!
           {:else}
             Check back soon for upcoming tournaments!
           {/if}
         </p>
-        {#if $session.data}
+        {#if $session.data && isAdmin}
           <a href="/alpha/cups/create" class="btn-primary">
             Create First Cup
           </a>

@@ -436,13 +436,11 @@
           {#each ["round_16", "quarter", "semi", "final"] as round}
             {@const roundMatches = matches.filter((m) => m.round === round)}
             {#if roundMatches.length > 0}
-              <div class="card p-4 md:p-6">
-                <h2
-                  class="text-xl md:text-2xl font-bold text-navy mb-4 md:mb-6"
-                >
+              <div class="round-container">
+                <h2 class="round-header">
                   {getRoundLabel(round)}
                 </h2>
-                <div class="space-y-2 md:space-y-3">
+                <div class="round-matches">
                   {#each roundMatches as match}
                     {@const project1 = getProjectById(match.project1Id)}
                     {@const project2 = getProjectById(match.project2Id)}
@@ -503,6 +501,54 @@
     border-radius: 16px;
     box-shadow: 0 2px 12px rgba(26, 26, 78, 0.06);
     border: 1px solid rgba(26, 26, 78, 0.08);
+  }
+
+  /* Round container - card on desktop, no card on mobile */
+  .round-container {
+    background: white;
+    border-radius: 16px;
+    box-shadow: 0 2px 12px rgba(26, 26, 78, 0.06);
+    border: 1px solid rgba(26, 26, 78, 0.08);
+    padding: 1rem 1.5rem;
+  }
+
+  @media (max-width: 768px) {
+    .round-container {
+      background: transparent;
+      box-shadow: none;
+      border: none;
+      padding: 0;
+      margin-bottom: 1.5rem;
+    }
+  }
+
+  .round-header {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #1a1a4e;
+    margin-bottom: 1rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 2px solid rgba(26, 26, 78, 0.1);
+  }
+
+  @media (min-width: 768px) {
+    .round-header {
+      font-size: 1.5rem;
+      margin-bottom: 1.5rem;
+      padding-bottom: 1rem;
+    }
+  }
+
+  .round-matches {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  @media (min-width: 768px) {
+    .round-matches {
+      gap: 0.75rem;
+    }
   }
 
   .btn-primary {
