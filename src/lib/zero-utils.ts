@@ -58,3 +58,15 @@ export async function waitForZero(
     });
 }
 
+/**
+ * React-style hook to use Zero context
+ * Returns ZeroContext with utilities
+ */
+export function useZero(): ZeroContext {
+    const context = getZeroContext();
+    if (!context) {
+        throw new Error("Zero context not found. Make sure you're inside /alpha layout.");
+    }
+    return context;
+}
+

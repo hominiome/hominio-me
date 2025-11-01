@@ -9,15 +9,14 @@ import {
 
 // Define the project table
 // Public read, owner-only write/delete
+// Note: userName and userImage are fetched from user profile API, not stored here
 const project = table('project')
   .columns({
     id: string(),
     title: string(),
     description: string(),
     city: string(),
-    userId: string(),
-    userName: string(), // Founder name
-    userImage: string(), // Founder profile image
+    userId: string(), // Reference to user - fetch profile via /alpha/api/user/[userId]
     sdgs: string(), // JSON string array of SDG goals (1-3): ["01_NoPoverty", "13_Climate", ...]
     createdAt: string(), // ISO timestamp
   })
@@ -55,8 +54,7 @@ const cup = table('cup')
     id: string(),
     name: string(),
     description: string(),
-    creatorId: string(),
-    creatorName: string(),
+    creatorId: string(), // Reference to user - fetch profile via /alpha/api/user/[userId]
     walletId: string(), // Cup's prize pool wallet (for future use)
     status: string(), // 'draft' | 'active' | 'completed'
     currentRound: string(), // 'round_16' | 'quarter' | 'semi' | 'final'

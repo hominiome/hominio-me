@@ -35,6 +35,14 @@
         Projects
       </a>
 
+      <a
+        href="/alpha/cups"
+        class="nav-link"
+        class:active={$page.url.pathname.startsWith("/alpha/cups")}
+      >
+        Cups
+      </a>
+
       {#if session?.data?.user}
         <!-- Heart Balance - commented out for now -->
         <!-- Can access Zero from context if needed later -->

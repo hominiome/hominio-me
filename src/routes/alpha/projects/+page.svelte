@@ -3,6 +3,7 @@
   import { getContext } from "svelte";
   import { onMount } from "svelte";
   import { authClient } from "$lib/auth.client.js";
+  import { getUserProfile, prefetchUserProfiles } from "$lib/userProfileCache";
 
   // Get Zero instance from context (initialized in layout)
   const zeroContext = getContext<{
@@ -14,6 +15,7 @@
   let projects = $state<any[]>([]);
   let loading = $state(true);
   let showCreateForm = $state(false);
+  let userProfiles = $state<Map<string, { name: string | null; image: string | null }>>(new Map());
 
   // Form state
   let newProject = $state({
@@ -75,9 +77,23 @@
         const projectsQuery = zero.query.project.orderBy("createdAt", "desc");
         projectsView = projectsQuery.materialize();
 
-        projectsView.addListener((data: any) => {
-          projects = Array.from(data);
+        projectsView.addListener(async (data: any) => {
+          const newProjects = Array.from(data);
+          projects = newProjects;
           loading = false;
+          
+          // Fetch user profiles for all projects
+          const userIds = [...new Set(newProjects.map((p: any) => p.userId).filter(Boolean))];
+          if (userIds.length > 0) {
+            await prefetchUserProfiles(userIds);
+            // Update userProfiles map
+            const newUserProfiles = new Map(userProfiles);
+            for (const userId of userIds) {
+              const profile = await getUserProfile(userId);
+              newUserProfiles.set(userId, { name: profile.name, image: profile.image });
+            }
+            userProfiles = newUserProfiles; // Trigger reactivity
+          }
         });
       }
     }, 100);
@@ -104,8 +120,6 @@
       description: newProject.description,
       city: newProject.city,
       userId: $session.data.user.id,
-      userName: $session.data.user.name || "Anonymous",
-      userImage: $session.data.user.image || "",
       sdgs: JSON.stringify(newProject.sdgs),
       createdAt: new Date().toISOString(),
     });
@@ -295,6 +309,7 @@
       {:else}
         <div class="grid-container">
           {#each projects as project (project.id)}
+            {@const userProfile = userProfiles.get(project.userId)}
             <div class="project-grid-card">
               <!-- Card Header -->
               <div class="flex justify-between items-start mb-3">
@@ -307,19 +322,19 @@
               <!-- Founder Info -->
               <a href="/alpha/user/{project.userId}" class="founder-link">
                 <div class="flex items-center gap-3 mb-3">
-                  {#if project.userImage}
+                  {#if userProfile?.image}
                     <img
-                      src={project.userImage}
-                      alt={project.userName}
+                      src={userProfile.image}
+                      alt={userProfile.name || "User"}
                       class="founder-avatar"
                     />
                   {:else}
                     <div class="founder-avatar-placeholder">
-                      {project.userName?.[0] || "?"}
+                      {userProfile?.name?.[0] || project.userId?.[0] || "?"}
                     </div>
                   {/if}
                   <span class="founder-name"
-                    >{project.userName || "Anonymous"}</span
+                    >{userProfile?.name || "Anonymous"}</span
                   >
                 </div>
               </a>
