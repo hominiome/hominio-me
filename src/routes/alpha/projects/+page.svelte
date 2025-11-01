@@ -116,9 +116,18 @@
   }
 
   async function deleteProject(id: string) {
-    if (!zero) return;
+    if (!zero || !$session.data?.user) return;
+    
+    // Find the project to verify ownership (client-side check for UX)
+    const project = projects.find((p) => p.id === id);
+    if (!project || project.userId !== $session.data.user.id) {
+      alert("You can only delete your own projects.");
+      return;
+    }
+    
     if (!confirm("Are you sure you want to delete this project?")) return;
 
+    // Zero server will also enforce this permission server-side
     await zero.mutate.project.delete({ id });
   }
 

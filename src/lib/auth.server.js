@@ -5,13 +5,13 @@ import { NeonDialect } from "kysely-neon";
 import { neon } from "@neondatabase/serverless";
 import { getRequestEvent } from "$app/server";
 import { env } from "$env/dynamic/private";
-import { dev } from "$app/environment";
 
 // Get environment variables at runtime (not build time)
 const SECRET_NEON_PG_AUTH = env.SECRET_NEON_PG_AUTH;
 const SECRET_GOOGLE_CLIENT_ID = env.SECRET_GOOGLE_CLIENT_ID || "";
 const SECRET_GOOGLE_CLIENT_SECRET = env.SECRET_GOOGLE_CLIENT_SECRET || "";
-const SECRET_AUTH_SECRET = env.SECRET_AUTH_SECRET || "dev-secret-key-change-in-production";
+const SECRET_AUTH_SECRET =
+  env.SECRET_AUTH_SECRET || "dev-secret-key-change-in-production";
 
 // Initialize Kysely with Neon dialect
 const db = new Kysely({

@@ -11,8 +11,7 @@
 		"prepare": "svelte-kit sync || echo ''",
 		"check": "svelte-kit sync && svelte-check --tsconfig ./jsconfig.json",
 		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./jsconfig.json --watch",
-		"zero:migrate": "bun run scripts/zero-migrate.js",
-		"zero:cache": "bun run scripts/zero-cache.js"
+		"zero:migrate": "bun run scripts/zero-migrate.js"
 	},
 	"devDependencies": {
 		"@sveltejs/adapter-node": "^5.4.0",
