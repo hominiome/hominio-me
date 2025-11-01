@@ -40,16 +40,20 @@ jobs:
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
       
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
         with:
-          node-version: '20'
+          bun-version: latest
+      
+      - name: Install dependencies
+        run: |
+          bun install
       
       - name: Deploy Zero schema permissions
         run: |
           # Deploy schema permissions to ensure Zero server has latest schema
           # This updates the replicated columns and permissions in the database
-          npx zero-deploy-permissions --schema-path='./src/zero-schema.ts'
+          bunx zero-deploy-permissions -p ./src/zero-schema.ts
         env:
           ZERO_UPSTREAM_DB: ${{ secrets.SECRET_ZERO_DEV_PG }}
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
