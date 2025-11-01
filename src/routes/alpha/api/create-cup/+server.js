@@ -23,41 +23,7 @@ export async function POST({ request }) {
   const cupId = nanoid();
 
   try {
-    // Create a wallet for the cup (for future prize pool functionality)
-    // Check if wallet already exists
-    let cupWallet = await zeroDb
-      .selectFrom("wallet")
-      .selectAll()
-      .where("entityType", "=", "cup")
-      .where("entityId", "=", cupId)
-      .executeTakeFirst();
-
-    if (!cupWallet) {
-      // Create new wallet
-      const walletId = nanoid();
-      await zeroDb
-        .insertInto("wallet")
-        .values({
-          id: walletId,
-          entityType: "cup",
-          entityId: cupId,
-          balance: 0,
-          createdAt: now,
-          updatedAt: now,
-        })
-        .execute();
-      
-      cupWallet = {
-        id: walletId,
-        entityType: "cup",
-        entityId: cupId,
-        balance: 0,
-        createdAt: now,
-        updatedAt: now,
-      };
-    }
-
-    // Create cup directly in database
+    // Create cup directly in database (no wallet needed)
     await zeroDb
       .insertInto("cup")
       .values({
@@ -66,7 +32,6 @@ export async function POST({ request }) {
         description: (description || "").trim(),
         logoImageUrl: (logoImageUrl || "").trim(),
         creatorId,
-        walletId: cupWallet.id,
         status: "draft",
         currentRound: "",
         winnerId: "",

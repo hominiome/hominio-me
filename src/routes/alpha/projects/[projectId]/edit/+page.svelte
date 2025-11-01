@@ -5,6 +5,9 @@
   import { page } from "$app/stores";
   import { getContext } from "svelte";
   import { nanoid } from "nanoid";
+  import UserAutocomplete from "$lib/UserAutocomplete.svelte";
+  import { getUserProfile } from "$lib/userProfileCache";
+  import { showError } from "$lib/toastStore.js";
 
   const zeroContext = getContext<{
     getInstance: () => any;
@@ -29,6 +32,7 @@
   let videoUrl = $state("");
   let videoThumbnail = $state("");
   let sdgs = $state<string[]>([]);
+  let selectedOwner = $state<{ id: string; name: string | null; image: string | null } | null>(null);
 
   // All available SDGs
   const availableSDGs = [
@@ -121,6 +125,17 @@
               }
             }
             
+            // Load current owner
+            if (project.userId) {
+              getUserProfile(project.userId).then((profile) => {
+                selectedOwner = {
+                  id: profile.id,
+                  name: profile.name,
+                  image: profile.image,
+                };
+              });
+            }
+            
             // Check if user is owner
             isOwner = project.userId === $session.data?.user?.id;
             
@@ -150,9 +165,12 @@
     }
 
     if (!isAdmin && !isOwner) {
-      alert("You don't have permission to edit this project");
+      showError("You don't have permission to edit this project");
       return;
     }
+
+    // Only admins can change project owner
+    const newUserId = isAdmin && selectedOwner ? selectedOwner.id : project.userId;
 
     saving = true;
 
@@ -166,6 +184,7 @@
         videoUrl: videoUrl.trim() || "",
         videoThumbnail: videoThumbnail.trim() || "",
         sdgs: JSON.stringify(sdgs),
+        userId: newUserId, // Update owner if admin changed it
       });
 
       // Redirect back to projects page
@@ -173,7 +192,7 @@
     } catch (error) {
       console.error("Failed to update project:", error);
       const message = error instanceof Error ? error.message : "Unknown error";
-      alert(`Failed to update project: ${message}`);
+      showError(`Failed to update project: ${message}`);
     } finally {
       saving = false;
     }
@@ -294,6 +313,23 @@
           />
           <p class="text-sm text-navy/60 mt-1">
             Custom thumbnail image (falls back to Unsplash if not provided)
+          </p>
+        </div>
+
+        <!-- Project Owner -->
+        <div>
+          <UserAutocomplete
+            bind:value={selectedOwner}
+            label="Project Owner"
+            placeholder="Search for a user..."
+            disabled={!isAdmin}
+          />
+          <p class="text-sm text-navy/60 mt-1">
+            {#if isAdmin}
+              Change the project owner (admin only)
+            {:else}
+              Project owner (only admins can change this)
+            {/if}
           </p>
         </div>
 

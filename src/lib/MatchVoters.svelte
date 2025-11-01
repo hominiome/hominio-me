@@ -1,35 +1,29 @@
 <script>
-  let { projectWalletId, transactions = [] } = $props();
+  import { getUserProfile } from "$lib/userProfileCache";
 
-  // Aggregate votes by user from transaction metadata
+  let { matchId, projectSide, votes = [] } = $props();
+
+  // Aggregate votes by user from vote records
   const voters = $derived(() => {
     const voterMap = new Map();
 
-    // Filter transactions for this specific project wallet
-    const projectVotes = transactions.filter(
-      (tx) => tx.toWalletId === projectWalletId && tx.type === "vote"
+    // Filter votes for this specific match and project side
+    const projectVotes = votes.filter(
+      (vote) => vote.matchId === matchId && vote.projectSide === projectSide
     );
 
-    projectVotes.forEach((tx) => {
-      try {
-        const metadata = JSON.parse(tx.metadata || "{}");
-        const userId = metadata.userId;
-
-        if (userId) {
-          if (voterMap.has(userId)) {
-            const existing = voterMap.get(userId);
-            existing.totalVotes += tx.amount;
-          } else {
-            voterMap.set(userId, {
-              userId,
-              userName: metadata.userName || "Anonymous",
-              userImage: metadata.userImage || null,
-              totalVotes: tx.amount,
-            });
-          }
+    projectVotes.forEach((vote) => {
+      const userId = vote.userId;
+      if (userId) {
+        if (voterMap.has(userId)) {
+          const existing = voterMap.get(userId);
+          existing.totalVotes += vote.votingWeight;
+        } else {
+          voterMap.set(userId, {
+            userId,
+            totalVotes: vote.votingWeight,
+          });
         }
-      } catch (e) {
-        console.error("Error parsing transaction metadata:", e);
       }
     });
 
@@ -39,7 +33,35 @@
     );
   });
 
-  const topVoters = $derived(voters());
+  // Fetch user profiles for display
+  let userProfiles = $state(new Map());
+
+  $effect(() => {
+    const voterList = voters();
+    voterList.forEach(async (voter) => {
+      if (!userProfiles.has(voter.userId)) {
+        try {
+          const profile = await getUserProfile(voter.userId);
+          if (profile) {
+            userProfiles = new Map(userProfiles).set(voter.userId, profile);
+          }
+        } catch (e) {
+          console.error("Error fetching user profile:", e);
+        }
+      }
+    });
+  });
+
+  const topVoters = $derived(
+    voters().map((voter) => {
+      const profile = userProfiles.get(voter.userId);
+      return {
+        ...voter,
+        userName: profile?.name || "Anonymous",
+        userImage: profile?.image || null,
+      };
+    })
+  );
 </script>
 
 {#if topVoters.length > 0}
@@ -74,6 +96,8 @@
     background: rgba(26, 26, 78, 0.02);
     border-top: 1px solid rgba(26, 26, 78, 0.06);
     overflow-x: auto;
+    flex: 0 0 auto; /* Fixed size - don't grow/shrink */
+    min-height: 60px; /* Consistent minimum height for alignment */
   }
 
   .voter-item {

@@ -15,8 +15,10 @@
     isActive,
     expandedVideo,
     votingAnimation,
-    transactions,
+    votes = [], // Array of vote records
     session,
+    hasVoted = false,
+    userVotingWeight = 0,
     toggleVideo,
     voteOnMatch,
   } = $props();
@@ -26,18 +28,38 @@
   let user2 = $state(null);
   // Track which user images have failed to load
   let failedImages = $state(new Set());
+  // Track which thumbnails have failed to load
+  let failedThumbnails = $state(new Set());
 
   // Get video URLs for each project (fallback to default if not provided)
   const video1Url = $derived(getYouTubeEmbedUrl(project1?.videoUrl));
   const video2Url = $derived(getYouTubeEmbedUrl(project2?.videoUrl));
 
-  // Get thumbnail URLs - use database image if available, otherwise fallback to Unsplash
-  const thumbnail1Url = $derived(
-    project1?.videoThumbnail?.trim() || `https://picsum.photos/seed/${project1?.id || 'project1'}/1280/720`
-  );
-  const thumbnail2Url = $derived(
-    project2?.videoThumbnail?.trim() || `https://picsum.photos/seed/${project2?.id || 'project2'}/1280/720`
-  );
+  // Get thumbnail URLs - use database image if available and valid, otherwise fallback to Unsplash
+  const thumbnail1Url = $derived(() => {
+    const projectId = project1?.id || 'project1';
+    // If thumbnail failed to load, use fallback
+    if (failedThumbnails.has(`${projectId}-1`)) {
+      return `https://picsum.photos/seed/${projectId}/1280/720`;
+    }
+    const customThumbnail = project1?.videoThumbnail;
+    if (customThumbnail && typeof customThumbnail === 'string' && customThumbnail.trim().length > 0) {
+      return customThumbnail.trim();
+    }
+    return `https://picsum.photos/seed/${projectId}/1280/720`;
+  });
+  const thumbnail2Url = $derived(() => {
+    const projectId = project2?.id || 'project2';
+    // If thumbnail failed to load, use fallback
+    if (failedThumbnails.has(`${projectId}-2`)) {
+      return `https://picsum.photos/seed/${projectId}/1280/720`;
+    }
+    const customThumbnail = project2?.videoThumbnail;
+    if (customThumbnail && typeof customThumbnail === 'string' && customThumbnail.trim().length > 0) {
+      return customThumbnail.trim();
+    }
+    return `https://picsum.photos/seed/${projectId}/1280/720`;
+  });
 
   // Fetch user profiles when component mounts or projects change
   $effect(() => {
@@ -145,10 +167,21 @@
 
         <!-- Video Preview Card (16:9) -->
         <div class="video-card">
-          <div
-            class="video-thumbnail"
-            style="background-image: url('{thumbnail1Url}')"
-          >
+          <div class="video-thumbnail">
+            <!-- Hidden img to detect load errors -->
+            <img
+              src={thumbnail1Url()}
+              alt=""
+              style="display: none;"
+              onerror={() => {
+                const projectId = project1?.id || 'project1';
+                failedThumbnails = new Set(failedThumbnails).add(`${projectId}-1`);
+              }}
+            />
+            <div
+              class="video-thumbnail-bg"
+              style="background-image: url('{thumbnail1Url()}')"
+            ></div>
             <button
               class="play-btn-center"
               onclick={() => toggleVideo(`${match.id}-p1`)}
@@ -162,7 +195,7 @@
         </div>
 
         <!-- Voters for Project 1 -->
-        <MatchVoters projectWalletId={match.project1WalletId} {transactions} />
+        <MatchVoters matchId={match.id} projectSide="project1" {votes} />
 
         {#if match.winnerId === match.project1Id}
           <div class="winner-badge winner-yellow">
@@ -220,10 +253,21 @@
 
         <!-- Video Preview Card (16:9) -->
         <div class="video-card">
-          <div
-            class="video-thumbnail"
-            style="background-image: url('{thumbnail2Url}')"
-          >
+          <div class="video-thumbnail">
+            <!-- Hidden img to detect load errors -->
+            <img
+              src={thumbnail2Url()}
+              alt=""
+              style="display: none;"
+              onerror={() => {
+                const projectId = project2?.id || 'project2';
+                failedThumbnails = new Set(failedThumbnails).add(`${projectId}-2`);
+              }}
+            />
+            <div
+              class="video-thumbnail-bg"
+              style="background-image: url('{thumbnail2Url()}')"
+            ></div>
             <button
               class="play-btn-center"
               onclick={() => toggleVideo(`${match.id}-p2`)}
@@ -237,7 +281,7 @@
         </div>
 
         <!-- Voters for Project 2 -->
-        <MatchVoters projectWalletId={match.project2WalletId} {transactions} />
+        <MatchVoters matchId={match.id} projectSide="project2" {votes} />
 
         {#if match.winnerId === match.project2Id}
           <div class="winner-badge winner-teal">
@@ -258,10 +302,12 @@
     {#if session.data && isActive}
       <button
         onclick={() => voteOnMatch(match.id, "project1")}
+        disabled={hasVoted}
         class="vote-button-bar vote-button-bar-left"
         class:vote-pulse={votingAnimation === `${match.id}-project1`}
+        class:voted-button={hasVoted}
         aria-label="Vote for {project1?.title || 'Project 1'}"
-        title="Vote for {project1?.title || 'Project 1'}"
+        title={hasVoted ? "You have already voted on this match" : `Vote for ${project1?.title || 'Project 1'} (${userVotingWeight} votes)`}
       >
         <div class="vote-button-content">
           <svg
@@ -277,7 +323,15 @@
               d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
             />
           </svg>
-          <span class="vote-label">Vote</span>
+          <span class="vote-label">
+            {#if hasVoted}
+              Voted
+            {:else if userVotingWeight > 0}
+              {userVotingWeight} Vote{userVotingWeight > 1 ? "s" : ""}
+            {:else}
+              Vote
+            {/if}
+          </span>
         </div>
       </button>
     {/if}
@@ -320,10 +374,12 @@
     {#if session.data && isActive}
       <button
         onclick={() => voteOnMatch(match.id, "project2")}
+        disabled={hasVoted}
         class="vote-button-bar vote-button-bar-right"
         class:vote-pulse={votingAnimation === `${match.id}-project2`}
+        class:voted-button={hasVoted}
         aria-label="Vote for {project2?.title || 'Project 2'}"
-        title="Vote for {project2?.title || 'Project 2'}"
+        title={hasVoted ? "You have already voted on this match" : `Vote for ${project2?.title || 'Project 2'} (${userVotingWeight} votes)`}
       >
         <div class="vote-button-content">
           <svg
@@ -339,7 +395,15 @@
               d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
             />
           </svg>
-          <span class="vote-label">Vote</span>
+          <span class="vote-label">
+            {#if hasVoted}
+              Voted
+            {:else if userVotingWeight > 0}
+              {userVotingWeight} Vote{userVotingWeight > 1 ? "s" : ""}
+            {:else}
+              Vote
+            {/if}
+          </span>
         </div>
       </button>
     {/if}
@@ -373,6 +437,7 @@
     grid-template-columns: 1fr 1fr;
     gap: 1rem;
     padding: 1rem;
+    align-items: stretch; /* Stretch cards to same height */
   }
 
   /* Individual Project Card */
@@ -384,6 +449,7 @@
     overflow: hidden;
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
     position: relative; /* For winner badge positioning */
+    min-height: 0; /* Allow shrinking */
   }
 
   .project-card-yellow {
@@ -418,7 +484,13 @@
     display: flex;
     flex-direction: column;
     gap: 1rem;
-    flex: 1; /* For video bottom alignment */
+    flex: 0 0 auto; /* Don't grow/shrink - fixed size */
+    min-height: 0; /* Allow content to determine height */
+  }
+
+  /* Ensure consistent spacing between info section and video */
+  .project-card > .project-info-section + .video-card {
+    margin-top: 0; /* Remove any default margin */
   }
 
   /* Project Header (Avatar + Title + Founder) */
@@ -493,18 +565,39 @@
   /* Video Card (16:9) */
   .video-card {
     width: 100%;
-    margin-top: auto; /* Push to bottom */
+    flex: 0 0 auto; /* Fixed size, don't grow/shrink */
+    margin-top: 0; /* No margin - sits directly after info section */
+    min-height: 0; /* Allow flex shrinking */
+    order: 2; /* Ensure video comes after info section */
+  }
+
+  /* MatchVoters comes after video */
+  .project-card :global(.voters-container) {
+    order: 3; /* Voters come after video */
+    flex: 0 0 auto; /* Fixed size */
   }
 
   .video-thumbnail {
     width: 100%;
     aspect-ratio: 16 / 9;
-    background-size: cover;
-    background-position: center;
     position: relative;
     display: flex;
     align-items: center;
     justify-content: center;
+    overflow: hidden;
+    border-radius: 12px;
+    min-height: 120px; /* Ensure minimum height on mobile */
+  }
+
+  .video-thumbnail-bg {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
   }
 
   /* Play Button (Centered) */
@@ -586,6 +679,45 @@
     width: 20px;
     height: 20px;
     stroke-width: 2.5;
+  }
+
+  @media (max-width: 768px) {
+    .video-close-container {
+      padding: 0.5rem 1rem; /* Reduced padding on mobile */
+    }
+
+    .close-video-btn-bottom {
+      padding: 0.5rem 1rem; /* Smaller button on mobile */
+      font-size: 0.875rem;
+      gap: 0.375rem;
+      border-radius: 8px;
+      border-width: 1.5px;
+    }
+
+    .close-icon {
+      width: 16px;
+      height: 16px;
+      stroke-width: 2;
+    }
+  }
+
+  @media (max-width: 640px) {
+    .video-close-container {
+      padding: 0.375rem 0.75rem; /* Even smaller padding on very small screens */
+    }
+
+    .close-video-btn-bottom {
+      padding: 0.375rem 0.75rem; /* Even smaller button */
+      font-size: 0.75rem;
+      gap: 0.25rem;
+      border-radius: 6px;
+    }
+
+    .close-icon {
+      width: 14px;
+      height: 14px;
+      stroke-width: 2;
+    }
   }
 
   /* Winner Badge */
@@ -704,13 +836,38 @@
     border-right: 2px solid rgba(78, 205, 196, 0.3);
   }
 
-  .vote-button-bar:hover {
+  .vote-button-bar:hover:not(:disabled) {
     transform: scale(1.05);
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
   }
 
-  .vote-button-bar:active {
+  .vote-button-bar:active:not(:disabled) {
     transform: scale(0.95);
+  }
+
+  .vote-button-bar:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
+  .vote-button-bar.voted-button {
+    background: linear-gradient(
+      90deg,
+      rgba(78, 205, 196, 0.4) 0%,
+      rgba(78, 205, 196, 0.3) 100%
+    ) !important;
+    border-color: rgba(78, 205, 196, 0.5) !important;
+    color: rgba(78, 205, 196, 0.8) !important;
+  }
+
+  .vote-button-bar-left.voted-button {
+    background: linear-gradient(
+      90deg,
+      rgba(244, 208, 63, 0.4) 0%,
+      rgba(244, 208, 63, 0.3) 100%
+    ) !important;
+    border-color: rgba(244, 208, 63, 0.5) !important;
+    color: rgba(244, 208, 63, 0.8) !important;
   }
 
   .vote-button-content {
@@ -824,80 +981,243 @@
 
   @media (max-width: 768px) {
     .projects-grid {
-      grid-template-columns: 1fr;
-      gap: 0.75rem;
-      padding: 0.75rem;
+      grid-template-columns: 1fr 1fr; /* Keep side-by-side on mobile */
+      gap: 0.5rem;
+      padding: 0.5rem;
+      align-items: stretch; /* Stretch cards to same height for video alignment */
     }
 
     .project-info-section {
-      padding: 1rem;
-      gap: 0.75rem;
+      padding: 0.75rem;
+      gap: 0.5rem;
     }
 
     .project-header {
-      gap: 0.75rem;
+      gap: 0.5rem;
+      flex-wrap: wrap; /* Allow wrapping if needed */
     }
 
     .founder-avatar,
     .founder-avatar-placeholder {
-      width: 50px;
-      height: 50px;
-      font-size: 1.25rem;
+      width: 40px;
+      height: 40px;
+      font-size: 1rem;
+      flex-shrink: 0;
     }
 
     .project-title {
-      font-size: 1.25rem;
+      font-size: 0.875rem;
+      line-height: 1.2;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
     }
 
     .founder-name {
-      font-size: 0.8125rem;
+      font-size: 0.7rem;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
 
     .project-description {
-      font-size: 0.875rem;
+      font-size: 0.7rem;
+      line-height: 1.4;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      display: -webkit-box;
+      -webkit-line-clamp: 3; /* Limit to 3 lines */
+      -webkit-box-orient: vertical;
+    }
+
+    .video-thumbnail {
+      min-height: 100px; /* Ensure thumbnail is visible on mobile */
+      border-radius: 8px;
     }
 
     .play-btn-center {
-      width: 60px;
-      height: 60px;
+      width: 50px;
+      height: 50px;
+      z-index: 10; /* Ensure play button is clickable */
     }
 
     .play-icon {
-      width: 28px;
-      height: 28px;
+      width: 24px;
+      height: 24px;
+      margin-left: 2px; /* Optical centering */
     }
 
     .video-iframe-full-width {
-      height: 400px;
+      height: 300px;
+    }
+
+    .video-card {
+      margin-top: 0.5rem; /* Add spacing on mobile */
+    }
+
+    .progress-bar-wrapper {
+      flex-wrap: nowrap; /* Keep stats in one row */
+      gap: 0.25rem; /* Small gap between elements */
     }
 
     .progress-bar-container {
       height: 50px;
+      flex: 1; /* Take remaining space */
+      min-width: 0; /* Allow shrinking */
+      order: 0; /* Natural order - between vote counts */
     }
 
     .vote-button-bar {
       height: 50px;
-      width: 80px;
+      width: 70px; /* Smaller on mobile */
+      flex-shrink: 0; /* Don't shrink */
     }
 
-    .heart-icon-vote {
-      width: 1.5rem;
-      height: 1.5rem;
+    .vote-button-bar-left {
+      order: -2; /* First - left button */
     }
 
-    .vote-label {
-      font-size: 0.65rem;
+    .vote-button-bar-right {
+      order: 2; /* Last - right button */
     }
 
     .vote-count-inline {
       height: 50px;
-      padding: 0 1rem;
-      font-size: 1.5rem;
-      min-width: 60px;
+      padding: 0 0.5rem; /* Reduced padding */
+      font-size: 1rem; /* Smaller font */
+      min-width: 40px; /* Smaller min width */
+      flex-shrink: 0; /* Don't shrink */
+    }
+
+    .vote-count-left {
+      order: -1; /* After left button, before progress bar */
+    }
+
+    .vote-count-right {
+      order: 1; /* After progress bar, before right button */
+    }
+
+    .heart-icon-vote {
+      width: 1.25rem;
+      height: 1.25rem;
+    }
+
+    .vote-label {
+      font-size: 0.6rem;
+      line-height: 1;
     }
 
     .progress-percent {
-      font-size: 1.25rem;
+      font-size: 1rem;
+    }
+
+    .winner-badge {
+      top: 8px;
+      right: 8px;
+      padding: 0.375rem 0.75rem;
+      font-size: 0.75rem;
+    }
+
+    .match-waiting {
+      padding: 0.75rem;
+      font-size: 0.8125rem;
+    }
+  }
+
+  @media (max-width: 640px) {
+    .projects-grid {
+      padding: 0.375rem;
+      gap: 0.375rem;
+      grid-template-columns: 1fr 1fr; /* Still side-by-side */
+    }
+
+    .project-info-section {
+      padding: 0.625rem;
+      gap: 0.375rem;
+    }
+
+    .project-header {
+      gap: 0.375rem;
+    }
+
+    .founder-avatar,
+    .founder-avatar-placeholder {
+      width: 36px;
+      height: 36px;
+      font-size: 0.875rem;
+    }
+
+    .project-title {
+      font-size: 0.8125rem;
+      -webkit-line-clamp: 2; /* Max 2 lines on very small screens */
+    }
+
+    .founder-name {
+      font-size: 0.65rem;
+    }
+
+    .project-description {
+      font-size: 0.65rem;
+      -webkit-line-clamp: 2; /* Max 2 lines on very small screens */
+      line-height: 1.3;
+    }
+
+    .video-thumbnail {
+      min-height: 90px; /* Ensure thumbnail is visible on very small screens */
+      border-radius: 6px;
+    }
+
+    .play-btn-center {
+      width: 44px;
+      height: 44px;
+      z-index: 10; /* Ensure play button is clickable */
+    }
+
+    .play-icon {
+      width: 20px;
+      height: 20px;
+    }
+
+    .video-card {
+      margin-top: 0.375rem; /* Add spacing on very small screens */
+    }
+
+    .progress-bar-wrapper {
+      gap: 0.125rem; /* Even smaller gap on very small screens */
+    }
+
+    .progress-bar-container {
+      height: 45px;
+      flex: 1; /* Take remaining space */
+    }
+
+    .vote-button-bar {
+      height: 45px;
+      width: 60px;
+      flex-shrink: 0;
+    }
+
+    .vote-count-inline {
+      height: 45px;
+      padding: 0 0.375rem; /* Even smaller padding */
+      font-size: 0.9rem; /* Smaller font */
+      min-width: 35px; /* Smaller min width */
+      flex-shrink: 0;
+    }
+
+    .progress-percent {
+      font-size: 0.875rem; /* Smaller percentage text */
+    }
+
+    .vote-label {
+      font-size: 0.55rem;
+    }
+
+    .heart-icon-vote {
+      width: 1.125rem;
+      height: 1.125rem;
     }
   }
 </style>

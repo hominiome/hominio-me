@@ -8,6 +8,7 @@
   import { getUserProfile } from "$lib/userProfileCache";
   import MatchDetail from "$lib/MatchDetail.svelte";
   import MatchListItem from "$lib/MatchListItem.svelte";
+  import { showError, showInfo } from "$lib/toastStore.js";
 
   const zeroContext = useZero();
   const session = authClient.useSession();
@@ -34,12 +35,11 @@
   let cup = $state<any>(null);
   let projects = $state<any[]>([]);
   let matches = $state<any[]>([]);
-  let wallets = $state<any[]>([]);
-  let transactions = $state<any[]>([]);
-  let userHeartBalance = $state(0);
+  let votes = $state<any[]>([]); // All vote records
+  let userVotingPackage = $state<any>(null);
+  let userVotes = $state<any[]>([]); // Track which matches user has voted on
   let loading = $state(true);
   let voting = $state(false);
-  let voteAmount = $state(1);
   let votingAnimation = $state<string | null>(null); // Track which side is animating
   let expandedVideo = $state<string | null>(null); // Track which match video is expanded
   let expandedMatch = $state<string | null>(null); // Track which match is expanded (accordion)
@@ -50,9 +50,7 @@
     let cupView: any;
     let projectsView: any;
     let matchesView: any;
-    let walletsView: any;
-    let transactionsView: any;
-    let userWalletView: any;
+    let votesView: any;
 
     (async () => {
       // Wait for Zero to be ready
@@ -114,59 +112,65 @@
         matches = Array.from(data);
       });
 
-      // Query all wallets for vote counts
-      const walletsQuery = zero.query.wallet;
-      walletsView = walletsQuery.materialize();
+      // Query all votes for vote counts and voter display
+      const votesQuery = zero.query.vote;
+      votesView = votesQuery.materialize();
 
-      walletsView.addListener((data: any) => {
-        wallets = Array.from(data);
+      votesView.addListener((data: any) => {
+        votes = Array.from(data);
       });
 
-      // Query all transactions for vote display
-      const transactionsQuery = zero.query.transaction.where(
-        "type",
-        "=",
-        "vote"
-      );
-      transactionsView = transactionsQuery.materialize();
-
-      transactionsView.addListener((data: any) => {
-        transactions = Array.from(data);
-      });
-
-      // Query user's wallet if logged in
+      // Query user's voting package and votes if logged in
+      let userPackageView: any;
+      let userVotesView: any;
+      
       if ($session.data?.user) {
-        const userWalletQuery = zero.query.wallet
-          .where("entityType", "=", "user")
-          .where("entityId", "=", $session.data.user.id);
-        userWalletView = userWalletQuery.materialize();
+        const userId = $session.data.user.id;
 
-        userWalletView.addListener((data: any) => {
-          const userWallets = Array.from(data) as any[];
-          if (userWallets.length > 0) {
-            userHeartBalance = userWallets[0].balance;
+        // Query user's voting package
+        const userPackageQuery = zero.query.userVotingPackage
+          .where("userId", "=", userId);
+        userPackageView = userPackageQuery.materialize();
+
+        userPackageView.addListener((data: any) => {
+          const packages = Array.from(data) as any[];
+          if (packages.length > 0) {
+            userVotingPackage = packages[0];
+          } else {
+            userVotingPackage = null;
           }
         });
-      }
-    })();
 
-    return () => {
-      if (cupView) cupView.destroy();
-      if (projectsView) projectsView.destroy();
-      if (matchesView) matchesView.destroy();
-      if (walletsView) walletsView.destroy();
-      if (transactionsView) transactionsView.destroy();
-      if (userWalletView) userWalletView.destroy();
-    };
+        // Query user's votes to check which matches they've voted on
+        const userVotesQuery = zero.query.vote
+          .where("userId", "=", userId);
+        userVotesView = userVotesQuery.materialize();
+
+        userVotesView.addListener((data: any) => {
+          userVotes = Array.from(data) as any[];
+        });
+      }
+
+      return () => {
+        if (cupView) cupView.destroy();
+        if (projectsView) projectsView.destroy();
+        if (matchesView) matchesView.destroy();
+        if (votesView) votesView.destroy();
+        if (userPackageView) userPackageView.destroy();
+        if (userVotesView) userVotesView.destroy();
+      };
+    })();
   });
 
   function getProjectById(id: string) {
     return projects.find((p) => p.id === id);
   }
 
-  function getWalletVotes(walletId: string) {
-    const wallet = wallets.find((w) => w.id === walletId);
-    return wallet?.balance || 0;
+  // Calculate vote totals from vote table
+  function getMatchVotes(matchId: string, projectSide: "project1" | "project2") {
+    return votes
+      .filter((v) => v.matchId === matchId && v.projectSide === projectSide)
+      .reduce((sum, v) => sum + (v.votingWeight || 0), 0);
   }
 
   function getStatusLabel(status: string) {
@@ -197,23 +201,36 @@
     }
   }
 
+  function hasUserVotedOnMatch(matchId: string): boolean {
+    return userVotes.some((vote) => vote.matchId === matchId);
+  }
+
+  function getUserVotingWeight(): number {
+    return userVotingPackage?.votingWeight || 0;
+  }
+
   async function voteOnMatch(
     matchId: string,
     projectSide: "project1" | "project2"
   ) {
     if (!$session.data?.user) {
-      alert("Please sign in to vote!");
+      showError("Please sign in to vote!");
       goto("/alpha");
       return;
     }
 
     if (voting) return;
 
-    if (userHeartBalance < voteAmount) {
-      alert(
-        `You don't have enough hearts. You have ${userHeartBalance}, need ${voteAmount}.`
-      );
+    // Check if user has a voting package
+    if (!userVotingPackage) {
+      showError("You need to purchase a voting package before you can vote!");
       goto("/alpha/purchase");
+      return;
+    }
+
+    // Check if user already voted on this match
+    if (hasUserVotedOnMatch(matchId)) {
+      showInfo("You have already voted on this match. Each user can vote once per match.");
       return;
     }
 
@@ -227,7 +244,7 @@
         : getProjectById(match.project2Id);
 
     if (project && project.userId === $session.data.user.id) {
-      alert("You cannot vote for your own project!");
+      showError("You cannot vote for your own project!");
       return;
     }
 
@@ -238,6 +255,7 @@
     }, 800);
 
     // Fire and forget - Zero's reactive sync handles the rest
+    // Note: amount is no longer sent - API uses package weight automatically
     fetch("/alpha/api/vote-match", {
       method: "POST",
       headers: {
@@ -246,18 +264,17 @@
       body: JSON.stringify({
         matchId,
         projectSide,
-        amount: voteAmount,
       }),
     })
       .then(async (response) => {
         if (!response.ok) {
           const error = await response.json();
-          alert(`Vote failed: ${error.error || "Unknown error"}`);
+          showError(`Vote failed: ${error.error || "Unknown error"}`);
         }
       })
       .catch((error) => {
         console.error("Vote failed:", error);
-        alert("Vote failed. Please try again.");
+        showError("Vote failed. Please try again.");
       });
 
     // UI stays unlocked - Zero syncs reactively
@@ -282,7 +299,7 @@
   const isCreator = $derived(cup?.creatorId === $session.data?.user?.id);
 </script>
 
-<div class="min-h-screen bg-cream p-8">
+<div class="min-h-screen bg-cream p-4 md:p-8">
   <div class="max-w-7xl mx-auto">
     {#if loading}
       <div class="card p-8 text-center">
@@ -294,8 +311,8 @@
         <a href="/alpha/cups" class="text-teal hover:underline mb-4 inline-block">
           ← Back to Cups
         </a>
-        <div class="flex items-center justify-between">
-          <div class="flex items-start gap-4">
+        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div class="flex items-start gap-3 md:gap-4">
             {#if cup.logoImageUrl}
               <img
                 src={cup.logoImageUrl}
@@ -304,49 +321,49 @@
               />
             {/if}
             <div>
-              <h1 class="text-5xl font-bold text-navy mb-2">{cup.name}</h1>
+              <h1 class="text-3xl md:text-5xl font-bold text-navy mb-2">{cup.name}</h1>
               {#if cup.description}
-                <p class="text-navy/60 text-lg">{cup.description}</p>
+                <p class="text-navy/60 text-base md:text-lg">{cup.description}</p>
               {/if}
             </div>
           </div>
-          <div class="flex gap-3">
+          <div class="flex flex-col sm:flex-row gap-2 md:gap-3">
             {#if isCreator}
-              <a href="/alpha/cups/{cupId}/admin" class="btn-primary"> Admin Panel </a>
+              <a href="/alpha/cups/{cupId}/admin" class="btn-primary text-center"> Admin Panel </a>
             {/if}
             {#if isCreator || isAdmin}
-              <a href="/alpha/cups/{cupId}/edit" class="btn-secondary"> Edit </a>
+              <a href="/alpha/cups/{cupId}/edit" class="btn-secondary text-center"> Edit </a>
             {/if}
           </div>
         </div>
       </div>
 
       <!-- Cup Info -->
-      <div class="card p-6 mb-8">
-        <div class="flex items-center gap-8">
+      <div class="card p-4 md:p-6 mb-6 md:mb-8">
+        <div class="flex flex-col sm:flex-row sm:items-center gap-4 md:gap-8 flex-wrap">
           <div>
             <p class="text-navy/60 text-sm mb-1">Status</p>
-            <p class="text-xl font-bold text-navy">
+            <p class="text-lg md:text-xl font-bold text-navy">
               {getStatusLabel(cup.status)}
             </p>
           </div>
           {#if cup.currentRound}
             <div>
               <p class="text-navy/60 text-sm mb-1">Current Round</p>
-              <p class="text-xl font-bold text-teal">
+              <p class="text-lg md:text-xl font-bold text-teal">
                 {getRoundLabel(cup.currentRound)}
               </p>
             </div>
           {/if}
           <div>
             <p class="text-navy/60 text-sm mb-1">Created By</p>
-            <p class="text-lg font-semibold text-navy">{creatorProfile?.name || "Anonymous"}</p>
+            <p class="text-base md:text-lg font-semibold text-navy">{creatorProfile?.name || "Anonymous"}</p>
           </div>
           {#if cup.winnerId}
             {@const winner = getProjectById(cup.winnerId)}
-            <div class="flex items-center gap-2 ml-auto">
+            <div class="flex items-center gap-2 sm:ml-auto">
               <svg
-                class="w-6 h-6 text-yellow"
+                class="w-5 h-5 md:w-6 md:h-6 text-yellow"
                 fill="currentColor"
                 viewBox="0 0 24 24"
               >
@@ -356,7 +373,7 @@
               </svg>
               <div>
                 <p class="text-navy/60 text-sm">Winner</p>
-                <p class="text-xl font-bold text-yellow">
+                <p class="text-lg md:text-xl font-bold text-yellow">
                   {winner?.title || "Unknown"}
                 </p>
               </div>
@@ -382,22 +399,24 @@
           {#each ["round_16", "quarter", "semi", "final"] as round}
             {@const roundMatches = matches.filter((m) => m.round === round)}
             {#if roundMatches.length > 0}
-              <div class="card p-6">
-                <h2 class="text-2xl font-bold text-navy mb-6">
+              <div class="card p-4 md:p-6">
+                <h2 class="text-xl md:text-2xl font-bold text-navy mb-4 md:mb-6">
                   {getRoundLabel(round)}
                 </h2>
-                <div class="space-y-3">
+                <div class="space-y-2 md:space-y-3">
                   {#each roundMatches as match}
                     {@const project1 = getProjectById(match.project1Id)}
                     {@const project2 = getProjectById(match.project2Id)}
-                    {@const votes1 = getWalletVotes(match.project1WalletId)}
-                    {@const votes2 = getWalletVotes(match.project2WalletId)}
+                    {@const votes1 = getMatchVotes(match.id, "project1")}
+                    {@const votes2 = getMatchVotes(match.id, "project2")}
                     {@const totalVotes = votes1 + votes2}
                     {@const percent1 =
                       totalVotes > 0 ? (votes1 / totalVotes) * 100 : 50}
                     {@const percent2 =
                       totalVotes > 0 ? (votes2 / totalVotes) * 100 : 50}
                     {@const isActive = isMatchActive(match)}
+                    {@const hasVoted = hasUserVotedOnMatch(match.id)}
+                    {@const userVotingWeight = getUserVotingWeight()}
                     <!-- Match List Item Component -->
                     <MatchListItem
                       {match}
@@ -411,9 +430,11 @@
                       {expandedMatch}
                       {expandedVideo}
                       {votingAnimation}
-                      {transactions}
+                      {votes}
                       session={$session}
                       {getRoundLabel}
+                      {hasVoted}
+                      {userVotingWeight}
                       onToggleExpand={() =>
                         (expandedMatch =
                           expandedMatch === match.id ? null : match.id)}
@@ -490,11 +511,48 @@
   }
 
   .cup-logo-detail {
-    width: 80px;
-    height: 80px;
+    width: 60px;
+    height: 60px;
     object-fit: contain;
     border-radius: 12px;
     flex-shrink: 0;
+  }
+
+  @media (min-width: 768px) {
+    .cup-logo-detail {
+      width: 80px;
+      height: 80px;
+    }
+  }
+
+  /* Mobile responsive adjustments */
+  @media (max-width: 640px) {
+    .btn-primary,
+    .btn-secondary {
+      padding: 0.625rem 1.25rem;
+      font-size: 0.875rem;
+      width: 100%;
+    }
+
+    .card {
+      border-radius: 12px;
+    }
+
+    .text-3xl {
+      font-size: 1.75rem;
+    }
+
+    .text-base {
+      font-size: 0.875rem;
+    }
+
+    .text-lg {
+      font-size: 1rem;
+    }
+
+    .text-xl {
+      font-size: 1.125rem;
+    }
   }
 </style>
 

@@ -5,7 +5,7 @@
   import { page } from "$app/stores";
   import { nanoid } from "nanoid";
   import { useZero } from "$lib/zero-utils";
-  import { getOrCreateWallet } from "$lib/services/walletService";
+  // Wallet service no longer needed - votes tracked in vote table
   import fakeProjectsData from "$lib/fake-projects.json";
   import { showSuccess, showError } from "$lib/toastStore.js";
   import ConfirmDialog from "$lib/ConfirmDialog.svelte";
@@ -18,7 +18,7 @@
   let cup = $state<any>(null);
   let projects = $state<any[]>([]);
   let matches = $state<any[]>([]);
-  let wallets = $state<any[]>([]);
+  let votes = $state<any[]>([]); // All vote records
   let loading = $state(true);
   let addingProjects = $state(false);
   let ending = $state(false);
@@ -32,7 +32,7 @@
     let cupView: any;
     let projectsView: any;
     let matchesView: any;
-    let walletsView: any;
+    let votesView: any;
 
     (async () => {
       // Wait for session to load
@@ -118,12 +118,12 @@
         matches = Array.from(data);
       });
 
-      // Query all wallets to show vote counts
-      const walletsQuery = zero.query.wallet.where("entityType", "=", "match");
-      walletsView = walletsQuery.materialize();
+      // Query all votes to show vote counts
+      const votesQuery = zero.query.vote;
+      votesView = votesQuery.materialize();
 
-      walletsView.addListener((data: any) => {
-        wallets = Array.from(data);
+      votesView.addListener((data: any) => {
+        votes = Array.from(data);
       });
     })();
 
@@ -131,7 +131,7 @@
       if (cupView) cupView.destroy();
       if (projectsView) projectsView.destroy();
       if (matchesView) matchesView.destroy();
-      if (walletsView) walletsView.destroy();
+      if (votesView) votesView.destroy();
     };
   });
 
@@ -196,28 +196,7 @@
 
         const matchId = nanoid();
 
-        // Create wallets for both projects in this match
-        let project1WalletId = "";
-        let project2WalletId = "";
-
-        if (project1) {
-          const wallet1 = await getOrCreateWallet(
-            zero,
-            "match",
-            `${matchId}-p1`
-          );
-          project1WalletId = wallet1.id;
-        }
-
-        if (project2) {
-          const wallet2 = await getOrCreateWallet(
-            zero,
-            "match",
-            `${matchId}-p2`
-          );
-          project2WalletId = wallet2.id;
-        }
-
+        // Create match (no wallets needed - votes tracked in vote table)
         matchPromises.push(
           zero.mutate.cupMatch.insert({
             id: matchId,
@@ -226,8 +205,6 @@
             position: i,
             project1Id: project1?.id || "",
             project2Id: project2?.id || "",
-            project1WalletId,
-            project2WalletId,
             winnerId: "",
             status: "pending",
             completedAt: "",
@@ -351,9 +328,11 @@
     return projects.find((p) => p.id === id);
   }
 
-  function getWalletVotes(walletId: string) {
-    const wallet = wallets.find((w) => w.id === walletId);
-    return wallet?.balance || 0;
+  // Calculate vote totals from vote table
+  function getMatchVotes(matchId: string, projectSide: "project1" | "project2") {
+    return votes
+      .filter((v) => v.matchId === matchId && v.projectSide === projectSide)
+      .reduce((sum, v) => sum + (v.votingWeight || 0), 0);
   }
 
   async function determineMatchWinner(matchId: string) {
@@ -549,8 +528,8 @@
                     {#each roundMatches as match}
                       {@const project1 = getProjectById(match.project1Id)}
                       {@const project2 = getProjectById(match.project2Id)}
-                      {@const votes1 = getWalletVotes(match.project1WalletId)}
-                      {@const votes2 = getWalletVotes(match.project2WalletId)}
+                      {@const votes1 = getMatchVotes(match.id, "project1")}
+                      {@const votes2 = getMatchVotes(match.id, "project2")}
                       <button
                         onclick={() => (selectedMatch = match)}
                         class="match-list-item"
@@ -602,8 +581,8 @@
 {#if selectedMatch}
   {@const project1 = getProjectById(selectedMatch.project1Id)}
   {@const project2 = getProjectById(selectedMatch.project2Id)}
-  {@const votes1 = getWalletVotes(selectedMatch.project1WalletId)}
-  {@const votes2 = getWalletVotes(selectedMatch.project2WalletId)}
+  {@const votes1 = getMatchVotes(selectedMatch.id, "project1")}
+  {@const votes2 = getMatchVotes(selectedMatch.id, "project2")}
   <div
     class="modal-overlay"
     onclick={() => (selectedMatch = null)}

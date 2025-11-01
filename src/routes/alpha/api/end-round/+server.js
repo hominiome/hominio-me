@@ -115,33 +115,7 @@ export async function POST({ request }) {
         if (winner1 && winner2) {
           const matchId = nanoid();
 
-          // Create wallets for this match
-          const wallet1Id = nanoid();
-          const wallet2Id = nanoid();
-
-          await zeroDb
-            .insertInto("wallet")
-            .values([
-              {
-                id: wallet1Id,
-                entityType: "match",
-                entityId: `${matchId}-p1`,
-                balance: 0,
-                createdAt: now,
-                updatedAt: now,
-              },
-              {
-                id: wallet2Id,
-                entityType: "match",
-                entityId: `${matchId}-p2`,
-                balance: 0,
-                createdAt: now,
-                updatedAt: now,
-              },
-            ])
-            .execute();
-
-          // Create next round match
+          // Create next round match (no wallets needed - votes tracked in vote table)
           await zeroDb
             .insertInto("cupMatch")
             .values({
@@ -151,8 +125,6 @@ export async function POST({ request }) {
               position: Math.floor(i / 2), // New position in next round
               project1Id: winner1.winnerId,
               project2Id: winner2.winnerId,
-              project1WalletId: wallet1Id,
-              project2WalletId: wallet2Id,
               winnerId: "",
               status: "voting",
               completedAt: "",

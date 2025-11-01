@@ -44,21 +44,27 @@ export async function POST({ request }) {
       );
     }
 
-    // Get vote counts from wallets
-    const wallet1 = await zeroDb
-      .selectFrom("wallet")
-      .select("balance")
-      .where("id", "=", match.project1WalletId)
+    // Get vote counts from vote table
+    const votes1Result = await zeroDb
+      .selectFrom("vote")
+      .select(({ fn }) => [
+        fn.sum<number>("votingWeight").as("total"),
+      ])
+      .where("matchId", "=", matchId)
+      .where("projectSide", "=", "project1")
       .executeTakeFirst();
 
-    const wallet2 = await zeroDb
-      .selectFrom("wallet")
-      .select("balance")
-      .where("id", "=", match.project2WalletId)
+    const votes2Result = await zeroDb
+      .selectFrom("vote")
+      .select(({ fn }) => [
+        fn.sum<number>("votingWeight").as("total"),
+      ])
+      .where("matchId", "=", matchId)
+      .where("projectSide", "=", "project2")
       .executeTakeFirst();
 
-    const votes1 = wallet1?.balance || 0;
-    const votes2 = wallet2?.balance || 0;
+    const votes1 = Number(votes1Result?.total || 0);
+    const votes2 = Number(votes2Result?.total || 0);
 
     let winnerId = "";
     if (votes1 > votes2) {

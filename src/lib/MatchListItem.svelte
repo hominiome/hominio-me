@@ -13,9 +13,11 @@
     expandedMatch,
     expandedVideo,
     votingAnimation,
-    transactions,
+    votes = [], // Array of vote records
     session,
     getRoundLabel,
+    hasVoted = false,
+    userVotingWeight = 0,
     onToggleExpand,
     toggleVideo,
     voteOnMatch,
@@ -23,7 +25,7 @@
 </script>
 
 <!-- Compact Match List Item -->
-<button onclick={onToggleExpand} class="match-list-item">
+<button onclick={onToggleExpand} class="match-list-item" class:voted-match={hasVoted && isActive}>
   <!-- Far Left: Match State Indicator -->
   <div class="match-list-indicator">
     {#if match.winnerId}
@@ -91,8 +93,10 @@
       {isActive}
       {expandedVideo}
       {votingAnimation}
-      {transactions}
+      {votes}
       {session}
+      {hasVoted}
+      {userVotingWeight}
       {toggleVideo}
       {voteOnMatch}
     />
@@ -105,7 +109,7 @@
     display: grid;
     grid-template-columns: auto 1fr auto 1fr auto;
     align-items: center;
-    gap: 1.5rem;
+    gap: 1rem 1.5rem;
     padding: 1rem 1.5rem;
     background: white;
     border: 2px solid rgba(26, 26, 78, 0.08);
@@ -115,16 +119,144 @@
     width: 100%;
   }
 
+  @media (max-width: 768px) {
+    .match-list-item {
+      grid-template-columns: auto 1fr auto 1fr auto;
+      gap: 0.5rem 0.75rem;
+      padding: 0.875rem 1rem;
+      /* Prevent grid from collapsing - keep side-by-side layout */
+      min-width: 0; /* Allow grid to shrink but maintain structure */
+    }
+
+    /* Keep opponents side-by-side on mobile */
+    .match-list-project-left {
+      max-width: 120px; /* Limit width but allow ellipsis */
+    }
+
+    .match-list-project-right {
+      max-width: 120px; /* Limit width but allow ellipsis */
+      text-align: right; /* Keep right alignment */
+    }
+
+    .match-list-center {
+      justify-self: center;
+      gap: 0.5rem; /* Reduce gap on mobile */
+    }
+
+    .match-list-action {
+      /* Keep action button in place */
+    }
+
+    .team-list-name {
+      font-size: 0.8125rem;
+      max-width: 100%;
+    }
+
+    .team-list-votes {
+      padding: 0.25rem 0.5rem;
+      font-size: 0.75rem;
+      min-width: 28px;
+    }
+
+    .match-list-vs {
+      font-size: 0.7rem;
+    }
+
+    .open-match-btn {
+      padding: 0.375rem 0.75rem;
+      font-size: 0.75rem;
+    }
+
+    .match-list-indicator {
+      width: 24px;
+      height: 24px;
+    }
+
+    .status-icon {
+      width: 16px;
+      height: 16px;
+    }
+  }
+
+  @media (max-width: 480px) {
+    .match-list-item {
+      gap: 0.375rem 0.5rem;
+      padding: 0.75rem 0.875rem;
+    }
+
+    .match-list-project-left,
+    .match-list-project-right {
+      max-width: 90px; /* Even smaller on very small screens */
+    }
+
+    .team-list-name {
+      font-size: 0.75rem;
+    }
+
+    .team-list-votes {
+      padding: 0.25rem 0.375rem;
+      font-size: 0.7rem;
+      min-width: 24px;
+    }
+
+    .match-list-vs {
+      font-size: 0.65rem;
+    }
+
+    .match-list-center {
+      gap: 0.375rem;
+    }
+
+    .open-match-btn {
+      padding: 0.3125rem 0.625rem;
+      font-size: 0.6875rem;
+    }
+  }
+
   .match-list-item:hover {
     border-color: rgba(78, 205, 196, 0.3);
     box-shadow: 0 4px 16px rgba(78, 205, 196, 0.15);
     transform: translateY(-2px);
   }
 
+  /* Styling for voted matches - make them less prominent */
+  .match-list-item.voted-match {
+    opacity: 0.6;
+    background: rgba(255, 255, 255, 0.7);
+    border-color: rgba(26, 26, 78, 0.05);
+  }
+
+  .match-list-item.voted-match:hover {
+    opacity: 0.75;
+    border-color: rgba(78, 205, 196, 0.15);
+    box-shadow: 0 2px 8px rgba(78, 205, 196, 0.08);
+    transform: translateY(-1px);
+  }
+
+  .match-list-item.voted-match .team-list-name {
+    color: rgba(26, 26, 78, 0.5);
+  }
+
+  .match-list-item.voted-match .team-list-votes {
+    background: rgba(26, 26, 78, 0.04);
+    color: rgba(26, 26, 78, 0.5);
+  }
+
+  .match-list-item.voted-match .match-list-vs {
+    color: rgba(26, 26, 78, 0.25);
+  }
+
+  .match-list-item.voted-match .open-match-btn {
+    background: linear-gradient(135deg, rgba(78, 205, 196, 0.6) 0%, rgba(26, 26, 78, 0.6) 100%);
+    opacity: 0.8;
+  }
+
   /* Left: Project 1 */
   .match-list-project-left {
     text-align: left;
     justify-self: start;
+    min-width: 0; /* Allow flex shrinking */
+    overflow: hidden;
   }
 
   /* Center: Scores and VS */
@@ -133,12 +265,15 @@
     align-items: center;
     gap: 1rem;
     justify-self: center;
+    flex-shrink: 0; /* Prevent scores from shrinking */
   }
 
   /* Right: Project 2 */
   .match-list-project-right {
     text-align: right;
     justify-self: end;
+    min-width: 0; /* Allow flex shrinking */
+    overflow: hidden;
   }
 
   /* Far Left: Match State Indicator */
@@ -161,6 +296,11 @@
     font-weight: 600;
     color: #1a1a4e;
     font-size: 1rem;
+    white-space: nowrap; /* Prevent line breaks */
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: block;
+    max-width: 100%;
   }
 
   .winner-text {
@@ -177,12 +317,16 @@
     font-size: 0.875rem;
     min-width: 40px;
     text-align: center;
+    white-space: nowrap; /* Prevent line breaks */
+    flex-shrink: 0; /* Prevent score from shrinking */
   }
 
   .match-list-vs {
     color: rgba(26, 26, 78, 0.4);
     font-weight: 600;
     font-size: 0.875rem;
+    white-space: nowrap; /* Prevent line breaks */
+    flex-shrink: 0; /* Prevent VS from shrinking */
   }
 
   .open-match-btn {

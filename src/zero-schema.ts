@@ -24,32 +24,6 @@ const project = table('project')
   })
   .primaryKey('id');
 
-// Universal Wallet System
-// Wallets can be attached to any entity (user, project, match, cup)
-const wallet = table('wallet')
-  .columns({
-    id: string(),
-    entityType: string(), // 'user' | 'project' | 'match' | 'cup'
-    entityId: string(), // ID of the entity that owns this wallet
-    balance: number(), // Current heart balance
-    createdAt: string(),
-    updatedAt: string(),
-  })
-  .primaryKey('id');
-
-// Generic transaction ledger for all heart movements
-const transaction = table('transaction')
-  .columns({
-    id: string(),
-    fromWalletId: string(), // Source wallet (null for purchases)
-    toWalletId: string(), // Destination wallet (null for burns)
-    amount: number(), // Hearts transferred (always positive)
-    type: string(), // 'purchase' | 'vote' | 'prize' | 'refund'
-    metadata: string(), // JSON string for additional context
-    createdAt: string(),
-  })
-  .primaryKey('id');
-
 // Cup tournament container
 const cup = table('cup')
   .columns({
@@ -58,7 +32,6 @@ const cup = table('cup')
     description: string(),
     creatorId: string(), // Reference to user - fetch profile via /alpha/api/user/[userId]
     logoImageUrl: string(), // Cup logo image URL (optional)
-    walletId: string(), // Cup's prize pool wallet (for future use)
     status: string(), // 'draft' | 'active' | 'completed'
     currentRound: string(), // 'round_16' | 'quarter' | 'semi' | 'final'
     winnerId: string(), // Project ID of winner
@@ -70,6 +43,7 @@ const cup = table('cup')
   .primaryKey('id');
 
 // Individual match in tournament bracket
+// Vote totals are calculated from the vote table, no wallet needed
 const cupMatch = table('cupMatch')
   .columns({
     id: string(),
@@ -78,16 +52,38 @@ const cupMatch = table('cupMatch')
     position: number(), // 0-14 (position in bracket)
     project1Id: string(), // First project
     project2Id: string(), // Second project
-    project1WalletId: string(), // Wallet receiving votes for project 1
-    project2WalletId: string(), // Wallet receiving votes for project 2
     winnerId: string(), // Project ID of winner
     status: string(), // 'pending' | 'voting' | 'completed'
     completedAt: string(),
   })
   .primaryKey('id');
 
+// User voting package - tracks which voting weight package a user has purchased
+const userVotingPackage = table('userVotingPackage')
+  .columns({
+    id: string(),
+    userId: string(), // User ID - indexed
+    packageType: string(), // 'hominio' | 'founder' | 'angel'
+    votingWeight: number(), // 1 | 5 | 10
+    purchasedAt: string(), // ISO timestamp
+    upgradedFrom: string(), // Previous package type if upgraded (nullable)
+  })
+  .primaryKey('id');
+
+// Vote record - tracks individual votes on matches (one per user per match)
+const vote = table('vote')
+  .columns({
+    id: string(),
+    userId: string(), // User ID - indexed
+    matchId: string(), // Match ID - indexed
+    projectSide: string(), // 'project1' | 'project2'
+    votingWeight: number(), // Weight used for this vote
+    createdAt: string(), // ISO timestamp
+  })
+  .primaryKey('id');
+
 export const schema = createSchema({
-  tables: [project, wallet, transaction, cup, cupMatch],
+  tables: [project, cup, cupMatch, userVotingPackage, vote],
 });
 
 // AuthData type - JWT claims from BetterAuth
@@ -127,37 +123,14 @@ export const permissions = definePermissions<AuthData, typeof schema>(
         ],
       },
     },
-    wallet: {
-      row: {
-        // SELECT: Everyone can read wallets (public transparency)
-        select: ANYONE_CAN,
-        // INSERT: Only system/app logic (controlled in code)
-        insert: ANYONE_CAN, // Controlled by app logic
-        // UPDATE: Only system/app logic (balance updates via transactions)
-        update: ANYONE_CAN, // Controlled by app logic
-        // DELETE: Nobody can delete wallets
-        delete: [],
-      },
-    },
-    transaction: {
-      row: {
-        // SELECT: Everyone can read transactions (public transparency)
-        select: ANYONE_CAN,
-        // INSERT: Anyone can create transactions (validation in app logic)
-        insert: ANYONE_CAN,
-        // UPDATE/DELETE: Immutable ledger
-        update: [],
-        delete: [],
-      },
-    },
     cup: {
       row: {
         // SELECT: Everyone can read cups
         select: ANYONE_CAN,
-        // INSERT: Technically open, but admin-only enforcement is done via:
-        //   1. Frontend UI restricts cup creation page to admin users
-        //   2. API endpoints (start-cup, end-round, etc.) require admin role
-        //   3. Draft cups without admin actions remain inactive
+        // INSERT: Any authenticated user can create cups
+        // Admin-only restrictions apply to:
+        //   1. API endpoints (start-cup, end-round, etc.) require admin role
+        //   2. Certain admin actions on cups
         // NOTE: Admin role is checked against ADMIN env var in application layer
         insert: ANYONE_CAN,
         // UPDATE: Controlled by application logic (admin checks in API endpoints)
@@ -175,6 +148,41 @@ export const permissions = definePermissions<AuthData, typeof schema>(
         // UPDATE: System only (controlled by cup creator via app logic)
         update: ANYONE_CAN, // Controlled by app logic
         // DELETE: Nobody
+        delete: [],
+      },
+    },
+    userVotingPackage: {
+      row: {
+        // SELECT: Everyone can read voting packages (public transparency)
+        select: ANYONE_CAN,
+        // INSERT: Users can create their own package
+        insert: [
+          (authData, { cmp }) => {
+            return cmp('userId', '=', authData.sub);
+          }
+        ],
+        // UPDATE: Users can update their own package (for upgrades)
+        update: [
+          (authData, { cmp }) => {
+            return cmp('userId', '=', authData.sub);
+          }
+        ],
+        // DELETE: Nobody can delete packages
+        delete: [],
+      },
+    },
+    vote: {
+      row: {
+        // SELECT: Everyone can read votes (public transparency)
+        select: ANYONE_CAN,
+        // INSERT: Users can create their own votes
+        insert: [
+          (authData, { cmp }) => {
+            return cmp('userId', '=', authData.sub);
+          }
+        ],
+        // UPDATE/DELETE: Votes are immutable
+        update: [],
         delete: [],
       },
     },

@@ -4,6 +4,7 @@
   import { goto } from "$app/navigation";
   import { page } from "$app/stores";
   import { useZero } from "$lib/zero-utils";
+  import { showError } from "$lib/toastStore.js";
 
   const zeroContext = useZero();
   const session = authClient.useSession();
@@ -90,7 +91,7 @@
     }
 
     if (!isAdmin && !isCreator) {
-      alert("You don't have permission to edit this cup");
+      showError("You don't have permission to edit this cup");
       return;
     }
 
@@ -120,7 +121,7 @@
     } catch (error) {
       console.error("Failed to update cup:", error);
       const message = error instanceof Error ? error.message : "Unknown error";
-      alert(`Failed to update cup: ${message}`);
+      showError(`Failed to update cup: ${message}`);
     } finally {
       saving = false;
     }

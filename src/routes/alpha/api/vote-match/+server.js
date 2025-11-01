@@ -11,9 +11,9 @@ export async function POST({ request }) {
     return json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { matchId, projectSide, amount } = await request.json();
+  const { matchId, projectSide } = await request.json();
 
-  if (!matchId || !projectSide || !amount || amount <= 0) {
+  if (!matchId || !projectSide) {
     return json({ error: "Invalid parameters" }, { status: 400 });
   }
 
@@ -25,23 +25,34 @@ export async function POST({ request }) {
   const now = new Date().toISOString();
 
   try {
-    // Get user wallet
-    const userWallet = await zeroDb
-      .selectFrom("wallet")
+    // Check if user has a voting package
+    const userPackage = await zeroDb
+      .selectFrom("userVotingPackage")
       .selectAll()
-      .where("entityType", "=", "user")
-      .where("entityId", "=", userId)
+      .where("userId", "=", userId)
       .executeTakeFirst();
 
-    if (!userWallet) {
-      return json({ error: "User wallet not found" }, { status: 404 });
-    }
-
-    // Check user has enough hearts
-    if (userWallet.balance < amount) {
+    if (!userPackage) {
       return json(
         {
-          error: `Insufficient hearts. You have ${userWallet.balance}, need ${amount}`,
+          error: "You need to purchase a voting package before you can vote. Please visit the purchase page.",
+        },
+        { status: 400 }
+      );
+    }
+
+    // Check if user already voted on this match
+    const existingVote = await zeroDb
+      .selectFrom("vote")
+      .selectAll()
+      .where("userId", "=", userId)
+      .where("matchId", "=", matchId)
+      .executeTakeFirst();
+
+    if (existingVote) {
+      return json(
+        {
+          error: "You have already voted on this match. Each user can vote once per match.",
         },
         { status: 400 }
       );
@@ -74,75 +85,52 @@ export async function POST({ request }) {
       );
     }
 
-    // Get target wallet
-    const targetWalletId =
-      projectSide === "project1"
-        ? match.project1WalletId
-        : match.project2WalletId;
+    const votingWeight = userPackage.votingWeight;
 
-    if (!targetWalletId) {
-      return json({ error: "Project wallet not found" }, { status: 404 });
-    }
-
-    const targetWallet = await zeroDb
-      .selectFrom("wallet")
-      .selectAll()
-      .where("id", "=", targetWalletId)
-      .executeTakeFirst();
-
-    if (!targetWallet) {
-      return json({ error: "Target wallet not found" }, { status: 404 });
-    }
-
-    // Create transaction with user profile info
+    // Create vote record (immutable)
     await zeroDb
-      .insertInto("transaction")
+      .insertInto("vote")
       .values({
         id: nanoid(),
-        fromWalletId: userWallet.id,
-        toWalletId: targetWalletId,
-        amount,
-        type: "vote",
-        metadata: JSON.stringify({
-          matchId,
-          projectSide,
-          userId: session.user.id,
-          userName: session.user.name || "Anonymous",
-          userImage: session.user.image || null,
-          timestamp: Date.now(),
-        }),
+        userId,
+        matchId,
+        projectSide,
+        votingWeight,
         createdAt: now,
       })
       .execute();
 
-    // Update user wallet (deduct hearts)
-    await zeroDb
-      .updateTable("wallet")
-      .set({
-        balance: userWallet.balance - amount,
-        updatedAt: now,
-      })
-      .where("id", "=", userWallet.id)
-      .execute();
+    // Calculate new vote total for the project side
+    const voteTotal = await zeroDb
+      .selectFrom("vote")
+      .select(({ fn }) => [
+        fn.sum<number>("votingWeight").as("total"),
+      ])
+      .where("matchId", "=", matchId)
+      .where("projectSide", "=", projectSide)
+      .executeTakeFirst();
 
-    // Update target wallet (add hearts)
-    await zeroDb
-      .updateTable("wallet")
-      .set({
-        balance: targetWallet.balance + amount,
-        updatedAt: now,
-      })
-      .where("id", "=", targetWalletId)
-      .execute();
+    const newTotal = Number(voteTotal?.total || 0);
 
     return json({
       success: true,
-      newUserBalance: userWallet.balance - amount,
-      newTargetBalance: targetWallet.balance + amount,
-      voted: amount,
+      newTotal,
+      voted: votingWeight,
+      votingWeight,
     });
   } catch (error) {
     console.error("Vote match error:", error);
+    
+    // Check if error is due to unique constraint violation (duplicate vote)
+    if (error.message?.includes("unique") || error.message?.includes("duplicate")) {
+      return json(
+        {
+          error: "You have already voted on this match. Each user can vote once per match.",
+        },
+        { status: 400 }
+      );
+    }
+    
     return json({ error: "Vote failed" }, { status: 500 });
   }
 }

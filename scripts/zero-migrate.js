@@ -150,7 +150,7 @@ async function createTables() {
       .addColumn("description", "text")
       .addColumn("creatorId", "text", (col) => col.notNull())
       // Note: creatorName has been removed - creator data is fetched from profile API
-      .addColumn("walletId", "text")
+      // walletId removed - no longer needed
       .addColumn("status", "text", (col) => col.notNull())
       .addColumn("currentRound", "text")
       .addColumn("winnerId", "text")
@@ -194,8 +194,7 @@ async function createTables() {
       .addColumn("position", "integer", (col) => col.notNull())
       .addColumn("project1Id", "text")
       .addColumn("project2Id", "text")
-      .addColumn("project1WalletId", "text")
-      .addColumn("project2WalletId", "text")
+      // project1WalletId and project2WalletId removed - votes tracked in vote table
       .addColumn("winnerId", "text")
       .addColumn("status", "text", (col) => col.notNull())
       .addColumn("completedAt", "text")
@@ -221,15 +220,111 @@ async function createTables() {
     await sql`ALTER TABLE "cupMatch" REPLICA IDENTITY FULL`.execute(db);
     console.log("✅ Enabled replica identity for cupMatch table");
 
+    // UserVotingPackage table
+    await db.schema
+      .createTable("userVotingPackage")
+      .ifNotExists()
+      .addColumn("id", "text", (col) => col.primaryKey())
+      .addColumn("userId", "text", (col) => col.notNull())
+      .addColumn("packageType", "text", (col) => col.notNull())
+      .addColumn("votingWeight", "integer", (col) => col.notNull())
+      .addColumn("purchasedAt", "text", (col) => col.notNull())
+      .addColumn("upgradedFrom", "text")
+      .execute();
+    console.log("✅ UserVotingPackage table created");
+
+    // Add index on userId for userVotingPackage table
+    await db.schema
+      .createIndex("userVotingPackage_userId_idx")
+      .ifNotExists()
+      .on("userVotingPackage")
+      .column("userId")
+      .execute();
+    console.log("✅ UserVotingPackage userId index created");
+
+    // Add unique constraint on userId (one package per user)
+    try {
+      await sql`CREATE UNIQUE INDEX IF NOT EXISTS userVotingPackage_userId_unique ON "userVotingPackage" ("userId")`.execute(
+        db
+      );
+      console.log("✅ UserVotingPackage unique constraint on userId created");
+    } catch (error) {
+      console.log("✅ UserVotingPackage unique constraint already exists");
+    }
+
+    // Enable WAL replication for userVotingPackage table
+    await sql`ALTER TABLE "userVotingPackage" REPLICA IDENTITY FULL`.execute(db);
+    console.log("✅ Enabled replica identity for userVotingPackage table");
+
+    // Vote table
+    await db.schema
+      .createTable("vote")
+      .ifNotExists()
+      .addColumn("id", "text", (col) => col.primaryKey())
+      .addColumn("userId", "text", (col) => col.notNull())
+      .addColumn("matchId", "text", (col) => col.notNull())
+      .addColumn("projectSide", "text", (col) => col.notNull())
+      .addColumn("votingWeight", "integer", (col) => col.notNull())
+      .addColumn("createdAt", "text", (col) => col.notNull())
+      .execute();
+    console.log("✅ Vote table created");
+
+    // Add indexes for vote table
+    await db.schema
+      .createIndex("vote_userId_idx")
+      .ifNotExists()
+      .on("vote")
+      .column("userId")
+      .execute();
+    await db.schema
+      .createIndex("vote_matchId_idx")
+      .ifNotExists()
+      .on("vote")
+      .column("matchId")
+      .execute();
+    await db.schema
+      .createIndex("vote_userId_matchId_idx")
+      .ifNotExists()
+      .on("vote")
+      .columns(["userId", "matchId"])
+      .execute();
+    console.log("✅ Vote indexes created");
+
+    // Add unique constraint on (userId, matchId) to enforce one vote per user per match
+    try {
+      await sql`CREATE UNIQUE INDEX IF NOT EXISTS vote_userId_matchId_unique ON vote ("userId", "matchId")`.execute(
+        db
+      );
+      console.log("✅ Vote unique constraint on (userId, matchId) created");
+    } catch (error) {
+      console.log("✅ Vote unique constraint already exists");
+    }
+
+    // Enable WAL replication for vote table
+    await sql`ALTER TABLE vote REPLICA IDENTITY FULL`.execute(db);
+    console.log("✅ Enabled replica identity for vote table");
+
     // Create or update publication for Zero with all tables
     try {
-      await sql`CREATE PUBLICATION zero_data FOR TABLE project, wallet, transaction, cup, "cupMatch"`.execute(
+      await sql`CREATE PUBLICATION zero_data FOR TABLE project, wallet, transaction, cup, "cupMatch", "userVotingPackage", vote`.execute(
         db
       );
       console.log("✅ Created publication for Zero (all tables)");
     } catch (error) {
       if (error.message?.includes("already exists")) {
-        console.log("✅ Publication already exists");
+        // Try to alter the publication to add new tables
+        try {
+          await sql`ALTER PUBLICATION zero_data ADD TABLE "userVotingPackage", vote`.execute(
+            db
+          );
+          console.log("✅ Updated publication to include new tables");
+        } catch (alterError) {
+          if (alterError.message?.includes("already exists")) {
+            console.log("✅ Publication already includes new tables");
+          } else {
+            console.log("⚠️ Could not update publication (may need manual update)");
+          }
+        }
       } else {
         throw error;
       }
