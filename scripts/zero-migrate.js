@@ -135,6 +135,15 @@ async function createTables() {
       console.log("ℹ️  WalletId column doesn't exist in cup (already removed)");
     }
 
+    // Remove legacy walletId columns from cupMatch if they exist
+    try {
+      await sql`ALTER TABLE "cupMatch" DROP COLUMN IF EXISTS "project1WalletId"`.execute(db);
+      await sql`ALTER TABLE "cupMatch" DROP COLUMN IF EXISTS "project2WalletId"`.execute(db);
+      console.log("✅ Removed project1WalletId and project2WalletId columns from cupMatch table");
+    } catch (error) {
+      console.log("ℹ️  WalletId columns don't exist in cupMatch (already removed)");
+    }
+
     // Add logoImageUrl column if it doesn't exist
     try {
       await sql`ALTER TABLE cup ADD COLUMN IF NOT EXISTS "logoImageUrl" TEXT DEFAULT ''`.execute(
