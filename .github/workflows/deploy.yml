@@ -14,30 +14,11 @@ jobs:
       
       - uses: superfly/flyctl-actions/setup-flyctl@master
       
-      - name: Set Zero secrets (convert pooler to direct connection)
+      - name: Set Zero secrets
         run: |
-          # Get the connection string from secrets and convert pooler to direct if needed
-          DB_URL="${{ secrets.SECRET_ZERO_DEV_PG }}"
-          
-          # Convert pooler to direct connection if needed
-          if [[ "$DB_URL" == *"-pooler"* ]]; then
-            echo "Converting pooler connection to direct connection..."
-            DB_URL=$(echo "$DB_URL" | sed 's/-pooler//g')
-            # Remove pooler-specific params and ensure sslmode
-            DB_URL=$(echo "$DB_URL" | sed 's/[?&]pgbouncer=[^&]*//g')
-            DB_URL=$(echo "$DB_URL" | sed 's/[?&]pool_timeout=[^&]*//g')
-            if [[ "$DB_URL" != *"sslmode"* ]]; then
-              if [[ "$DB_URL" == *"?"* ]]; then
-                DB_URL="${DB_URL}&sslmode=require"
-              else
-                DB_URL="${DB_URL}?sslmode=require"
-              fi
-            fi
-          fi
-          
-          # Set secrets for sync service
+          # Set secrets for sync service (directly from GitHub secrets)
           flyctl secrets set \
-            ZERO_UPSTREAM_DB="$DB_URL" \
+            ZERO_UPSTREAM_DB="${{ secrets.SECRET_ZERO_DEV_PG }}" \
             ZERO_AUTH_SECRET="${{ secrets.SECRET_ZERO_AUTH_SECRET }}" \
             ZERO_ADMIN_PASSWORD="${{ secrets.SECRET_ZERO_ADMIN_PASSWORD }}" \
             --app hominio-me-sync
