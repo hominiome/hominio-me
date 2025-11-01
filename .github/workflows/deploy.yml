@@ -21,6 +21,7 @@ jobs:
           flyctl secrets set \
             ZERO_UPSTREAM_DB="${{ secrets.SECRET_ZERO_DEV_PG }}" \
             ZERO_AUTH_SECRET="${{ secrets.SECRET_ZERO_AUTH_SECRET }}" \
+            ZERO_ADMIN_PASSWORD="${{ secrets.SECRET_ZERO_AUTH_SECRET }}" \
             --app hominio-me-sync
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
