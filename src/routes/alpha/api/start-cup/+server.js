@@ -31,14 +31,39 @@ export async function POST({ request }) {
         }
 
         // Check if cup has matches
-        const matchCount = await zeroDb
-            .selectFrom("cupMatch")
-            .select(zeroDb.fn.count("id").as("count"))
-            .where("cupId", "=", cupId)
-            .executeTakeFirst();
+        // Retry up to 3 times with delays to account for Zero sync lag
+        let matchCount = null;
+        let retries = 3;
+        let delay = 500; // Start with 500ms delay
+        
+        while (retries > 0) {
+            matchCount = await zeroDb
+                .selectFrom("cupMatch")
+                .select(zeroDb.fn.count("id").as("count"))
+                .where("cupId", "=", cupId)
+                .executeTakeFirst();
 
-        if (!matchCount || Number(matchCount.count) === 0) {
-            return json({ error: "Cup has no matches. Add projects first." }, { status: 400 });
+            const count = matchCount ? Number(matchCount.count) : 0;
+            
+            if (count > 0) {
+                break; // Found matches, exit retry loop
+            }
+            
+            retries--;
+            if (retries > 0) {
+                // Wait before retrying (exponential backoff)
+                await new Promise(resolve => setTimeout(resolve, delay));
+                delay *= 2; // Double the delay for next retry
+            }
+        }
+
+        const finalCount = matchCount ? Number(matchCount.count) : 0;
+        if (finalCount === 0) {
+            console.error(`No matches found for cup ${cupId} after retries`);
+            return json({ 
+                error: "Cup has no matches. Add projects first.",
+                details: "Matches may still be syncing. Please wait a moment and try again."
+            }, { status: 400 });
         }
 
         // Update cup status
