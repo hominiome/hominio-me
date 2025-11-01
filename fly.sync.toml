@@ -43,7 +43,7 @@ ZERO_PORT = "4848"
 # "terminating connection due to administrator command" errors
 # Use: bun scripts/convert-to-direct-connection.js <your-pooler-url>
 # ZERO_AUTH_SECRET will be set via Fly.io secrets
-# ZERO_ADMIN_PASSWORD will be set via Fly.io secrets
+# Note: ZERO_AUTH_SECRET is reused as admin password (same secret, different purpose)
 LOG_LEVEL = "info"
 # Increase connection timeout to handle high-latency database connections
 ZERO_DB_CONNECT_TIMEOUT = "15"

@@ -13,6 +13,8 @@ ENV ZERO_PORT=4848
 # Expose port
 EXPOSE 4848
 
-# Start zero-cache using bunx (bunx will download and run @rocicorp/zero if needed)
-CMD ["bunx", "zero-cache", "--schema-path=./src/zero-schema.ts"]
+# Start zero-cache using bunx with admin password from environment variable
+# Zero requires --admin-password in production mode
+# We reuse ZERO_AUTH_SECRET as the admin password (same secret, different purpose)
+CMD ["sh", "-c", "bunx zero-cache --schema-path=./src/zero-schema.ts --admin-password=\"${ZERO_AUTH_SECRET}\""]
 
