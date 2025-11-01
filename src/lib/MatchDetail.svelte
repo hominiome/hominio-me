@@ -24,10 +24,20 @@
   // User profiles fetched from API
   let user1 = $state(null);
   let user2 = $state(null);
+  // Track which user images have failed to load
+  let failedImages = $state<Set<string>>(new Set());
 
   // Get video URLs for each project (fallback to default if not provided)
   const video1Url = $derived(getYouTubeEmbedUrl(project1?.videoUrl));
   const video2Url = $derived(getYouTubeEmbedUrl(project2?.videoUrl));
+
+  // Get thumbnail URLs - use database image if available, otherwise fallback to Unsplash
+  const thumbnail1Url = $derived(
+    project1?.videoThumbnail?.trim() || `https://picsum.photos/seed/${project1?.id || 'project1'}/1280/720`
+  );
+  const thumbnail2Url = $derived(
+    project2?.videoThumbnail?.trim() || `https://picsum.photos/seed/${project2?.id || 'project2'}/1280/720`
+  );
 
   // Fetch user profiles when component mounts or projects change
   $effect(() => {
@@ -101,11 +111,16 @@
           <!-- Founder Profile & Project Info -->
           <div class="project-header">
             <div class="founder-avatar-container">
-              {#if user1 && user1.image}
+              {#if user1 && user1.image && !failedImages.has(project1?.userId || "")}
                 <img
                   src={user1.image}
                   alt={user1.name || "User"}
                   class="founder-avatar"
+                  onerror={() => {
+                    if (project1?.userId) {
+                      failedImages = new Set(failedImages).add(project1.userId);
+                    }
+                  }}
                 />
               {:else}
                 <div class="founder-avatar-placeholder">
@@ -132,8 +147,7 @@
         <div class="video-card">
           <div
             class="video-thumbnail"
-            style="background-image: url('https://picsum.photos/seed/{project1?.id ||
-              'project1'}/1280/720')"
+            style="background-image: url('{thumbnail1Url}')"
           >
             <button
               class="play-btn-center"
@@ -172,11 +186,16 @@
           <!-- Founder Profile & Project Info -->
           <div class="project-header">
             <div class="founder-avatar-container">
-              {#if user2 && user2.image}
+              {#if user2 && user2.image && !failedImages.has(project2?.userId || "")}
                 <img
                   src={user2.image}
                   alt={user2.name || "User"}
                   class="founder-avatar"
+                  onerror={() => {
+                    if (project2?.userId) {
+                      failedImages = new Set(failedImages).add(project2.userId);
+                    }
+                  }}
                 />
               {:else}
                 <div class="founder-avatar-placeholder">
@@ -203,8 +222,7 @@
         <div class="video-card">
           <div
             class="video-thumbnail"
-            style="background-image: url('https://picsum.photos/seed/{project2?.id ||
-              'project2'}/1280/720')"
+            style="background-image: url('{thumbnail2Url}')"
           >
             <button
               class="play-btn-center"

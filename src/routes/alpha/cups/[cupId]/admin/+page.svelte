@@ -262,8 +262,11 @@
       });
 
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || "Failed to start cup");
+        const errorData = await response.json();
+        const errorMsg = errorData.details 
+          ? `${errorData.error}: ${errorData.details}` 
+          : errorData.error || "Failed to start cup";
+        throw new Error(errorMsg);
       }
 
       const result = await response.json();
@@ -311,6 +314,19 @@
       alert(`Failed to end round: ${error.message}`);
     } finally {
       ending = false;
+    }
+  }
+
+  function getStatusLabel(status: string) {
+    switch (status) {
+      case "draft":
+        return "Application Open";
+      case "active":
+        return "Active";
+      case "completed":
+        return "Completed";
+      default:
+        return status;
     }
   }
 
@@ -401,7 +417,7 @@
           <div>
             <p class="text-navy/60 text-sm mb-1">Status</p>
             <p class="text-2xl font-bold text-navy">
-              {cup.status.toUpperCase()}
+              {getStatusLabel(cup.status)}
             </p>
           </div>
           {#if cup.currentRound}

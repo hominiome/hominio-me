@@ -1,13 +1,17 @@
 import { json } from "@sveltejs/kit";
 import { nanoid } from "nanoid";
-import { requireAdmin } from "$lib/api-helpers.server.js";
+import { getSession } from "$lib/api-helpers.server.js";
 import { zeroDb } from "$lib/db.server.js";
+import { getOrCreateWallet } from "$lib/services/walletService.js";
 
 export async function POST({ request }) {
-  // Require admin access (throws 401/403 if not authenticated/admin)
-  await requireAdmin(request);
+  // Require authentication (any authenticated user can create cups)
+  const session = await getSession(request);
+  if (!session?.user?.id) {
+    return json({ error: "Unauthorized" }, { status: 401 });
+  }
 
-  const { name, description, creatorId } = await request.json();
+  const { name, description, logoImageUrl, creatorId } = await request.json();
 
   if (!name || !creatorId) {
     return json(
@@ -21,18 +25,7 @@ export async function POST({ request }) {
 
   try {
     // Create a wallet for the cup (for future prize pool functionality)
-    const walletId = nanoid();
-    await zeroDb
-      .insertInto("wallet")
-      .values({
-        id: walletId,
-        entityType: "cup",
-        entityId: cupId,
-        balance: 0,
-        createdAt: now,
-        updatedAt: now,
-      })
-      .execute();
+    const cupWallet = await getOrCreateWallet(zeroDb, "cup", cupId);
 
     // Create cup directly in database
     await zeroDb
@@ -41,8 +34,9 @@ export async function POST({ request }) {
         id: cupId,
         name: name.trim(),
         description: (description || "").trim(),
+        logoImageUrl: (logoImageUrl || "").trim(),
         creatorId,
-        walletId,
+        walletId: cupWallet.id,
         status: "draft",
         currentRound: "",
         winnerId: "",

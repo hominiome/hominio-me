@@ -1,13 +1,19 @@
 <script lang="ts">
   let { data } = $props<{ data: { user: { id: string; name: string | null; image: string | null } } }>();
+  let imageFailed = $state(false);
 </script>
 
 <div class="container">
   {#if data.user}
     <div class="profile-card">
       <div class="profile-header">
-        {#if data.user.image}
-          <img src={data.user.image} alt={data.user.name || "User"} class="profile-avatar" />
+        {#if data.user.image && !imageFailed}
+          <img 
+            src={data.user.image} 
+            alt={data.user.name || "User"} 
+            class="profile-avatar"
+            onerror={() => (imageFailed = true)}
+          />
         {:else}
           <div class="profile-avatar-placeholder">
             {data.user.name?.[0]?.toUpperCase() || "?"}

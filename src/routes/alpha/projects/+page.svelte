@@ -15,9 +15,12 @@
   let projects = $state<any[]>([]);
   let loading = $state(true);
   let showCreateForm = $state(false);
+  let isAdmin = $state(false);
   let userProfiles = $state<
     Map<string, { name: string | null; image: string | null }>
   >(new Map());
+  // Track which user images have failed to load
+  let failedImages = $state<Set<string>>(new Set());
 
   // Form state
   let newProject = $state({
@@ -60,6 +63,23 @@
   }
 
   const session = authClient.useSession();
+
+  // Check if user is admin
+  $effect(() => {
+    (async () => {
+      if (!$session.isPending && $session.data?.user) {
+        try {
+          const response = await fetch("/alpha/api/is-admin");
+          if (response.ok) {
+            const data = await response.json();
+            isAdmin = data.isAdmin;
+          }
+        } catch (error) {
+          console.error("Failed to check admin status:", error);
+        }
+      }
+    })();
+  });
 
   onMount(() => {
     if (!zeroContext) {
@@ -162,6 +182,10 @@
 
   function isMyProject(project: any) {
     return project.userId === $session.data?.user?.id;
+  }
+
+  function canEditProject(project: any) {
+    return isAdmin || isMyProject(project);
   }
 </script>
 
@@ -367,11 +391,16 @@
               <!-- Founder Info -->
               <a href="/alpha/user/{project.userId}" class="founder-link">
                 <div class="flex items-center gap-3 mb-3">
-                  {#if userProfile?.image}
+                  {#if userProfile?.image && !failedImages.has(project.userId)}
                     <img
                       src={userProfile.image}
                       alt={userProfile.name || "User"}
                       class="founder-avatar"
+                      onerror={() => {
+                        failedImages = new Set(failedImages).add(
+                          project.userId
+                        );
+                      }}
                     />
                   {:else}
                     <div class="founder-avatar-placeholder">
@@ -430,16 +459,37 @@
               {/if}
 
               <!-- Footer with Actions -->
-              {#if isMyProject(project)}
+              {#if canEditProject(project)}
                 <div
-                  class="flex items-center justify-end mt-auto pt-4 border-t border-navy/10"
+                  class="flex items-center justify-end gap-2 mt-auto pt-4 border-t border-navy/10"
                 >
-                  <button
-                    onclick={() => deleteProject(project.id)}
-                    class="btn-danger-small"
+                  <a
+                    href="/alpha/projects/{project.id}/edit"
+                    class="btn-edit-small"
                   >
-                    Delete
-                  </button>
+                    <svg
+                      class="w-4 h-4"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                      />
+                    </svg>
+                    Edit
+                  </a>
+                  {#if isMyProject(project)}
+                    <button
+                      onclick={() => deleteProject(project.id)}
+                      class="btn-danger-small"
+                    >
+                      Delete
+                    </button>
+                  {/if}
                 </div>
               {/if}
             </div>
@@ -613,6 +663,29 @@
   .btn-secondary:hover {
     border-color: #4ecdc4;
     color: #4ecdc4;
+  }
+
+  .btn-edit-small {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: white;
+    color: #1a1a4e;
+    border: 2px solid rgba(26, 26, 78, 0.1);
+    border-radius: 8px;
+    padding: 0.5rem 1rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    transition: all 0.2s ease;
+    cursor: pointer;
+    text-decoration: none;
+  }
+
+  .btn-edit-small:hover {
+    border-color: #4ecdc4;
+    color: #4ecdc4;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(78, 205, 196, 0.2);
   }
 
   .btn-danger-small {

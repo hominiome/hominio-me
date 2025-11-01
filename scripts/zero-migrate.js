@@ -36,25 +36,8 @@ async function createTables() {
       .execute();
     console.log("✅ Project table created");
 
-    // Add userName column if it doesn't exist
-    try {
-      await sql`ALTER TABLE project ADD COLUMN IF NOT EXISTS "userName" TEXT DEFAULT ''`.execute(
-        db
-      );
-      console.log("✅ Project userName column added");
-    } catch (error) {
-      console.log("✅ Project userName column already exists");
-    }
-
-    // Add userImage column if it doesn't exist
-    try {
-      await sql`ALTER TABLE project ADD COLUMN IF NOT EXISTS "userImage" TEXT DEFAULT ''`.execute(
-        db
-      );
-      console.log("✅ Project userImage column added");
-    } catch (error) {
-      console.log("✅ Project userImage column already exists");
-    }
+    // Note: userName and userImage columns have been removed - user data is fetched from profile API
+    // Migration scripts should NOT add these deprecated columns
 
     // Add sdgs column if it doesn't exist
     try {
@@ -74,6 +57,16 @@ async function createTables() {
       console.log("✅ Project videoUrl column added");
     } catch (error) {
       console.log("✅ Project videoUrl column already exists");
+    }
+
+    // Add videoThumbnail column if it doesn't exist
+    try {
+      await sql`ALTER TABLE project ADD COLUMN IF NOT EXISTS "videoThumbnail" TEXT DEFAULT ''`.execute(
+        db
+      );
+      console.log("✅ Project videoThumbnail column added");
+    } catch (error) {
+      console.log("✅ Project videoThumbnail column already exists");
     }
 
     // Add index on userId for project table
@@ -156,7 +149,7 @@ async function createTables() {
       .addColumn("name", "text", (col) => col.notNull())
       .addColumn("description", "text")
       .addColumn("creatorId", "text", (col) => col.notNull())
-      .addColumn("creatorName", "text")
+      // Note: creatorName has been removed - creator data is fetched from profile API
       .addColumn("walletId", "text")
       .addColumn("status", "text", (col) => col.notNull())
       .addColumn("currentRound", "text")
@@ -167,6 +160,16 @@ async function createTables() {
       .addColumn("updatedAt", "text")
       .execute();
     console.log("✅ Cup table created");
+
+    // Add logoImageUrl column if it doesn't exist
+    try {
+      await sql`ALTER TABLE cup ADD COLUMN IF NOT EXISTS "logoImageUrl" TEXT DEFAULT ''`.execute(
+        db
+      );
+      console.log("✅ Cup logoImageUrl column added");
+    } catch (error) {
+      console.log("✅ Cup logoImageUrl column already exists");
+    }
 
     // Add index on creatorId for cup table
     await db.schema

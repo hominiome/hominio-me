@@ -60,7 +60,11 @@ export async function POST({ request }) {
         });
     } catch (error) {
         console.error("Start cup error:", error);
-        return json({ error: "Failed to start cup" }, { status: 500 });
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        return json({ 
+            error: "Failed to start cup",
+            details: errorMessage 
+        }, { status: 500 });
     }
 }
 

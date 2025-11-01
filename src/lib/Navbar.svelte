@@ -7,6 +7,19 @@
     signInWithGoogle: () => Promise<void>;
   }>();
 
+  // Mobile menu state
+  let mobileMenuOpen = $state(false);
+  // Track if user image failed to load
+  let userImageFailed = $state(false);
+
+  function toggleMobileMenu() {
+    mobileMenuOpen = !mobileMenuOpen;
+  }
+
+  function closeMobileMenu() {
+    mobileMenuOpen = false;
+  }
+
   // Hearts balance - commented out for now
   // Can be re-enabled later by accessing Zero from context
 </script>
@@ -58,12 +71,17 @@
         <a href="/alpha/me" class="user-info-link">
           <div class="user-info">
             <span class="user-name">{session.data.user?.name || "User"}</span>
-            {#if session.data.user?.image}
+            {#if session.data.user?.image && !userImageFailed}
               <img
                 src={session.data.user.image}
                 alt={session.data.user.name}
                 class="user-avatar"
+                onerror={() => (userImageFailed = true)}
               />
+            {:else if session.data.user?.name}
+              <div class="user-avatar-placeholder">
+                {session.data.user.name[0]?.toUpperCase() || "U"}
+              </div>
             {/if}
           </div>
         </a>
@@ -71,7 +89,42 @@
         <button onclick={signInWithGoogle} class="btn-signin"> Sign In </button>
       {/if}
     </div>
+
+    <!-- Mobile Menu Button -->
+    <button class="mobile-menu-btn" onclick={toggleMobileMenu} aria-label="Toggle menu">
+      {#if mobileMenuOpen}
+        <svg class="mobile-menu-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      {:else}
+        <svg class="mobile-menu-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+        </svg>
+      {/if}
+    </button>
   </div>
+
+  <!-- Mobile Menu -->
+  {#if mobileMenuOpen}
+    <div class="mobile-menu">
+      <a
+        href="/alpha/projects"
+        class="mobile-nav-link"
+        class:active={$page.url.pathname === "/alpha/projects"}
+        onclick={closeMobileMenu}
+      >
+        Projects
+      </a>
+      <a
+        href="/alpha/cups"
+        class="mobile-nav-link"
+        class:active={$page.url.pathname.startsWith("/alpha/cups")}
+        onclick={closeMobileMenu}
+      >
+        Cups
+      </a>
+    </div>
+  {/if}
 </nav>
 
 <style>
@@ -259,6 +312,20 @@
     border: 2px solid #4ecdc4;
   }
 
+  .user-avatar-placeholder {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: 2px solid #4ecdc4;
+    background: linear-gradient(135deg, #4ecdc4, #f4d03f);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: 700;
+    font-size: 0.875rem;
+  }
+
   /* Sign In Button */
   .btn-signin {
     background: #1a1a4e;
@@ -273,6 +340,76 @@
   }
 
   .btn-signin:hover {
+    background: #4ecdc4;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(78, 205, 196, 0.3);
+  }
+
+  /* Mobile Menu Button */
+  .mobile-menu-btn {
+    display: none;
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: #1a1a4e;
+    padding: 0.5rem;
+    transition: all 0.2s;
+  }
+
+  .mobile-menu-btn:hover {
+    color: #4ecdc4;
+  }
+
+  .mobile-menu-icon {
+    width: 24px;
+    height: 24px;
+  }
+
+  /* Mobile Menu */
+  .mobile-menu {
+    display: none;
+    flex-direction: column;
+    background: white;
+    border-top: 1px solid rgba(26, 26, 78, 0.08);
+    padding: 1rem;
+    gap: 0.5rem;
+  }
+
+  .mobile-nav-link {
+    display: block;
+    padding: 0.75rem 1rem;
+    color: rgba(26, 26, 78, 0.7);
+    font-weight: 600;
+    text-decoration: none;
+    border-radius: 8px;
+    transition: all 0.2s;
+  }
+
+  .mobile-nav-link:hover {
+    background: rgba(78, 205, 196, 0.1);
+    color: #4ecdc4;
+  }
+
+  .mobile-nav-link.active {
+    background: rgba(78, 205, 196, 0.15);
+    color: #1a1a4e;
+  }
+
+  .mobile-btn-signin {
+    width: 100%;
+    margin-top: 0.5rem;
+    background: #1a1a4e;
+    color: white;
+    padding: 0.75rem 1.5rem;
+    border-radius: 8px;
+    font-weight: 600;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-size: 0.9375rem;
+  }
+
+  .mobile-btn-signin:hover {
     background: #4ecdc4;
     transform: translateY(-1px);
     box-shadow: 0 4px 12px rgba(78, 205, 196, 0.3);
@@ -299,33 +436,34 @@
     }
 
     .nav-link {
-      font-size: 0.875rem;
+      display: none;
     }
 
-    .nav-link:not(.active) {
-      display: none;
+    /* Keep user info visible on mobile, but compact */
+    .user-info-link {
+      display: block;
     }
 
     .user-name {
-      display: none;
+      display: none; /* Hide name on mobile, just show avatar */
     }
 
-    /* .hearts-badge {
-      padding: 0.375rem 0.75rem;
+    .user-info {
+      padding: 0.375rem 0.5rem; /* Smaller padding on mobile */
     }
-
-    .heart-icon {
-      width: 1rem;
-      height: 1rem;
-    }
-
-    .heart-count {
-      font-size: 0.875rem;
-    } */
 
     .btn-signin {
-      padding: 0.625rem 1.25rem;
+      display: block; /* Keep sign in button visible */
+      padding: 0.5rem 1rem;
       font-size: 0.875rem;
+    }
+
+    .mobile-menu-btn {
+      display: block;
+    }
+
+    .mobile-menu {
+      display: flex;
     }
   }
 

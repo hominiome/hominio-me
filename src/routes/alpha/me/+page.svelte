@@ -6,6 +6,7 @@
   let { data } = $props();
 
   let signingOut = $state(false);
+  let imageFailed = $state(false);
 
   async function handleSignOut() {
     signingOut = true;
@@ -18,8 +19,12 @@
   <div class="profile-card">
     <div class="profile-header">
       <div class="avatar">
-        {#if data.session?.image}
-          <img src={data.session.image} alt={data.session.name} />
+        {#if data.session?.image && !imageFailed}
+          <img 
+            src={data.session.image} 
+            alt={data.session.name}
+            onerror={() => (imageFailed = true)}
+          />
         {:else}
           <div class="avatar-placeholder">
             {data.session?.name?.charAt(0).toUpperCase() || "U"}

@@ -18,6 +18,7 @@ const project = table('project')
     city: string(),
     userId: string(), // Reference to user - fetch profile via /alpha/api/user/[userId]
     videoUrl: string(), // YouTube URL for project pitch video (optional)
+    videoThumbnail: string(), // Custom video thumbnail image URL (optional, falls back to Unsplash)
     sdgs: string(), // JSON string array of SDG goals (1-3): ["01_NoPoverty", "13_Climate", ...]
     createdAt: string(), // ISO timestamp
   })
@@ -56,6 +57,7 @@ const cup = table('cup')
     name: string(),
     description: string(),
     creatorId: string(), // Reference to user - fetch profile via /alpha/api/user/[userId]
+    logoImageUrl: string(), // Cup logo image URL (optional)
     walletId: string(), // Cup's prize pool wallet (for future use)
     status: string(), // 'draft' | 'active' | 'completed'
     currentRound: string(), // 'round_16' | 'quarter' | 'semi' | 'final'

@@ -13,6 +13,23 @@
   const session = authClient.useSession();
   const cupId = $page.params.cupId;
 
+  // Check if user is admin
+  $effect(() => {
+    (async () => {
+      if (!$session.isPending && $session.data?.user) {
+        try {
+          const response = await fetch("/alpha/api/is-admin");
+          if (response.ok) {
+            const data = await response.json();
+            isAdmin = data.isAdmin;
+          }
+        } catch (error) {
+          console.error("Failed to check admin status:", error);
+        }
+      }
+    })();
+  });
+
   let zero: any = null;
   let cup = $state<any>(null);
   let projects = $state<any[]>([]);
@@ -27,6 +44,7 @@
   let expandedVideo = $state<string | null>(null); // Track which match video is expanded
   let expandedMatch = $state<string | null>(null); // Track which match is expanded (accordion)
   let creatorProfile = $state<{ name: string | null; image: string | null } | null>(null);
+  let isAdmin = $state(false);
 
   onMount(() => {
     let cupView: any;
@@ -151,6 +169,19 @@
     return wallet?.balance || 0;
   }
 
+  function getStatusLabel(status: string) {
+    switch (status) {
+      case "draft":
+        return "Application Open";
+      case "active":
+        return "Active";
+      case "completed":
+        return "Completed";
+      default:
+        return status;
+    }
+  }
+
   function getRoundLabel(round: string) {
     switch (round) {
       case "round_16":
@@ -264,15 +295,29 @@
           ← Back to Cups
         </a>
         <div class="flex items-center justify-between">
-          <div>
-            <h1 class="text-5xl font-bold text-navy mb-2">{cup.name}</h1>
-            {#if cup.description}
-              <p class="text-navy/60 text-lg">{cup.description}</p>
+          <div class="flex items-start gap-4">
+            {#if cup.logoImageUrl}
+              <img
+                src={cup.logoImageUrl}
+                alt="{cup.name} logo"
+                class="cup-logo-detail"
+              />
+            {/if}
+            <div>
+              <h1 class="text-5xl font-bold text-navy mb-2">{cup.name}</h1>
+              {#if cup.description}
+                <p class="text-navy/60 text-lg">{cup.description}</p>
+              {/if}
+            </div>
+          </div>
+          <div class="flex gap-3">
+            {#if isCreator}
+              <a href="/alpha/cups/{cupId}/admin" class="btn-primary"> Admin Panel </a>
+            {/if}
+            {#if isCreator || isAdmin}
+              <a href="/alpha/cups/{cupId}/edit" class="btn-secondary"> Edit </a>
             {/if}
           </div>
-          {#if isCreator}
-            <a href="/alpha/cups/{cupId}/admin" class="btn-primary"> Admin Panel </a>
-          {/if}
         </div>
       </div>
 
@@ -282,7 +327,7 @@
           <div>
             <p class="text-navy/60 text-sm mb-1">Status</p>
             <p class="text-xl font-bold text-navy">
-              {cup.status.toUpperCase()}
+              {getStatusLabel(cup.status)}
             </p>
           </div>
           {#if cup.currentRound}
@@ -414,6 +459,24 @@
     box-shadow: 0 8px 20px rgba(78, 205, 196, 0.3);
   }
 
+  .btn-secondary {
+    padding: 0.75rem 1.5rem;
+    background: white;
+    color: #1a1a4e;
+    border: 2px solid rgba(26, 26, 78, 0.1);
+    border-radius: 12px;
+    font-weight: 600;
+    text-decoration: none;
+    display: inline-block;
+    transition: all 0.2s;
+  }
+
+  .btn-secondary:hover {
+    border-color: #4ecdc4;
+    color: #4ecdc4;
+    transform: translateY(-2px);
+  }
+
   .text-navy {
     color: #1a1a4e;
   }
@@ -424,6 +487,14 @@
 
   .text-yellow {
     color: #f4d03f;
+  }
+
+  .cup-logo-detail {
+    width: 80px;
+    height: 80px;
+    object-fit: contain;
+    border-radius: 12px;
+    flex-shrink: 0;
   }
 </style>
 
