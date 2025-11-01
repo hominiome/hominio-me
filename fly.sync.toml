@@ -16,7 +16,6 @@ auto_stop_machines = "off"
 # Keep at least one machine running - multiple instances cause replication slot conflicts
 # IMPORTANT: Run 'fly scale count 1 -a hominio-me-sync' to ensure only one machine runs
 min_machines_running = 1
-processes = ["zero"]
 
 [[http_service.checks]]
 # Increased grace period to allow Zero to fully initialize and avoid premature health check failures
