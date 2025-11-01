@@ -103,8 +103,18 @@
 
   function getRoundLabel(round: string) {
     switch (round) {
+      case "round_4":
+        return "Round of 4";
+      case "round_8":
+        return "Round of 8";
       case "round_16":
         return "Round of 16";
+      case "round_32":
+        return "Round of 32";
+      case "round_64":
+        return "Round of 64";
+      case "round_128":
+        return "Round of 128";
       case "quarter":
         return "Quarter Finals";
       case "semi":
@@ -121,16 +131,16 @@
   <div class="max-w-7xl mx-auto">
     <!-- Header -->
     <div class="flex items-center justify-between mb-12">
-          <div>
-            <h1 class="text-6xl font-bold text-navy mb-3">Cups</h1>
-            <p class="text-navy/60 text-lg">
-              Tournament brackets where projects compete for victory
-            </p>
-          </div>
+      <div>
+        <h1 class="text-6xl font-bold text-navy mb-3">Cups</h1>
+        <p class="text-navy/60 text-lg">
+          Tournament brackets where projects compete for victory
+        </p>
+      </div>
 
-          {#if $session.data && isAdmin}
-            <a href="/alpha/cups/create" class="btn-primary"> Create Cup </a>
-          {/if}
+      {#if $session.data && isAdmin}
+        <a href="/alpha/cups/create" class="btn-primary"> Create Cup </a>
+      {/if}
     </div>
 
     {#if loading}
@@ -158,102 +168,115 @@
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {#each cups as cup}
           {@const creatorProfile = creatorProfiles.get(cup.creatorId)}
-          {@const canEdit = isAdmin || cup.creatorId === $session.data?.user?.id}
+          {@const canEdit =
+            isAdmin || cup.creatorId === $session.data?.user?.id}
           <div class="cup-card-wrapper">
             <a href="/alpha/cups/{cup.id}" class="cup-card">
-            <!-- Status Badge -->
-            <div class="flex items-center justify-between mb-4">
-              <span class="status-badge {getStatusColor(cup.status)}">
-                {getStatusLabel(cup.status)}
-              </span>
-              {#if cup.currentRound}
-                <span class="round-badge"
-                  >{getRoundLabel(cup.currentRound)}</span
-                >
-              {/if}
-            </div>
-
-            <!-- Cup Logo (if available) -->
-            {#if cup.logoImageUrl}
-              <div class="mb-4">
-                <img
-                  src={cup.logoImageUrl}
-                  alt="{cup.name} logo"
-                  class="cup-logo"
-                />
-              </div>
-            {/if}
-
-            <!-- Cup Name -->
-            <h3 class="text-2xl font-bold text-navy mb-2">{cup.name}</h3>
-
-            {#if cup.description}
-              <p class="text-navy/60 mb-4 line-clamp-2">{cup.description}</p>
-            {/if}
-
-            <!-- Creator Info -->
-            <div
-              class="flex items-center justify-between mt-auto pt-4 border-t border-navy/10"
-            >
-              <div class="flex items-center gap-2">
-                <svg
-                  class="w-4 h-4 text-navy/50"
-                  fill="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"
-                  />
-                </svg>
-                <span class="text-navy/60 text-sm">
-                  {creatorProfile?.name || "Anonymous"}
+              <!-- Status Badge -->
+              <div class="flex items-center justify-between mb-4">
+                <span class="status-badge {getStatusColor(cup.status)}">
+                  {getStatusLabel(cup.status)}
                 </span>
+                {#if cup.currentRound}
+                  <span class="round-badge"
+                    >{getRoundLabel(cup.currentRound)}</span
+                  >
+                {/if}
               </div>
-              {#if canEdit}
-                <div
-                  class="edit-btn-inline"
-                  onclick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    window.location.href = `/alpha/cups/${cup.id}/edit`;
-                  }}
-                  role="button"
-                  tabindex="0"
-                  onkeydown={(e) => {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                      e.preventDefault();
-                      window.location.href = `/alpha/cups/${cup.id}/edit`;
-                    }
-                  }}
-                >
-                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                  </svg>
-                  Edit
+
+              <!-- Cup Logo (if available) -->
+              {#if cup.logoImageUrl}
+                <div class="mb-4">
+                  <img
+                    src={cup.logoImageUrl}
+                    alt="{cup.name} logo"
+                    class="cup-logo"
+                  />
                 </div>
               {/if}
-            </div>
 
-            {#if cup.completedAt && cup.winnerId}
+              <!-- Cup Name -->
+              <h3 class="text-2xl font-bold text-navy mb-2">{cup.name}</h3>
+
+              {#if cup.description}
+                <p class="text-navy/60 mb-4 line-clamp-2">{cup.description}</p>
+              {/if}
+
+              <!-- Creator Info -->
               <div
-                class="mt-3 p-3 bg-yellow/10 rounded-lg border border-yellow/30"
+                class="flex items-center justify-between mt-auto pt-4 border-t border-navy/10"
               >
                 <div class="flex items-center gap-2">
                   <svg
-                    class="w-5 h-5 text-yellow"
+                    class="w-4 h-4 text-navy/50"
                     fill="currentColor"
                     viewBox="0 0 24 24"
                   >
                     <path
-                      d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"
+                      d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"
                     />
                   </svg>
-                  <span class="text-yellow font-semibold">Winner Decided!</span>
+                  <span class="text-navy/60 text-sm">
+                    {creatorProfile?.name || "Anonymous"}
+                  </span>
                 </div>
+                {#if canEdit}
+                  <div
+                    class="edit-btn-inline"
+                    onclick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      window.location.href = `/alpha/cups/${cup.id}/edit`;
+                    }}
+                    role="button"
+                    tabindex="0"
+                    onkeydown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        window.location.href = `/alpha/cups/${cup.id}/edit`;
+                      }
+                    }}
+                  >
+                    <svg
+                      class="w-4 h-4"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                      />
+                    </svg>
+                    Edit
+                  </div>
+                {/if}
               </div>
-            {/if}
-          </a>
-        </div>
+
+              {#if cup.completedAt && cup.winnerId}
+                <div
+                  class="mt-3 p-3 bg-yellow/10 rounded-lg border border-yellow/30"
+                >
+                  <div class="flex items-center gap-2">
+                    <svg
+                      class="w-5 h-5 text-yellow"
+                      fill="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"
+                      />
+                    </svg>
+                    <span class="text-yellow font-semibold"
+                      >Winner Decided!</span
+                    >
+                  </div>
+                </div>
+              {/if}
+            </a>
+          </div>
         {/each}
       </div>
     {/if}

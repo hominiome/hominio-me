@@ -33,13 +33,16 @@ const cup = table('cup')
     description: string(),
     creatorId: string(), // Reference to user - fetch profile via /alpha/api/user/[userId]
     logoImageUrl: string(), // Cup logo image URL (optional)
+    size: number(), // Cup size: 4, 8, 16, 32, 64, or 128
+    selectedProjectIds: string(), // JSON array of selected project IDs (empty string or JSON array)
     status: string(), // 'draft' | 'active' | 'completed'
-    currentRound: string(), // 'round_16' | 'quarter' | 'semi' | 'final'
+    currentRound: string(), // 'round_4' | 'round_8' | 'round_16' | 'round_32' | 'round_64' | 'round_128' | 'quarter' | 'semi' | 'final'
     winnerId: string(), // Project ID of winner
     createdAt: string(),
     startedAt: string(),
     completedAt: string(),
     updatedAt: string(),
+    endDate: string(), // ISO timestamp for cup end date/time
   })
   .primaryKey('id');
 
@@ -49,13 +52,14 @@ const cupMatch = table('cupMatch')
   .columns({
     id: string(),
     cupId: string(),
-    round: string(), // 'round_16' | 'quarter' | 'semi' | 'final'
+    round: string(), // 'round_4' | 'round_8' | 'round_16' | 'round_32' | 'round_64' | 'round_128' | 'quarter' | 'semi' | 'final'
     position: number(), // 0-14 (position in bracket)
     project1Id: string(), // First project
     project2Id: string(), // Second project
     winnerId: string(), // Project ID of winner
     status: string(), // 'pending' | 'voting' | 'completed'
     completedAt: string(),
+    endDate: string(), // ISO timestamp for match end date/time (optional, falls back to round date)
   })
   .primaryKey('id');
 

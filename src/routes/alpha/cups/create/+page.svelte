@@ -6,6 +6,7 @@
   let name = $state("");
   let description = $state("");
   let logoImageUrl = $state("");
+  let size = $state(16); // Default to 16
   let creating = $state(false);
 
   // Redirect to home if not authenticated
@@ -33,6 +34,7 @@
           name: name.trim(),
           description: description.trim() || "",
           logoImageUrl: logoImageUrl.trim() || "",
+          size: size,
           creatorId: $session.data.user.id,
         }),
       });
@@ -46,7 +48,7 @@
       console.log("✅ Cup created:", result.cupId);
 
       showSuccess("Cup created successfully!");
-      
+
       // Redirect to cup admin page
       goto(`/alpha/cups/${result.cupId}/admin`);
     } catch (error) {
@@ -113,6 +115,28 @@
           ></textarea>
         </div>
 
+        <!-- Cup Size -->
+        <div class="form-group">
+          <label for="size" class="form-label">Cup Size *</label>
+          <div class="size-selector">
+            {#each [4, 8, 16, 32, 64, 128] as optionSize}
+              <label class="size-option">
+                <input
+                  type="radio"
+                  name="size"
+                  value={optionSize}
+                  bind:group={size}
+                  required
+                />
+                <span class="size-label">{optionSize}</span>
+              </label>
+            {/each}
+          </div>
+          <p class="text-sm text-navy/60 mt-2">
+            Select the number of participants for this tournament bracket
+          </p>
+        </div>
+
         <!-- Logo Image URL -->
         <div class="form-group">
           <label for="logoImageUrl" class="form-label"
@@ -145,7 +169,7 @@
           <div>
             <p class="text-navy font-semibold mb-1">After creating:</p>
             <ul class="text-navy/70 text-sm space-y-1">
-              <li>• Add up to 16 projects to your tournament</li>
+              <li>• Add exactly {size} projects to your tournament</li>
               <li>• Matches will be automatically generated</li>
               <li>• Users can vote with hearts on each match</li>
               <li>• Advance winners through each round</li>
@@ -290,5 +314,51 @@
 
   .flex-1 {
     flex: 1;
+  }
+
+  .size-selector {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.75rem;
+    margin-top: 0.5rem;
+  }
+
+  .size-option {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.875rem 1rem;
+    border: 2px solid rgba(26, 26, 78, 0.1);
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+    background: white;
+  }
+
+  .size-option:hover {
+    border-color: #4ecdc4;
+    background: rgba(78, 205, 196, 0.05);
+  }
+
+  .size-option input[type="radio"] {
+    display: none;
+  }
+
+  .size-option input[type="radio"]:checked + .size-label {
+    color: #1a1a4e;
+    font-weight: 700;
+  }
+
+  .size-option:has(input[type="radio"]:checked) {
+    border-color: #4ecdc4;
+    background: rgba(78, 205, 196, 0.1);
+    box-shadow: 0 0 0 3px rgba(78, 205, 196, 0.1);
+  }
+
+  .size-label {
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: #1a1a4e;
+    cursor: pointer;
   }
 </style>

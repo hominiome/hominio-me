@@ -1,5 +1,5 @@
 <script>
-  let { value = "", onChange } = $props();
+  let { value = "", onChange, id } = $props();
 
   function handleChange(event) {
     const newValue = event.target.value;
@@ -9,7 +9,7 @@
   }
 </script>
 
-<input type="time" {value} oninput={handleChange} class="time-picker" />
+<input type="time" {value} {id} oninput={handleChange} class="time-picker" />
 
 <style>
   .time-picker {

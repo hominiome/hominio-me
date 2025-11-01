@@ -2,6 +2,8 @@
   import MatchVoters from "$lib/MatchVoters.svelte";
   import { getUserProfile, prefetchUserProfiles } from "$lib/userProfileCache";
   import { getYouTubeEmbedUrl } from "$lib/youtubeUtils";
+  import CountdownTimer from "$lib/CountdownTimer.svelte";
+  import { getMatchEndDate } from "$lib/dateUtils.js";
 
   // Props
   let {
@@ -23,7 +25,11 @@
     canVote = true, // Whether user can vote (not owner of either project)
     toggleVideo,
     voteOnMatch,
+    roundMatches = [], // All matches in the same round (for fallback endDate)
   } = $props();
+
+  // Get match end date, falling back to round date
+  const matchEndDate = $derived(getMatchEndDate(match, roundMatches));
 
   // User profiles fetched from API
   let user1 = $state(null);

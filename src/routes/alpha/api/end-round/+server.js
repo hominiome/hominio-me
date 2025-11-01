@@ -1,5 +1,4 @@
 import { json } from "@sveltejs/kit";
-import { nanoid } from "nanoid";
 import { requireAdmin } from "$lib/api-helpers.server.js";
 import { zeroDb } from "$lib/db.server.js";
 
@@ -50,23 +49,19 @@ export async function POST({ request }) {
 
     // Automatically determine winners for matches that don't have winners yet
     const matchesWithoutWinners = currentMatches.filter((m) => !m.winnerId);
-    
+
     for (const match of matchesWithoutWinners) {
       // Get vote counts from vote table
       const votes1Result = await zeroDb
         .selectFrom("vote")
-        .select(({ fn }) => [
-          fn.sum("votingWeight").as("total"),
-        ])
+        .select(({ fn }) => [fn.sum("votingWeight").as("total")])
         .where("matchId", "=", match.id)
         .where("projectSide", "=", "project1")
         .executeTakeFirst();
 
       const votes2Result = await zeroDb
         .selectFrom("vote")
-        .select(({ fn }) => [
-          fn.sum("votingWeight").as("total"),
-        ])
+        .select(({ fn }) => [fn.sum("votingWeight").as("total")])
         .where("matchId", "=", match.id)
         .where("projectSide", "=", "project2")
         .executeTakeFirst();
@@ -107,122 +102,20 @@ export async function POST({ request }) {
       .where("round", "=", currentRound)
       .execute();
 
-    // Check if next round already exists
-    let nextRound = null;
-    if (currentRound === "round_16") {
-      nextRound = "quarter";
-    } else if (currentRound === "quarter") {
-      nextRound = "semi";
-    } else if (currentRound === "semi") {
-      nextRound = "final";
-    } else if (currentRound === "final") {
-      nextRound = null;
-    }
+    // Count winners
+    const winnersCount = updatedMatches.filter((m) => m.winnerId).length;
 
-    if (nextRound) {
-      const existingNextRoundMatches = await zeroDb
-        .selectFrom("cupMatch")
-        .selectAll()
-        .where("cupId", "=", cupId)
-        .where("round", "=", nextRound)
-        .execute();
+    // Check if this is the final round
+    const isFinalRound = currentRound === "final";
 
-      if (existingNextRoundMatches.length > 0) {
-        return json(
-          {
-            error: "Next round already exists! Cannot advance again.",
-          },
-          { status: 400 }
-        );
-      }
-    }
-
-    // Collect winners from updated matches
-    const winners = [];
-
-    for (const match of updatedMatches) {
-      if (!match.winnerId) {
-        // Skip matches without winners (shouldn't happen, but safety check)
-        console.warn(`Match ${match.id} doesn't have a winner after auto-determination`);
-        continue;
-      }
-      winners.push({
-        matchId: match.id,
-        winnerId: match.winnerId,
-        position: match.position,
-      });
-    }
-
-    // Ensure we have an even number of winners for pairing
-    if (winners.length % 2 !== 0) {
-      return json(
-        {
-          error: `Cannot advance: Expected even number of winners, got ${winners.length}. Some matches may be missing winners.`,
-        },
-        { status: 400 }
-      );
-    }
-
-    if (nextRound) {
-      // Create next round matches
-      // Pair winners: position 0+1, 2+3, 4+5, 6+7 for quarters
-      // Pair winners: position 0+1, 2+3 for semis
-      // Pair winners: position 0+1 for final
-
-      const sortedWinners = winners.sort((a, b) => a.position - b.position);
-
-      for (let i = 0; i < sortedWinners.length; i += 2) {
-        const winner1 = sortedWinners[i];
-        const winner2 = sortedWinners[i + 1];
-
-        if (winner1 && winner2) {
-          const matchId = nanoid();
-
-          // Create next round match (no wallets needed - votes tracked in vote table)
-          await zeroDb
-            .insertInto("cupMatch")
-            .values({
-              id: matchId,
-              cupId,
-              round: nextRound,
-              position: Math.floor(i / 2), // New position in next round
-              project1Id: winner1.winnerId,
-              project2Id: winner2.winnerId,
-              winnerId: "",
-              status: "voting",
-              completedAt: "",
-            })
-            .execute();
-        }
-      }
-
-      // Update cup to next round
-      await zeroDb
-        .updateTable("cup")
-        .set({
-          currentRound: nextRound,
-          updatedAt: now,
-        })
-        .where("id", "=", cupId)
-        .execute();
-
-      // Update all matches in the next round from "pending" to "voting"
-      await zeroDb
-        .updateTable("cupMatch")
-        .set({
-          status: "voting",
-        })
-        .where("cupId", "=", cupId)
-        .where("round", "=", nextRound)
-        .where("status", "=", "pending")
-        .execute();
-    } else {
+    if (isFinalRound) {
       // Final round completed, mark cup as completed
+      const finalWinner = updatedMatches.find((m) => m.winnerId);
       await zeroDb
         .updateTable("cup")
         .set({
           status: "completed",
-          winnerId: winners[0]?.winnerId || "",
+          winnerId: finalWinner?.winnerId || "",
           completedAt: now,
           updatedAt: now,
         })
@@ -232,11 +125,10 @@ export async function POST({ request }) {
 
     return json({
       success: true,
-      winnersCount: winners.length,
-      nextRound: nextRound || "completed",
-      message: nextRound
-        ? `Round completed! ${winners.length} winners advanced to ${nextRound}.`
-        : `Cup completed! Winner: ${winners[0]?.winnerId}`,
+      winnersCount,
+      message: isFinalRound
+        ? `Cup completed! Winner determined.`
+        : `Round completed! ${winnersCount} winners determined. Use "Start Next Round" to advance.`,
     });
   } catch (error) {
     console.error("End round error:", error);

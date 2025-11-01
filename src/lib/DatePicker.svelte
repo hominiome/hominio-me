@@ -1,5 +1,5 @@
 <script>
-  let { value = "", onChange, minDate, maxDate } = $props();
+  let { value = "", onChange, minDate, maxDate, id } = $props();
 
   function handleChange(event) {
     const newValue = event.target.value;
@@ -12,6 +12,7 @@
 <input
   type="date"
   {value}
+  {id}
   oninput={handleChange}
   min={minDate}
   max={maxDate}

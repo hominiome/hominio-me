@@ -120,11 +120,19 @@ async function createTables() {
 
     // Remove legacy walletId columns from cupMatch if they exist
     try {
-      await sql`ALTER TABLE "cupMatch" DROP COLUMN IF EXISTS "project1WalletId"`.execute(db);
-      await sql`ALTER TABLE "cupMatch" DROP COLUMN IF EXISTS "project2WalletId"`.execute(db);
-      console.log("✅ Removed project1WalletId and project2WalletId columns from cupMatch table");
+      await sql`ALTER TABLE "cupMatch" DROP COLUMN IF EXISTS "project1WalletId"`.execute(
+        db
+      );
+      await sql`ALTER TABLE "cupMatch" DROP COLUMN IF EXISTS "project2WalletId"`.execute(
+        db
+      );
+      console.log(
+        "✅ Removed project1WalletId and project2WalletId columns from cupMatch table"
+      );
     } catch (error) {
-      console.log("ℹ️  WalletId columns don't exist in cupMatch (already removed)");
+      console.log(
+        "ℹ️  WalletId columns don't exist in cupMatch (already removed)"
+      );
     }
 
     // Add logoImageUrl column if it doesn't exist
@@ -135,6 +143,36 @@ async function createTables() {
       console.log("✅ Cup logoImageUrl column added");
     } catch (error) {
       console.log("✅ Cup logoImageUrl column already exists");
+    }
+
+    // Add endDate column to cup if it doesn't exist
+    try {
+      await sql`ALTER TABLE cup ADD COLUMN IF NOT EXISTS "endDate" TEXT DEFAULT ''`.execute(
+        db
+      );
+      console.log("✅ Cup endDate column added");
+    } catch (error) {
+      console.log("✅ Cup endDate column already exists");
+    }
+
+    // Add size column to cup if it doesn't exist
+    try {
+      await sql`ALTER TABLE cup ADD COLUMN IF NOT EXISTS "size" INTEGER DEFAULT 16`.execute(
+        db
+      );
+      console.log("✅ Cup size column added");
+    } catch (error) {
+      console.log("✅ Cup size column already exists");
+    }
+
+    // Add selectedProjectIds column to cup if it doesn't exist
+    try {
+      await sql`ALTER TABLE cup ADD COLUMN IF NOT EXISTS "selectedProjectIds" TEXT DEFAULT '[]'`.execute(
+        db
+      );
+      console.log("✅ Cup selectedProjectIds column added");
+    } catch (error) {
+      console.log("✅ Cup selectedProjectIds column already exists");
     }
 
     // Add index on creatorId for cup table
@@ -186,6 +224,16 @@ async function createTables() {
     await sql`ALTER TABLE "cupMatch" REPLICA IDENTITY FULL`.execute(db);
     console.log("✅ Enabled replica identity for cupMatch table");
 
+    // Add endDate column to cupMatch if it doesn't exist
+    try {
+      await sql`ALTER TABLE "cupMatch" ADD COLUMN IF NOT EXISTS "endDate" TEXT DEFAULT ''`.execute(
+        db
+      );
+      console.log("✅ CupMatch endDate column added");
+    } catch (error) {
+      console.log("✅ CupMatch endDate column already exists");
+    }
+
     // Migrate userVotingPackage to userIdentities if it exists
     try {
       const tableExists = await sql`
@@ -195,29 +243,46 @@ async function createTables() {
           AND table_name = 'userVotingPackage'
         )
       `.execute(db);
-      
+
       if (tableExists.rows[0]?.exists) {
         // Rename table
-        await sql`ALTER TABLE "userVotingPackage" RENAME TO "userIdentities"`.execute(db);
+        await sql`ALTER TABLE "userVotingPackage" RENAME TO "userIdentities"`.execute(
+          db
+        );
         console.log("✅ Renamed userVotingPackage table to userIdentities");
-        
+
         // Rename columns
-        await sql`ALTER TABLE "userIdentities" RENAME COLUMN "packageType" TO "identityType"`.execute(db);
-        await sql`ALTER TABLE "userIdentities" RENAME COLUMN "purchasedAt" TO "selectedAt"`.execute(db);
-        console.log("✅ Renamed columns: packageType -> identityType, purchasedAt -> selectedAt");
-        
+        await sql`ALTER TABLE "userIdentities" RENAME COLUMN "packageType" TO "identityType"`.execute(
+          db
+        );
+        await sql`ALTER TABLE "userIdentities" RENAME COLUMN "purchasedAt" TO "selectedAt"`.execute(
+          db
+        );
+        console.log(
+          "✅ Renamed columns: packageType -> identityType, purchasedAt -> selectedAt"
+        );
+
         // Update indexes
         try {
-          await sql`ALTER INDEX IF EXISTS "userVotingPackage_userId_idx" RENAME TO "userIdentities_userId_idx"`.execute(db);
-          await sql`DROP INDEX IF EXISTS "userVotingPackage_userId_unique"`.execute(db);
-          await sql`CREATE UNIQUE INDEX IF NOT EXISTS userIdentities_userId_unique ON "userIdentities" ("userId")`.execute(db);
+          await sql`ALTER INDEX IF EXISTS "userVotingPackage_userId_idx" RENAME TO "userIdentities_userId_idx"`.execute(
+            db
+          );
+          await sql`DROP INDEX IF EXISTS "userVotingPackage_userId_unique"`.execute(
+            db
+          );
+          await sql`CREATE UNIQUE INDEX IF NOT EXISTS userIdentities_userId_unique ON "userIdentities" ("userId")`.execute(
+            db
+          );
           console.log("✅ Updated indexes");
         } catch (e) {
           console.log("ℹ️  Index update skipped (may not exist)");
         }
       }
     } catch (error) {
-      console.log("ℹ️  Migration from userVotingPackage skipped:", error.message);
+      console.log(
+        "ℹ️  Migration from userVotingPackage skipped:",
+        error.message
+      );
     }
 
     // UserIdentities table
@@ -320,7 +385,10 @@ async function createTables() {
           );
           console.log("✅ Updated publication to include current tables");
         } catch (alterError) {
-          console.log("ℹ️  Publication already configured:", alterError.message);
+          console.log(
+            "ℹ️  Publication already configured:",
+            alterError.message
+          );
         }
       } else {
         throw error;
@@ -337,4 +405,3 @@ async function createTables() {
 createTables()
   .then(() => process.exit(0))
   .catch(() => process.exit(1));
-

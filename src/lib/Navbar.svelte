@@ -158,7 +158,10 @@
           {/if}
         </a>
       {:else}
-        <button onclick={signInWithGoogle} class="mobile-nav-item mobile-nav-signin">
+        <button
+          onclick={signInWithGoogle}
+          class="mobile-nav-item mobile-nav-signin"
+        >
           <svg
             class="mobile-nav-icon"
             fill="none"
@@ -176,6 +179,7 @@
         </button>
       {/if}
     </div>
+  </div>
 </nav>
 
 <style>
@@ -489,7 +493,7 @@
       margin: 0;
       padding: 0;
       border-bottom: none;
-      border-top: 1px solid rgba(255, 255, 255, 0.1);
+      border-top: none;
       box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.2);
     }
 

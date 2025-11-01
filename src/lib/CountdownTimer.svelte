@@ -27,15 +27,18 @@
     const seconds = Math.floor((diff % (1000 * 60)) / 1000);
 
     if (displayFormat === "compact") {
+      // Format: h m s (no words, just numbers and spaces)
+      const parts = [];
       if (days > 0) {
-        timeRemaining = `${days}d ${hours}h`;
-      } else if (hours > 0) {
-        timeRemaining = `${hours}h ${minutes}m`;
-      } else if (minutes > 0) {
-        timeRemaining = `${minutes}m ${seconds}s`;
+        parts.push(`${days * 24 + hours}h`);
+        if (minutes > 0) parts.push(`${minutes}m`);
+        if (seconds > 0 && parts.length < 2) parts.push(`${seconds}s`);
       } else {
-        timeRemaining = `${seconds}s`;
+        if (hours > 0) parts.push(`${hours}h`);
+        if (minutes > 0) parts.push(`${minutes}m`);
+        if (seconds > 0) parts.push(`${seconds}s`);
       }
+      timeRemaining = parts.join(" ");
     } else {
       const parts = [];
       if (days > 0) parts.push(`${days} day${days !== 1 ? "s" : ""}`);
