@@ -17,6 +17,7 @@ const project = table('project')
     description: string(),
     city: string(),
     userId: string(), // Reference to user - fetch profile via /alpha/api/user/[userId]
+    videoUrl: string(), // YouTube URL for project pitch video (optional)
     sdgs: string(), // JSON string array of SDG goals (1-3): ["01_NoPoverty", "13_Climate", ...]
     createdAt: string(), // ISO timestamp
   })

@@ -66,6 +66,16 @@ async function createTables() {
       console.log("✅ Project sdgs column already exists");
     }
 
+    // Add videoUrl column if it doesn't exist
+    try {
+      await sql`ALTER TABLE project ADD COLUMN IF NOT EXISTS "videoUrl" TEXT DEFAULT ''`.execute(
+        db
+      );
+      console.log("✅ Project videoUrl column added");
+    } catch (error) {
+      console.log("✅ Project videoUrl column already exists");
+    }
+
     // Add index on userId for project table
     await db.schema
       .createIndex("project_userId_idx")

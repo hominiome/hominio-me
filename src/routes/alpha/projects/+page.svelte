@@ -15,13 +15,16 @@
   let projects = $state<any[]>([]);
   let loading = $state(true);
   let showCreateForm = $state(false);
-  let userProfiles = $state<Map<string, { name: string | null; image: string | null }>>(new Map());
+  let userProfiles = $state<
+    Map<string, { name: string | null; image: string | null }>
+  >(new Map());
 
   // Form state
   let newProject = $state({
     title: "",
     description: "",
     city: "",
+    videoUrl: "",
     sdgs: [] as string[],
   });
 
@@ -81,16 +84,21 @@
           const newProjects = Array.from(data);
           projects = newProjects;
           loading = false;
-          
+
           // Fetch user profiles for all projects
-          const userIds = [...new Set(newProjects.map((p: any) => p.userId).filter(Boolean))];
+          const userIds = [
+            ...new Set(newProjects.map((p: any) => p.userId).filter(Boolean)),
+          ];
           if (userIds.length > 0) {
             await prefetchUserProfiles(userIds);
             // Update userProfiles map
             const newUserProfiles = new Map(userProfiles);
             for (const userId of userIds) {
               const profile = await getUserProfile(userId);
-              newUserProfiles.set(userId, { name: profile.name, image: profile.image });
+              newUserProfiles.set(userId, {
+                name: profile.name,
+                image: profile.image,
+              });
             }
             userProfiles = newUserProfiles; // Trigger reactivity
           }
@@ -119,26 +127,33 @@
       title: newProject.title,
       description: newProject.description,
       city: newProject.city,
+      videoUrl: newProject.videoUrl.trim() || "",
       userId: $session.data.user.id,
       sdgs: JSON.stringify(newProject.sdgs),
       createdAt: new Date().toISOString(),
     });
 
     // Reset form
-    newProject = { title: "", description: "", city: "", sdgs: [] };
+    newProject = {
+      title: "",
+      description: "",
+      city: "",
+      videoUrl: "",
+      sdgs: [],
+    };
     showCreateForm = false;
   }
 
   async function deleteProject(id: string) {
     if (!zero || !$session.data?.user) return;
-    
+
     // Find the project to verify ownership (client-side check for UX)
     const project = projects.find((p) => p.id === id);
     if (!project || project.userId !== $session.data.user.id) {
       alert("You can only delete your own projects.");
       return;
     }
-    
+
     if (!confirm("Are you sure you want to delete this project?")) return;
 
     // Zero server will also enforce this permission server-side
@@ -212,7 +227,10 @@
               class="space-y-5"
             >
               <div>
-                <label for="project-title" class="block text-navy/80 font-medium mb-2">Title</label>
+                <label
+                  for="project-title"
+                  class="block text-navy/80 font-medium mb-2">Title</label
+                >
                 <input
                   id="project-title"
                   type="text"
@@ -223,8 +241,9 @@
                 />
               </div>
               <div>
-                <label for="project-description" class="block text-navy/80 font-medium mb-2"
-                  >Description</label
+                <label
+                  for="project-description"
+                  class="block text-navy/80 font-medium mb-2">Description</label
                 >
                 <textarea
                   id="project-description"
@@ -236,7 +255,10 @@
                 ></textarea>
               </div>
               <div>
-                <label for="project-city" class="block text-navy/80 font-medium mb-2">City</label>
+                <label
+                  for="project-city"
+                  class="block text-navy/80 font-medium mb-2">City</label
+                >
                 <input
                   id="project-city"
                   type="text"
@@ -247,9 +269,32 @@
                 />
               </div>
 
+              <!-- Video URL (Optional) -->
+              <div>
+                <label
+                  for="project-videoUrl"
+                  class="block text-navy/80 font-medium mb-2"
+                >
+                  YouTube Video URL (Optional)
+                </label>
+                <input
+                  id="project-videoUrl"
+                  type="url"
+                  bind:value={newProject.videoUrl}
+                  placeholder="https://www.youtube.com/watch?v=..."
+                  class="input w-full"
+                />
+                <p class="text-sm text-navy/60 mt-1">
+                  Add a YouTube link for your project pitch video
+                </p>
+              </div>
+
               <!-- SDG Selection -->
               <div>
-                <label for="project-sdgs" class="block text-navy/80 font-medium mb-2">
+                <label
+                  for="project-sdgs"
+                  class="block text-navy/80 font-medium mb-2"
+                >
                   Sustainable Development Goals (Select 1-3) *
                 </label>
                 <p class="text-sm text-navy/60 mb-3">
@@ -764,4 +809,3 @@
     position: relative;
   }
 </style>
-

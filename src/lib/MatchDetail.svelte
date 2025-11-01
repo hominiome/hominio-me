@@ -1,6 +1,7 @@
 <script>
   import MatchVoters from "$lib/MatchVoters.svelte";
   import { getUserProfile, prefetchUserProfiles } from "$lib/userProfileCache";
+  import { getYouTubeEmbedUrl } from "$lib/youtubeUtils";
 
   // Props
   let {
@@ -23,6 +24,10 @@
   // User profiles fetched from API
   let user1 = $state(null);
   let user2 = $state(null);
+
+  // Get video URLs for each project (fallback to default if not provided)
+  const video1Url = $derived(getYouTubeEmbedUrl(project1?.videoUrl));
+  const video2Url = $derived(getYouTubeEmbedUrl(project2?.videoUrl));
 
   // Fetch user profiles when component mounts or projects change
   $effect(() => {
@@ -52,7 +57,7 @@
     <!-- Video Playing (Full Width, Hides Both Projects) -->
     <div class="video-playing-full">
       <iframe
-        src="https://www.youtube.com/embed/vHfVI_4unYY?rel=0&modestbranding=1&autoplay=1"
+        src={expandedVideo === `${match.id}-p1` ? video1Url : video2Url}
         title="Project Pitch Video"
         frameborder="0"
         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
