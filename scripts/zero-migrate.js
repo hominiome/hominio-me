@@ -298,6 +298,32 @@ async function createTables() {
       .execute();
     console.log("✅ UserIdentities table created");
 
+    // Add cupId column to userIdentities if it doesn't exist
+    try {
+      await sql`ALTER TABLE "userIdentities" ADD COLUMN IF NOT EXISTS "cupId" TEXT`.execute(
+        db
+      );
+      console.log("✅ UserIdentities cupId column added");
+
+      // For existing records without cupId, we need to handle them
+      // Check if there are any records without cupId
+      const recordsWithoutCupId = await sql`
+        SELECT COUNT(*) as count FROM "userIdentities" WHERE "cupId" IS NULL
+      `.execute(db);
+
+      if (recordsWithoutCupId.rows[0]?.count > 0) {
+        console.log(
+          `⚠️  Found ${recordsWithoutCupId.rows[0].count} userIdentities records without cupId`
+        );
+        console.log("⚠️  These records will need to be migrated or deleted");
+        console.log(
+          "⚠️  Consider assigning them to a default cup or deleting them"
+        );
+      }
+    } catch (error) {
+      console.log("✅ UserIdentities cupId column already exists");
+    }
+
     // Add index on userId for userIdentities table
     await db.schema
       .createIndex("userIdentities_userId_idx")
@@ -307,12 +333,35 @@ async function createTables() {
       .execute();
     console.log("✅ UserIdentities userId index created");
 
-    // Add unique constraint on userId (one identity per user)
+    // Add index on cupId for userIdentities table
     try {
-      await sql`CREATE UNIQUE INDEX IF NOT EXISTS userIdentities_userId_unique ON "userIdentities" ("userId")`.execute(
+      await db.schema
+        .createIndex("userIdentities_cupId_idx")
+        .ifNotExists()
+        .on("userIdentities")
+        .column("cupId")
+        .execute();
+      console.log("✅ UserIdentities cupId index created");
+    } catch (error) {
+      console.log("✅ UserIdentities cupId index already exists");
+    }
+
+    // Remove old unique constraint on userId (now allows multiple identities per user, one per cup)
+    try {
+      await sql`DROP INDEX IF EXISTS userIdentities_userId_unique`.execute(db);
+      console.log("✅ Removed old unique constraint on userId");
+    } catch (error) {
+      console.log("ℹ️  Old unique constraint doesn't exist");
+    }
+
+    // Add unique constraint on (userId, cupId) - one identity per user per cup
+    try {
+      await sql`CREATE UNIQUE INDEX IF NOT EXISTS userIdentities_userId_cupId_unique ON "userIdentities" ("userId", "cupId")`.execute(
         db
       );
-      console.log("✅ UserIdentities unique constraint on userId created");
+      console.log(
+        "✅ UserIdentities unique constraint on (userId, cupId) created"
+      );
     } catch (error) {
       console.log("✅ UserIdentities unique constraint already exists");
     }
@@ -369,33 +418,206 @@ async function createTables() {
     await sql`ALTER TABLE vote REPLICA IDENTITY FULL`.execute(db);
     console.log("✅ Enabled replica identity for vote table");
 
+    // IdentityPurchase table - check if it exists first
+    const identityPurchaseExists = await sql`
+      SELECT EXISTS (
+        SELECT FROM information_schema.tables 
+        WHERE table_schema = 'public' 
+        AND table_name = 'identityPurchase'
+      )
+    `.execute(db);
+
+    if (!identityPurchaseExists.rows[0]?.exists) {
+      await db.schema
+        .createTable("identityPurchase")
+        .addColumn("id", "text", (col) => col.primaryKey())
+        .addColumn("userId", "text", (col) => col.notNull())
+        .addColumn("cupId", "text", (col) => col.notNull())
+        .addColumn("identityType", "text", (col) => col.notNull())
+        .addColumn("price", "integer", (col) => col.notNull()) // Price in cents
+        .addColumn("purchasedAt", "text", (col) => col.notNull())
+        .addColumn("userIdentityId", "text", (col) => col.notNull())
+        .execute();
+      console.log("✅ IdentityPurchase table created");
+    } else {
+      console.log(
+        "ℹ️  IdentityPurchase table already exists, verifying structure..."
+      );
+      // Verify all required columns exist
+      const columns = await sql`
+        SELECT column_name FROM information_schema.columns 
+        WHERE table_name = 'identityPurchase'
+        ORDER BY ordinal_position
+      `.execute(db);
+      const columnNames = columns.rows.map((r) => r.column_name);
+      const requiredColumns = [
+        "id",
+        "userId",
+        "cupId",
+        "identityType",
+        "price",
+        "purchasedAt",
+        "userIdentityId",
+      ];
+      const missingColumns = requiredColumns.filter(
+        (col) => !columnNames.includes(col)
+      );
+      if (missingColumns.length > 0) {
+        console.log(
+          `⚠️  Missing columns in identityPurchase: ${missingColumns.join(", ")}`
+        );
+        // Add missing columns
+        for (const col of missingColumns) {
+          try {
+            if (col === "id") {
+              // Can't add primary key column, table structure is wrong
+              console.log(
+                `⚠️  Cannot add ${col} column - table structure issue`
+              );
+            } else if (col === "price") {
+              await sql`ALTER TABLE "identityPurchase" ADD COLUMN IF NOT EXISTS "${col}" INTEGER NOT NULL DEFAULT 0`.execute(
+                db
+              );
+            } else {
+              await sql`ALTER TABLE "identityPurchase" ADD COLUMN IF NOT EXISTS "${col}" TEXT NOT NULL DEFAULT ''`.execute(
+                db
+              );
+            }
+            console.log(`✅ Added missing column: ${col}`);
+          } catch (error) {
+            console.log(`⚠️  Could not add column ${col}:`, error.message);
+          }
+        }
+      } else {
+        console.log("✅ IdentityPurchase table structure verified");
+      }
+    }
+
+    // Add indexes for identityPurchase table
+    await db.schema
+      .createIndex("identityPurchase_userId_idx")
+      .ifNotExists()
+      .on("identityPurchase")
+      .column("userId")
+      .execute();
+    await db.schema
+      .createIndex("identityPurchase_cupId_idx")
+      .ifNotExists()
+      .on("identityPurchase")
+      .column("cupId")
+      .execute();
+    console.log("✅ IdentityPurchase indexes created");
+
+    // Enable WAL replication for identityPurchase table
+    await sql`ALTER TABLE "identityPurchase" REPLICA IDENTITY FULL`.execute(db);
+    console.log("✅ Enabled replica identity for identityPurchase table");
+
     // Create or update publication with current tables
     try {
       // Try to create publication
-      await sql`CREATE PUBLICATION zero_data FOR TABLE project, cup, "cupMatch", "userIdentities", vote`.execute(
+      await sql`CREATE PUBLICATION zero_data FOR TABLE project, cup, "cupMatch", "userIdentities", "identityPurchase", vote`.execute(
         db
       );
       console.log("✅ Created publication for Zero");
     } catch (error) {
       if (error.message?.includes("already exists")) {
         // Publication exists, ensure current tables are included
-        try {
-          await sql`ALTER PUBLICATION zero_data ADD TABLE IF NOT EXISTS project, cup, "cupMatch", "userIdentities", vote`.execute(
-            db
-          );
-          console.log("✅ Updated publication to include current tables");
-        } catch (alterError) {
-          console.log(
-            "ℹ️  Publication already configured:",
-            alterError.message
-          );
+        // Check which tables are already in the publication before adding
+        const publicationTables = await sql`
+          SELECT tablename FROM pg_publication_tables 
+          WHERE pubname = 'zero_data'
+        `.execute(db);
+
+        const existingTables = new Set(
+          publicationTables.rows.map((row) => row.tablename.toLowerCase())
+        );
+
+        const tablesToAdd = [
+          { name: "project", quoted: false },
+          { name: "cup", quoted: false },
+          { name: "cupMatch", quoted: true },
+          { name: "userIdentities", quoted: true },
+          { name: "identityPurchase", quoted: true },
+          { name: "vote", quoted: false },
+        ];
+
+        for (const table of tablesToAdd) {
+          const tableName = table.quoted ? `"${table.name}"` : table.name;
+
+          // Check if table is already in publication (case-insensitive comparison)
+          if (existingTables.has(table.name.toLowerCase())) {
+            console.log(`ℹ️  ${table.name} already in publication (skipping)`);
+            continue;
+          }
+
+          try {
+            await sql
+              .raw(`ALTER PUBLICATION zero_data ADD TABLE ${tableName}`)
+              .execute(db);
+            console.log(`✅ Added ${table.name} to publication`);
+          } catch (addError) {
+            if (
+              addError.message?.includes("already exists") ||
+              addError.message?.includes("is already a member")
+            ) {
+              console.log(`ℹ️  ${table.name} already in publication`);
+            } else {
+              console.log(
+                `⚠️  Could not add ${table.name} to publication:`,
+                addError.message
+              );
+            }
+          }
         }
       } else {
         throw error;
       }
     }
 
-    console.log("🎉 Zero database migration completed successfully!");
+    // Final verification: Check publication contents
+    console.log("\n📋 Verifying publication configuration...");
+    const finalPublicationTables = await sql`
+      SELECT tablename FROM pg_publication_tables 
+      WHERE pubname = 'zero_data'
+      ORDER BY tablename
+    `.execute(db);
+    console.log("✅ Tables in zero_data publication:");
+    finalPublicationTables.rows.forEach((row) => {
+      console.log(`   - ${row.tablename}`);
+    });
+
+    // Verify identityPurchase table exists and has correct columns
+    const identityPurchaseCheck = await sql`
+      SELECT column_name, data_type 
+      FROM information_schema.columns 
+      WHERE table_name = 'identityPurchase'
+      ORDER BY ordinal_position
+    `.execute(db);
+    if (identityPurchaseCheck.rows.length > 0) {
+      console.log("\n✅ identityPurchase table columns:");
+      identityPurchaseCheck.rows.forEach((row) => {
+        console.log(`   - ${row.column_name} (${row.data_type})`);
+      });
+    } else {
+      console.log("\n⚠️  WARNING: identityPurchase table not found!");
+    }
+
+    // Verify userIdentities.cupId column exists
+    const cupIdCheck = await sql`
+      SELECT column_name 
+      FROM information_schema.columns 
+      WHERE table_name = 'userIdentities' AND column_name = 'cupId'
+    `.execute(db);
+    if (cupIdCheck.rows.length > 0) {
+      console.log("\n✅ userIdentities.cupId column exists");
+    } else {
+      console.log("\n⚠️  WARNING: userIdentities.cupId column not found!");
+    }
+
+    console.log("\n🎉 Zero database migration completed successfully!");
+    console.log(
+      "\n⚠️  IMPORTANT: Restart your Zero cache server to pick up schema changes!"
+    );
   } catch (error) {
     console.error("❌ Migration failed:", error);
     throw error;

@@ -11,6 +11,7 @@
   import { showError, showInfo } from "$lib/toastStore.js";
   import { formatEndDate, getMatchEndDate } from "$lib/dateUtils.js";
   import CountdownTimer from "$lib/CountdownTimer.svelte";
+  import { calculatePrizePool, formatPrizePool } from "$lib/prizePoolUtils.js";
 
   const zeroContext = useZero();
   const session = authClient.useSession();
@@ -38,6 +39,7 @@
   let projects = $state([]);
   let matches = $state([]);
   let votes = $state([]); // All vote records
+  let purchases = $state([]); // All identity purchases for this cup
   let userIdentity = $state(null);
   let userVotes = $state([]); // Track which matches user has voted on
   let loading = $state(true);
@@ -65,6 +67,7 @@
     let projectsView;
     let matchesView;
     let votesView;
+    let purchasesView;
 
     (async () => {
       // Wait for Zero to be ready
@@ -134,6 +137,18 @@
         votes = Array.from(data);
       });
 
+      // Query identity purchases for this cup for prize pool calculation
+      const purchasesQuery = zero.query.identityPurchase.where(
+        "cupId",
+        "=",
+        cupId
+      );
+      purchasesView = purchasesQuery.materialize();
+
+      purchasesView.addListener((data) => {
+        purchases = Array.from(data);
+      });
+
       // Query user's identity and votes if logged in
       let userIdentityView;
       let userVotesView;
@@ -141,12 +156,10 @@
       if ($session.data?.user) {
         const userId = $session.data.user.id;
 
-        // Query user's identity
-        const userIdentityQuery = zero.query.userIdentities.where(
-          "userId",
-          "=",
-          userId
-        );
+        // Query user's identity for this specific cup
+        const userIdentityQuery = zero.query.userIdentities
+          .where("userId", "=", userId)
+          .where("cupId", "=", cupId);
         userIdentityView = userIdentityQuery.materialize();
 
         userIdentityView.addListener((data) => {
@@ -172,6 +185,7 @@
         if (projectsView) projectsView.destroy();
         if (matchesView) matchesView.destroy();
         if (votesView) votesView.destroy();
+        if (purchasesView) purchasesView.destroy();
         if (userIdentityView) userIdentityView.destroy();
         if (userVotesView) userVotesView.destroy();
       };
@@ -439,6 +453,12 @@
               </p>
             </div>
           {/if}
+          <div class="flex-shrink-0">
+            <p class="text-navy/60 text-xs md:text-sm mb-1">Prize Pool</p>
+            <p class="text-sm md:text-lg lg:text-xl font-bold text-yellow">
+              {formatPrizePool(calculatePrizePool(purchases))}
+            </p>
+          </div>
           <div class="flex-shrink-0">
             <p class="text-navy/60 text-xs md:text-sm mb-1">Created By</p>
             <p class="text-sm md:text-base lg:text-lg font-semibold text-navy">

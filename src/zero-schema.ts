@@ -63,15 +63,30 @@ const cupMatch = table('cupMatch')
   })
   .primaryKey('id');
 
-// User identities - tracks which voting weight identity a user has selected
+// User identities - tracks which voting weight identity a user has selected per cup
+// Note: cupId is optional in schema to allow migration, but should be set for new records
 const userIdentities = table('userIdentities')
   .columns({
     id: string(),
     userId: string(), // User ID - indexed
+    cupId: string(), // Cup ID - indexed (optional for migration, required for new records)
     identityType: string(), // 'hominio' | 'founder' | 'angel'
     votingWeight: number(), // 1 | 5 | 10
     selectedAt: string(), // ISO timestamp
     upgradedFrom: string(), // Previous identity type if upgraded (nullable)
+  })
+  .primaryKey('id');
+
+// Identity purchases - tracks purchases of voting identities per cup
+const identityPurchase = table('identityPurchase')
+  .columns({
+    id: string(),
+    userId: string(), // User ID - indexed
+    cupId: string(), // Cup ID - indexed
+    identityType: string(), // 'hominio' | 'founder' | 'angel'
+    price: number(), // Price in cents (100 = 1.00€, 1000 = 10.00€)
+    purchasedAt: string(), // ISO timestamp
+    userIdentityId: string(), // Reference to userIdentities.id
   })
   .primaryKey('id');
 
@@ -88,7 +103,7 @@ const vote = table('vote')
   .primaryKey('id');
 
 export const schema = createSchema({
-  tables: [project, cup, cupMatch, userIdentities, vote],
+  tables: [project, cup, cupMatch, userIdentities, identityPurchase, vote],
 });
 
 // AuthData type - JWT claims from BetterAuth
@@ -160,7 +175,7 @@ export const permissions = definePermissions<AuthData, typeof schema>(
       row: {
         // SELECT: Everyone can read identities (public transparency)
         select: ANYONE_CAN,
-        // INSERT: Users can create their own identity
+        // INSERT: Users can create their own identity for a cup
         insert: [
           (authData, { cmp }) => {
             return cmp('userId', '=', authData.sub);
@@ -173,6 +188,21 @@ export const permissions = definePermissions<AuthData, typeof schema>(
           }
         ],
         // DELETE: Nobody can delete identities
+        delete: [],
+      },
+    },
+    identityPurchase: {
+      row: {
+        // SELECT: Everyone can read purchases (public transparency)
+        select: ANYONE_CAN,
+        // INSERT: Users can create their own purchase records
+        insert: [
+          (authData, { cmp }) => {
+            return cmp('userId', '=', authData.sub);
+          }
+        ],
+        // UPDATE/DELETE: Purchases are immutable
+        update: [],
         delete: [],
       },
     },

@@ -25,17 +25,29 @@ export async function POST({ request }) {
   const now = new Date().toISOString();
 
   try {
-    // Check if user has an identity
+    // Get match to find cupId
+    const match = await zeroDb
+      .selectFrom("cupMatch")
+      .selectAll()
+      .where("id", "=", matchId)
+      .executeTakeFirst();
+
+    if (!match) {
+      return json({ error: "Match not found" }, { status: 404 });
+    }
+
+    // Check if user has an identity for this specific cup
     const userIdentity = await zeroDb
       .selectFrom("userIdentities")
       .selectAll()
       .where("userId", "=", userId)
+      .where("cupId", "=", match.cupId)
       .executeTakeFirst();
 
     if (!userIdentity) {
       return json(
         {
-          error: "You need to select a voting weight before you can vote. Please visit the selection page.",
+          error: "You need to purchase a voting identity for this cup before you can vote. Please visit the purchase page.",
         },
         { status: 400 }
       );
@@ -56,17 +68,6 @@ export async function POST({ request }) {
         },
         { status: 400 }
       );
-    }
-
-    // Get match
-    const match = await zeroDb
-      .selectFrom("cupMatch")
-      .selectAll()
-      .where("id", "=", matchId)
-      .executeTakeFirst();
-
-    if (!match) {
-      return json({ error: "Match not found" }, { status: 404 });
     }
 
     // Get the project being voted on and check ownership

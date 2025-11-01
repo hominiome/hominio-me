@@ -9,6 +9,8 @@
   import { showError, showInfo } from "$lib/toastStore.js";
   import { getMatchEndDate } from "$lib/dateUtils.js";
   import CountdownTimer from "$lib/CountdownTimer.svelte";
+  import { calculatePrizePool, formatPrizePool } from "$lib/prizePoolUtils.js";
+  import CupHeader from "$lib/CupHeader.svelte";
 
   const zeroContext = useZero();
   const session = authClient.useSession();
@@ -18,8 +20,9 @@
   let projects = $state([]);
   let allMatches = $state([]); // All matches from database
   let votes = $state([]);
-  let userIdentity = $state(null);
+  let userIdentities = $state([]); // All user identities (cup-specific)
   let userVotes = $state([]);
+  let purchases = $state([]); // All identity purchases for prize pool calculation
   let loading = $state(true);
   let voting = $state(false);
   let votingAnimation = $state(null);
@@ -202,14 +205,22 @@
         votes = Array.from(data);
       });
 
-      // Query user's identity and votes if logged in
+      // Query all identity purchases for prize pool calculation
+      const purchasesQuery = zero.query.identityPurchase;
+      const purchasesView = purchasesQuery.materialize();
+
+      purchasesView.addListener((data) => {
+        purchases = Array.from(data);
+      });
+
+      // Query user's identities and votes if logged in
       let userIdentityView;
       let userVotesView;
 
       if ($session.data?.user) {
         const userId = $session.data.user.id;
 
-        // Query user's identity
+        // Query all user identities (cup-specific)
         const userIdentityQuery = zero.query.userIdentities.where(
           "userId",
           "=",
@@ -218,12 +229,7 @@
         userIdentityView = userIdentityQuery.materialize();
 
         userIdentityView.addListener((data) => {
-          const identities = Array.from(data);
-          if (identities.length > 0) {
-            userIdentity = identities[0];
-          } else {
-            userIdentity = null;
-          }
+          userIdentities = Array.from(data);
         });
 
         // Query user's votes
@@ -240,6 +246,7 @@
         if (projectsView) projectsView.destroy();
         if (matchesView) matchesView.destroy();
         if (votesView) votesView.destroy();
+        if (purchasesView) purchasesView.destroy();
         if (userIdentityView) userIdentityView.destroy();
         if (userVotesView) userVotesView.destroy();
       };
@@ -294,8 +301,10 @@
     return vote?.projectSide || null;
   }
 
-  function getUserVotingWeight() {
-    return userIdentity?.votingWeight || 0;
+  function getUserVotingWeight(match) {
+    // Get identity for the match's cup
+    const identity = userIdentities.find((id) => id.cupId === match.cupId);
+    return identity?.votingWeight || 0;
   }
 
   function canUserVoteOnMatch(match) {
@@ -306,6 +315,8 @@
     // User cannot vote if they own either project
     // Also need both projects to exist
     if (!project1 || !project2) return false;
+    // Show voting buttons if user is logged in and doesn't own either project
+    // (We'll check for identity when they actually try to vote)
     return project1.userId !== userId && project2.userId !== userId;
   }
 
@@ -334,11 +345,9 @@
 
     if (voting) return;
 
-    // Check if user has an identity
-    if (!userIdentity) {
-      goto("/alpha/purchase");
-      return;
-    }
+    // Find the match first
+    const match = allMatches.find((m) => m.id === matchId);
+    if (!match) return;
 
     // Check if user already voted on this match
     if (hasUserVotedOnMatch(matchId)) {
@@ -348,10 +357,7 @@
       return;
     }
 
-    // Find the match and check if user owns either project
-    const match = allMatches.find((m) => m.id === matchId);
-    if (!match) return;
-
+    // Check if user owns either project
     const project =
       projectSide === "project1"
         ? getProjectById(match.project1Id)
@@ -359,6 +365,16 @@
 
     if (project && project.userId === $session.data.user.id) {
       showError("You cannot vote for your own project!");
+      return;
+    }
+
+    // Check if user has an identity for this cup
+    const hasIdentity = userIdentities.some((id) => id.cupId === match.cupId);
+    if (!hasIdentity) {
+      // Redirect to purchase page with return URL and cupId
+      const returnUrl = encodeURIComponent(`/alpha`);
+      const cupId = encodeURIComponent(match.cupId);
+      goto(`/alpha/purchase?returnUrl=${returnUrl}&cupId=${cupId}`);
       return;
     }
 
@@ -475,24 +491,12 @@
     <div class="timeline">
       {#each groupedMatches as group (group.cupName + group.round)}
         <div class="match-group">
-          <div class="group-header">
-            <h3 class="group-title">{group.cupName}</h3>
-            <span class="group-round">{getRoundLabel(group.round)}</span>
-            {#if group.matches.length > 0}
-              {@const roundEndDate = getMatchEndDate(
-                group.matches[0],
-                group.matches
-              )}
-              {#if roundEndDate}
-                <div class="group-countdown">
-                  <CountdownTimer
-                    endDate={roundEndDate}
-                    displayFormat="compact"
-                  />
-                </div>
-              {/if}
+          {#if group.matches.length > 0}
+            {@const cup = getCupById(group.cupId)}
+            {#if cup}
+              <CupHeader {cup} {purchases} matches={allMatches} />
             {/if}
-          </div>
+          {/if}
           <div class="group-matches">
             {#each group.matches as match (match.id)}
               {@const cup = getCupById(match.cupId)}
@@ -508,7 +512,7 @@
               {@const isActive = isMatchActive(match)}
               {@const hasVoted = hasUserVotedOnMatch(match.id)}
               {@const userVotedSide = getUserVotedSide(match.id)}
-              {@const userVotingWeight = getUserVotingWeight()}
+              {@const userVotingWeight = getUserVotingWeight(match)}
               {@const canVote = canUserVoteOnMatch(match)}
               {@const isExpanded = expandedMatch === match.id}
               {@const roundMatches = group.matches}
@@ -634,51 +638,6 @@
     gap: 1rem;
   }
 
-  .group-header {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-    padding: 1rem 1.5rem;
-    background: linear-gradient(
-      135deg,
-      rgba(26, 26, 78, 0.95) 0%,
-      rgba(26, 26, 78, 0.85) 100%
-    );
-    border-radius: 16px;
-    border: 2px solid rgba(78, 205, 196, 0.2);
-    box-shadow: 0 4px 12px rgba(26, 26, 78, 0.15);
-    margin-bottom: 0.5rem;
-  }
-
-  .group-title {
-    font-size: 1.5rem;
-    font-weight: 800;
-    color: #ffffff;
-    margin: 0;
-    letter-spacing: -0.02em;
-  }
-
-  .group-round {
-    font-size: 0.75rem;
-    color: rgba(255, 255, 255, 0.85);
-    font-weight: 600;
-    padding: 0.25rem 0.75rem;
-    background: rgba(78, 205, 196, 0.15);
-    border-radius: 8px;
-    border: 1px solid rgba(78, 205, 196, 0.3);
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    white-space: nowrap;
-  }
-
-  .group-countdown {
-    margin-left: auto;
-    font-size: 0.875rem;
-    color: #ffffff;
-    font-weight: 500;
-    white-space: nowrap;
-  }
-
   .group-matches {
     display: flex;
     flex-direction: column;
@@ -715,22 +674,6 @@
   @media (max-width: 768px) {
     .alpha-timeline-container {
       padding: 1rem;
-    }
-
-    .group-header {
-      padding: 0.875rem 1.25rem;
-      flex-wrap: wrap;
-    }
-
-    .group-title {
-      font-size: 1.25rem;
-      flex: 1 1 100%;
-      margin-bottom: 0.5rem;
-    }
-
-    .group-round {
-      font-size: 0.6875rem;
-      padding: 0.25rem 0.625rem;
     }
 
     .timeline {

@@ -15,6 +15,13 @@ const cache = new Map<string, UserProfile>();
 const pendingRequests = new Map<string, Promise<UserProfile>>();
 
 /**
+ * Check if we're in the browser (client-side)
+ */
+function isBrowser(): boolean {
+  return typeof window !== 'undefined';
+}
+
+/**
  * Fetch user profile from API with caching
  * @param userId - User ID to fetch
  * @returns User profile with name and image
@@ -30,11 +37,22 @@ export async function getUserProfile(userId: string): Promise<UserProfile> {
     return pendingRequests.get(userId)!;
   }
 
+  // Don't fetch during SSR
+  if (!isBrowser()) {
+    const defaultProfile: UserProfile = {
+      id: userId,
+      name: "Anonymous",
+      image: null,
+    };
+    cache.set(userId, defaultProfile);
+    return defaultProfile;
+  }
+
   // Create new fetch request
   const fetchPromise = (async () => {
     try {
       const response = await fetch(`/alpha/api/user/${userId}`);
-      
+
       if (!response.ok) {
         // Return default profile if user not found
         const defaultProfile: UserProfile = {
@@ -75,7 +93,7 @@ export async function getUserProfile(userId: string): Promise<UserProfile> {
 export async function prefetchUserProfiles(userIds: string[]): Promise<void> {
   const uniqueIds = [...new Set(userIds)];
   const uncachedIds = uniqueIds.filter(id => !cache.has(id) && !pendingRequests.has(id));
-  
+
   if (uncachedIds.length === 0) return;
 
   // Fetch all uncached profiles in parallel

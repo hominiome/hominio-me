@@ -9,19 +9,19 @@ const PACKAGES = {
     packageType: "hominio",
     votingWeight: 1,
     name: "I am Hominio",
-    price: 1,
+    price: 100, // Price in cents: 100 = 1.00€
   },
   founder: {
     packageType: "founder",
     votingWeight: 5,
     name: "Hominio Founder",
-    price: 10,
+    price: 1000, // Price in cents: 1000 = 10.00€
   },
   angel: {
     packageType: "angel",
     votingWeight: 10,
     name: "Hominio Angel",
-    price: 100,
+    price: 10000, // Price in cents: 10000 = 100.00€
   },
 };
 
@@ -40,11 +40,18 @@ export async function POST({ request }) {
     return json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { packageType } = await request.json();
+  const { packageType, cupId } = await request.json();
 
   if (!packageType || !PACKAGES[packageType]) {
     return json(
       { error: "Invalid identity type. Must be 'hominio', 'founder', or 'angel'" },
+      { status: 400 }
+    );
+  }
+
+  if (!cupId) {
+    return json(
+      { error: "cupId is required" },
       { status: 400 }
     );
   }
@@ -54,11 +61,26 @@ export async function POST({ request }) {
   const selectedPackage = PACKAGES[packageType];
 
   try {
-    // Check if user already has an identity
+    // Validate cup exists
+    const cup = await zeroDb
+      .selectFrom("cup")
+      .selectAll()
+      .where("id", "=", cupId)
+      .executeTakeFirst();
+
+    if (!cup) {
+      return json(
+        { error: "Cup not found" },
+        { status: 404 }
+      );
+    }
+
+    // Check if user already has an identity for this cup
     const existingIdentity = await zeroDb
       .selectFrom("userIdentities")
       .selectAll()
       .where("userId", "=", userId)
+      .where("cupId", "=", cupId)
       .executeTakeFirst();
 
     if (existingIdentity) {
@@ -94,6 +116,22 @@ export async function POST({ request }) {
           selectedAt: now, // Update selection time on upgrade
         })
         .where("userId", "=", userId)
+        .where("cupId", "=", cupId)
+        .execute();
+
+      // Create purchase record for upgrade
+      const purchaseId = nanoid();
+      await zeroDb
+        .insertInto("identityPurchase")
+        .values({
+          id: purchaseId,
+          userId,
+          cupId,
+          identityType: selectedPackage.packageType,
+          price: selectedPackage.price,
+          purchasedAt: now,
+          userIdentityId: existingIdentity.id,
+        })
         .execute();
 
       return json({
@@ -107,7 +145,7 @@ export async function POST({ request }) {
         message: `Successfully upgraded to ${selectedPackage.name}`,
       });
     } else {
-      // No existing identity - create new one
+      // No existing identity for this cup - create new one
       const identityId = nanoid();
 
       await zeroDb
@@ -115,10 +153,26 @@ export async function POST({ request }) {
         .values({
           id: identityId,
           userId,
+          cupId,
           identityType: selectedPackage.packageType,
           votingWeight: selectedPackage.votingWeight,
           selectedAt: now,
           upgradedFrom: null,
+        })
+        .execute();
+
+      // Create purchase record
+      const purchaseId = nanoid();
+      await zeroDb
+        .insertInto("identityPurchase")
+        .values({
+          id: purchaseId,
+          userId,
+          cupId,
+          identityType: selectedPackage.packageType,
+          price: selectedPackage.price,
+          purchasedAt: now,
+          userIdentityId: identityId,
         })
         .execute();
 
