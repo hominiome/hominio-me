@@ -194,9 +194,6 @@
           </div>
         </div>
 
-        <!-- Voters for Project 1 -->
-        <MatchVoters matchId={match.id} projectSide="project1" {votes} />
-
         {#if match.winnerId === match.project1Id}
           <div class="winner-badge winner-yellow">
             <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
@@ -280,9 +277,6 @@
           </div>
         </div>
 
-        <!-- Voters for Project 2 -->
-        <MatchVoters matchId={match.id} projectSide="project2" {votes} />
-
         {#if match.winnerId === match.project2Id}
           <div class="winner-badge winner-teal">
             <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
@@ -299,39 +293,29 @@
 
   <!-- Progress Bar with Vote Buttons and Percentages -->
   <div class="progress-bar-wrapper">
-    {#if session.data && isActive}
+    {#if session.data && isActive && !hasVoted}
       <button
         onclick={() => voteOnMatch(match.id, "project1")}
-        disabled={hasVoted}
         class="vote-button-bar vote-button-bar-left"
         class:vote-pulse={votingAnimation === `${match.id}-project1`}
-        class:voted-button={hasVoted}
         aria-label="Vote for {project1?.title || 'Project 1'}"
-        title={hasVoted ? "You have already voted on this match" : `Vote for ${project1?.title || 'Project 1'} (${userVotingWeight} votes)`}
+        title={`Vote for ${project1?.title || 'Project 1'}`}
       >
         <div class="vote-button-content">
           <svg
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
-            class="heart-icon-vote"
+            class="plus-icon-vote"
           >
             <path
               stroke-linecap="round"
               stroke-linejoin="round"
               stroke-width="2"
-              d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
+              d="M12 4v16m8-8H4"
             />
           </svg>
-          <span class="vote-label">
-            {#if hasVoted}
-              Voted
-            {:else if userVotingWeight > 0}
-              {userVotingWeight} Vote{userVotingWeight > 1 ? "s" : ""}
-            {:else}
-              Vote
-            {/if}
-          </span>
+          <span class="vote-label">Vote</span>
         </div>
       </button>
     {/if}
@@ -351,7 +335,9 @@
         class:vote-pulse={votingAnimation === `${match.id}-project1`}
         class:loser-bar={match.winnerId && match.winnerId !== match.project1Id}
       >
-        <span class="progress-percent">{percent1.toFixed(1)}%</span>
+        {#if percent1 >= 5}
+          <span class="progress-percent">{percent1.toFixed(1)}%</span>
+        {/if}
       </div>
       <div
         class="progress-bar-teal"
@@ -359,7 +345,9 @@
         class:vote-pulse={votingAnimation === `${match.id}-project2`}
         class:loser-bar={match.winnerId && match.winnerId !== match.project2Id}
       >
-        <span class="progress-percent">{percent2.toFixed(1)}%</span>
+        {#if percent2 >= 5}
+          <span class="progress-percent">{percent2.toFixed(1)}%</span>
+        {/if}
       </div>
     </div>
 
@@ -371,43 +359,40 @@
       <span class="count-number">{votes2}</span>
     </div>
 
-    {#if session.data && isActive}
+    {#if session.data && isActive && !hasVoted}
       <button
         onclick={() => voteOnMatch(match.id, "project2")}
-        disabled={hasVoted}
         class="vote-button-bar vote-button-bar-right"
         class:vote-pulse={votingAnimation === `${match.id}-project2`}
-        class:voted-button={hasVoted}
         aria-label="Vote for {project2?.title || 'Project 2'}"
-        title={hasVoted ? "You have already voted on this match" : `Vote for ${project2?.title || 'Project 2'} (${userVotingWeight} votes)`}
+        title={`Vote for ${project2?.title || 'Project 2'}`}
       >
         <div class="vote-button-content">
           <svg
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
-            class="heart-icon-vote"
+            class="plus-icon-vote"
           >
             <path
               stroke-linecap="round"
               stroke-linejoin="round"
               stroke-width="2"
-              d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
+              d="M12 4v16m8-8H4"
             />
           </svg>
-          <span class="vote-label">
-            {#if hasVoted}
-              Voted
-            {:else if userVotingWeight > 0}
-              {userVotingWeight} Vote{userVotingWeight > 1 ? "s" : ""}
-            {:else}
-              Vote
-            {/if}
-          </span>
+          <span class="vote-label">Vote</span>
         </div>
       </button>
     {/if}
   </div>
+
+  <!-- Voters below progress bar -->
+  <!-- Temporarily hidden - will be shown later -->
+  <!-- <div class="voters-below-progress">
+    <MatchVoters matchId={match.id} projectSide="project1" {votes} />
+    <MatchVoters matchId={match.id} projectSide="project2" {votes} />
+  </div> -->
 
   {#if !isActive && !match.winnerId}
     <div class="match-waiting">
@@ -571,10 +556,21 @@
     order: 2; /* Ensure video comes after info section */
   }
 
-  /* MatchVoters comes after video */
-  .project-card :global(.voters-container) {
-    order: 3; /* Voters come after video */
-    flex: 0 0 auto; /* Fixed size */
+  /* Voters below progress bar */
+  .voters-below-progress {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin-top: 0; /* No padding between progress bar and voters */
+  }
+
+  .voters-below-progress :global(.voters-container) {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem;
+    background: rgba(255, 255, 255, 0.5);
+    border-radius: 8px;
   }
 
   .video-thumbnail {
@@ -759,9 +755,10 @@
 
   .progress-bar-wrapper {
     display: flex;
-    align-items: center;
+    align-items: stretch; /* Stretch to remove gaps */
     gap: 0;
     position: relative;
+    margin-bottom: 0; /* No margin between progress bar and voters */
   }
 
   .progress-bar-container {
@@ -769,11 +766,16 @@
     display: flex;
     flex: 1;
     position: relative;
+    overflow: hidden; /* Ensure no gaps between progress segments */
   }
 
   .progress-bar-yellow {
     height: 100%;
-    background: linear-gradient(90deg, #f4d03f 0%, #e6c43a 100%);
+    background: linear-gradient(
+      90deg,
+      rgba(244, 208, 63, 0.25) 0%,
+      rgba(244, 208, 63, 0.15) 100%
+    );
     transition: width 0.6s ease-in-out;
     display: flex;
     align-items: center;
@@ -783,7 +785,11 @@
 
   .progress-bar-teal {
     height: 100%;
-    background: linear-gradient(90deg, #4ecdc4 0%, #45b8b0 100%);
+    background: linear-gradient(
+      90deg,
+      rgba(78, 205, 196, 0.15) 0%,
+      rgba(78, 205, 196, 0.25) 100%
+    );
     transition: width 0.6s ease-in-out;
     display: flex;
     align-items: center;
@@ -795,8 +801,15 @@
     font-size: 1.5rem;
     font-weight: 800;
     color: #1a1a4e;
-    text-shadow: 0 2px 4px rgba(255, 255, 255, 0.3);
     white-space: nowrap;
+  }
+
+  .progress-bar-yellow .progress-percent {
+    color: #b8860b; /* Darker yellow */
+  }
+
+  .progress-bar-teal .progress-percent {
+    color: #1e8b85; /* Darker teal */
   }
 
   .vote-button-bar {
@@ -813,27 +826,19 @@
   }
 
   .vote-button-bar-left {
-    background: linear-gradient(
-      90deg,
-      rgba(244, 208, 63, 0.25) 0%,
-      rgba(244, 208, 63, 0.15) 100%
-    );
+    background: linear-gradient(135deg, #f4d03f 0%, #e6c43a 100%);
     border-radius: 0 0 0 12px;
-    color: #d4a915;
-    border-bottom: 2px solid rgba(244, 208, 63, 0.3);
-    border-left: 2px solid rgba(244, 208, 63, 0.3);
+    color: #1a1a4e;
+    border: none;
+    text-shadow: 0 2px 4px rgba(255, 255, 255, 0.3);
   }
 
   .vote-button-bar-right {
-    background: linear-gradient(
-      90deg,
-      rgba(78, 205, 196, 0.15) 0%,
-      rgba(78, 205, 196, 0.25) 100%
-    );
+    background: linear-gradient(135deg, #4ecdc4 0%, #45b8b0 100%);
     border-radius: 0 0 12px 0;
-    color: #2d9d93;
-    border-bottom: 2px solid rgba(78, 205, 196, 0.3);
-    border-right: 2px solid rgba(78, 205, 196, 0.3);
+    color: white;
+    border: none;
+    text-shadow: 0 2px 4px rgba(26, 26, 78, 0.2);
   }
 
   .vote-button-bar:hover:not(:disabled) {
@@ -880,9 +885,9 @@
     height: 100%;
   }
 
-  .heart-icon-vote {
-    width: 1.75rem;
-    height: 1.75rem;
+  .plus-icon-vote {
+    width: 1.25rem;
+    height: 1.25rem;
     stroke-width: 2.5;
   }
 
@@ -896,25 +901,32 @@
 
   .vote-count-inline {
     height: 60px;
-    padding: 0 1.25rem;
+    width: 60px; /* Make it square */
+    padding: 0;
     display: flex;
     align-items: center;
     justify-content: center;
     font-weight: 900;
     font-size: 1.75rem;
-    min-width: 70px;
+    flex-shrink: 0;
   }
 
   .vote-count-left {
-    background: linear-gradient(135deg, #f4d03f 0%, #e6c43a 100%);
-    color: #1a1a4e;
-    text-shadow: 0 2px 4px rgba(255, 255, 255, 0.3);
+    background: linear-gradient(
+      90deg,
+      rgba(244, 208, 63, 0.55) 0%,
+      rgba(244, 208, 63, 0.45) 100%
+    );
+    color: #b8860b; /* Darker yellow */
   }
 
   .vote-count-right {
-    background: linear-gradient(135deg, #4ecdc4 0%, #45b8b0 100%);
-    color: white;
-    text-shadow: 0 2px 4px rgba(26, 26, 78, 0.2);
+    background: linear-gradient(
+      90deg,
+      rgba(78, 205, 196, 0.45) 0%,
+      rgba(78, 205, 196, 0.55) 100%
+    );
+    color: #1e8b85; /* Darker teal */
   }
 
   .count-number {
@@ -1059,7 +1071,7 @@
 
     .progress-bar-wrapper {
       flex-wrap: nowrap; /* Keep stats in one row */
-      gap: 0.25rem; /* Small gap between elements */
+      gap: 0; /* No gap - elements flush together */
     }
 
     .progress-bar-container {
@@ -1085,9 +1097,9 @@
 
     .vote-count-inline {
       height: 50px;
-      padding: 0 0.5rem; /* Reduced padding */
+      width: 50px; /* Make it square */
+      padding: 0;
       font-size: 1rem; /* Smaller font */
-      min-width: 40px; /* Smaller min width */
       flex-shrink: 0; /* Don't shrink */
     }
 
@@ -1099,9 +1111,9 @@
       order: 1; /* After progress bar, before right button */
     }
 
-    .heart-icon-vote {
-      width: 1.25rem;
-      height: 1.25rem;
+    .plus-icon-vote {
+      width: 1rem;
+      height: 1rem;
     }
 
     .vote-label {
@@ -1185,7 +1197,7 @@
     }
 
     .progress-bar-wrapper {
-      gap: 0.125rem; /* Even smaller gap on very small screens */
+      gap: 0; /* No gap - elements flush together */
     }
 
     .progress-bar-container {
@@ -1201,9 +1213,9 @@
 
     .vote-count-inline {
       height: 45px;
-      padding: 0 0.375rem; /* Even smaller padding */
+      width: 45px; /* Make it square */
+      padding: 0;
       font-size: 0.9rem; /* Smaller font */
-      min-width: 35px; /* Smaller min width */
       flex-shrink: 0;
     }
 
@@ -1215,9 +1227,9 @@
       font-size: 0.55rem;
     }
 
-    .heart-icon-vote {
-      width: 1.125rem;
-      height: 1.125rem;
+    .plus-icon-vote {
+      width: 0.875rem;
+      height: 0.875rem;
     }
   }
 </style>

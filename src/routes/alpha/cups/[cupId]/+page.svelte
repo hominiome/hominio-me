@@ -340,30 +340,30 @@
 
       <!-- Cup Info -->
       <div class="card p-4 md:p-6 mb-6 md:mb-8">
-        <div class="flex flex-col sm:flex-row sm:items-center gap-4 md:gap-8 flex-wrap">
-          <div>
-            <p class="text-navy/60 text-sm mb-1">Status</p>
-            <p class="text-lg md:text-xl font-bold text-navy">
+        <div class="flex flex-row items-center gap-3 md:gap-8 flex-wrap">
+          <div class="flex-shrink-0">
+            <p class="text-navy/60 text-xs md:text-sm mb-1">Status</p>
+            <p class="text-sm md:text-lg lg:text-xl font-bold text-navy">
               {getStatusLabel(cup.status)}
             </p>
           </div>
           {#if cup.currentRound}
-            <div>
-              <p class="text-navy/60 text-sm mb-1">Current Round</p>
-              <p class="text-lg md:text-xl font-bold text-teal">
+            <div class="flex-shrink-0">
+              <p class="text-navy/60 text-xs md:text-sm mb-1">Current Round</p>
+              <p class="text-sm md:text-lg lg:text-xl font-bold text-teal">
                 {getRoundLabel(cup.currentRound)}
               </p>
             </div>
           {/if}
-          <div>
-            <p class="text-navy/60 text-sm mb-1">Created By</p>
-            <p class="text-base md:text-lg font-semibold text-navy">{creatorProfile?.name || "Anonymous"}</p>
+          <div class="flex-shrink-0">
+            <p class="text-navy/60 text-xs md:text-sm mb-1">Created By</p>
+            <p class="text-sm md:text-base lg:text-lg font-semibold text-navy">{creatorProfile?.name || "Anonymous"}</p>
           </div>
           {#if cup.winnerId}
             {@const winner = getProjectById(cup.winnerId)}
-            <div class="flex items-center gap-2 sm:ml-auto">
+            <div class="flex items-center gap-2 flex-shrink-0 ml-auto">
               <svg
-                class="w-5 h-5 md:w-6 md:h-6 text-yellow"
+                class="w-4 h-4 md:w-5 md:h-5 lg:w-6 lg:h-6 text-yellow"
                 fill="currentColor"
                 viewBox="0 0 24 24"
               >
@@ -372,8 +372,8 @@
                 />
               </svg>
               <div>
-                <p class="text-navy/60 text-sm">Winner</p>
-                <p class="text-lg md:text-xl font-bold text-yellow">
+                <p class="text-navy/60 text-xs md:text-sm">Winner</p>
+                <p class="text-sm md:text-lg lg:text-xl font-bold text-yellow">
                   {winner?.title || "Unknown"}
                 </p>
               </div>

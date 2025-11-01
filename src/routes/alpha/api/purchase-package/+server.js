@@ -96,25 +96,6 @@ export async function POST({ request }) {
         .where("userId", "=", userId)
         .execute();
 
-      // Create purchase transaction for audit trail
-      await zeroDb
-        .insertInto("transaction")
-        .values({
-          id: nanoid(),
-          fromWalletId: null, // System purchase
-          toWalletId: null, // No wallet needed for voting packages
-          amount: selectedPackage.votingWeight,
-          type: "purchase",
-          metadata: JSON.stringify({
-            packageType: selectedPackage.packageType,
-            votingWeight: selectedPackage.votingWeight,
-            upgradedFrom: currentPackageType,
-            timestamp: Date.now(),
-          }),
-          createdAt: now,
-        })
-        .execute();
-
       return json({
         success: true,
         package: {
@@ -138,24 +119,6 @@ export async function POST({ request }) {
           votingWeight: selectedPackage.votingWeight,
           purchasedAt: now,
           upgradedFrom: null,
-        })
-        .execute();
-
-      // Create purchase transaction for audit trail
-      await zeroDb
-        .insertInto("transaction")
-        .values({
-          id: nanoid(),
-          fromWalletId: null, // System purchase
-          toWalletId: null, // No wallet needed for voting packages
-          amount: selectedPackage.votingWeight,
-          type: "purchase",
-          metadata: JSON.stringify({
-            packageType: selectedPackage.packageType,
-            votingWeight: selectedPackage.votingWeight,
-            timestamp: Date.now(),
-          }),
-          createdAt: now,
         })
         .execute();
 

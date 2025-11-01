@@ -48,16 +48,64 @@ export async function POST({ request }) {
       );
     }
 
-    // Check if any matches don't have winners yet
+    // Automatically determine winners for matches that don't have winners yet
     const matchesWithoutWinners = currentMatches.filter((m) => !m.winnerId);
-    if (matchesWithoutWinners.length > 0) {
-      return json(
-        {
-          error: `Cannot end round: ${matchesWithoutWinners.length} match(es) don't have winners yet. Use individual "Determine Winner" buttons first.`,
-        },
-        { status: 400 }
-      );
+    
+    for (const match of matchesWithoutWinners) {
+      // Get vote counts from vote table
+      const votes1Result = await zeroDb
+        .selectFrom("vote")
+        .select(({ fn }) => [
+          fn.sum("votingWeight").as("total"),
+        ])
+        .where("matchId", "=", match.id)
+        .where("projectSide", "=", "project1")
+        .executeTakeFirst();
+
+      const votes2Result = await zeroDb
+        .selectFrom("vote")
+        .select(({ fn }) => [
+          fn.sum("votingWeight").as("total"),
+        ])
+        .where("matchId", "=", match.id)
+        .where("projectSide", "=", "project2")
+        .executeTakeFirst();
+
+      const votes1 = Number(votes1Result?.total || 0);
+      const votes2 = Number(votes2Result?.total || 0);
+
+      let winnerId = "";
+      if (votes1 > votes2) {
+        winnerId = match.project1Id;
+      } else if (votes2 > votes1) {
+        winnerId = match.project2Id;
+      } else {
+        // In case of tie, pick project with higher ID (consistent tiebreaker)
+        winnerId =
+          match.project1Id > match.project2Id
+            ? match.project1Id
+            : match.project2Id;
+      }
+
+      // Update match with winner
+      await zeroDb
+        .updateTable("cupMatch")
+        .set({
+          winnerId,
+          status: "completed",
+          completedAt: now,
+        })
+        .where("id", "=", match.id)
+        .execute();
     }
+
+    // Re-fetch all matches in current round to get updated winners
+    const updatedMatches = await zeroDb
+      .selectFrom("cupMatch")
+      .selectAll()
+      .where("cupId", "=", cupId)
+      .where("round", "=", currentRound)
+      .execute();
 
     // Check if next round already exists
     let nextRound = null;
@@ -89,15 +137,30 @@ export async function POST({ request }) {
       }
     }
 
-    // Collect winners (they're already determined)
+    // Collect winners from updated matches
     const winners = [];
 
-    for (const match of currentMatches) {
+    for (const match of updatedMatches) {
+      if (!match.winnerId) {
+        // Skip matches without winners (shouldn't happen, but safety check)
+        console.warn(`Match ${match.id} doesn't have a winner after auto-determination`);
+        continue;
+      }
       winners.push({
         matchId: match.id,
         winnerId: match.winnerId,
         position: match.position,
       });
+    }
+
+    // Ensure we have an even number of winners for pairing
+    if (winners.length % 2 !== 0) {
+      return json(
+        {
+          error: `Cannot advance: Expected even number of winners, got ${winners.length}. Some matches may be missing winners.`,
+        },
+        { status: 400 }
+      );
     }
 
     if (nextRound) {

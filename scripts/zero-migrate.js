@@ -82,64 +82,32 @@ async function createTables() {
     await sql`ALTER TABLE project REPLICA IDENTITY FULL`.execute(db);
     console.log("✅ Enabled replica identity for project table");
 
-    // Wallet table
-    await db.schema
-      .createTable("wallet")
-      .ifNotExists()
-      .addColumn("id", "text", (col) => col.primaryKey())
-      .addColumn("entityType", "text", (col) => col.notNull())
-      .addColumn("entityId", "text", (col) => col.notNull())
-      .addColumn("balance", "integer", (col) => col.notNull().defaultTo(0))
-      .addColumn("createdAt", "text", (col) => col.notNull())
-      .addColumn("updatedAt", "text", (col) => col.notNull())
-      .execute();
-    console.log("✅ Wallet table created");
-
-    // Add indexes for wallet table
-    await db.schema
-      .createIndex("wallet_entityType_entityId_idx")
-      .ifNotExists()
-      .on("wallet")
-      .columns(["entityType", "entityId"])
-      .execute();
-    console.log("✅ Wallet entity index created");
-
-    // Enable WAL replication for wallet table
-    await sql`ALTER TABLE wallet REPLICA IDENTITY FULL`.execute(db);
-    console.log("✅ Enabled replica identity for wallet table");
-
-    // Transaction table
-    await db.schema
-      .createTable("transaction")
-      .ifNotExists()
-      .addColumn("id", "text", (col) => col.primaryKey())
-      .addColumn("fromWalletId", "text")
-      .addColumn("toWalletId", "text")
-      .addColumn("amount", "integer", (col) => col.notNull())
-      .addColumn("type", "text", (col) => col.notNull())
-      .addColumn("metadata", "text")
-      .addColumn("createdAt", "text", (col) => col.notNull())
-      .execute();
-    console.log("✅ Transaction table created");
-
-    // Add indexes for transaction table
-    await db.schema
-      .createIndex("transaction_fromWalletId_idx")
-      .ifNotExists()
-      .on("transaction")
-      .column("fromWalletId")
-      .execute();
-    await db.schema
-      .createIndex("transaction_toWalletId_idx")
-      .ifNotExists()
-      .on("transaction")
-      .column("toWalletId")
-      .execute();
-    console.log("✅ Transaction indexes created");
-
-    // Enable WAL replication for transaction table
-    await sql`ALTER TABLE transaction REPLICA IDENTITY FULL`.execute(db);
-    console.log("✅ Enabled replica identity for transaction table");
+    // Drop legacy tables (no longer needed - votes tracked in vote table)
+    const legacyTables = [
+      "wallet", 
+      "transaction", 
+      "heartTransaction", 
+      "projectVote"
+    ];
+    
+    console.log("🗑️  Cleaning up legacy tables...");
+    for (const tableName of legacyTables) {
+      try {
+        // First remove from publication if it exists
+        try {
+          await sql`ALTER PUBLICATION zero_data DROP TABLE IF EXISTS ${sql.raw(`"${tableName}"`)}`.execute(db);
+          console.log(`   Removed ${tableName} from publication`);
+        } catch (e) {
+          // Publication might not exist or table not in it, that's fine
+        }
+        
+        // Then drop the table
+        await sql`DROP TABLE IF EXISTS ${sql.raw(`"${tableName}"`)} CASCADE`.execute(db);
+        console.log(`✅ Dropped legacy table: ${tableName}`);
+      } catch (error) {
+        console.log(`ℹ️  Table ${tableName} doesn't exist or couldn't be dropped: ${error.message}`);
+      }
+    }
 
     // Cup table
     await db.schema
@@ -149,8 +117,6 @@ async function createTables() {
       .addColumn("name", "text", (col) => col.notNull())
       .addColumn("description", "text")
       .addColumn("creatorId", "text", (col) => col.notNull())
-      // Note: creatorName has been removed - creator data is fetched from profile API
-      // walletId removed - no longer needed
       .addColumn("status", "text", (col) => col.notNull())
       .addColumn("currentRound", "text")
       .addColumn("winnerId", "text")
@@ -160,6 +126,14 @@ async function createTables() {
       .addColumn("updatedAt", "text")
       .execute();
     console.log("✅ Cup table created");
+
+    // Remove legacy walletId column from cup if it exists
+    try {
+      await sql`ALTER TABLE cup DROP COLUMN IF EXISTS "walletId"`.execute(db);
+      console.log("✅ Removed walletId column from cup table");
+    } catch (error) {
+      console.log("ℹ️  WalletId column doesn't exist in cup (already removed)");
+    }
 
     // Add logoImageUrl column if it doesn't exist
     try {
@@ -304,26 +278,40 @@ async function createTables() {
     await sql`ALTER TABLE vote REPLICA IDENTITY FULL`.execute(db);
     console.log("✅ Enabled replica identity for vote table");
 
-    // Create or update publication for Zero with all tables
+    // Remove legacy tables from publication and recreate with only current tables
     try {
-      await sql`CREATE PUBLICATION zero_data FOR TABLE project, wallet, transaction, cup, "cupMatch", "userVotingPackage", vote`.execute(
+      // Drop existing publication
+      await sql`DROP PUBLICATION IF EXISTS zero_data`.execute(db);
+      console.log("✅ Dropped existing publication");
+    } catch (error) {
+      console.log("ℹ️  Publication doesn't exist or couldn't be dropped");
+    }
+
+    // Create publication with only current tables (no wallet, transaction, heartTransaction, projectVote)
+    try {
+      await sql`CREATE PUBLICATION zero_data FOR TABLE project, cup, "cupMatch", "userVotingPackage", vote`.execute(
         db
       );
-      console.log("✅ Created publication for Zero (all tables)");
+      console.log("✅ Created publication for Zero (current tables only)");
     } catch (error) {
       if (error.message?.includes("already exists")) {
-        // Try to alter the publication to add new tables
+        // Try to alter the publication
         try {
-          await sql`ALTER PUBLICATION zero_data ADD TABLE "userVotingPackage", vote`.execute(
+          // Remove legacy tables from publication
+          try {
+            await sql`ALTER PUBLICATION zero_data DROP TABLE IF EXISTS wallet, transaction, "heartTransaction", "projectVote"`.execute(db);
+            console.log("✅ Removed legacy tables from publication");
+          } catch (e) {
+            console.log("ℹ️  Could not remove legacy tables from publication (may not exist)");
+          }
+          
+          // Add current tables if not already present
+          await sql`ALTER PUBLICATION zero_data ADD TABLE IF NOT EXISTS project, cup, "cupMatch", "userVotingPackage", vote`.execute(
             db
           );
-          console.log("✅ Updated publication to include new tables");
+          console.log("✅ Updated publication to include current tables");
         } catch (alterError) {
-          if (alterError.message?.includes("already exists")) {
-            console.log("✅ Publication already includes new tables");
-          } else {
-            console.log("⚠️ Could not update publication (may need manual update)");
-          }
+          console.log("⚠️ Could not update publication (may need manual update):", alterError.message);
         }
       } else {
         throw error;

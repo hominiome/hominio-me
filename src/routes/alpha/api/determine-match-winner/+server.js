@@ -48,7 +48,7 @@ export async function POST({ request }) {
     const votes1Result = await zeroDb
       .selectFrom("vote")
       .select(({ fn }) => [
-        fn.sum<number>("votingWeight").as("total"),
+        fn.sum("votingWeight").as("total"),
       ])
       .where("matchId", "=", matchId)
       .where("projectSide", "=", "project1")
@@ -57,7 +57,7 @@ export async function POST({ request }) {
     const votes2Result = await zeroDb
       .selectFrom("vote")
       .select(({ fn }) => [
-        fn.sum<number>("votingWeight").as("total"),
+        fn.sum("votingWeight").as("total"),
       ])
       .where("matchId", "=", matchId)
       .where("projectSide", "=", "project2")
