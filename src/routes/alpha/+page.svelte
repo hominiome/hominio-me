@@ -656,18 +656,16 @@
     color: #ffffff;
     margin: 0;
     letter-spacing: -0.02em;
-    flex: 1;
   }
 
   .group-round {
-    font-size: 0.875rem;
-    color: #1a1a4e;
-    font-weight: 700;
-    padding: 0.5rem 1rem;
-    background: linear-gradient(135deg, #f4d03f 0%, #fcd34d 100%);
-    border-radius: 20px;
-    border: 2px solid rgba(244, 208, 63, 0.3);
-    box-shadow: 0 2px 8px rgba(244, 208, 63, 0.3);
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.85);
+    font-weight: 600;
+    padding: 0.25rem 0.75rem;
+    background: rgba(78, 205, 196, 0.15);
+    border-radius: 8px;
+    border: 1px solid rgba(78, 205, 196, 0.3);
     text-transform: uppercase;
     letter-spacing: 0.05em;
     white-space: nowrap;
@@ -731,8 +729,8 @@
     }
 
     .group-round {
-      font-size: 0.75rem;
-      padding: 0.375rem 0.875rem;
+      font-size: 0.6875rem;
+      padding: 0.25rem 0.625rem;
     }
 
     .timeline {

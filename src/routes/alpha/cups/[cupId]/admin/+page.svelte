@@ -289,11 +289,13 @@
       const now = new Date().toISOString();
 
       // Get existing project titles to avoid duplicates
-      const existingTitles = new Set(projects.map(p => p.title.toLowerCase().trim()));
+      const existingTitles = new Set(
+        projects.map((p) => p.title.toLowerCase().trim())
+      );
 
       // Filter out fake projects that already exist
       const availableFakes = fakeProjectsData.filter(
-        fakeData => !existingTitles.has(fakeData.title.toLowerCase().trim())
+        (fakeData) => !existingTitles.has(fakeData.title.toLowerCase().trim())
       );
 
       if (availableFakes.length === 0) {
@@ -303,13 +305,16 @@
       }
 
       // Shuffle available fake projects and take what we need
-      const shuffledFakes = [...availableFakes].sort(
-        () => Math.random() - 0.5
+      const shuffledFakes = [...availableFakes].sort(() => Math.random() - 0.5);
+      const fakesToCreate = shuffledFakes.slice(
+        0,
+        Math.min(count, availableFakes.length)
       );
-      const fakesToCreate = shuffledFakes.slice(0, Math.min(count, availableFakes.length));
 
       if (fakesToCreate.length < count) {
-        showError(`Only ${fakesToCreate.length} unique fake projects available (${count} requested)`);
+        showError(
+          `Only ${fakesToCreate.length} unique fake projects available (${count} requested)`
+        );
       }
 
       // Create fake projects in database as owned by cup creator
@@ -1086,7 +1091,12 @@
   >
     <!-- svelte-ignore a11y_click_events_have_key_events -->
     <!-- svelte-ignore a11y_no_static_element_interactions -->
-    <div class="modal-content" onclick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
+    <div
+      class="modal-content"
+      onclick={(e) => e.stopPropagation()}
+      role="dialog"
+      aria-modal="true"
+    >
       <button
         class="modal-close"
         onclick={() => (selectedMatch = null)}
@@ -1211,14 +1221,19 @@ This will:
 
 <!-- Start Cup Date/Time Modal -->
 {#if showStartCupModal}
-  <div 
-    class="modal-overlay" 
+  <div
+    class="modal-overlay"
     role="button"
     tabindex="0"
     onclick={() => (showStartCupModal = false)}
-    onkeydown={(e) => e.key === 'Escape' && (showStartCupModal = false)}
+    onkeydown={(e) => e.key === "Escape" && (showStartCupModal = false)}
   >
-    <div class="modal-content" onclick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
+    <div
+      class="modal-content"
+      onclick={(e) => e.stopPropagation()}
+      role="dialog"
+      aria-modal="true"
+    >
       <button
         class="modal-close"
         onclick={() => (showStartCupModal = false)}
@@ -1242,8 +1257,9 @@ This will:
 
       <div class="space-y-4">
         <div>
-          <label for="start-cup-date" class="block text-sm font-semibold text-navy mb-2"
-            >End Date</label
+          <label
+            for="start-cup-date"
+            class="block text-sm font-semibold text-navy mb-2">End Date</label
           >
           <DatePicker
             id="start-cup-date"
@@ -1254,8 +1270,9 @@ This will:
         </div>
 
         <div>
-          <label for="start-cup-time" class="block text-sm font-semibold text-navy mb-2"
-            >End Time</label
+          <label
+            for="start-cup-time"
+            class="block text-sm font-semibold text-navy mb-2">End Time</label
           >
           <TimePicker
             id="start-cup-time"
@@ -1282,14 +1299,19 @@ This will:
 
 <!-- Start Next Round Date/Time Modal -->
 {#if showStartNextRoundModal}
-  <div 
-    class="modal-overlay" 
+  <div
+    class="modal-overlay"
     role="button"
     tabindex="0"
     onclick={() => (showStartNextRoundModal = false)}
-    onkeydown={(e) => e.key === 'Escape' && (showStartNextRoundModal = false)}
+    onkeydown={(e) => e.key === "Escape" && (showStartNextRoundModal = false)}
   >
-    <div class="modal-content" onclick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
+    <div
+      class="modal-content"
+      onclick={(e) => e.stopPropagation()}
+      role="dialog"
+      aria-modal="true"
+    >
       <button
         class="modal-close"
         onclick={() => (showStartNextRoundModal = false)}
@@ -1313,8 +1335,9 @@ This will:
 
       <div class="space-y-4">
         <div>
-          <label for="start-next-round-date" class="block text-sm font-semibold text-navy mb-2"
-            >End Date</label
+          <label
+            for="start-next-round-date"
+            class="block text-sm font-semibold text-navy mb-2">End Date</label
           >
           <DatePicker
             id="start-next-round-date"
@@ -1325,8 +1348,9 @@ This will:
         </div>
 
         <div>
-          <label for="start-next-round-time" class="block text-sm font-semibold text-navy mb-2"
-            >End Time</label
+          <label
+            for="start-next-round-time"
+            class="block text-sm font-semibold text-navy mb-2">End Time</label
           >
           <TimePicker
             id="start-next-round-time"
