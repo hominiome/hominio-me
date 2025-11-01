@@ -23,13 +23,103 @@
   let votingAnimation = $state(null);
   let expandedVideo = $state(null);
   let expandedMatch = $state(null);
+  let votingSound = $state(null); // Preloaded audio instance
 
-  // Show all matches (for debugging - no filtering)
-  let activeMatches = $derived(() => {
-    return allMatches;
+  // Filter and group active matches by cup and round
+  let groupedMatches = $derived.by(() => {
+    console.log("🟨 GROUPED MATCHES DERIVED RUNNING:", {
+      allMatchesCount: allMatches.length,
+      cupsCount: cups.length,
+      timestamp: new Date().toISOString(),
+    });
+
+    // If no matches or cups, return empty
+    if (allMatches.length === 0 || cups.length === 0) {
+      console.log("⚠️ No matches or cups yet, returning empty");
+      return [];
+    }
+
+    const groups = new Map();
+
+    // Filter to only active matches - debug logging
+    console.log("🔍 Starting to filter matches...");
+    console.log(
+      "🔍 All matches:",
+      allMatches.map((m) => ({
+        id: m.id,
+        status: m.status,
+        round: m.round,
+        cupId: m.cupId,
+      }))
+    );
+    console.log(
+      "🔍 All cups:",
+      cups.map((c) => ({
+        id: c.id,
+        name: c.name,
+        status: c.status,
+        currentRound: c.currentRound,
+      }))
+    );
+
+    const activeMatches = [];
+    for (const match of allMatches) {
+      const isActive = isMatchActive(match);
+      console.log(
+        `🔍 Match ${match.id}: status=${match.status}, round=${match.round}, isActive=${isActive}`
+      );
+      if (isActive) {
+        activeMatches.push(match);
+      }
+    }
+
+    console.log("✅ FILTERED MATCHES RESULT:", {
+      totalMatches: allMatches.length,
+      activeMatches: activeMatches.length,
+      allMatchStatuses: [...new Set(allMatches.map((m) => m.status))],
+      cupsLoaded: cups.length,
+      activeMatchIds: activeMatches.map((m) => m.id),
+    });
+
+    for (const match of activeMatches) {
+      const cup = getCupById(match.cupId);
+      const cupName = cup?.name || "Unknown Cup";
+      const round = match.round || "unknown";
+      const key = `${cupName}|${round}`;
+
+      if (!groups.has(key)) {
+        groups.set(key, {
+          cupName,
+          cupId: match.cupId,
+          round,
+          matches: [],
+        });
+      }
+      groups.get(key).matches.push(match);
+    }
+
+    // Convert to array and sort by cup name, then round order
+    const roundOrder = { round_16: 1, quarter: 2, semi: 3, final: 4 };
+    return Array.from(groups.values()).sort((a, b) => {
+      if (a.cupName !== b.cupName) {
+        return a.cupName.localeCompare(b.cupName);
+      }
+      return (roundOrder[a.round] || 99) - (roundOrder[b.round] || 99);
+    });
   });
 
   onMount(() => {
+    // Preload voting sound for instant playback
+    try {
+      votingSound = new Audio("/voting-effect.mp3");
+      votingSound.volume = 0.5;
+      votingSound.preload = "auto";
+      // Force preload by loading the audio
+      votingSound.load();
+    } catch (error) {
+      console.warn("Could not preload voting sound:", error);
+    }
+
     let cupsView;
     let projectsView;
     let matchesView;
@@ -37,17 +127,28 @@
 
     (async () => {
       // Wait for Zero to be ready
+      console.log("⏳ Waiting for Zero to be ready...");
       while (!zeroContext.isReady() || !zeroContext.getInstance()) {
         await new Promise((resolve) => setTimeout(resolve, 100));
       }
       zero = zeroContext.getInstance();
+      console.log("✅ Zero is ready!");
 
-      // Query all active cups
-      const cupsQuery = zero.query.cup.where("status", "=", "active");
+      // Query all cups (we need all cups to check match status, not just active ones)
+      const cupsQuery = zero.query.cup;
       cupsView = cupsQuery.materialize();
 
       cupsView.addListener((data) => {
         cups = Array.from(data);
+        console.log("🟦 CUPS LOADED:", {
+          count: cups.length,
+          cups: cups.map((c) => ({
+            id: c.id,
+            name: c.name,
+            status: c.status,
+            currentRound: c.currentRound,
+          })),
+        });
         // Set loading to false once we have the cups data (even if empty)
         loading = false;
       });
@@ -67,6 +168,18 @@
       matchesView.addListener((data) => {
         // Store all matches - filtering by active cups happens reactively
         allMatches = Array.from(data);
+        console.log("🟩 MATCHES LOADED:", {
+          count: allMatches.length,
+          matches: allMatches.map((m) => ({
+            id: m.id,
+            cupId: m.cupId,
+            status: m.status,
+            round: m.round,
+            project1Id: m.project1Id,
+            project2Id: m.project2Id,
+          })),
+          statuses: [...new Set(allMatches.map((m) => m.status))],
+        });
       });
 
       // Query all votes for vote counts
@@ -163,6 +276,17 @@
     return userIdentity?.votingWeight || 0;
   }
 
+  function canUserVoteOnMatch(match) {
+    if (!$session.data?.user) return false;
+    const userId = $session.data.user.id;
+    const project1 = getProjectById(match.project1Id);
+    const project2 = getProjectById(match.project2Id);
+    // User cannot vote if they own either project
+    // Also need both projects to exist
+    if (!project1 || !project2) return false;
+    return project1.userId !== userId && project2.userId !== userId;
+  }
+
   function toggleMatchExpand(matchId) {
     if (expandedMatch === matchId) {
       expandedMatch = null;
@@ -216,8 +340,24 @@
       return;
     }
 
-    // Trigger animation
+    // Trigger animation IMMEDIATELY (no delay)
     votingAnimation = `${matchId}-${projectSide}`;
+
+    // Play voting sound effect INSTANTLY using preloaded audio
+    if (votingSound) {
+      try {
+        // Reset to beginning and play instantly
+        votingSound.currentTime = 0;
+        const playPromise = votingSound.play();
+        if (playPromise !== undefined) {
+          playPromise.catch((error) => {
+            console.warn("Could not play voting sound:", error);
+          });
+        }
+      } catch (error) {
+        console.warn("Could not play voting sound:", error);
+      }
+    }
     setTimeout(() => {
       votingAnimation = null;
     }, 3000);
@@ -246,7 +386,50 @@
   }
 
   function isMatchActive(match) {
-    return match.status === "voting";
+    // Match is active if:
+    // 1. Status is "voting", OR
+    // 2. Status is "pending" AND cup is active AND match is in current round
+    const cup = getCupById(match.cupId);
+
+    // Always return true for voting status
+    if (match.status === "voting") {
+      console.log("✅ Match is voting:", match.id, "cup found:", !!cup);
+      return true;
+    }
+
+    // Check pending matches
+    if (match.status === "pending") {
+      const cupActive = cup?.status === "active";
+      const matchInCurrentRound = cup?.currentRound === match.round;
+      const shouldBeActive = cupActive && matchInCurrentRound;
+
+      console.log("⏳ Pending match check:", {
+        matchId: match.id,
+        matchRound: match.round,
+        cupFound: !!cup,
+        cupId: cup?.id,
+        cupName: cup?.name,
+        cupStatus: cup?.status,
+        cupCurrentRound: cup?.currentRound,
+        cupActive,
+        matchInCurrentRound,
+        shouldBeActive,
+      });
+
+      if (shouldBeActive) {
+        return true;
+      }
+    }
+
+    console.log("❌ Match NOT active:", {
+      id: match.id,
+      status: match.status,
+      cupFound: !!cup,
+      cupStatus: cup?.status,
+      cupCurrentRound: cup?.currentRound,
+      matchRound: match.round,
+    });
+    return false;
   }
 </script>
 
@@ -259,11 +442,24 @@
     <div class="loading-state">
       <p>Loading matches...</p>
     </div>
-  {:else if allMatches.length === 0}
+  {:else if groupedMatches.length === 0}
     <div class="empty-state">
       <p class="empty-message">
         {#if $session.data?.user}
-          No matches found.
+          No active matches to vote on right now. Check back later!
+          <br />
+          <small
+            style="color: #999; font-size: 0.875rem; margin-top: 0.5rem; display: block;"
+          >
+            Debug: {allMatches.length} matches loaded, {cups.length} cups loaded,
+            {groupedMatches.length} groups
+            <br />
+            Match statuses: {[...new Set(allMatches.map((m) => m.status))].join(
+              ", "
+            )}
+            <br />
+            Cup statuses: {[...new Set(cups.map((c) => c.status))].join(", ")}
+          </small>
         {:else}
           <a href="/alpha/signup" class="link">Sign in</a> to see matches waiting
           for your vote.
@@ -272,76 +468,103 @@
     </div>
   {:else}
     <div class="timeline">
-      {#each allMatches as match (match.id)}
-        {@const cup = getCupById(match.cupId)}
-        {@const project1 = getProjectById(match.project1Id)}
-        {@const project2 = getProjectById(match.project2Id)}
-        {@const votes1 = getMatchVotes(match.id, "project1")}
-        {@const votes2 = getMatchVotes(match.id, "project2")}
-        {@const totalVotes = votes1 + votes2}
-        {@const percent1 =
-          totalVotes > 0 ? Math.round((votes1 / totalVotes) * 100) : 50}
-        {@const percent2 =
-          totalVotes > 0 ? Math.round((votes2 / totalVotes) * 100) : 50}
-        {@const isActive = isMatchActive(match)}
-        {@const hasVoted = hasUserVotedOnMatch(match.id)}
-        {@const userVotedSide = getUserVotedSide(match.id)}
-        {@const userVotingWeight = getUserVotingWeight()}
-        {@const isExpanded = expandedMatch === match.id}
+      <!-- Debug info -->
+      {#each groupedMatches as group (group.cupName + group.round)}
+        <div class="match-group">
+          <div class="group-header">
+            <h3 class="group-title">{group.cupName}</h3>
+            <span class="group-round">{getRoundLabel(group.round)}</span>
+          </div>
+          <div class="group-matches">
+            {#each group.matches as match (match.id)}
+              {@const cup = getCupById(match.cupId)}
+              {@const project1 = getProjectById(match.project1Id)}
+              {@const project2 = getProjectById(match.project2Id)}
+              {@const votes1 = getMatchVotes(match.id, "project1")}
+              {@const votes2 = getMatchVotes(match.id, "project2")}
+              {@const totalVotes = votes1 + votes2}
+              {@const percent1 =
+                totalVotes > 0 ? Math.round((votes1 / totalVotes) * 100) : 50}
+              {@const percent2 =
+                totalVotes > 0 ? Math.round((votes2 / totalVotes) * 100) : 50}
+              {@const isActive = isMatchActive(match)}
+              {@const hasVoted = hasUserVotedOnMatch(match.id)}
+              {@const userVotedSide = getUserVotedSide(match.id)}
+              {@const userVotingWeight = getUserVotingWeight()}
+              {@const canVote = canUserVoteOnMatch(match)}
+              {@const isExpanded = expandedMatch === match.id}
 
-        <div class="timeline-item">
-          {#if isExpanded}
-            <!-- Expanded Detail View -->
-            <MatchDetail
-              {match}
-              {project1}
-              {project2}
-              {votes1}
-              {votes2}
-              {percent1}
-              {percent2}
-              {isActive}
-              {expandedVideo}
-              {votingAnimation}
-              {votes}
-              session={$session.data}
-              {hasVoted}
-              {userVotingWeight}
-              {userVotedSide}
-              {toggleVideo}
-              {voteOnMatch}
-            />
-            <button
-              onclick={() => toggleMatchExpand(match.id)}
-              class="collapse-button"
-            >
-              Collapse
-            </button>
-          {:else}
-            <!-- Collapsed List View -->
-            <MatchListItem
-              {match}
-              {project1}
-              {project2}
-              {votes1}
-              {votes2}
-              {percent1}
-              {percent2}
-              {isActive}
-              {expandedMatch}
-              {expandedVideo}
-              {votingAnimation}
-              {votes}
-              session={$session}
-              {getRoundLabel}
-              {hasVoted}
-              {userVotingWeight}
-              {userVotedSide}
-              onToggleExpand={() => toggleMatchExpand(match.id)}
-              {toggleVideo}
-              {voteOnMatch}
-            />
-          {/if}
+              <div class="timeline-item">
+                {#if isExpanded}
+                  <!-- Expanded Detail View -->
+                  <MatchDetail
+                    {match}
+                    {project1}
+                    {project2}
+                    {votes1}
+                    {votes2}
+                    {percent1}
+                    {percent2}
+                    {isActive}
+                    {expandedVideo}
+                    {votingAnimation}
+                    {votes}
+                    session={$session}
+                    {hasVoted}
+                    {userVotingWeight}
+                    {userVotedSide}
+                    {canVote}
+                    {toggleVideo}
+                    {voteOnMatch}
+                  />
+                  <button
+                    onclick={() => toggleMatchExpand(match.id)}
+                    class="collapse-button"
+                    aria-label="Collapse match"
+                  >
+                    <svg
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                      class="collapse-icon"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M6 18L18 6M6 6l12 12"
+                      />
+                    </svg>
+                  </button>
+                {:else}
+                  <!-- Collapsed List View -->
+                  <MatchListItem
+                    {match}
+                    {project1}
+                    {project2}
+                    {votes1}
+                    {votes2}
+                    {percent1}
+                    {percent2}
+                    {isActive}
+                    {expandedMatch}
+                    {expandedVideo}
+                    {votingAnimation}
+                    {votes}
+                    session={$session}
+                    {getRoundLabel}
+                    {hasVoted}
+                    {userVotingWeight}
+                    {userVotedSide}
+                    {canVote}
+                    onToggleExpand={() => toggleMatchExpand(match.id)}
+                    {toggleVideo}
+                    {voteOnMatch}
+                  />
+                {/if}
+              </div>
+            {/each}
+          </div>
         </div>
       {/each}
     </div>
@@ -394,7 +617,46 @@
   .timeline {
     display: flex;
     flex-direction: column;
-    gap: 1.5rem;
+    gap: 2rem;
+  }
+
+  .match-group {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .group-header {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.75rem 1rem;
+    background: rgba(255, 255, 255, 0.8);
+    border-radius: 12px;
+    border: 1px solid rgba(26, 26, 78, 0.1);
+  }
+
+  .group-title {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #1a1a4e;
+    margin: 0;
+  }
+
+  .group-round {
+    font-size: 0.875rem;
+    color: #4ecdc4;
+    font-weight: 600;
+    padding: 0.25rem 0.75rem;
+    background: rgba(78, 205, 196, 0.1);
+    border-radius: 6px;
+  }
+
+  .group-matches {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    padding-left: 1rem;
   }
 
   .timeline-item {
@@ -403,21 +665,25 @@
 
   .collapse-button {
     width: 100%;
-    padding: 0.75rem;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 0.5rem;
     margin-top: 0.5rem;
-    background: white;
-    border: 2px solid #e5e7eb;
-    border-radius: 12px;
-    font-size: 0.938rem;
-    font-weight: 600;
-    color: #6b7280;
+    background: none;
+    border: none;
     cursor: pointer;
     transition: all 0.2s ease;
+    color: rgba(26, 26, 78, 0.4);
   }
 
   .collapse-button:hover {
-    border-color: #4fc3c3;
-    color: #4fc3c3;
+    color: #4ecdc4;
+  }
+
+  .collapse-icon {
+    width: 20px;
+    height: 20px;
   }
 
   @media (max-width: 768px) {

@@ -77,6 +77,17 @@ export async function POST({ request }) {
             .where("id", "=", cupId)
             .execute();
 
+        // Update all matches in round_16 from "pending" to "voting"
+        await zeroDb
+            .updateTable("cupMatch")
+            .set({
+                status: "voting",
+            })
+            .where("cupId", "=", cupId)
+            .where("round", "=", "round_16")
+            .where("status", "=", "pending")
+            .execute();
+
         return json({
             success: true,
             status: "active",

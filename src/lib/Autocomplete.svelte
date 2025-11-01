@@ -1,7 +1,7 @@
 <script>
   /**
    * Generic Autocomplete Component
-   * 
+   *
    * Props:
    * - value: bindable selected value (object with id, name, image, etc.)
    * - items: array of items to display
@@ -118,7 +118,10 @@
         break;
       case "Enter":
         e.preventDefault();
-        if (highlightedIndex >= 0 && highlightedIndex < filteredItems().length) {
+        if (
+          highlightedIndex >= 0 &&
+          highlightedIndex < filteredItems().length
+        ) {
           selectItem(filteredItems()[highlightedIndex]);
         }
         break;
@@ -146,12 +149,12 @@
       // If no value or we already selected a new item, just clear search query
       searchQuery = "";
     }
-    
+
     // Select all text in the input so typing replaces it
     if (inputElement) {
       inputElement.select();
     }
-    
+
     isOpen = true;
     hasSelectedNewItem = false; // Reset flag
   }
@@ -161,13 +164,21 @@
     setTimeout(() => {
       isOpen = false;
       highlightedIndex = -1;
-      
+
       // If no new item was selected and we have an original value, restore it
-      if (!hasSelectedNewItem && originalValue !== null && !searchQuery.trim()) {
+      if (
+        !hasSelectedNewItem &&
+        originalValue !== null &&
+        !searchQuery.trim()
+      ) {
         value = originalValue;
         searchQuery = "";
         originalValue = null;
-      } else if (!hasSelectedNewItem && originalValue !== null && searchQuery.trim()) {
+      } else if (
+        !hasSelectedNewItem &&
+        originalValue !== null &&
+        searchQuery.trim()
+      ) {
         // User typed something but didn't select - restore original
         value = originalValue;
         searchQuery = "";
@@ -462,4 +473,3 @@
     background: rgba(26, 26, 78, 0.3);
   }
 </style>
-

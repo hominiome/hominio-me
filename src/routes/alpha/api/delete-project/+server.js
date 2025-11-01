@@ -33,14 +33,14 @@ export async function POST({ request }) {
 
     // Only admins can delete projects
     if (!userIsAdmin) {
-      return json({ error: "Forbidden: Only admins can delete projects" }, { status: 403 });
+      return json(
+        { error: "Forbidden: Only admins can delete projects" },
+        { status: 403 }
+      );
     }
 
     // Delete project
-    await zeroDb
-      .deleteFrom("project")
-      .where("id", "=", projectId)
-      .execute();
+    await zeroDb.deleteFrom("project").where("id", "=", projectId).execute();
 
     return json({
       success: true,
@@ -49,11 +49,13 @@ export async function POST({ request }) {
   } catch (error) {
     console.error("Delete project error:", error);
     const errorMessage = error instanceof Error ? error.message : String(error);
-    
-    return json({
-      error: "Failed to delete project",
-      details: errorMessage
-    }, { status: 500 });
+
+    return json(
+      {
+        error: "Failed to delete project",
+        details: errorMessage,
+      },
+      { status: 500 }
+    );
   }
 }
-

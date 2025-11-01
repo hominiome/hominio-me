@@ -19,6 +19,7 @@
     hasVoted = false,
     userVotingWeight = 0,
     userVotedSide = null,
+    canVote = true, // Whether user can vote (not owner of either project)
     onToggleExpand,
     toggleVideo,
     voteOnMatch,
@@ -26,6 +27,7 @@
 </script>
 
 <!-- Compact Match List Item -->
+{#if expandedMatch !== match.id}
 <button
   onclick={onToggleExpand}
   class="match-list-item"
@@ -101,6 +103,7 @@
     </span>
   </div>
 </button>
+{/if}
 
 <!-- Collapsible Match Detail -->
 {#if expandedMatch === match.id}
@@ -121,9 +124,29 @@
       {hasVoted}
       {userVotingWeight}
       {userVotedSide}
+      {canVote}
       {toggleVideo}
       {voteOnMatch}
     />
+    <button
+      onclick={onToggleExpand}
+      class="collapse-button"
+      aria-label="Collapse match"
+    >
+      <svg
+        fill="none"
+        stroke="currentColor"
+        viewBox="0 0 24 24"
+        class="collapse-icon"
+      >
+        <path
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          stroke-width="2"
+          d="M6 18L18 6M6 6l12 12"
+        />
+      </svg>
+    </button>
   </div>
 {/if}
 
@@ -389,5 +412,29 @@
       opacity: 1;
       max-height: 3000px;
     }
+  }
+
+  /* Collapse Button */
+  .collapse-button {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 0.5rem;
+    margin-top: 0.5rem;
+    background: none;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    color: rgba(26, 26, 78, 0.4);
+  }
+
+  .collapse-button:hover {
+    color: #4ecdc4;
+  }
+
+  .collapse-icon {
+    width: 20px;
+    height: 20px;
   }
 </style>

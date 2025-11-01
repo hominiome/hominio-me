@@ -20,6 +20,7 @@
     hasVoted = false,
     userVotingWeight = 0,
     userVotedSide = null,
+    canVote = true, // Whether user can vote (not owner of either project)
     toggleVideo,
     voteOnMatch,
   } = $props();
@@ -326,8 +327,8 @@
 
   <!-- Progress Bar with Vote Buttons and Percentages -->
   <div class="progress-bar-wrapper">
-    {#if session.data && isActive && !hasVoted}
-      <!-- Vote button - only show when active and not voted -->
+    {#if session?.data && isActive && !hasVoted && canVote}
+      <!-- Vote button - only show when active, not voted, and user can vote -->
       <button
         onclick={() => voteOnMatch(match.id, "project1")}
         class="vote-button-bar vote-button-bar-left"
@@ -389,8 +390,8 @@
       </div>
     </div>
 
-    {#if session.data && isActive && !hasVoted}
-      <!-- Vote button - only show when active and not voted -->
+    {#if session?.data && isActive && !hasVoted && canVote}
+      <!-- Vote button - only show when active, not voted, and user can vote -->
       <button
         onclick={() => voteOnMatch(match.id, "project2")}
         class="vote-button-bar vote-button-bar-right"
@@ -433,16 +434,7 @@
     <MatchVoters matchId={match.id} projectSide="project2" {votes} />
   </div> -->
 
-  {#if !isActive && !match.winnerId}
-    <div class="match-waiting">
-      <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-        <path
-          d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-1-13h2v6h-2zm0 8h2v2h-2z"
-        />
-      </svg>
-      Waiting for previous round...
-    </div>
-  {/if}
+  <!-- Removed "Waiting for previous round..." message as it was incorrect -->
 </div>
 
 <style>

@@ -100,6 +100,20 @@
 
 <Navbar session={$session} {signInWithGoogle} />
 
-{@render children()}
+<div class="content-wrapper">
+  {@render children()}
+</div>
 
 <ToastContainer />
+
+<style>
+  .content-wrapper {
+    min-height: 100vh;
+  }
+
+  @media (max-width: 768px) {
+    .content-wrapper {
+      padding-bottom: 60px; /* Space for bottom navbar */
+    }
+  }
+</style>

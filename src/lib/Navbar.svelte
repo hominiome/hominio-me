@@ -7,18 +7,8 @@
     signInWithGoogle: () => Promise<void>;
   }>();
 
-  // Mobile menu state
-  let mobileMenuOpen = $state(false);
   // Track if user image failed to load
   let userImageFailed = $state(false);
-
-  function toggleMobileMenu() {
-    mobileMenuOpen = !mobileMenuOpen;
-  }
-
-  function closeMobileMenu() {
-    mobileMenuOpen = false;
-  }
 
   // Hearts balance - commented out for now
   // Can be re-enabled later by accessing Zero from context
@@ -38,8 +28,8 @@
       </div>
     </a>
 
-    <!-- Navigation Links -->
-    <div class="nav-links">
+    <!-- Navigation Links (Desktop) -->
+    <div class="nav-links desktop-nav-links">
       <a
         href="/alpha/projects"
         class="nav-link"
@@ -57,17 +47,6 @@
       </a>
 
       {#if session?.data?.user}
-        <!-- Heart Balance - commented out for now -->
-        <!-- Can access Zero from context if needed later -->
-        <!-- <a href="/alpha/purchase" class="hearts-badge">
-          <svg class="heart-icon" viewBox="0 0 24 24" fill="currentColor">
-            <path
-              d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"
-            />
-          </svg>
-          <span class="heart-count">{heartBalance}</span>
-        </a> -->
-
         <a href="/alpha/me" class="user-info-link">
           <div class="user-info">
             <span class="user-name">{session.data.user?.name || "User"}</span>
@@ -90,71 +69,123 @@
       {/if}
     </div>
 
-    <!-- Mobile Menu Button -->
-    <button
-      class="mobile-menu-btn"
-      onclick={toggleMobileMenu}
-      aria-label="Toggle menu"
-    >
-      {#if mobileMenuOpen}
-        <svg
-          class="mobile-menu-icon"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            stroke-width="2"
-            d="M6 18L18 6M6 6l12 12"
-          />
-        </svg>
-      {:else}
-        <svg
-          class="mobile-menu-icon"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            stroke-width="2"
-            d="M4 6h16M4 12h16M4 18h16"
-          />
-        </svg>
-      {/if}
-    </button>
-  </div>
-
-  <!-- Mobile Menu -->
-  {#if mobileMenuOpen}
-    <div class="mobile-menu">
+    <!-- Mobile Bottom Navigation -->
+    <div class="mobile-bottom-nav">
       <a
-        href="/alpha/projects"
-        class="mobile-nav-link"
-        class:active={$page.url.pathname === "/alpha/projects"}
-        onclick={closeMobileMenu}
+        href="/alpha"
+        class="mobile-nav-item mobile-nav-home"
+        class:active={$page.url.pathname === "/alpha"}
       >
-        Projects
+        <img src="/logo.png" alt="Hominio" class="mobile-nav-logo" />
       </a>
+
+      <a
+        href="/alpha"
+        class="mobile-nav-item"
+        class:active={$page.url.pathname === "/alpha"}
+      >
+        <svg
+          class="mobile-nav-icon"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"
+          />
+        </svg>
+        <span class="mobile-nav-label">Live</span>
+      </a>
+
       <a
         href="/alpha/cups"
-        class="mobile-nav-link"
+        class="mobile-nav-item"
         class:active={$page.url.pathname.startsWith("/alpha/cups")}
-        onclick={closeMobileMenu}
       >
-        Cups
+        <svg
+          class="mobile-nav-icon"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z"
+          />
+        </svg>
+        <span class="mobile-nav-label">Cups</span>
       </a>
+
+      <a
+        href="/alpha/projects"
+        class="mobile-nav-item"
+        class:active={$page.url.pathname === "/alpha/projects"}
+      >
+        <svg
+          class="mobile-nav-icon"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
+          />
+        </svg>
+        <span class="mobile-nav-label">Projects</span>
+      </a>
+
+      {#if session?.data?.user}
+        <a href="/alpha/me" class="mobile-nav-item mobile-nav-user">
+          {#if session.data.user?.image && !userImageFailed}
+            <img
+              src={session.data.user.image}
+              alt={session.data.user.name}
+              class="mobile-user-avatar"
+              onerror={() => (userImageFailed = true)}
+            />
+          {:else if session.data.user?.name}
+            <div class="mobile-user-avatar-placeholder">
+              {session.data.user.name[0]?.toUpperCase() || "U"}
+            </div>
+          {/if}
+        </a>
+      {:else}
+        <button onclick={signInWithGoogle} class="mobile-nav-item mobile-nav-signin">
+          <svg
+            class="mobile-nav-icon"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+            />
+          </svg>
+          <span class="mobile-nav-label">Sign In</span>
+        </button>
+      {/if}
     </div>
-  {/if}
 </nav>
 
 <style>
   .navbar {
     position: sticky;
     top: 0;
+    bottom: auto;
+    left: 0;
+    right: 0;
+    width: 100%;
     z-index: 1000;
     background: rgba(255, 255, 255, 0.95);
     backdrop-filter: blur(12px);
@@ -369,105 +400,160 @@
     box-shadow: 0 4px 12px rgba(78, 205, 196, 0.3);
   }
 
-  /* Mobile Menu Button */
-  .mobile-menu-btn {
+  /* Mobile Bottom Navigation */
+  .mobile-bottom-nav {
     display: none;
+  }
+
+  .mobile-nav-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.25rem;
+    padding: 0.5rem 1rem;
+    text-decoration: none;
+    color: rgba(255, 255, 255, 0.7);
+    transition: all 0.2s;
     background: none;
     border: none;
     cursor: pointer;
-    color: #1a1a4e;
-    padding: 0.5rem;
-    transition: all 0.2s;
+    font-family: inherit;
   }
 
-  .mobile-menu-btn:hover {
+  .mobile-nav-item:hover {
     color: #4ecdc4;
   }
 
-  .mobile-menu-icon {
+  .mobile-nav-item.active {
+    color: #f4d03f; /* Yellow for active state on dark background */
+  }
+
+  .mobile-nav-icon {
     width: 24px;
     height: 24px;
   }
 
-  /* Mobile Menu */
-  .mobile-menu {
-    display: none;
-    flex-direction: column;
-    background: white;
-    border-top: 1px solid rgba(26, 26, 78, 0.08);
-    padding: 1rem;
-    gap: 0.5rem;
-  }
-
-  .mobile-nav-link {
-    display: block;
-    padding: 0.75rem 1rem;
-    color: rgba(26, 26, 78, 0.7);
+  .mobile-nav-label {
+    font-size: 0.7rem;
     font-weight: 600;
-    text-decoration: none;
-    border-radius: 8px;
-    transition: all 0.2s;
   }
 
-  .mobile-nav-link:hover {
-    background: rgba(78, 205, 196, 0.1);
-    color: #4ecdc4;
+  .mobile-nav-logo {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
   }
 
-  .mobile-nav-link.active {
-    background: rgba(78, 205, 196, 0.15);
-    color: #1a1a4e;
+  .mobile-nav-home {
+    flex: 0 0 auto;
+    padding: 0.25rem;
+  }
+
+  .mobile-nav-user {
+    margin-left: auto;
+    flex: 0 0 auto;
+    padding: 0.25rem;
+  }
+
+  .mobile-user-avatar {
+    width: 37px;
+    height: 37px;
+    border-radius: 50%;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+  }
+
+  .mobile-user-avatar-placeholder {
+    width: 37px;
+    height: 37px;
+    border-radius: 50%;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    background: linear-gradient(135deg, #4ecdc4, #f4d03f);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: 700;
+    font-size: 1rem;
   }
 
   /* Responsive */
   @media (max-width: 768px) {
+    .navbar {
+      position: fixed;
+      top: auto;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      width: 100vw;
+      margin: 0;
+      padding: 0;
+      border-bottom: none;
+      border-top: 1px solid rgba(255, 255, 255, 0.1);
+      box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.2);
+    }
+
     .nav-container {
-      padding: 0 1rem;
-      height: 70px;
+      padding: 0;
+      margin: 0;
+      max-width: none;
+      width: 100%;
+      height: auto;
+      flex-direction: column;
     }
 
-    .logo-content {
-      display: none;
+    .logo-link {
+      display: none; /* Hide logo on mobile */
     }
 
-    .logo-image {
-      width: 40px;
-      height: 40px;
+    .desktop-nav-links {
+      display: none; /* Hide desktop nav on mobile */
     }
 
-    .nav-links {
-      gap: 1rem;
-    }
-
-    .nav-link {
-      display: none;
-    }
-
-    /* Keep user info visible on mobile, but compact */
-    .user-info-link {
-      display: block;
-    }
-
-    .user-name {
-      display: none; /* Hide name on mobile, just show avatar */
-    }
-
-    .user-info {
-      padding: 0.375rem 0.5rem; /* Smaller padding on mobile */
-    }
-
-    .btn-signin {
-      display: block; /* Keep sign in button visible */
-      padding: 0.5rem 1rem;
-      font-size: 0.875rem;
-    }
-
-    .mobile-menu-btn {
-      display: block;
-    }
-
-    .mobile-menu {
+    .mobile-bottom-nav {
       display: flex;
+      align-items: center;
+      justify-content: space-around;
+      width: 100%;
+      padding: 0.375rem 0.5rem;
+      margin: 0;
+      background: #1a1a4e; /* Dark marine blue brand color */
+      backdrop-filter: blur(12px);
+      gap: 0;
+    }
+
+    .mobile-nav-item {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 0.375rem 0.25rem;
+      min-width: 0;
+    }
+
+    .mobile-nav-home {
+      flex: 1;
+      padding: 0.375rem 0.25rem;
+    }
+
+    .mobile-nav-user {
+      flex: 1;
+      padding: 0.375rem 0.25rem;
+    }
+
+    .mobile-nav-signin {
+      flex: 1;
+      padding: 0.375rem 0.25rem;
+    }
+
+    .mobile-nav-icon {
+      width: 20px;
+      height: 20px;
+    }
+
+    .mobile-nav-label {
+      font-size: 0.65rem;
     }
   }
 

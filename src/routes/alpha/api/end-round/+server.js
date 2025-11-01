@@ -205,6 +205,17 @@ export async function POST({ request }) {
         })
         .where("id", "=", cupId)
         .execute();
+
+      // Update all matches in the next round from "pending" to "voting"
+      await zeroDb
+        .updateTable("cupMatch")
+        .set({
+          status: "voting",
+        })
+        .where("cupId", "=", cupId)
+        .where("round", "=", nextRound)
+        .where("status", "=", "pending")
+        .execute();
     } else {
       // Final round completed, mark cup as completed
       await zeroDb

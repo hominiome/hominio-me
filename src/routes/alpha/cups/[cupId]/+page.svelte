@@ -48,8 +48,20 @@
     image: string | null;
   } | null>(null);
   let isAdmin = $state(false);
+  let votingSound = $state<HTMLAudioElement | null>(null); // Preloaded audio instance
 
   onMount(() => {
+    // Preload voting sound for instant playback
+    try {
+      votingSound = new Audio("/voting-effect.mp3");
+      votingSound.volume = 0.5;
+      votingSound.preload = "auto";
+      // Force preload by loading the audio
+      votingSound.load();
+    } catch (error) {
+      console.warn("Could not preload voting sound:", error);
+    }
+
     let cupView: any;
     let projectsView: any;
     let matchesView: any;
@@ -263,9 +275,25 @@
       return;
     }
 
-    // Trigger animation immediately for instant dopamine hit
+    // Trigger animation IMMEDIATELY (no delay)
     // Keep it for 3 seconds to match overlay and progress bar animations
     votingAnimation = `${matchId}-${projectSide}`;
+
+    // Play voting sound effect INSTANTLY using preloaded audio
+    if (votingSound) {
+      try {
+        // Reset to beginning and play instantly
+        votingSound.currentTime = 0;
+        const playPromise = votingSound.play();
+        if (playPromise !== undefined) {
+          playPromise.catch((error) => {
+            console.warn("Could not play voting sound:", error);
+          });
+        }
+      } catch (error) {
+        console.warn("Could not play voting sound:", error);
+      }
+    }
     setTimeout(() => {
       votingAnimation = null;
     }, 3000);
@@ -297,11 +325,25 @@
   }
 
   function isMatchActive(match: any) {
-    return (
-      cup?.status === "active" &&
-      cup?.currentRound === match.round &&
-      match.status !== "completed"
-    );
+    // Match is active if:
+    // 1. Status is "voting", OR
+    // 2. Status is "pending" AND cup is active AND match is in current round
+    if (match.status === "voting") return true;
+    if (match.status === "pending" && cup?.status === "active" && cup?.currentRound === match.round) {
+      return true;
+    }
+    return false;
+  }
+
+  function canUserVoteOnMatch(match: any) {
+    if (!$session.data?.user) return false;
+    const userId = $session.data.user.id;
+    const project1 = getProjectById(match.project1Id);
+    const project2 = getProjectById(match.project2Id);
+    // User cannot vote if they own either project
+    // Also need both projects to exist
+    if (!project1 || !project2) return false;
+    return project1.userId !== userId && project2.userId !== userId;
   }
 
   function toggleVideo(matchId: string) {
@@ -455,6 +497,7 @@
                     {@const hasVoted = hasUserVotedOnMatch(match.id)}
                     {@const userVotingWeight = getUserVotingWeight()}
                     {@const userVotedSide = getUserVotedSide(match.id)}
+                    {@const canVote = canUserVoteOnMatch(match)}
                     <!-- Match List Item Component -->
                     <MatchListItem
                       {match}
@@ -474,6 +517,7 @@
                       {hasVoted}
                       {userVotingWeight}
                       {userVotedSide}
+                      {canVote}
                       onToggleExpand={() =>
                         (expandedMatch =
                           expandedMatch === match.id ? null : match.id)}
