@@ -25,17 +25,17 @@ export async function POST({ request }) {
   const now = new Date().toISOString();
 
   try {
-    // Check if user has a voting package
-    const userPackage = await zeroDb
-      .selectFrom("userVotingPackage")
+    // Check if user has an identity
+    const userIdentity = await zeroDb
+      .selectFrom("userIdentities")
       .selectAll()
       .where("userId", "=", userId)
       .executeTakeFirst();
 
-    if (!userPackage) {
+    if (!userIdentity) {
       return json(
         {
-          error: "You need to purchase a voting package before you can vote. Please visit the purchase page.",
+          error: "You need to select a voting weight before you can vote. Please visit the selection page.",
         },
         { status: 400 }
       );
@@ -85,7 +85,7 @@ export async function POST({ request }) {
       );
     }
 
-    const votingWeight = userPackage.votingWeight;
+    const votingWeight = userIdentity.votingWeight;
 
     // Create vote record (immutable)
     await zeroDb

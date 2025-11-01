@@ -326,51 +326,40 @@
 
   <!-- Progress Bar with Vote Buttons and Percentages -->
   <div class="progress-bar-wrapper">
-    {#if session.data && isActive}
-      {#if hasVoted && userVotedSide === "project1"}
-        <!-- Vote count replaces button when voted -->
-        <div
-          class="vote-count-inline vote-count-left vote-count-square"
-          class:loser-count={match.winnerId &&
-            match.winnerId !== match.project1Id}
-        >
-          <span class="count-number">{votes1 || 0}</span>
+    {#if session.data && isActive && !hasVoted}
+      <!-- Vote button - only show when active and not voted -->
+      <button
+        onclick={() => voteOnMatch(match.id, "project1")}
+        class="vote-button-bar vote-button-bar-left"
+        aria-label="Vote for {project1?.title || 'Project 1'}"
+        title={`Vote for ${project1?.title || "Project 1"}`}
+      >
+        <div class="vote-button-content">
+          <svg
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+            class="plus-icon-vote"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M12 4v16m8-8H4"
+            />
+          </svg>
+          <span class="vote-label">Vote</span>
         </div>
-      {:else if hasVoted && userVotedSide === "project2"}
-        <!-- Show 0 votes for the side that wasn't voted on -->
-        <div
-          class="vote-count-inline vote-count-left vote-count-square"
-          class:loser-count={match.winnerId &&
-            match.winnerId !== match.project1Id}
-        >
-          <span class="count-number">{votes1 || 0}</span>
-        </div>
-      {:else if !hasVoted}
-        <!-- Vote button - only show when not voted -->
-        <button
-          onclick={() => voteOnMatch(match.id, "project1")}
-          class="vote-button-bar vote-button-bar-left"
-          aria-label="Vote for {project1?.title || 'Project 1'}"
-          title={`Vote for ${project1?.title || "Project 1"}`}
-        >
-          <div class="vote-button-content">
-            <svg
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-              class="plus-icon-vote"
-            >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M12 4v16m8-8H4"
-              />
-            </svg>
-            <span class="vote-label">Vote</span>
-          </div>
-        </button>
-      {/if}
+      </button>
+    {:else}
+      <!-- Vote count - always show for finished matches or when voted -->
+      <div
+        class="vote-count-inline vote-count-left vote-count-square"
+        class:loser-count={match.winnerId &&
+          match.winnerId !== match.project1Id}
+      >
+        <span class="count-number">{votes1 || 0}</span>
+      </div>
     {/if}
 
     <div
@@ -400,51 +389,40 @@
       </div>
     </div>
 
-    {#if session.data && isActive}
-      {#if hasVoted && userVotedSide === "project2"}
-        <!-- Vote count replaces button when voted -->
-        <div
-          class="vote-count-inline vote-count-right vote-count-square"
-          class:loser-count={match.winnerId &&
-            match.winnerId !== match.project2Id}
-        >
-          <span class="count-number">{votes2 || 0}</span>
+    {#if session.data && isActive && !hasVoted}
+      <!-- Vote button - only show when active and not voted -->
+      <button
+        onclick={() => voteOnMatch(match.id, "project2")}
+        class="vote-button-bar vote-button-bar-right"
+        aria-label="Vote for {project2?.title || 'Project 2'}"
+        title={`Vote for ${project2?.title || "Project 2"}`}
+      >
+        <div class="vote-button-content">
+          <svg
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+            class="plus-icon-vote"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M12 4v16m8-8H4"
+            />
+          </svg>
+          <span class="vote-label">Vote</span>
         </div>
-      {:else if hasVoted && userVotedSide === "project1"}
-        <!-- Show 0 votes for the side that wasn't voted on -->
-        <div
-          class="vote-count-inline vote-count-right vote-count-square"
-          class:loser-count={match.winnerId &&
-            match.winnerId !== match.project2Id}
-        >
-          <span class="count-number">{votes2 || 0}</span>
-        </div>
-      {:else if !hasVoted}
-        <!-- Vote button - only show when not voted -->
-        <button
-          onclick={() => voteOnMatch(match.id, "project2")}
-          class="vote-button-bar vote-button-bar-right"
-          aria-label="Vote for {project2?.title || 'Project 2'}"
-          title={`Vote for ${project2?.title || "Project 2"}`}
-        >
-          <div class="vote-button-content">
-            <svg
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-              class="plus-icon-vote"
-            >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M12 4v16m8-8H4"
-              />
-            </svg>
-            <span class="vote-label">Vote</span>
-          </div>
-        </button>
-      {/if}
+      </button>
+    {:else}
+      <!-- Vote count - always show for finished matches or when voted -->
+      <div
+        class="vote-count-inline vote-count-right vote-count-square"
+        class:loser-count={match.winnerId &&
+          match.winnerId !== match.project2Id}
+      >
+        <span class="count-number">{votes2 || 0}</span>
+      </div>
     {/if}
   </div>
 

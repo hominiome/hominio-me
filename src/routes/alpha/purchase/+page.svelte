@@ -14,26 +14,26 @@
       votingWeight: 1,
       name: "I am Hominio",
       price: 1,
-      description: "Basic voting package",
+      description: "",
     },
     {
       packageType: "founder",
       votingWeight: 5,
-      name: "Founder",
-      price: 5,
-      description: "5x voting power",
+      name: "Hominio Founder",
+      price: 10,
+      description: "",
     },
     {
       packageType: "angel",
       votingWeight: 10,
-      name: "Angel",
-      price: 10,
-      description: "10x voting power",
+      name: "Hominio Angel",
+      price: 100,
+      description: "",
     },
   ];
 
   let zero: any = null;
-  let userPackage = $state<any>(null);
+  let userIdentity = $state<any>(null);
   let loading = $state(true);
   let purchasing = $state(false);
   let successMessage = $state("");
@@ -47,7 +47,7 @@
   });
 
   onMount(() => {
-    let packageView: any;
+    let identityView: any;
 
     (async () => {
       // Wait for Zero to be ready
@@ -68,32 +68,32 @@
 
       const userId = $session.data.user.id;
 
-      // Query user's voting package
-      const packageQuery = zero.query.userVotingPackage
+      // Query user's identity
+      const identityQuery = zero.query.userIdentities
         .where("userId", "=", userId);
-      packageView = packageQuery.materialize();
+      identityView = identityQuery.materialize();
 
-      packageView.addListener((data: any) => {
-        const packages = Array.from(data);
-        if (packages.length > 0) {
-          userPackage = packages[0];
+      identityView.addListener((data: any) => {
+        const identities = Array.from(data);
+        if (identities.length > 0) {
+          userIdentity = identities[0];
         } else {
-          userPackage = null;
+          userIdentity = null;
         }
         loading = false;
       });
     })();
 
     return () => {
-      if (packageView) packageView.destroy();
+      if (identityView) identityView.destroy();
     };
   });
 
   function canUpgradeTo(packageType: string): boolean {
-    if (!userPackage) return true; // Can purchase any package if none exists
+    if (!userIdentity) return true; // Can select any identity if none exists
 
-    const currentType = userPackage.packageType;
-    if (currentType === packageType) return false; // Already has this package
+    const currentType = userIdentity.identityType;
+    if (currentType === packageType) return false; // Already has this identity
 
     // Valid upgrade paths
     if (currentType === "hominio" && (packageType === "founder" || packageType === "angel")) {
@@ -107,8 +107,8 @@
   }
 
   function getPackageStatus(packageType: string): "current" | "available" | "unavailable" {
-    if (!userPackage) return "available";
-    if (userPackage.packageType === packageType) return "current";
+    if (!userIdentity) return "available";
+    if (userIdentity.identityType === packageType) return "current";
     if (canUpgradeTo(packageType)) return "available";
     return "unavailable";
   }
@@ -117,7 +117,7 @@
     if (purchasing) return;
 
     if (!canUpgradeTo(packageType)) {
-      errorMessage = "You cannot purchase this package. Upgrade only.";
+      errorMessage = "Upgrade only.";
       setTimeout(() => {
         errorMessage = "";
       }, 3000);
@@ -145,7 +145,7 @@
       const result = await response.json();
       console.log("✅ Purchase successful:", result);
 
-      successMessage = result.message || `Successfully purchased ${packageType} package!`;
+      successMessage = result.message || `Selected`;
 
       // Clear success message after 3 seconds
       setTimeout(() => {
@@ -175,39 +175,13 @@
       <!-- Header -->
       <div class="header-section mb-12">
         <div>
-          <h1 class="text-6xl font-bold text-navy mb-3">Purchase Voting Package</h1>
-          <p class="text-navy/60 text-lg">
-            Choose your voting weight package. You can upgrade anytime, but cannot downgrade.
-          </p>
+          <h1 class="text-6xl font-bold text-navy mb-3">Choose Your Voting Weight</h1>
+          {#if !userIdentity}
+            <p class="text-navy/70 text-lg">
+              Select your voting weight to participate.
+            </p>
+          {/if}
         </div>
-
-        {#if userPackage}
-          <!-- Current Package Display -->
-          <div class="balance-card">
-            <div
-              class="text-xs font-medium text-navy/60 mb-2 uppercase tracking-wider text-center"
-            >
-              Your Package
-            </div>
-            <div class="flex items-center gap-3 justify-center">
-              <svg
-                class="w-12 h-12 text-yellow"
-                viewBox="0 0 24 24"
-                fill="currentColor"
-              >
-                <path
-                  d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"
-                />
-              </svg>
-              <div class="text-center">
-                <div class="text-4xl font-bold text-yellow">{userPackage.votingWeight}</div>
-                <div class="text-sm text-navy/70">
-                  {packages.find((p) => p.packageType === userPackage.packageType)?.name || "Votes"}
-                </div>
-              </div>
-            </div>
-          </div>
-        {/if}
       </div>
 
       <div class="space-y-8">
@@ -229,13 +203,10 @@
           </div>
         {/if}
 
-        <!-- Package Options -->
+        <!-- Options -->
         <div>
-          <h2 class="text-3xl font-bold text-navy mb-6 text-center">
-            Choose Your Package
-          </h2>
           <div
-            class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8"
+            class="package-grid mb-8"
           >
             {#each packages as pkg}
               {@const status = getPackageStatus(pkg.packageType)}
@@ -250,11 +221,6 @@
                 class:current-package={isCurrent}
                 class:unavailable-package={isUnavailable}
               >
-                {#if isCurrent}
-                  <div class="package-badge current-badge">CURRENT</div>
-                {:else if isUnavailable}
-                  <div class="package-badge unavailable-badge">UNAVAILABLE</div>
-                {/if}
 
                 <svg class="heart-icon" viewBox="0 0 24 24" fill="currentColor">
                   <path
@@ -264,35 +230,28 @@
 
                 <div class="heart-count-wrapper">
                   <div class="heart-count">{pkg.votingWeight}</div>
-                </div>
-
-                <div class="heart-label">
-                  {pkg.votingWeight} vote{pkg.votingWeight > 1 ? "s" : ""}
+                  <div class="heart-label">
+                    vote{pkg.votingWeight > 1 ? "s" : ""}
+                  </div>
                 </div>
 
                 <h3 class="package-name">{pkg.name}</h3>
 
-                <p class="package-description">{pkg.description}</p>
-
                 <div class="price">
                   €{pkg.price}
-                  <span class="vat-note">excl. VAT</span>
                 </div>
 
                 {#if isCurrent}
-                  <div class="buy-label current-label">Current Package</div>
+                  <div class="buy-label current-label">Current</div>
                 {:else if isAvailable}
-                  <div class="buy-label">Purchase Now</div>
+                  <div class="buy-label">Select</div>
                 {:else}
-                  <div class="buy-label unavailable-label">Not Available</div>
+                  <div class="buy-label unavailable-label">Unavailable</div>
                 {/if}
               </button>
             {/each}
           </div>
 
-          <p class="text-sm text-navy/50 text-center mt-6">
-            ℹ️ This is a demo purchase - no actual payment required
-          </p>
         </div>
 
         <!-- Back to Cups -->
@@ -348,15 +307,6 @@
     gap: 2rem;
   }
 
-  /* Balance Card */
-  .balance-card {
-    background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
-    border: 2px solid #f4d03f;
-    border-radius: 16px;
-    padding: 1.5rem;
-    flex-shrink: 0;
-    min-width: 200px;
-  }
 
   /* Card */
   .card {
@@ -388,7 +338,7 @@
     box-shadow: 0 12px 32px rgba(244, 208, 63, 0.25);
   }
 
-  .package-card:disabled {
+  .package-card:disabled:not(.current-package) {
     opacity: 0.5;
     cursor: not-allowed;
   }
@@ -401,37 +351,18 @@
     );
     border-color: #f4d03f;
     border-width: 3px;
+    opacity: 1;
+    cursor: default;
+  }
+
+  .package-card.current-package:hover {
+    transform: none;
+    box-shadow: none;
   }
 
   .package-card.unavailable-package {
     opacity: 0.6;
     cursor: not-allowed;
-  }
-
-  .package-badge {
-    position: absolute;
-    top: -12px;
-    left: 50%;
-    transform: translateX(-50%);
-    padding: 0.375rem 1rem;
-    border-radius: 20px;
-    font-size: 0.625rem;
-    font-weight: 700;
-    letter-spacing: 0.1em;
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
-    box-shadow: 0 2px 8px rgba(26, 26, 78, 0.08);
-    white-space: nowrap;
-  }
-
-  .package-badge.current-badge {
-    background: linear-gradient(135deg, #1a1a4e 0%, #2a2a6e 100%);
-    color: #f4d03f;
-  }
-
-  .package-badge.unavailable-badge {
-    background: rgba(26, 26, 78, 0.12);
-    color: rgba(26, 26, 78, 0.65);
   }
 
   .heart-icon {
@@ -442,9 +373,9 @@
 
   .heart-count-wrapper {
     display: flex;
-    align-items: center;
+    align-items: baseline;
     justify-content: center;
-    gap: 0.5rem;
+    gap: 0.25rem;
   }
 
   .heart-count {
@@ -455,10 +386,10 @@
   }
 
   .heart-label {
-    font-size: 0.875rem;
-    color: rgba(26, 26, 78, 0.5);
-    font-weight: 500;
-    margin-bottom: 0.1rem;
+    font-size: 1rem;
+    color: rgba(26, 26, 78, 0.6);
+    font-weight: 600;
+    margin-bottom: 0;
   }
 
   .package-name {
@@ -484,17 +415,8 @@
     margin-top: auto;
     padding-top: 0.75rem;
     display: flex;
-    flex-direction: column;
     align-items: center;
-    gap: 0.25rem;
-  }
-
-  .vat-note {
-    font-size: 0.625rem;
-    font-weight: 500;
-    color: rgba(26, 26, 78, 0.5);
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
+    justify-content: center;
   }
 
   .buy-label {
@@ -544,6 +466,20 @@
     box-shadow: 0 4px 12px rgba(78, 205, 196, 0.3);
   }
 
+  /* Package Grid */
+  .package-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+  @media (min-width: 768px) {
+    .package-grid {
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1.5rem;
+    }
+  }
+
   @media (max-width: 768px) {
     .header-section {
       flex-direction: column;
@@ -555,31 +491,64 @@
       font-size: 2.5rem;
     }
 
-    .balance-card {
-      width: 100%;
-      min-width: auto;
-      padding: 1rem;
-    }
-
-    .grid {
-      grid-template-columns: 1fr !important;
-    }
-
     .package-card {
-      padding: 1.2rem;
+      padding: 1rem 1.25rem;
+      flex-direction: row;
+      align-items: center;
+      text-align: left;
+      gap: 1rem;
+      justify-content: space-between;
     }
 
-    .heart-icon {
-      width: 2.5rem;
-      height: 2.5rem;
+    .package-card .heart-icon {
+      order: 1;
+      width: 2rem;
+      height: 2rem;
+      flex-shrink: 0;
     }
 
-    .heart-count {
-      font-size: 2rem;
+    .package-card .heart-count-wrapper {
+      order: 2;
+      flex-direction: row;
+      gap: 0.125rem;
     }
 
-    .package-name {
+    .package-card .heart-count {
+      font-size: 1.5rem;
+    }
+
+    .package-card .heart-label {
+      font-size: 0.875rem;
+    }
+
+    .package-card .package-name {
+      order: 4;
+      flex: 1;
+      margin: 0;
+      min-height: auto;
       font-size: 1rem;
+      text-align: left;
+    }
+
+    .package-card .package-description {
+      order: 5;
+      display: none;
+    }
+
+    .package-card .price {
+      order: 6;
+      margin-top: 0;
+      padding-top: 0;
+      flex-direction: row;
+      align-items: baseline;
+      gap: 0.5rem;
+      font-size: 1.5rem;
+    }
+
+    .package-card .buy-label {
+      order: 7;
+      margin-left: auto;
+      flex-shrink: 0;
     }
   }
 
@@ -593,41 +562,33 @@
     }
 
     .package-card {
-      padding: 1rem;
+      padding: 0.875rem 1rem;
     }
 
-    .heart-icon {
-      width: 2.25rem;
-      height: 2.25rem;
+    .package-card .heart-icon {
+      width: 1.75rem;
+      height: 1.75rem;
     }
 
-    .heart-count {
-      font-size: 1.75rem;
+    .package-card .heart-count {
+      font-size: 1.25rem;
     }
 
-    .package-name {
+    .package-card .heart-label {
+      font-size: 0.75rem;
+    }
+
+    .package-card .package-name {
       font-size: 0.9375rem;
     }
 
-    .package-description {
-      font-size: 0.8125rem;
+    .package-card .price {
+      font-size: 1.25rem;
     }
 
-    .price {
-      font-size: 1.5rem;
-    }
-
-    .buy-label {
-      font-size: 0.6875rem;
-      padding: 0.4375rem 1.25rem;
-    }
-
-    .balance-card {
-      padding: 0.875rem;
-    }
-
-    .balance-card .text-4xl {
-      font-size: 2rem;
+    .package-card .buy-label {
+      font-size: 0.625rem;
+      padding: 0.375rem 1rem;
     }
   }
 </style>

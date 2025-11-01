@@ -9,19 +9,19 @@ const PACKAGES = {
     packageType: "hominio",
     votingWeight: 1,
     name: "I am Hominio",
-    price: 1, // Placeholder - adjust as needed
+    price: 1,
   },
   founder: {
     packageType: "founder",
     votingWeight: 5,
-    name: "Founder",
-    price: 5, // Placeholder - adjust as needed
+    name: "Hominio Founder",
+    price: 10,
   },
   angel: {
     packageType: "angel",
     votingWeight: 10,
-    name: "Angel",
-    price: 10, // Placeholder - adjust as needed
+    name: "Hominio Angel",
+    price: 100,
   },
 };
 
@@ -44,7 +44,7 @@ export async function POST({ request }) {
 
   if (!packageType || !PACKAGES[packageType]) {
     return json(
-      { error: "Invalid package type. Must be 'hominio', 'founder', or 'angel'" },
+      { error: "Invalid identity type. Must be 'hominio', 'founder', or 'angel'" },
       { status: 400 }
     );
   }
@@ -54,82 +54,82 @@ export async function POST({ request }) {
   const selectedPackage = PACKAGES[packageType];
 
   try {
-    // Check if user already has a package
-    const existingPackage = await zeroDb
-      .selectFrom("userVotingPackage")
+    // Check if user already has an identity
+    const existingIdentity = await zeroDb
+      .selectFrom("userIdentities")
       .selectAll()
       .where("userId", "=", userId)
       .executeTakeFirst();
 
-    if (existingPackage) {
-      // User already has a package - check if this is a valid upgrade
-      const currentPackageType = existingPackage.packageType;
+    if (existingIdentity) {
+      // User already has an identity - check if this is a valid upgrade
+      const currentIdentityType = existingIdentity.identityType;
 
-      // Cannot purchase the same package
-      if (currentPackageType === packageType) {
+      // Cannot select the same identity
+      if (currentIdentityType === packageType) {
         return json(
-          { error: `You already have the ${selectedPackage.name} package` },
+          { error: `You already have ${selectedPackage.name}` },
           { status: 400 }
         );
       }
 
       // Check if this is a valid upgrade path
-      const validUpgrades = UPGRADE_PATHS[currentPackageType] || [];
+      const validUpgrades = UPGRADE_PATHS[currentIdentityType] || [];
       if (!validUpgrades.includes(packageType)) {
         return json(
           {
-            error: `Cannot downgrade from ${PACKAGES[currentPackageType].name} to ${selectedPackage.name}. Valid upgrades: ${validUpgrades.map((p) => PACKAGES[p].name).join(", ")}`,
+            error: `Cannot downgrade from ${PACKAGES[currentIdentityType].name} to ${selectedPackage.name}. Valid upgrades: ${validUpgrades.map((p) => PACKAGES[p].name).join(", ")}`,
           },
           { status: 400 }
         );
       }
 
-      // Update existing package (upgrade)
+      // Update existing identity (upgrade)
       await zeroDb
-        .updateTable("userVotingPackage")
+        .updateTable("userIdentities")
         .set({
-          packageType: selectedPackage.packageType,
+          identityType: selectedPackage.packageType,
           votingWeight: selectedPackage.votingWeight,
-          upgradedFrom: currentPackageType,
-          purchasedAt: now, // Update purchase time on upgrade
+          upgradedFrom: currentIdentityType,
+          selectedAt: now, // Update selection time on upgrade
         })
         .where("userId", "=", userId)
         .execute();
 
       return json({
         success: true,
-        package: {
-          packageType: selectedPackage.packageType,
+        identity: {
+          identityType: selectedPackage.packageType,
           votingWeight: selectedPackage.votingWeight,
           name: selectedPackage.name,
-          upgradedFrom: currentPackageType,
+          upgradedFrom: currentIdentityType,
         },
-        message: `Successfully upgraded to ${selectedPackage.name} package`,
+        message: `Successfully upgraded to ${selectedPackage.name}`,
       });
     } else {
-      // No existing package - create new one
-      const packageId = nanoid();
+      // No existing identity - create new one
+      const identityId = nanoid();
 
       await zeroDb
-        .insertInto("userVotingPackage")
+        .insertInto("userIdentities")
         .values({
-          id: packageId,
+          id: identityId,
           userId,
-          packageType: selectedPackage.packageType,
+          identityType: selectedPackage.packageType,
           votingWeight: selectedPackage.votingWeight,
-          purchasedAt: now,
+          selectedAt: now,
           upgradedFrom: null,
         })
         .execute();
 
       return json({
         success: true,
-        package: {
-          packageType: selectedPackage.packageType,
+        identity: {
+          identityType: selectedPackage.packageType,
           votingWeight: selectedPackage.votingWeight,
           name: selectedPackage.name,
         },
-        message: `Successfully purchased ${selectedPackage.name} package`,
+        message: `Successfully selected ${selectedPackage.name}`,
       });
     }
   } catch (error) {

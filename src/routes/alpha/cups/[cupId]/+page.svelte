@@ -36,7 +36,7 @@
   let projects = $state<any[]>([]);
   let matches = $state<any[]>([]);
   let votes = $state<any[]>([]); // All vote records
-  let userVotingPackage = $state<any>(null);
+  let userIdentity = $state<any>(null);
   let userVotes = $state<any[]>([]); // Track which matches user has voted on
   let loading = $state(true);
   let voting = $state(false);
@@ -123,27 +123,27 @@
         votes = Array.from(data);
       });
 
-      // Query user's voting package and votes if logged in
-      let userPackageView: any;
+      // Query user's identity and votes if logged in
+      let userIdentityView: any;
       let userVotesView: any;
 
       if ($session.data?.user) {
         const userId = $session.data.user.id;
 
-        // Query user's voting package
-        const userPackageQuery = zero.query.userVotingPackage.where(
+        // Query user's identity
+        const userIdentityQuery = zero.query.userIdentities.where(
           "userId",
           "=",
           userId
         );
-        userPackageView = userPackageQuery.materialize();
+        userIdentityView = userIdentityQuery.materialize();
 
-        userPackageView.addListener((data: any) => {
-          const packages = Array.from(data) as any[];
-          if (packages.length > 0) {
-            userVotingPackage = packages[0];
+        userIdentityView.addListener((data: any) => {
+          const identities = Array.from(data) as any[];
+          if (identities.length > 0) {
+            userIdentity = identities[0];
           } else {
-            userVotingPackage = null;
+            userIdentity = null;
           }
         });
 
@@ -161,7 +161,7 @@
         if (projectsView) projectsView.destroy();
         if (matchesView) matchesView.destroy();
         if (votesView) votesView.destroy();
-        if (userPackageView) userPackageView.destroy();
+        if (userIdentityView) userIdentityView.destroy();
         if (userVotesView) userVotesView.destroy();
       };
     })();
@@ -219,7 +219,7 @@
   }
 
   function getUserVotingWeight(): number {
-    return userVotingPackage?.votingWeight || 0;
+    return userIdentity?.votingWeight || 0;
   }
 
   async function voteOnMatch(
@@ -234,9 +234,9 @@
 
     if (voting) return;
 
-    // Check if user has a voting package
-    if (!userVotingPackage) {
-      showError("You need to purchase a voting package before you can vote!");
+    // Check if user has an identity
+    if (!userIdentity) {
+      // Redirect directly to purchase page without showing error
       goto("/alpha/purchase");
       return;
     }

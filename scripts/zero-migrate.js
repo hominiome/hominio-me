@@ -194,41 +194,75 @@ async function createTables() {
     await sql`ALTER TABLE "cupMatch" REPLICA IDENTITY FULL`.execute(db);
     console.log("✅ Enabled replica identity for cupMatch table");
 
-    // UserVotingPackage table
+    // Migrate userVotingPackage to userIdentities if it exists
+    try {
+      const tableExists = await sql`
+        SELECT EXISTS (
+          SELECT FROM information_schema.tables 
+          WHERE table_schema = 'public' 
+          AND table_name = 'userVotingPackage'
+        )
+      `.execute(db);
+      
+      if (tableExists.rows[0]?.exists) {
+        // Rename table
+        await sql`ALTER TABLE "userVotingPackage" RENAME TO "userIdentities"`.execute(db);
+        console.log("✅ Renamed userVotingPackage table to userIdentities");
+        
+        // Rename columns
+        await sql`ALTER TABLE "userIdentities" RENAME COLUMN "packageType" TO "identityType"`.execute(db);
+        await sql`ALTER TABLE "userIdentities" RENAME COLUMN "purchasedAt" TO "selectedAt"`.execute(db);
+        console.log("✅ Renamed columns: packageType -> identityType, purchasedAt -> selectedAt");
+        
+        // Update indexes
+        try {
+          await sql`ALTER INDEX IF EXISTS "userVotingPackage_userId_idx" RENAME TO "userIdentities_userId_idx"`.execute(db);
+          await sql`DROP INDEX IF EXISTS "userVotingPackage_userId_unique"`.execute(db);
+          await sql`CREATE UNIQUE INDEX IF NOT EXISTS userIdentities_userId_unique ON "userIdentities" ("userId")`.execute(db);
+          console.log("✅ Updated indexes");
+        } catch (e) {
+          console.log("ℹ️  Index update skipped (may not exist)");
+        }
+      }
+    } catch (error) {
+      console.log("ℹ️  Migration from userVotingPackage skipped:", error.message);
+    }
+
+    // UserIdentities table
     await db.schema
-      .createTable("userVotingPackage")
+      .createTable("userIdentities")
       .ifNotExists()
       .addColumn("id", "text", (col) => col.primaryKey())
       .addColumn("userId", "text", (col) => col.notNull())
-      .addColumn("packageType", "text", (col) => col.notNull())
+      .addColumn("identityType", "text", (col) => col.notNull())
       .addColumn("votingWeight", "integer", (col) => col.notNull())
-      .addColumn("purchasedAt", "text", (col) => col.notNull())
+      .addColumn("selectedAt", "text", (col) => col.notNull())
       .addColumn("upgradedFrom", "text")
       .execute();
-    console.log("✅ UserVotingPackage table created");
+    console.log("✅ UserIdentities table created");
 
-    // Add index on userId for userVotingPackage table
+    // Add index on userId for userIdentities table
     await db.schema
-      .createIndex("userVotingPackage_userId_idx")
+      .createIndex("userIdentities_userId_idx")
       .ifNotExists()
-      .on("userVotingPackage")
+      .on("userIdentities")
       .column("userId")
       .execute();
-    console.log("✅ UserVotingPackage userId index created");
+    console.log("✅ UserIdentities userId index created");
 
-    // Add unique constraint on userId (one package per user)
+    // Add unique constraint on userId (one identity per user)
     try {
-      await sql`CREATE UNIQUE INDEX IF NOT EXISTS userVotingPackage_userId_unique ON "userVotingPackage" ("userId")`.execute(
+      await sql`CREATE UNIQUE INDEX IF NOT EXISTS userIdentities_userId_unique ON "userIdentities" ("userId")`.execute(
         db
       );
-      console.log("✅ UserVotingPackage unique constraint on userId created");
+      console.log("✅ UserIdentities unique constraint on userId created");
     } catch (error) {
-      console.log("✅ UserVotingPackage unique constraint already exists");
+      console.log("✅ UserIdentities unique constraint already exists");
     }
 
-    // Enable WAL replication for userVotingPackage table
-    await sql`ALTER TABLE "userVotingPackage" REPLICA IDENTITY FULL`.execute(db);
-    console.log("✅ Enabled replica identity for userVotingPackage table");
+    // Enable WAL replication for userIdentities table
+    await sql`ALTER TABLE "userIdentities" REPLICA IDENTITY FULL`.execute(db);
+    console.log("✅ Enabled replica identity for userIdentities table");
 
     // Vote table
     await db.schema
@@ -289,7 +323,7 @@ async function createTables() {
 
     // Create publication with only current tables (no wallet, transaction, heartTransaction, projectVote)
     try {
-      await sql`CREATE PUBLICATION zero_data FOR TABLE project, cup, "cupMatch", "userVotingPackage", vote`.execute(
+      await sql`CREATE PUBLICATION zero_data FOR TABLE project, cup, "cupMatch", "userIdentities", vote`.execute(
         db
       );
       console.log("✅ Created publication for Zero (current tables only)");
@@ -299,14 +333,14 @@ async function createTables() {
         try {
           // Remove legacy tables from publication
           try {
-            await sql`ALTER PUBLICATION zero_data DROP TABLE IF EXISTS wallet, transaction, "heartTransaction", "projectVote"`.execute(db);
+            await sql`ALTER PUBLICATION zero_data DROP TABLE IF EXISTS wallet, transaction, "heartTransaction", "projectVote", "userVotingPackage"`.execute(db);
             console.log("✅ Removed legacy tables from publication");
           } catch (e) {
             console.log("ℹ️  Could not remove legacy tables from publication (may not exist)");
           }
           
           // Add current tables if not already present
-          await sql`ALTER PUBLICATION zero_data ADD TABLE IF NOT EXISTS project, cup, "cupMatch", "userVotingPackage", vote`.execute(
+          await sql`ALTER PUBLICATION zero_data ADD TABLE IF NOT EXISTS project, cup, "cupMatch", "userIdentities", vote`.execute(
             db
           );
           console.log("✅ Updated publication to include current tables");

@@ -58,15 +58,15 @@ const cupMatch = table('cupMatch')
   })
   .primaryKey('id');
 
-// User voting package - tracks which voting weight package a user has purchased
-const userVotingPackage = table('userVotingPackage')
+// User identities - tracks which voting weight identity a user has selected
+const userIdentities = table('userIdentities')
   .columns({
     id: string(),
     userId: string(), // User ID - indexed
-    packageType: string(), // 'hominio' | 'founder' | 'angel'
+    identityType: string(), // 'hominio' | 'founder' | 'angel'
     votingWeight: number(), // 1 | 5 | 10
-    purchasedAt: string(), // ISO timestamp
-    upgradedFrom: string(), // Previous package type if upgraded (nullable)
+    selectedAt: string(), // ISO timestamp
+    upgradedFrom: string(), // Previous identity type if upgraded (nullable)
   })
   .primaryKey('id');
 
@@ -83,7 +83,7 @@ const vote = table('vote')
   .primaryKey('id');
 
 export const schema = createSchema({
-  tables: [project, cup, cupMatch, userVotingPackage, vote],
+  tables: [project, cup, cupMatch, userIdentities, vote],
 });
 
 // AuthData type - JWT claims from BetterAuth
@@ -151,23 +151,23 @@ export const permissions = definePermissions<AuthData, typeof schema>(
         delete: [],
       },
     },
-    userVotingPackage: {
+    userIdentities: {
       row: {
-        // SELECT: Everyone can read voting packages (public transparency)
+        // SELECT: Everyone can read identities (public transparency)
         select: ANYONE_CAN,
-        // INSERT: Users can create their own package
+        // INSERT: Users can create their own identity
         insert: [
           (authData, { cmp }) => {
             return cmp('userId', '=', authData.sub);
           }
         ],
-        // UPDATE: Users can update their own package (for upgrades)
+        // UPDATE: Users can update their own identity (for upgrades)
         update: [
           (authData, { cmp }) => {
             return cmp('userId', '=', authData.sub);
           }
         ],
-        // DELETE: Nobody can delete packages
+        // DELETE: Nobody can delete identities
         delete: [],
       },
     },

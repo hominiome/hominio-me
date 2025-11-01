@@ -134,7 +134,7 @@
     grid-template-columns: 1fr auto 1fr;
     align-items: center;
     gap: 1rem 1.5rem;
-    padding: 1rem 1.5rem;
+    padding: 0.75rem 1.5rem;
     background: white;
     border: 2px solid rgba(26, 26, 78, 0.08);
     border-radius: 20px;
@@ -147,8 +147,8 @@
   @media (max-width: 768px) {
     .match-list-item {
       grid-template-columns: 1fr auto 1fr;
-      gap: 0.5rem 0.75rem;
-      padding: 0.75rem 0.875rem;
+      gap: 0.5rem 0.5rem;
+      padding: 0.625rem 0.75rem;
       /* Prevent grid from collapsing - keep side-by-side layout */
       min-width: 0; /* Allow grid to shrink but maintain structure */
     }
@@ -165,7 +165,7 @@
 
     .match-list-center {
       justify-self: center;
-      gap: 0.5rem; /* Reduce gap on mobile */
+      gap: 0.375rem; /* Reduce gap on mobile */
     }
 
     .team-list-name {
@@ -201,8 +201,8 @@
 
   @media (max-width: 480px) {
     .match-list-item {
-      gap: 0.375rem 0.5rem;
-      padding: 0.625rem 0.75rem;
+      gap: 0.375rem 0.375rem;
+      padding: 0.5rem 0.625rem;
     }
 
     .match-list-project-left,
@@ -225,7 +225,7 @@
     }
 
     .match-list-center {
-      gap: 0.375rem;
+      gap: 0.25rem;
     }
 
     .match-list-indicator {
@@ -298,7 +298,7 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 0.25rem;
+    gap: 0.125rem;
   }
 
   /* Right: Project 2 */
