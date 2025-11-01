@@ -7,8 +7,13 @@ WORKDIR /app
 # Copy schema file (needed for zero-cache)
 COPY src/zero-schema.ts ./src/zero-schema.ts
 
+# Override ENTRYPOINT to allow CMD override
+# The Zero image likely has an ENTRYPOINT that we need to clear
+ENTRYPOINT []
+
 # Start zero-cache with admin password from environment variable
 # Zero requires --admin-password in production mode
 # We reuse ZERO_AUTH_SECRET as the admin password (same secret, different purpose)
+# Zero can read ZERO_ADMIN_PASSWORD from env, but we'll pass it explicitly to be sure
 CMD ["sh", "-c", "zero-cache --schema-path=./src/zero-schema.ts --admin-password=\"${ZERO_AUTH_SECRET}\""]
 
