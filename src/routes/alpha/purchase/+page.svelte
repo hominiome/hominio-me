@@ -199,12 +199,12 @@
         matches = Array.from(data || []);
       });
 
-      return () => {
-        if (identityView) identityView.destroy();
+    return () => {
+      if (identityView) identityView.destroy();
         if (cupsView) cupsView.destroy();
         if (purchasesView) purchasesView.destroy();
         if (matchesView) matchesView.destroy();
-      };
+    };
     })();
   });
 
@@ -457,14 +457,14 @@
                   class:current-label={isCurrent}
                   class:unavailable-label={isUnavailable}
                 >
-                  {#if isCurrent}
+                {#if isCurrent}
                     Current
-                  {:else if isAvailable}
+                {:else if isAvailable}
                     Select
-                  {:else}
+                {:else}
                     Unavailable
-                  {/if}
-                </button>
+                {/if}
+              </button>
               </div>
             {/each}
           </div>
@@ -853,7 +853,7 @@
     z-index: 100;
     pointer-events: none;
     animation: fadeInOutPurchaseOverlay 4s ease-in-out;
-  }
+    }
 
   .purchase-overlay-content {
     display: flex;

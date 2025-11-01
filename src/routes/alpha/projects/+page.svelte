@@ -35,7 +35,11 @@
     videoUrl: "",
     sdgs: [] as string[],
   });
-  let selectedOwner = $state<{ id: string; name: string | null; image: string | null } | null>(null);
+  let selectedOwner = $state<{
+    id: string;
+    name: string | null;
+    image: string | null;
+  } | null>(null);
 
   // All available SDGs
   const availableSDGs = [
@@ -150,7 +154,8 @@
       return;
 
     // Use selected owner if admin selected one, otherwise use current user
-    const ownerId = isAdmin && selectedOwner ? selectedOwner.id : $session.data.user.id;
+    const ownerId =
+      isAdmin && selectedOwner ? selectedOwner.id : $session.data.user.id;
 
     await zero.mutate.project.insert({
       id: nanoid(),
@@ -451,9 +456,12 @@
         <div class="projects-list">
           {#each projects as project (project.id)}
             {@const userProfile = userProfiles.get(project.userId)}
-            {@const thumbnailUrl = project.videoThumbnail && typeof project.videoThumbnail === 'string' && project.videoThumbnail.trim().length > 0 
-              ? project.videoThumbnail.trim() 
-              : `https://picsum.photos/seed/${project.id || 'project'}/400/225`}
+            {@const thumbnailUrl =
+              project.videoThumbnail &&
+              typeof project.videoThumbnail === "string" &&
+              project.videoThumbnail.trim().length > 0
+                ? project.videoThumbnail.trim()
+                : `https://picsum.photos/seed/${project.id || "project"}/400/225`}
             <div class="project-list-card">
               <!-- Top Section: Thumbnail and Content Side by Side -->
               <div class="project-list-card-top-section">
@@ -464,90 +472,107 @@
                     alt={project.title}
                     class="project-thumbnail"
                     onerror={(e) => {
-                      e.target.src = `https://picsum.photos/seed/${project.id || 'project'}/400/225`;
+                      e.target.src = `https://picsum.photos/seed/${project.id || "project"}/400/225`;
                     }}
                   />
                 </div>
 
                 <!-- Main Content Area -->
                 <div class="project-main-content">
-                <!-- Content Section -->
-                <div class="project-content">
-                  <!-- Card Header -->
-                  <div class="flex justify-between items-start mb-3">
-                    <h3 class="text-2xl font-bold text-navy leading-tight">{project.title}</h3>
-                    {#if isMyProject(project)}
-                      <span class="badge">Yours</span>
-                    {/if}
-                  </div>
-
-                  <!-- Founder Info -->
-                  <a href="/alpha/user/{project.userId}" class="founder-link">
-                    <div class="flex items-center gap-2.5 mb-3">
-                      {#if userProfile?.image && !failedImages.has(project.userId)}
-                        <img
-                          src={userProfile.image}
-                          alt={userProfile.name || "User"}
-                          class="founder-avatar"
-                          onerror={() => {
-                            failedImages = new Set(failedImages).add(
-                              project.userId
-                            );
-                          }}
-                        />
-                      {:else}
-                        <div class="founder-avatar-placeholder">
-                          {userProfile?.name?.[0] || project.userId?.[0] || "?"}
-                        </div>
-                      {/if}
-                      <span class="founder-name"
-                        >{userProfile?.name || "Anonymous"}</span
+                  <!-- Content Section -->
+                  <div class="project-content">
+                    <!-- Card Header -->
+                    <div class="flex justify-between items-start mb-3">
+                      <a
+                        href="/alpha/projects/{project.id}"
+                        class="project-title-link"
                       >
+                        <h3 class="text-2xl font-bold text-navy leading-tight">
+                          {project.title}
+                        </h3>
+                      </a>
+                      {#if isMyProject(project)}
+                        <span class="badge">Yours</span>
+                      {/if}
                     </div>
-                  </a>
 
-                  <!-- Location -->
-                  <div
-                    class="flex items-center gap-2 text-teal text-sm font-medium mb-4"
-                  >
-                    <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                      <path
-                        fill-rule="evenodd"
-                        d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z"
-                        clip-rule="evenodd"
-                      />
-                    </svg>
-                    {project.city}{project.country ? `, ${project.country}` : ''}
+                    <!-- Founder Info -->
+                    <a href="/alpha/user/{project.userId}" class="founder-link">
+                      <div class="flex items-center gap-2.5 mb-3">
+                        {#if userProfile?.image && !failedImages.has(project.userId)}
+                          <img
+                            src={userProfile.image}
+                            alt={userProfile.name || "User"}
+                            class="founder-avatar"
+                            onerror={() => {
+                              failedImages = new Set(failedImages).add(
+                                project.userId
+                              );
+                            }}
+                          />
+                        {:else}
+                          <div class="founder-avatar-placeholder">
+                            {userProfile?.name?.[0] ||
+                              project.userId?.[0] ||
+                              "?"}
+                          </div>
+                        {/if}
+                        <span class="founder-name"
+                          >{userProfile?.name || "Anonymous"}</span
+                        >
+                      </div>
+                    </a>
+
+                    <!-- Location -->
+                    <div
+                      class="flex items-center gap-2 text-teal text-sm font-medium mb-4"
+                    >
+                      <svg
+                        class="w-4 h-4"
+                        fill="currentColor"
+                        viewBox="0 0 20 20"
+                      >
+                        <path
+                          fill-rule="evenodd"
+                          d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z"
+                          clip-rule="evenodd"
+                        />
+                      </svg>
+                      {project.city}{project.country
+                        ? `, ${project.country}`
+                        : ""}
+                    </div>
+
+                    <!-- Description -->
+                    <p
+                      class="text-navy/70 text-sm leading-relaxed mb-4 line-clamp-3 project-description"
+                    >
+                      {project.description}
+                    </p>
                   </div>
 
-                  <!-- Description -->
-                  <p class="text-navy/70 text-sm leading-relaxed mb-4 line-clamp-3 project-description">
-                    {project.description}
-                  </p>
-                </div>
-
-                <!-- SDGs Display - Vertical on Right -->
-                {#if project.sdgs}
-                  {@const sdgArray =
-                    typeof project.sdgs === "string"
-                      ? JSON.parse(project.sdgs || "[]")
-                      : project.sdgs}
-                  {#if sdgArray.length > 0}
-                    <div class="project-sdgs-sidebar">
-                      <div class="sdg-display-vertical">
-                        {#each sdgArray as sdgId}
-                          <img
-                            src="/sdgs/{sdgId}.svg"
-                            alt={sdgId}
-                            class="sdg-badge-vertical"
-                            title={availableSDGs.find((s) => s.id === sdgId)
-                              ?.name || sdgId}
-                          />
-                        {/each}
+                  <!-- SDGs Display - Vertical on Right -->
+                  {#if project.sdgs}
+                    {@const sdgArray =
+                      typeof project.sdgs === "string"
+                        ? JSON.parse(project.sdgs || "[]")
+                        : project.sdgs}
+                    {#if sdgArray.length > 0}
+                      <div class="project-sdgs-sidebar">
+                        <div class="sdg-display-vertical">
+                          {#each sdgArray as sdgId}
+                            <img
+                              src="/sdgs/{sdgId}.svg"
+                              alt={sdgId}
+                              class="sdg-badge-vertical"
+                              title={availableSDGs.find((s) => s.id === sdgId)
+                                ?.name || sdgId}
+                            />
+                          {/each}
+                        </div>
                       </div>
-                    </div>
+                    {/if}
                   {/if}
-                {/if}
                 </div>
               </div>
 
@@ -869,7 +894,6 @@
     transition: all 0.3s ease;
   }
 
-
   .card:hover {
     box-shadow: 0 4px 20px rgba(26, 26, 78, 0.1);
   }
@@ -1119,5 +1143,20 @@
     overflow-y: auto;
     padding: 2rem;
     position: relative;
+  }
+
+  .project-title-link {
+    text-decoration: none;
+    color: inherit;
+    transition: color 0.2s;
+    display: block;
+  }
+
+  .project-title-link:hover {
+    color: #4ecdc4;
+  }
+
+  .project-title-link h3 {
+    transition: color 0.2s;
   }
 </style>

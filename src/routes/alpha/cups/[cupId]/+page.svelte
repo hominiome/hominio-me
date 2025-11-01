@@ -459,12 +459,6 @@
               {formatPrizePool(calculatePrizePool(purchases))}
             </p>
           </div>
-          <div class="flex-shrink-0">
-            <p class="text-navy/60 text-xs md:text-sm mb-1">Created By</p>
-            <p class="text-sm md:text-base lg:text-lg font-semibold text-navy">
-              {creatorProfile?.name || "Anonymous"}
-            </p>
-          </div>
           {#if cup.status === "active" && cup.currentRound}
             {@const currentRoundMatches = matches.filter(
               (m) => m.round === cup.currentRound
@@ -744,14 +738,6 @@
 
     .text-base {
       font-size: 0.875rem;
-    }
-
-    .text-lg {
-      font-size: 1rem;
-    }
-
-    .text-xl {
-      font-size: 1.125rem;
     }
   }
 </style>
