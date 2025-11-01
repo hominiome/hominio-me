@@ -218,7 +218,7 @@
         matchPromises.push(
           zero.mutate.cupMatch.insert({
             id: matchId,
-            cupId: cup.id,
+            cupId: cupId, // Use cupId from URL params, not cup.id (which might be stale)
             round: "round_16",
             position: i,
             project1Id: project1?.id || "",
@@ -258,7 +258,7 @@
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ cupId: cup.id }),
+        body: JSON.stringify({ cupId: cupId }), // Use cupId from URL params
       });
 
       if (!response.ok) {
@@ -298,7 +298,7 @@
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ cupId: cup.id }),
+        body: JSON.stringify({ cupId: cupId }), // Use cupId from URL params
       });
 
       if (!response.ok) {
