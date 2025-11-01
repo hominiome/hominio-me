@@ -25,7 +25,7 @@
   let user1 = $state(null);
   let user2 = $state(null);
   // Track which user images have failed to load
-  let failedImages = $state<Set<string>>(new Set());
+  let failedImages = $state(new Set());
 
   // Get video URLs for each project (fallback to default if not provided)
   const video1Url = $derived(getYouTubeEmbedUrl(project1?.videoUrl));

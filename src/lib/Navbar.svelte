@@ -395,25 +395,6 @@
     color: #1a1a4e;
   }
 
-  .mobile-btn-signin {
-    width: 100%;
-    margin-top: 0.5rem;
-    background: #1a1a4e;
-    color: white;
-    padding: 0.75rem 1.5rem;
-    border-radius: 8px;
-    font-weight: 600;
-    border: none;
-    cursor: pointer;
-    transition: all 0.2s;
-    font-size: 0.9375rem;
-  }
-
-  .mobile-btn-signin:hover {
-    background: #4ecdc4;
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(78, 205, 196, 0.3);
-  }
 
   /* Responsive */
   @media (max-width: 768px) {

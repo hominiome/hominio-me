@@ -191,7 +191,7 @@
               <p class="text-navy/60 mb-4 line-clamp-2">{cup.description}</p>
             {/if}
 
-            <!-- Creator Info and Edit Button -->
+            <!-- Creator Info -->
             <div
               class="flex items-center justify-between mt-auto pt-4 border-t border-navy/10"
             >
@@ -210,16 +210,27 @@
                 </span>
               </div>
               {#if canEdit}
-                <a
-                  href="/alpha/cups/{cup.id}/edit"
+                <div
                   class="edit-btn-inline"
-                  onclick={(e) => e.stopPropagation()}
+                  onclick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    window.location.href = `/alpha/cups/${cup.id}/edit`;
+                  }}
+                  role="button"
+                  tabindex="0"
+                  onkeydown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      window.location.href = `/alpha/cups/${cup.id}/edit`;
+                    }
+                  }}
                 >
                   <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                   </svg>
                   Edit
-                </a>
+                </div>
               {/if}
             </div>
 
