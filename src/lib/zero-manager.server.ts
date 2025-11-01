@@ -3,6 +3,11 @@ import { env } from '$env/dynamic/private';
 
 let zeroProcess: ChildProcess | null = null;
 let isStarting = false;
+let shouldAutoRestart = true;
+let restartAttempts = 0;
+let restartTimeout: NodeJS.Timeout | null = null;
+const MAX_RESTART_ATTEMPTS = 5;
+const INITIAL_RESTART_DELAY = 2000; // 2 seconds
 
 /**
  * Start the zero-cache process
@@ -75,8 +80,30 @@ export function startZero(): void {
         } else if (signal !== null) {
             console.log(`[Zero] Process killed by signal ${signal}`);
         }
+        
+        const currentProcess = zeroProcess;
         zeroProcess = null;
         isStarting = false;
+        
+        // Auto-restart on unexpected exit (only if shouldAutoRestart is true)
+        if (shouldAutoRestart && currentProcess && code !== 0 && code !== null) {
+            if (restartAttempts < MAX_RESTART_ATTEMPTS) {
+                restartAttempts++;
+                const delay = INITIAL_RESTART_DELAY * Math.pow(2, restartAttempts - 1); // Exponential backoff
+                console.log(`[Zero] Will attempt to restart in ${delay}ms (attempt ${restartAttempts}/${MAX_RESTART_ATTEMPTS})...`);
+                
+                restartTimeout = setTimeout(() => {
+                    console.log(`[Zero] Attempting to restart zero-cache...`);
+                    startZero();
+                }, delay);
+            } else {
+                console.error(`[Zero] Max restart attempts (${MAX_RESTART_ATTEMPTS}) reached. Stopping auto-restart.`);
+                shouldAutoRestart = false;
+            }
+        } else if (code === 0) {
+            // Successful exit, reset restart attempts
+            restartAttempts = 0;
+        }
     });
 
     // Handle process errors
@@ -91,6 +118,8 @@ export function startZero(): void {
         if (zeroProcess) {
             console.log("✅ [Zero] Server started successfully on port 4848");
             isStarting = false;
+            // Reset restart attempts on successful start
+            restartAttempts = 0;
         }
     }, 1000);
 }
@@ -104,6 +133,15 @@ export function stopZero(): void {
     }
 
     console.log("🛑 [Zero] Stopping zero-cache server...");
+    
+    // Disable auto-restart when explicitly stopping
+    shouldAutoRestart = false;
+    
+    // Clear any pending restart timeout
+    if (restartTimeout) {
+        clearTimeout(restartTimeout);
+        restartTimeout = null;
+    }
 
     try {
         zeroProcess.kill('SIGTERM');
@@ -120,6 +158,7 @@ export function stopZero(): void {
     }
 
     zeroProcess = null;
+    restartAttempts = 0;
 }
 
 /**

@@ -901,7 +901,7 @@
 
   .vote-button-bar {
     height: 60px;
-    width: 107px; /* 16:9 aspect ratio (60 * 16/9 = 106.67 ≈ 107) */
+    width: 95px; /* 16:9 aspect ratio, slightly reduced */
     border: none;
     cursor: pointer;
     display: flex;
@@ -1009,7 +1009,7 @@
   /* 16:9 vote count - same aspect ratio as button, replaces button when voted */
   .vote-count-square {
     height: 60px;
-    width: 107px; /* 16:9 aspect ratio (60 * 16/9 = 106.67 ≈ 107) */
+    width: 95px; /* 16:9 aspect ratio, slightly reduced */
     padding: 0;
   }
 
@@ -1255,7 +1255,7 @@
 
     .vote-button-bar {
       height: 50px;
-      width: 89px; /* 16:9 aspect ratio (50 * 16/9 = 88.89 ≈ 89) */
+      width: 80px; /* 16:9 aspect ratio, slightly reduced */
       flex-shrink: 0; /* Don't shrink */
     }
 
@@ -1274,7 +1274,7 @@
 
     .vote-count-square {
       height: 50px;
-      width: 89px; /* 16:9 aspect ratio (50 * 16/9 = 88.89 ≈ 89) */
+      width: 80px; /* 16:9 aspect ratio, slightly reduced */
       padding: 0;
     }
 
@@ -1386,7 +1386,7 @@
 
     .vote-button-bar {
       height: 45px;
-      width: 80px; /* 16:9 aspect ratio (45 * 16/9 = 80) */
+      width: 72px; /* 16:9 aspect ratio, slightly reduced */
       flex-shrink: 0;
     }
 
@@ -1397,7 +1397,7 @@
 
     .vote-count-square {
       height: 45px;
-      width: 80px; /* 16:9 aspect ratio (45 * 16/9 = 80) */
+      width: 72px; /* 16:9 aspect ratio, slightly reduced */
       padding: 0;
     }
 
