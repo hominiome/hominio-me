@@ -18,6 +18,7 @@
     getRoundLabel,
     hasVoted = false,
     userVotingWeight = 0,
+    userVotedSide = null,
     onToggleExpand,
     toggleVideo,
     voteOnMatch,
@@ -97,6 +98,7 @@
       {session}
       {hasVoted}
       {userVotingWeight}
+      {userVotedSide}
       {toggleVideo}
       {voteOnMatch}
     />

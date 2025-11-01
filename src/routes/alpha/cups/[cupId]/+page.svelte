@@ -43,7 +43,10 @@
   let votingAnimation = $state<string | null>(null); // Track which side is animating
   let expandedVideo = $state<string | null>(null); // Track which match video is expanded
   let expandedMatch = $state<string | null>(null); // Track which match is expanded (accordion)
-  let creatorProfile = $state<{ name: string | null; image: string | null } | null>(null);
+  let creatorProfile = $state<{
+    name: string | null;
+    image: string | null;
+  } | null>(null);
   let isAdmin = $state(false);
 
   onMount(() => {
@@ -76,7 +79,7 @@
           cup = cups[0];
           loading = false;
           if (dataCheckTimeout) clearTimeout(dataCheckTimeout);
-          
+
           // Fetch creator profile
           if (cup.creatorId) {
             const profile = await getUserProfile(cup.creatorId);
@@ -123,13 +126,16 @@
       // Query user's voting package and votes if logged in
       let userPackageView: any;
       let userVotesView: any;
-      
+
       if ($session.data?.user) {
         const userId = $session.data.user.id;
 
         // Query user's voting package
-        const userPackageQuery = zero.query.userVotingPackage
-          .where("userId", "=", userId);
+        const userPackageQuery = zero.query.userVotingPackage.where(
+          "userId",
+          "=",
+          userId
+        );
         userPackageView = userPackageQuery.materialize();
 
         userPackageView.addListener((data: any) => {
@@ -142,8 +148,7 @@
         });
 
         // Query user's votes to check which matches they've voted on
-        const userVotesQuery = zero.query.vote
-          .where("userId", "=", userId);
+        const userVotesQuery = zero.query.vote.where("userId", "=", userId);
         userVotesView = userVotesQuery.materialize();
 
         userVotesView.addListener((data: any) => {
@@ -167,7 +172,10 @@
   }
 
   // Calculate vote totals from vote table
-  function getMatchVotes(matchId: string, projectSide: "project1" | "project2") {
+  function getMatchVotes(
+    matchId: string,
+    projectSide: "project1" | "project2"
+  ) {
     return votes
       .filter((v) => v.matchId === matchId && v.projectSide === projectSide)
       .reduce((sum, v) => sum + (v.votingWeight || 0), 0);
@@ -205,6 +213,11 @@
     return userVotes.some((vote) => vote.matchId === matchId);
   }
 
+  function getUserVotedSide(matchId: string): "project1" | "project2" | null {
+    const vote = userVotes.find((vote) => vote.matchId === matchId);
+    return vote?.projectSide || null;
+  }
+
   function getUserVotingWeight(): number {
     return userVotingPackage?.votingWeight || 0;
   }
@@ -230,7 +243,9 @@
 
     // Check if user already voted on this match
     if (hasUserVotedOnMatch(matchId)) {
-      showInfo("You have already voted on this match. Each user can vote once per match.");
+      showInfo(
+        "You have already voted on this match. Each user can vote once per match."
+      );
       return;
     }
 
@@ -249,10 +264,11 @@
     }
 
     // Trigger animation immediately for instant dopamine hit
+    // Keep it for 3 seconds to match overlay and progress bar animations
     votingAnimation = `${matchId}-${projectSide}`;
     setTimeout(() => {
       votingAnimation = null;
-    }, 800);
+    }, 3000);
 
     // Fire and forget - Zero's reactive sync handles the rest
     // Note: amount is no longer sent - API uses package weight automatically
@@ -308,10 +324,15 @@
     {:else if cup}
       <!-- Header -->
       <div class="mb-8">
-        <a href="/alpha/cups" class="text-teal hover:underline mb-4 inline-block">
+        <a
+          href="/alpha/cups"
+          class="text-teal hover:underline mb-4 inline-block"
+        >
           ← Back to Cups
         </a>
-        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div
+          class="flex flex-col md:flex-row md:items-center md:justify-between gap-4"
+        >
           <div class="flex items-start gap-3 md:gap-4">
             {#if cup.logoImageUrl}
               <img
@@ -321,18 +342,32 @@
               />
             {/if}
             <div>
-              <h1 class="text-3xl md:text-5xl font-bold text-navy mb-2">{cup.name}</h1>
+              <h1 class="text-3xl md:text-5xl font-bold text-navy mb-2">
+                {cup.name}
+              </h1>
               {#if cup.description}
-                <p class="text-navy/60 text-base md:text-lg">{cup.description}</p>
+                <p class="text-navy/60 text-base md:text-lg">
+                  {cup.description}
+                </p>
               {/if}
             </div>
           </div>
           <div class="flex flex-col sm:flex-row gap-2 md:gap-3">
             {#if isCreator}
-              <a href="/alpha/cups/{cupId}/admin" class="btn-primary text-center"> Admin Panel </a>
+              <a
+                href="/alpha/cups/{cupId}/admin"
+                class="btn-primary text-center"
+              >
+                Admin Panel
+              </a>
             {/if}
             {#if isCreator || isAdmin}
-              <a href="/alpha/cups/{cupId}/edit" class="btn-secondary text-center"> Edit </a>
+              <a
+                href="/alpha/cups/{cupId}/edit"
+                class="btn-secondary text-center"
+              >
+                Edit
+              </a>
             {/if}
           </div>
         </div>
@@ -357,7 +392,9 @@
           {/if}
           <div class="flex-shrink-0">
             <p class="text-navy/60 text-xs md:text-sm mb-1">Created By</p>
-            <p class="text-sm md:text-base lg:text-lg font-semibold text-navy">{creatorProfile?.name || "Anonymous"}</p>
+            <p class="text-sm md:text-base lg:text-lg font-semibold text-navy">
+              {creatorProfile?.name || "Anonymous"}
+            </p>
           </div>
           {#if cup.winnerId}
             {@const winner = getProjectById(cup.winnerId)}
@@ -400,7 +437,9 @@
             {@const roundMatches = matches.filter((m) => m.round === round)}
             {#if roundMatches.length > 0}
               <div class="card p-4 md:p-6">
-                <h2 class="text-xl md:text-2xl font-bold text-navy mb-4 md:mb-6">
+                <h2
+                  class="text-xl md:text-2xl font-bold text-navy mb-4 md:mb-6"
+                >
                   {getRoundLabel(round)}
                 </h2>
                 <div class="space-y-2 md:space-y-3">
@@ -417,6 +456,7 @@
                     {@const isActive = isMatchActive(match)}
                     {@const hasVoted = hasUserVotedOnMatch(match.id)}
                     {@const userVotingWeight = getUserVotingWeight()}
+                    {@const userVotedSide = getUserVotedSide(match.id)}
                     <!-- Match List Item Component -->
                     <MatchListItem
                       {match}
@@ -435,6 +475,7 @@
                       {getRoundLabel}
                       {hasVoted}
                       {userVotingWeight}
+                      {userVotedSide}
                       onToggleExpand={() =>
                         (expandedMatch =
                           expandedMatch === match.id ? null : match.id)}
@@ -555,4 +596,3 @@
     }
   }
 </style>
-

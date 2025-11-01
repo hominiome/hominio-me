@@ -19,6 +19,7 @@
     session,
     hasVoted = false,
     userVotingWeight = 0,
+    userVotedSide = null,
     toggleVideo,
     voteOnMatch,
   } = $props();
@@ -37,25 +38,33 @@
 
   // Get thumbnail URLs - use database image if available and valid, otherwise fallback to Unsplash
   const thumbnail1Url = $derived(() => {
-    const projectId = project1?.id || 'project1';
+    const projectId = project1?.id || "project1";
     // If thumbnail failed to load, use fallback
     if (failedThumbnails.has(`${projectId}-1`)) {
       return `https://picsum.photos/seed/${projectId}/1280/720`;
     }
     const customThumbnail = project1?.videoThumbnail;
-    if (customThumbnail && typeof customThumbnail === 'string' && customThumbnail.trim().length > 0) {
+    if (
+      customThumbnail &&
+      typeof customThumbnail === "string" &&
+      customThumbnail.trim().length > 0
+    ) {
       return customThumbnail.trim();
     }
     return `https://picsum.photos/seed/${projectId}/1280/720`;
   });
   const thumbnail2Url = $derived(() => {
-    const projectId = project2?.id || 'project2';
+    const projectId = project2?.id || "project2";
     // If thumbnail failed to load, use fallback
     if (failedThumbnails.has(`${projectId}-2`)) {
       return `https://picsum.photos/seed/${projectId}/1280/720`;
     }
     const customThumbnail = project2?.videoThumbnail;
-    if (customThumbnail && typeof customThumbnail === 'string' && customThumbnail.trim().length > 0) {
+    if (
+      customThumbnail &&
+      typeof customThumbnail === "string" &&
+      customThumbnail.trim().length > 0
+    ) {
       return customThumbnail.trim();
     }
     return `https://picsum.photos/seed/${projectId}/1280/720`;
@@ -174,8 +183,10 @@
               alt=""
               style="display: none;"
               onerror={() => {
-                const projectId = project1?.id || 'project1';
-                failedThumbnails = new Set(failedThumbnails).add(`${projectId}-1`);
+                const projectId = project1?.id || "project1";
+                failedThumbnails = new Set(failedThumbnails).add(
+                  `${projectId}-1`
+                );
               }}
             />
             <div
@@ -202,6 +213,16 @@
               />
             </svg>
             Winner
+          </div>
+        {/if}
+
+        <!-- Vote overlay animation for project 1 -->
+        {#if votingAnimation === `${match.id}-project1` && userVotingWeight > 0}
+          <div class="vote-overlay vote-overlay-right">
+            <div class="vote-overlay-content">
+              <span class="vote-overlay-plus">+</span>
+              <span class="vote-overlay-amount">{userVotingWeight}</span>
+            </div>
           </div>
         {/if}
       </div>
@@ -257,8 +278,10 @@
               alt=""
               style="display: none;"
               onerror={() => {
-                const projectId = project2?.id || 'project2';
-                failedThumbnails = new Set(failedThumbnails).add(`${projectId}-2`);
+                const projectId = project2?.id || "project2";
+                failedThumbnails = new Set(failedThumbnails).add(
+                  `${projectId}-2`
+                );
               }}
             />
             <div
@@ -287,53 +310,79 @@
             Winner
           </div>
         {/if}
+
+        <!-- Vote overlay animation for project 2 -->
+        {#if votingAnimation === `${match.id}-project2` && userVotingWeight > 0}
+          <div class="vote-overlay vote-overlay-left">
+            <div class="vote-overlay-content">
+              <span class="vote-overlay-plus">+</span>
+              <span class="vote-overlay-amount">{userVotingWeight}</span>
+            </div>
+          </div>
+        {/if}
       </div>
     </div>
   {/if}
 
   <!-- Progress Bar with Vote Buttons and Percentages -->
   <div class="progress-bar-wrapper">
-    {#if session.data && isActive && !hasVoted}
-      <button
-        onclick={() => voteOnMatch(match.id, "project1")}
-        class="vote-button-bar vote-button-bar-left"
-        class:vote-pulse={votingAnimation === `${match.id}-project1`}
-        aria-label="Vote for {project1?.title || 'Project 1'}"
-        title={`Vote for ${project1?.title || 'Project 1'}`}
-      >
-        <div class="vote-button-content">
-          <svg
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-            class="plus-icon-vote"
-          >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
-              d="M12 4v16m8-8H4"
-            />
-          </svg>
-          <span class="vote-label">Vote</span>
+    {#if session.data && isActive}
+      {#if hasVoted && userVotedSide === "project1"}
+        <!-- Vote count replaces button when voted -->
+        <div
+          class="vote-count-inline vote-count-left vote-count-square"
+          class:loser-count={match.winnerId &&
+            match.winnerId !== match.project1Id}
+        >
+          <span class="count-number">{votes1 || 0}</span>
         </div>
-      </button>
+      {:else if hasVoted && userVotedSide === "project2"}
+        <!-- Show 0 votes for the side that wasn't voted on -->
+        <div
+          class="vote-count-inline vote-count-left vote-count-square"
+          class:loser-count={match.winnerId &&
+            match.winnerId !== match.project1Id}
+        >
+          <span class="count-number">{votes1 || 0}</span>
+        </div>
+      {:else if !hasVoted}
+        <!-- Vote button - only show when not voted -->
+        <button
+          onclick={() => voteOnMatch(match.id, "project1")}
+          class="vote-button-bar vote-button-bar-left"
+          aria-label="Vote for {project1?.title || 'Project 1'}"
+          title={`Vote for ${project1?.title || "Project 1"}`}
+        >
+          <div class="vote-button-content">
+            <svg
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+              class="plus-icon-vote"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M12 4v16m8-8H4"
+              />
+            </svg>
+            <span class="vote-label">Vote</span>
+          </div>
+        </button>
+      {/if}
     {/if}
 
-    <!-- Vote count for project 1 -->
     <div
-      class="vote-count-inline vote-count-left"
-      class:loser-count={match.winnerId && match.winnerId !== match.project1Id}
+      class="progress-bar-container"
+      class:progress-sliding={votingAnimation === `${match.id}-project1` ||
+        votingAnimation === `${match.id}-project2`}
     >
-      <span class="count-number">{votes1}</span>
-    </div>
-
-    <div class="progress-bar-container">
       <div
         class="progress-bar-yellow"
         style="width: {percent1}%"
-        class:vote-pulse={votingAnimation === `${match.id}-project1`}
         class:loser-bar={match.winnerId && match.winnerId !== match.project1Id}
+        class:progress-sliding={votingAnimation === `${match.id}-project1`}
       >
         {#if percent1 >= 5}
           <span class="progress-percent">{percent1.toFixed(1)}%</span>
@@ -342,8 +391,8 @@
       <div
         class="progress-bar-teal"
         style="width: {percent2}%"
-        class:vote-pulse={votingAnimation === `${match.id}-project2`}
         class:loser-bar={match.winnerId && match.winnerId !== match.project2Id}
+        class:progress-sliding={votingAnimation === `${match.id}-project2`}
       >
         {#if percent2 >= 5}
           <span class="progress-percent">{percent2.toFixed(1)}%</span>
@@ -351,39 +400,51 @@
       </div>
     </div>
 
-    <!-- Vote count for project 2 -->
-    <div
-      class="vote-count-inline vote-count-right"
-      class:loser-count={match.winnerId && match.winnerId !== match.project2Id}
-    >
-      <span class="count-number">{votes2}</span>
-    </div>
-
-    {#if session.data && isActive && !hasVoted}
-      <button
-        onclick={() => voteOnMatch(match.id, "project2")}
-        class="vote-button-bar vote-button-bar-right"
-        class:vote-pulse={votingAnimation === `${match.id}-project2`}
-        aria-label="Vote for {project2?.title || 'Project 2'}"
-        title={`Vote for ${project2?.title || 'Project 2'}`}
-      >
-        <div class="vote-button-content">
-          <svg
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-            class="plus-icon-vote"
-          >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
-              d="M12 4v16m8-8H4"
-            />
-          </svg>
-          <span class="vote-label">Vote</span>
+    {#if session.data && isActive}
+      {#if hasVoted && userVotedSide === "project2"}
+        <!-- Vote count replaces button when voted -->
+        <div
+          class="vote-count-inline vote-count-right vote-count-square"
+          class:loser-count={match.winnerId &&
+            match.winnerId !== match.project2Id}
+        >
+          <span class="count-number">{votes2 || 0}</span>
         </div>
-      </button>
+      {:else if hasVoted && userVotedSide === "project1"}
+        <!-- Show 0 votes for the side that wasn't voted on -->
+        <div
+          class="vote-count-inline vote-count-right vote-count-square"
+          class:loser-count={match.winnerId &&
+            match.winnerId !== match.project2Id}
+        >
+          <span class="count-number">{votes2 || 0}</span>
+        </div>
+      {:else if !hasVoted}
+        <!-- Vote button - only show when not voted -->
+        <button
+          onclick={() => voteOnMatch(match.id, "project2")}
+          class="vote-button-bar vote-button-bar-right"
+          aria-label="Vote for {project2?.title || 'Project 2'}"
+          title={`Vote for ${project2?.title || "Project 2"}`}
+        >
+          <div class="vote-button-content">
+            <svg
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+              class="plus-icon-vote"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M12 4v16m8-8H4"
+              />
+            </svg>
+            <span class="vote-label">Vote</span>
+          </div>
+        </button>
+      {/if}
     {/if}
   </div>
 
@@ -434,7 +495,6 @@
     overflow: hidden;
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
     position: relative; /* For winner badge positioning */
-    min-height: 0; /* Allow shrinking */
   }
 
   .project-card-yellow {
@@ -551,7 +611,7 @@
   .video-card {
     width: 100%;
     flex: 0 0 auto; /* Fixed size, don't grow/shrink */
-    margin-top: 0; /* No margin - sits directly after info section */
+    margin-top: auto; /* Push video to bottom of card */
     min-height: 0; /* Allow flex shrinking */
     order: 2; /* Ensure video comes after info section */
   }
@@ -776,11 +836,14 @@
       rgba(244, 208, 63, 0.25) 0%,
       rgba(244, 208, 63, 0.15) 100%
     );
-    transition: width 0.6s ease-in-out;
+    transition: width 0.1s ease-in-out; /* Fast default transition */
     display: flex;
     align-items: center;
     justify-content: center;
     position: relative;
+    left: 0; /* Start from left side */
+    transform-origin: left center; /* Flow from left */
+    min-width: 0; /* Allow shrinking to 0% smoothly */
   }
 
   .progress-bar-teal {
@@ -790,11 +853,35 @@
       rgba(78, 205, 196, 0.15) 0%,
       rgba(78, 205, 196, 0.25) 100%
     );
-    transition: width 0.6s ease-in-out;
+    transition: width 0.1s ease-in-out; /* Fast default transition */
     display: flex;
     align-items: center;
     justify-content: center;
     position: relative;
+    right: 0; /* Start from right side */
+    margin-left: auto; /* Push to right */
+    transform-origin: right center; /* Flow from right */
+    min-width: 0; /* Allow shrinking to 0% smoothly */
+  }
+
+  /* When voting animation is active, use 3s transition to sync with overlay */
+  /* Both bars transition smoothly so losing side slides away */
+  /* Apply transition to both bars when either is sliding */
+  .progress-bar-container.progress-sliding .progress-bar-yellow,
+  .progress-bar-container.progress-sliding .progress-bar-teal {
+    transition: width 3s ease-in-out;
+  }
+
+  /* Also apply when individual bars have the sliding class */
+  .progress-bar-yellow.progress-sliding,
+  .progress-bar-teal.progress-sliding {
+    transition: width 3s ease-in-out;
+  }
+
+  /* Ensure both bars are always visible during transition */
+  .progress-bar-container .progress-bar-yellow,
+  .progress-bar-container .progress-bar-teal {
+    overflow: visible; /* Don't clip during transition */
   }
 
   .progress-percent {
@@ -814,7 +901,7 @@
 
   .vote-button-bar {
     height: 60px;
-    width: 100px; /* Wider to accommodate text */
+    width: 107px; /* 16:9 aspect ratio (60 * 16/9 = 106.67 ≈ 107) */
     border: none;
     cursor: pointer;
     display: flex;
@@ -823,6 +910,7 @@
     transition: all 0.3s ease;
     position: relative;
     z-index: 10;
+    flex-shrink: 0;
   }
 
   .vote-button-bar-left {
@@ -841,18 +929,28 @@
     text-shadow: 0 2px 4px rgba(26, 26, 78, 0.2);
   }
 
-  .vote-button-bar:hover:not(:disabled) {
+  .vote-button-bar:hover:not(:disabled):not(.button-voted) {
     transform: scale(1.05);
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
   }
 
-  .vote-button-bar:active:not(:disabled) {
+  .vote-button-bar:active:not(:disabled):not(.button-voted) {
     transform: scale(0.95);
   }
 
   .vote-button-bar:disabled {
     opacity: 0.6;
     cursor: not-allowed;
+  }
+
+  /* Voted button styling */
+  .vote-button-bar.button-voted {
+    opacity: 0.7;
+    cursor: default;
+  }
+
+  .vote-button-bar.button-voted .vote-label {
+    font-weight: 700;
   }
 
   .vote-button-bar.voted-button {
@@ -880,7 +978,7 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 0.25rem;
+    gap: 0.125rem;
     width: 100%;
     height: 100%;
   }
@@ -900,15 +998,19 @@
   }
 
   .vote-count-inline {
-    height: 60px;
-    width: 60px; /* Make it square */
-    padding: 0;
     display: flex;
     align-items: center;
     justify-content: center;
     font-weight: 900;
     font-size: 1.75rem;
     flex-shrink: 0;
+  }
+
+  /* 16:9 vote count - same aspect ratio as button, replaces button when voted */
+  .vote-count-square {
+    height: 60px;
+    width: 107px; /* 16:9 aspect ratio (60 * 16/9 = 106.67 ≈ 107) */
+    padding: 0;
   }
 
   .vote-count-left {
@@ -972,6 +1074,76 @@
 
   .vote-pulse {
     animation: votePulse 0.8s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  /* Vote overlay animation - slides in from side */
+  .vote-overlay {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+    pointer-events: none;
+  }
+
+  .vote-overlay-right {
+    right: 0;
+    background: linear-gradient(
+      90deg,
+      rgba(244, 208, 63, 0.95) 0%,
+      rgba(244, 208, 63, 0.85) 100%
+    );
+    border-radius: 16px;
+    animation: fadeInOutOverlay 3s ease-in-out;
+  }
+
+  .vote-overlay-left {
+    left: 0;
+    background: linear-gradient(
+      90deg,
+      rgba(78, 205, 196, 0.85) 0%,
+      rgba(78, 205, 196, 0.95) 100%
+    );
+    border-radius: 16px;
+    animation: fadeInOutOverlay 3s ease-in-out;
+  }
+
+  .vote-overlay-content {
+    display: flex;
+    align-items: baseline;
+    gap: 0.25rem;
+    font-weight: 900;
+    font-size: 4rem;
+    color: #1a1a4e;
+    text-shadow: 0 4px 8px rgba(255, 255, 255, 0.3);
+  }
+
+  .vote-overlay-plus {
+    font-size: 3rem;
+    line-height: 1;
+  }
+
+  .vote-overlay-amount {
+    font-size: 4rem;
+    line-height: 1;
+  }
+
+  @keyframes fadeInOutOverlay {
+    0% {
+      opacity: 0;
+    }
+    10% {
+      opacity: 1;
+    }
+    90% {
+      opacity: 1;
+    }
+    100% {
+      opacity: 0;
+    }
   }
 
   .match-waiting {
@@ -1083,7 +1255,7 @@
 
     .vote-button-bar {
       height: 50px;
-      width: 70px; /* Smaller on mobile */
+      width: 89px; /* 16:9 aspect ratio (50 * 16/9 = 88.89 ≈ 89) */
       flex-shrink: 0; /* Don't shrink */
     }
 
@@ -1096,11 +1268,14 @@
     }
 
     .vote-count-inline {
-      height: 50px;
-      width: 50px; /* Make it square */
-      padding: 0;
       font-size: 1rem; /* Smaller font */
       flex-shrink: 0; /* Don't shrink */
+    }
+
+    .vote-count-square {
+      height: 50px;
+      width: 89px; /* 16:9 aspect ratio (50 * 16/9 = 88.89 ≈ 89) */
+      padding: 0;
     }
 
     .vote-count-left {
@@ -1207,16 +1382,19 @@
 
     .vote-button-bar {
       height: 45px;
-      width: 60px;
+      width: 80px; /* 16:9 aspect ratio (45 * 16/9 = 80) */
       flex-shrink: 0;
     }
 
     .vote-count-inline {
-      height: 45px;
-      width: 45px; /* Make it square */
-      padding: 0;
       font-size: 0.9rem; /* Smaller font */
       flex-shrink: 0;
+    }
+
+    .vote-count-square {
+      height: 45px;
+      width: 80px; /* 16:9 aspect ratio (45 * 16/9 = 80) */
+      padding: 0;
     }
 
     .progress-percent {
