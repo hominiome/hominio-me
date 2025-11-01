@@ -93,8 +93,8 @@ export async function POST({ request }) {
       .values({
         id: nanoid(),
         userId,
-        matchId,
-        projectSide,
+          matchId,
+          projectSide,
         votingWeight,
         createdAt: now,
       })

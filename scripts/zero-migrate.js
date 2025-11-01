@@ -69,6 +69,16 @@ async function createTables() {
       console.log("✅ Project videoThumbnail column already exists");
     }
 
+    // Add country column if it doesn't exist
+    try {
+      await sql`ALTER TABLE project ADD COLUMN IF NOT EXISTS "country" TEXT DEFAULT ''`.execute(
+        db
+      );
+      console.log("✅ Project country column added");
+    } catch (error) {
+      console.log("✅ Project country column already exists");
+    }
+
     // Add index on userId for project table
     await db.schema
       .createIndex("project_userId_idx")
@@ -81,33 +91,6 @@ async function createTables() {
     // Enable WAL replication for project table
     await sql`ALTER TABLE project REPLICA IDENTITY FULL`.execute(db);
     console.log("✅ Enabled replica identity for project table");
-
-    // Drop legacy tables (no longer needed - votes tracked in vote table)
-    const legacyTables = [
-      "wallet", 
-      "transaction", 
-      "heartTransaction", 
-      "projectVote"
-    ];
-    
-    console.log("🗑️  Cleaning up legacy tables...");
-    for (const tableName of legacyTables) {
-      try {
-        // First remove from publication if it exists
-        try {
-          await sql`ALTER PUBLICATION zero_data DROP TABLE IF EXISTS ${sql.raw(`"${tableName}"`)}`.execute(db);
-          console.log(`   Removed ${tableName} from publication`);
-        } catch (e) {
-          // Publication might not exist or table not in it, that's fine
-        }
-        
-        // Then drop the table
-        await sql`DROP TABLE IF EXISTS ${sql.raw(`"${tableName}"`)} CASCADE`.execute(db);
-        console.log(`✅ Dropped legacy table: ${tableName}`);
-      } catch (error) {
-        console.log(`ℹ️  Table ${tableName} doesn't exist or couldn't be dropped: ${error.message}`);
-      }
-    }
 
     // Cup table
     await db.schema
@@ -321,40 +304,23 @@ async function createTables() {
     await sql`ALTER TABLE vote REPLICA IDENTITY FULL`.execute(db);
     console.log("✅ Enabled replica identity for vote table");
 
-    // Remove legacy tables from publication and recreate with only current tables
+    // Create or update publication with current tables
     try {
-      // Drop existing publication
-      await sql`DROP PUBLICATION IF EXISTS zero_data`.execute(db);
-      console.log("✅ Dropped existing publication");
-    } catch (error) {
-      console.log("ℹ️  Publication doesn't exist or couldn't be dropped");
-    }
-
-    // Create publication with only current tables (no wallet, transaction, heartTransaction, projectVote)
-    try {
+      // Try to create publication
       await sql`CREATE PUBLICATION zero_data FOR TABLE project, cup, "cupMatch", "userIdentities", vote`.execute(
         db
       );
-      console.log("✅ Created publication for Zero (current tables only)");
+      console.log("✅ Created publication for Zero");
     } catch (error) {
       if (error.message?.includes("already exists")) {
-        // Try to alter the publication
+        // Publication exists, ensure current tables are included
         try {
-          // Remove legacy tables from publication
-          try {
-            await sql`ALTER PUBLICATION zero_data DROP TABLE IF EXISTS wallet, transaction, "heartTransaction", "projectVote", "userVotingPackage"`.execute(db);
-            console.log("✅ Removed legacy tables from publication");
-          } catch (e) {
-            console.log("ℹ️  Could not remove legacy tables from publication (may not exist)");
-          }
-          
-          // Add current tables if not already present
           await sql`ALTER PUBLICATION zero_data ADD TABLE IF NOT EXISTS project, cup, "cupMatch", "userIdentities", vote`.execute(
             db
           );
           console.log("✅ Updated publication to include current tables");
         } catch (alterError) {
-          console.log("⚠️ Could not update publication (may need manual update):", alterError.message);
+          console.log("ℹ️  Publication already configured:", alterError.message);
         }
       } else {
         throw error;

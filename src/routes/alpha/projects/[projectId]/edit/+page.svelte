@@ -6,6 +6,7 @@
   import { getContext } from "svelte";
   import { nanoid } from "nanoid";
   import UserAutocomplete from "$lib/UserAutocomplete.svelte";
+  import CountryAutocomplete from "$lib/CountryAutocomplete.svelte";
   import { getUserProfile } from "$lib/userProfileCache";
   import { showError } from "$lib/toastStore.js";
 
@@ -28,6 +29,7 @@
   // Form state
   let title = $state("");
   let description = $state("");
+  let country = $state<{ name: string } | null>(null);
   let city = $state("");
   let videoUrl = $state("");
   let videoThumbnail = $state("");
@@ -78,6 +80,10 @@
         } catch (error) {
           console.error("Failed to check admin status:", error);
         }
+      } else if (!$session.isPending && !$session.data?.user) {
+        // Not logged in - redirect immediately
+        goto(`/alpha/projects`);
+        return;
       }
       checking = false;
     })();
@@ -110,6 +116,7 @@
             // Populate form
             title = project.title || "";
             description = project.description || "";
+            country = project.country ? { name: project.country } : null;
             city = project.city || "";
             videoUrl = project.videoUrl || "";
             videoThumbnail = project.videoThumbnail || "";
@@ -136,16 +143,18 @@
               });
             }
             
-            // Check if user is owner
+            // Check if user is owner (for display purposes)
             isOwner = project.userId === $session.data?.user?.id;
             
-            // Check permissions
-            if (!isAdmin && !isOwner) {
-              goto(`/alpha/projects`);
-              return;
+            // Wait for admin check to complete, then verify access
+            if (!checking) {
+              // Only admins can access the edit page
+              if (!isAdmin) {
+                goto(`/alpha/projects`);
+                return;
+              }
+              loading = false;
             }
-            
-            loading = false;
           } else if (project === null) {
             loading = false;
           }
@@ -160,32 +169,45 @@
   });
 
   async function updateProject() {
-    if (!project || saving || !title.trim() || !description.trim() || !city.trim() || sdgs.length === 0) {
+    if (!project || saving || !title.trim() || !description.trim() || !country || !city.trim() || sdgs.length === 0) {
       return;
     }
 
-    if (!isAdmin && !isOwner) {
-      showError("You don't have permission to edit this project");
+    // Only admins can update projects
+    if (!isAdmin) {
+      showError("Only admins can update projects");
       return;
     }
 
     // Only admins can change project owner
-    const newUserId = isAdmin && selectedOwner ? selectedOwner.id : project.userId;
+    const newUserId = selectedOwner ? selectedOwner.id : project.userId;
 
     saving = true;
 
     try {
-      // Use Zero mutation to update project
-      await zero.mutate.project.update({
-        id: project.id,
-        title: title.trim(),
-        description: description.trim(),
-        city: city.trim(),
-        videoUrl: videoUrl.trim() || "",
-        videoThumbnail: videoThumbnail.trim() || "",
-        sdgs: JSON.stringify(sdgs),
-        userId: newUserId, // Update owner if admin changed it
+      // Use API endpoint to update project (handles userId persistence properly)
+      const response = await fetch("/alpha/api/update-project", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          projectId: project.id,
+          title: title.trim(),
+          description: description.trim(),
+          country: country.name,
+          city: city.trim(),
+          videoUrl: videoUrl.trim() || "",
+          videoThumbnail: videoThumbnail.trim() || "",
+          sdgs: JSON.stringify(sdgs),
+          userId: newUserId, // Update owner if admin changed it
+        }),
       });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Failed to update project");
+      }
 
       // Redirect back to projects page
       goto(`/alpha/projects`);
@@ -260,6 +282,16 @@
           ></textarea>
         </div>
 
+        <!-- Country -->
+        <div>
+          <CountryAutocomplete
+            bind:value={country}
+            label="Country"
+            placeholder="Select a country..."
+            required
+          />
+        </div>
+
         <!-- City -->
         <div>
           <label
@@ -270,7 +302,7 @@
             id="project-city"
             type="text"
             bind:value={city}
-            placeholder="San Francisco"
+            placeholder="Berlin"
             class="input w-full"
             required
           />
@@ -373,7 +405,7 @@
         <div class="flex gap-3 pt-2">
           <button
             type="submit"
-            disabled={saving || !title.trim() || !description.trim() || !city.trim() || sdgs.length === 0}
+            disabled={saving || !title.trim() || !description.trim() || !country || !city.trim() || sdgs.length === 0}
             class="btn-primary px-8 py-3 flex-1"
           >
             {saving ? "Saving..." : "Save Changes"}

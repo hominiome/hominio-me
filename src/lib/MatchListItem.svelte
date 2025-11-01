@@ -45,7 +45,7 @@
   <div class="match-list-center">
     <span class="team-list-votes">{votes1}</span>
     <div class="vs-container">
-      <span class="match-list-vs">VS</span>
+    <span class="match-list-vs">VS</span>
       <!-- Match State Indicator - centered below VS -->
       <div class="match-list-indicator">
         {#if match.winnerId}

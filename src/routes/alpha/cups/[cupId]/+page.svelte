@@ -79,7 +79,7 @@
           cup = cups[0];
           loading = false;
           if (dataCheckTimeout) clearTimeout(dataCheckTimeout);
-
+          
           // Fetch creator profile
           if (cup.creatorId) {
             const profile = await getUserProfile(cup.creatorId);
@@ -156,14 +156,14 @@
         });
       }
 
-      return () => {
-        if (cupView) cupView.destroy();
-        if (projectsView) projectsView.destroy();
-        if (matchesView) matchesView.destroy();
+    return () => {
+      if (cupView) cupView.destroy();
+      if (projectsView) projectsView.destroy();
+      if (matchesView) matchesView.destroy();
         if (votesView) votesView.destroy();
         if (userIdentityView) userIdentityView.destroy();
         if (userVotesView) userVotesView.destroy();
-      };
+    };
     })();
   });
 

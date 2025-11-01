@@ -32,6 +32,8 @@
   let highlightedIndex = $state(-1);
   let loading = $state(false);
   let inputElement;
+  let originalValue = $state(null); // Store original value when focusing
+  let hasSelectedNewItem = $state(false); // Track if user selected a new item
 
   // Debounce search
   let searchTimeout = null;
@@ -90,6 +92,8 @@
     searchQuery = "";
     isOpen = false;
     highlightedIndex = -1;
+    hasSelectedNewItem = true; // Mark that a new item was selected
+    originalValue = null; // Clear original value since we selected a new one
   }
 
   function handleKeydown(e) {
@@ -122,14 +126,34 @@
         e.preventDefault();
         isOpen = false;
         highlightedIndex = -1;
+        // Restore original value if user didn't select a new item
+        if (!hasSelectedNewItem && originalValue !== null) {
+          value = originalValue;
+          searchQuery = "";
+          originalValue = null;
+        }
         break;
     }
   }
 
   function handleFocus() {
-    if (items.length > 0 || searchQuery) {
-      isOpen = true;
+    // Store the original value and clear it temporarily for searching
+    if (value && !hasSelectedNewItem) {
+      originalValue = value;
+      value = null;
+      searchQuery = "";
+    } else {
+      // If no value or we already selected a new item, just clear search query
+      searchQuery = "";
     }
+    
+    // Select all text in the input so typing replaces it
+    if (inputElement) {
+      inputElement.select();
+    }
+    
+    isOpen = true;
+    hasSelectedNewItem = false; // Reset flag
   }
 
   function handleBlur() {
@@ -137,12 +161,26 @@
     setTimeout(() => {
       isOpen = false;
       highlightedIndex = -1;
+      
+      // If no new item was selected and we have an original value, restore it
+      if (!hasSelectedNewItem && originalValue !== null && !searchQuery.trim()) {
+        value = originalValue;
+        searchQuery = "";
+        originalValue = null;
+      } else if (!hasSelectedNewItem && originalValue !== null && searchQuery.trim()) {
+        // User typed something but didn't select - restore original
+        value = originalValue;
+        searchQuery = "";
+        originalValue = null;
+      }
     }, 200);
   }
 
   function clearSelection() {
     value = null;
     searchQuery = "";
+    originalValue = null;
+    hasSelectedNewItem = false;
     inputElement?.focus();
   }
 </script>

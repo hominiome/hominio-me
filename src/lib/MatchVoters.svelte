@@ -14,15 +14,15 @@
 
     projectVotes.forEach((vote) => {
       const userId = vote.userId;
-      if (userId) {
-        if (voterMap.has(userId)) {
-          const existing = voterMap.get(userId);
+        if (userId) {
+          if (voterMap.has(userId)) {
+            const existing = voterMap.get(userId);
           existing.totalVotes += vote.votingWeight;
-        } else {
-          voterMap.set(userId, {
-            userId,
+          } else {
+            voterMap.set(userId, {
+              userId,
             totalVotes: vote.votingWeight,
-          });
+            });
         }
       }
     });

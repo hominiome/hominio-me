@@ -2,7 +2,8 @@
     {
         "title": "EcoCharge",
         "description": "Revolutionizing electric vehicle charging with solar-powered stations that pay you back. Our smart grid technology optimizes energy distribution and rewards users with cryptocurrency for off-peak charging.",
-        "city": "Berlin, Germany",
+        "country": "Germany",
+        "city": "Berlin",
         "sdgs": [
             "07_CleanEnergy",
             "13_Climate"
@@ -11,7 +12,8 @@
     {
         "title": "MindfulAI",
         "description": "AI-powered mental health companion that adapts to your emotional patterns. Combines CBT techniques with personalized meditation and real-time mood tracking to help users achieve better mental wellness.",
-        "city": "San Francisco, USA",
+        "country": "France",
+        "city": "Paris",
         "sdgs": [
             "03_GoodHealth"
         ]
@@ -19,7 +21,8 @@
     {
         "title": "FoodLoop",
         "description": "Fighting food waste by connecting restaurants with surplus food to local communities. Our platform uses predictive analytics to reduce waste by 60% while feeding those in need.",
-        "city": "Amsterdam, Netherlands",
+        "country": "Netherlands",
+        "city": "Amsterdam",
         "sdgs": [
             "02_ZeroHunger",
             "12_ResponsibleConsumption",
@@ -29,7 +32,8 @@
     {
         "title": "CodeMentor Pro",
         "description": "Interactive coding education platform that pairs learners with AI tutors and real developers. Features live code reviews, project-based learning, and career mentorship for aspiring developers.",
-        "city": "London, UK",
+        "country": "United Kingdom",
+        "city": "London",
         "sdgs": [
             "04_QualityEducation",
             "08_DecentWork"
@@ -38,7 +42,8 @@
     {
         "title": "UrbanFarm",
         "description": "Vertical farming solutions for city dwellers. Our automated indoor gardens use 95% less water and produce fresh vegetables year-round, making urban agriculture accessible to everyone.",
-        "city": "Singapore",
+        "country": "Denmark",
+        "city": "Copenhagen",
         "sdgs": [
             "02_ZeroHunger",
             "11_SustainableCities",
@@ -48,7 +53,8 @@
     {
         "title": "SecureChain",
         "description": "Blockchain-based identity verification for the gig economy. Workers maintain portable reputation scores and credentials across platforms, while companies get verified talent instantly.",
-        "city": "Zurich, Switzerland",
+        "country": "Switzerland",
+        "city": "Zurich",
         "sdgs": [
             "08_DecentWork",
             "09_Industry"
@@ -57,7 +63,8 @@
     {
         "title": "SleepTech",
         "description": "Smart mattress technology that monitors and optimizes your sleep cycles. Integrates with your smart home to adjust temperature, lighting, and sound for perfect sleep conditions.",
-        "city": "Stockholm, Sweden",
+        "country": "Sweden",
+        "city": "Stockholm",
         "sdgs": [
             "03_GoodHealth",
             "09_Industry"
@@ -66,7 +73,8 @@
     {
         "title": "VoiceHealth",
         "description": "Early disease detection through voice analysis AI. Our technology can identify potential health issues weeks before symptoms appear by analyzing subtle changes in vocal patterns.",
-        "city": "Tel Aviv, Israel",
+        "country": "Ireland",
+        "city": "Dublin",
         "sdgs": [
             "03_GoodHealth"
         ]
@@ -74,7 +82,8 @@
     {
         "title": "SpaceBox",
         "description": "On-demand storage and logistics platform that brings the warehouse to your door. Our mobile units provide flexible storage solutions for urban residents and small businesses.",
-        "city": "Paris, France",
+        "country": "Belgium",
+        "city": "Brussels",
         "sdgs": [
             "11_SustainableCities",
             "09_Industry"
@@ -83,7 +92,8 @@
     {
         "title": "LearnFlow",
         "description": "Adaptive learning platform for corporate training that uses neuroscience to optimize information retention. Employees learn 3x faster with our personalized microlearning modules.",
-        "city": "Barcelona, Spain",
+        "country": "Spain",
+        "city": "Barcelona",
         "sdgs": [
             "04_QualityEducation",
             "08_DecentWork"
@@ -92,7 +102,8 @@
     {
         "title": "PetConnect",
         "description": "Social network for pet owners featuring AI-powered health tracking, local meetups, and emergency care coordination. Connects pet lovers while keeping furry friends healthy.",
-        "city": "Tokyo, Japan",
+        "country": "Austria",
+        "city": "Vienna",
         "sdgs": [
             "03_GoodHealth"
         ]
@@ -100,7 +111,8 @@
     {
         "title": "BuilderOS",
         "description": "Construction project management platform that uses drone surveillance and AI to predict delays before they happen. Reduces project overruns by 40% with real-time insights.",
-        "city": "Dubai, UAE",
+        "country": "Poland",
+        "city": "Warsaw",
         "sdgs": [
             "09_Industry",
             "11_SustainableCities"
@@ -109,7 +121,8 @@
     {
         "title": "OceanClean",
         "description": "Autonomous drone fleet that collects ocean plastic and converts it into 3D printing filament. We've removed over 100 tons of plastic while creating sustainable materials.",
-        "city": "Copenhagen, Denmark",
+        "country": "Norway",
+        "city": "Oslo",
         "sdgs": [
             "14_LifeBelowWater",
             "12_ResponsibleConsumption",
@@ -119,7 +132,8 @@
     {
         "title": "FinanceFlow",
         "description": "AI-powered bookkeeping for freelancers and small businesses. Automatically categorizes expenses, predicts cash flow, and handles tax preparation with zero manual data entry.",
-        "city": "Toronto, Canada",
+        "country": "Luxembourg",
+        "city": "Luxembourg",
         "sdgs": [
             "08_DecentWork",
             "09_Industry"
@@ -128,7 +142,8 @@
     {
         "title": "EventSync",
         "description": "Hybrid event platform that seamlessly blends in-person and virtual experiences. Features real-time translation, AI networking, and immersive 3D environments for global audiences.",
-        "city": "Austin, USA",
+        "country": "Germany",
+        "city": "Munich",
         "sdgs": [
             "09_Industry",
             "17_Partnerships"
@@ -137,7 +152,8 @@
     {
         "title": "GreenCommute",
         "description": "Carbon-neutral transportation marketplace that rewards sustainable commuting. Users earn tokens for biking, walking, or using public transit, redeemable for local business discounts.",
-        "city": "Melbourne, Australia",
+        "country": "Netherlands",
+        "city": "Rotterdam",
         "sdgs": [
             "13_Climate",
             "11_SustainableCities"
@@ -146,7 +162,8 @@
     {
         "title": "SkillSwap",
         "description": "Peer-to-peer learning marketplace where professionals trade skills instead of money. Learn guitar from a musician while teaching them web development—no cash required.",
-        "city": "Portland, USA",
+        "country": "Portugal",
+        "city": "Lisbon",
         "sdgs": [
             "04_QualityEducation",
             "10_ReducedInequalities"
@@ -155,7 +172,8 @@
     {
         "title": "AquaPure",
         "description": "Portable water purification system powered by nanotechnology. Removes 99.99% of contaminants and adds essential minerals, providing clean drinking water anywhere in the world.",
-        "city": "Mumbai, India",
+        "country": "Finland",
+        "city": "Helsinki",
         "sdgs": [
             "06_CleanWaterSanitation",
             "03_GoodHealth"
@@ -164,7 +182,8 @@
     {
         "title": "CryptoWill",
         "description": "Digital estate planning for cryptocurrency and NFT holders. Smart contracts automatically distribute digital assets to heirs based on customizable conditions.",
-        "city": "Miami, USA",
+        "country": "Estonia",
+        "city": "Tallinn",
         "sdgs": [
             "16_PeaceJusticeInstitutions",
             "09_Industry"
@@ -173,7 +192,8 @@
     {
         "title": "FitChain",
         "description": "Blockchain-verified fitness achievements that unlock real rewards. Prove your marathon time, gym consistency, or wellness goals to sponsors and earn exclusive perks.",
-        "city": "Seoul, South Korea",
+        "country": "Italy",
+        "city": "Milan",
         "sdgs": [
             "03_GoodHealth"
         ]
@@ -181,7 +201,8 @@
     {
         "title": "HominioCare",
         "description": "AI-powered elderly care platform connecting seniors with verified caregivers. Features 24/7 health monitoring, medication reminders, and virtual family check-ins.",
-        "city": "Zurich, Switzerland",
+        "country": "Switzerland",
+        "city": "Geneva",
         "sdgs": [
             "03_GoodHealth",
             "10_ReducedInequalities"
@@ -190,7 +211,8 @@
     {
         "title": "RecipeGenius",
         "description": "Smart kitchen assistant that generates recipes based on ingredients you already have. Reduces food waste by 70% while teaching cooking skills through AR guidance.",
-        "city": "Rome, Italy",
+        "country": "Italy",
+        "city": "Rome",
         "sdgs": [
             "12_ResponsibleConsumption",
             "02_ZeroHunger"
@@ -199,7 +221,8 @@
     {
         "title": "CloudGarden",
         "description": "Remote garden management service where professional gardeners tend to your plants via IoT sensors and local caretakers. Perfect gardens without the work.",
-        "city": "Seattle, USA",
+        "country": "Denmark",
+        "city": "Aarhus",
         "sdgs": [
             "15_LifeOnLand",
             "11_SustainableCities"
@@ -208,7 +231,8 @@
     {
         "title": "TravelDAO",
         "description": "Decentralized travel planning governed by a community of travelers. Members vote on destinations, share hidden gems, and earn governance tokens for quality contributions.",
-        "city": "Lisbon, Portugal",
+        "country": "Spain",
+        "city": "Madrid",
         "sdgs": [
             "08_DecentWork",
             "17_Partnerships"
@@ -217,7 +241,8 @@
     {
         "title": "BrainBoost",
         "description": "Neurofeedback headset that trains your brain for peak performance. Uses real-time EEG monitoring to improve focus, memory, and cognitive function through gamified exercises.",
-        "city": "Boston, USA",
+        "country": "United Kingdom",
+        "city": "Edinburgh",
         "sdgs": [
             "03_GoodHealth",
             "09_Industry"
@@ -226,7 +251,8 @@
     {
         "title": "LocalThread",
         "description": "Sustainable fashion marketplace connecting local designers with conscious consumers. Every item is tracked from creation to customer, ensuring ethical production.",
-        "city": "Milan, Italy",
+        "country": "Italy",
+        "city": "Florence",
         "sdgs": [
             "12_ResponsibleConsumption",
             "08_DecentWork"
@@ -235,7 +261,8 @@
     {
         "title": "DataVault",
         "description": "Personal data marketplace where users sell their anonymized data directly to researchers and companies. You control your data and earn from it—not tech giants.",
-        "city": "Helsinki, Finland",
+        "country": "Finland",
+        "city": "Tampere",
         "sdgs": [
             "16_PeaceJusticeInstitutions",
             "10_ReducedInequalities"
@@ -244,7 +271,8 @@
     {
         "title": "QuickRepair",
         "description": "On-demand repair service for electronics and appliances. Certified technicians arrive within 2 hours, reducing e-waste by extending product lifecycles.",
-        "city": "Prague, Czech Republic",
+        "country": "Czech Republic",
+        "city": "Prague",
         "sdgs": [
             "12_ResponsibleConsumption",
             "13_Climate"
@@ -253,7 +281,8 @@
     {
         "title": "MusicMesh",
         "description": "Collaborative music creation platform using AI to help amateur musicians produce professional-quality tracks. Connect with global artists and share royalties fairly.",
-        "city": "Nashville, USA",
+        "country": "Germany",
+        "city": "Hamburg",
         "sdgs": [
             "10_ReducedInequalities",
             "17_Partnerships"
@@ -262,7 +291,8 @@
     {
         "title": "SafeRoute",
         "description": "Real-time safety navigation app that crowdsources incident reports and uses predictive AI to suggest the safest routes for walking, especially at night.",
-        "city": "Buenos Aires, Argentina",
+        "country": "Sweden",
+        "city": "Gothenburg",
         "sdgs": [
             "11_SustainableCities",
             "16_PeaceJusticeInstitutions",

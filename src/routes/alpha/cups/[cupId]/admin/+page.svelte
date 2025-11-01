@@ -162,6 +162,7 @@
             id: projectId,
             title: fakeData.title,
             description: fakeData.description,
+            country: fakeData.country || "",
             city: fakeData.city,
             userId: $session.data!.user.id, // Cup creator owns fake projects
             sdgs: JSON.stringify(fakeData.sdgs || []),
@@ -630,7 +631,7 @@
             <p class="modal-team-desc">{project1.description}</p>
           {/if}
           {#if project1?.city}
-            <p class="modal-team-city">📍 {project1.city}</p>
+            <p class="modal-team-city">📍 {project1.city}{project1?.country ? `, ${project1.country}` : ''}</p>
           {/if}
           <div class="modal-votes">{votes1} votes</div>
         </div>
@@ -652,7 +653,7 @@
             <p class="modal-team-desc">{project2.description}</p>
           {/if}
           {#if project2?.city}
-            <p class="modal-team-city">📍 {project2.city}</p>
+            <p class="modal-team-city">📍 {project2.city}{project2?.country ? `, ${project2.country}` : ''}</p>
           {/if}
           <div class="modal-votes">{votes2} votes</div>
         </div>

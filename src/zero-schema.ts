@@ -15,6 +15,7 @@ const project = table('project')
     id: string(),
     title: string(),
     description: string(),
+    country: string(),
     city: string(),
     userId: string(), // Reference to user - fetch profile via /alpha/api/user/[userId]
     videoUrl: string(), // YouTube URL for project pitch video (optional)

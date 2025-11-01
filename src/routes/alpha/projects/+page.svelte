@@ -5,6 +5,7 @@
   import { authClient } from "$lib/auth.client.js";
   import { getUserProfile, prefetchUserProfiles } from "$lib/userProfileCache";
   import UserAutocomplete from "$lib/UserAutocomplete.svelte";
+  import CountryAutocomplete from "$lib/CountryAutocomplete.svelte";
   import { showError } from "$lib/toastStore.js";
   import ConfirmDialog from "$lib/ConfirmDialog.svelte";
 
@@ -29,6 +30,7 @@
   let newProject = $state({
     title: "",
     description: "",
+    country: null as { name: string } | null,
     city: "",
     videoUrl: "",
     sdgs: [] as string[],
@@ -141,6 +143,7 @@
     if (
       !newProject.title.trim() ||
       !newProject.description.trim() ||
+      !newProject.country ||
       !newProject.city.trim() ||
       newProject.sdgs.length === 0
     )
@@ -153,6 +156,7 @@
       id: nanoid(),
       title: newProject.title,
       description: newProject.description,
+      country: newProject.country.name,
       city: newProject.city,
       videoUrl: newProject.videoUrl.trim() || "",
       userId: ownerId,
@@ -164,6 +168,7 @@
     newProject = {
       title: "",
       description: "",
+      country: null,
       city: "",
       videoUrl: "",
       sdgs: [],
@@ -178,10 +183,16 @@
   function requestDeleteProject(id: string) {
     if (!zero || !$session.data?.user) return;
 
-    // Find the project to verify ownership (client-side check for UX)
+    // Find the project
     const project = projects.find((p) => p.id === id);
-    if (!project || project.userId !== $session.data.user.id) {
-      showError("You can only delete your own projects.");
+    if (!project) {
+      showError("Project not found.");
+      return;
+    }
+
+    // Only admins can delete projects (users can no longer delete their own)
+    if (!isAdmin) {
+      showError("Only admins can delete projects.");
       return;
     }
 
@@ -190,12 +201,32 @@
   }
 
   async function confirmDeleteProject() {
-    if (!projectToDelete || !zero) return;
+    if (!projectToDelete) return;
 
-    // Zero server will also enforce this permission server-side
-    await zero.mutate.project.delete({ id: projectToDelete });
-    projectToDelete = null;
-    showDeleteConfirm = false;
+    try {
+      // Use API endpoint to delete project (handles admin-only permission properly)
+      const response = await fetch("/alpha/api/delete-project", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          projectId: projectToDelete,
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Failed to delete project");
+      }
+
+      projectToDelete = null;
+      showDeleteConfirm = false;
+    } catch (error) {
+      console.error("Failed to delete project:", error);
+      const message = error instanceof Error ? error.message : "Unknown error";
+      showError(`Failed to delete project: ${message}`);
+    }
   }
 
   function isMyProject(project: any) {
@@ -203,7 +234,8 @@
   }
 
   function canEditProject(project: any) {
-    return isAdmin || isMyProject(project);
+    // Only admins can edit projects
+    return isAdmin;
   }
 </script>
 
@@ -297,6 +329,14 @@
                 ></textarea>
               </div>
               <div>
+                <CountryAutocomplete
+                  bind:value={newProject.country}
+                  label="Country"
+                  placeholder="Select a country..."
+                  required
+                />
+              </div>
+              <div>
                 <label
                   for="project-city"
                   class="block text-navy/80 font-medium mb-2">City</label
@@ -305,7 +345,7 @@
                   id="project-city"
                   type="text"
                   bind:value={newProject.city}
-                  placeholder="San Francisco"
+                  placeholder="Berlin"
                   class="input w-full"
                   required
                 />
@@ -466,7 +506,7 @@
                     </div>
                   </a>
 
-                  <!-- City -->
+                  <!-- Location -->
                   <div
                     class="flex items-center gap-2 text-teal text-sm font-medium mb-4"
                   >
@@ -477,11 +517,11 @@
                         clip-rule="evenodd"
                       />
                     </svg>
-                    {project.city}
+                    {project.city}{project.country ? `, ${project.country}` : ''}
                   </div>
 
                   <!-- Description -->
-                  <p class="text-navy/70 text-sm leading-relaxed mb-4 line-clamp-3">
+                  <p class="text-navy/70 text-sm leading-relaxed mb-4 line-clamp-3 project-description">
                     {project.description}
                   </p>
                 </div>
@@ -535,7 +575,7 @@
                       </svg>
                       Edit
                     </a>
-                    {#if isMyProject(project)}
+                    {#if isAdmin}
                       <button
                         onclick={() => requestDeleteProject(project.id)}
                         class="btn-danger-small"
@@ -742,10 +782,16 @@
       padding: 1.5rem;
     }
 
+    /* Reduce gap between description and SDGs on mobile */
+    .project-content .project-description {
+      margin-bottom: 0.75rem;
+    }
+
     .project-sdgs-sidebar {
       width: 100%;
       padding: 1rem 1.5rem;
       align-items: flex-start;
+      margin-top: -0.25rem; /* Pull SDGs closer to description */
     }
 
     .sdg-display-vertical {
