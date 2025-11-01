@@ -1,0 +1,18 @@
+# Dockerfile for Zero sync service using Bun
+FROM oven/bun:1
+
+WORKDIR /app
+
+# Copy schema file (needed for zero-cache)
+COPY src/zero-schema.ts ./src/zero-schema.ts
+
+# Set environment
+ENV NODE_ENV=production
+ENV ZERO_PORT=4848
+
+# Expose port
+EXPOSE 4848
+
+# Start zero-cache using bunx (bunx will download and run @rocicorp/zero if needed)
+CMD ["bunx", "zero-cache", "--schema-path=./src/zero-schema.ts"]
+

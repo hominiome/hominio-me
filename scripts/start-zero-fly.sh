@@ -62,14 +62,14 @@ export ZERO_AUTH_SECRET="$AUTH_SECRET"
 export ZERO_DB_CONNECT_TIMEOUT="${ZERO_DB_CONNECT_TIMEOUT:-15}"
 export PGCONNECT_TIMEOUT="${PGCONNECT_TIMEOUT:-15}"
 
-# Set Node.js memory limit to prevent OOM errors
-export NODE_OPTIONS="--max-old-space-size=1024"
+# Set Bun memory limit to prevent OOM errors
+export BUN_MAX_HEAP_SIZE="1024MB"
 
 # Start zero-cache with proper error handling
 echo "🚀 [Zero] Starting zero-cache process..."
 
 # Use exec to replace shell process, ensuring proper signal handling
-exec npx zero-cache --schema-path="$SCHEMA_PATH" 2>&1 | while IFS= read -r line; do
+exec bunx zero-cache --schema-path="$SCHEMA_PATH" 2>&1 | while IFS= read -r line; do
     echo "[Zero] $line"
     
     # Check for critical errors
