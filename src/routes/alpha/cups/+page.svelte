@@ -32,42 +32,59 @@
     })();
   });
 
-  onMount(() => {
-    let cupsView: any;
+  let cupsView: any = null;
 
+  function setupCupsQuery() {
+    if (!zero) return;
+
+    // Destroy existing view if it exists
+    if (cupsView) {
+      cupsView.destroy();
+      cupsView = null;
+    }
+
+    // Query ALL cups (everyone can read)
+    const cupsQuery = zero.query.cup.orderBy("createdAt", "desc");
+    cupsView = cupsQuery.materialize();
+
+    cupsView.addListener(async (data: any) => {
+      const newCups = Array.from(data || []);
+      cups = newCups;
+      loading = false;
+
+      // Fetch creator profiles for all cups
+      const creatorIds = [
+        ...new Set(newCups.map((c: any) => c.creatorId).filter(Boolean)),
+      ];
+      if (creatorIds.length > 0) {
+        await prefetchUserProfiles(creatorIds);
+        const newCreatorProfiles = new Map(creatorProfiles);
+        for (const creatorId of creatorIds) {
+          const profile = await getUserProfile(creatorId);
+          newCreatorProfiles.set(creatorId, {
+            name: profile.name,
+            image: profile.image,
+          });
+        }
+        creatorProfiles = newCreatorProfiles;
+      }
+    });
+  }
+
+  function refreshCups() {
+    // Force refresh by destroying and recreating the query view
+    // This forces Zero to refetch from the server
+    setupCupsQuery();
+  }
+
+  onMount(() => {
     (async () => {
       // Wait for Zero to be ready
       while (!zeroContext.isReady() || !zeroContext.getInstance()) {
         await new Promise((resolve) => setTimeout(resolve, 100));
       }
       zero = zeroContext.getInstance();
-
-      // Query ALL cups (everyone can read)
-      const cupsQuery = zero.query.cup.orderBy("createdAt", "desc");
-      cupsView = cupsQuery.materialize();
-
-      cupsView.addListener(async (data: any) => {
-        const newCups = Array.from(data || []);
-        cups = newCups;
-        loading = false;
-
-        // Fetch creator profiles for all cups
-        const creatorIds = [
-          ...new Set(newCups.map((c: any) => c.creatorId).filter(Boolean)),
-        ];
-        if (creatorIds.length > 0) {
-          await prefetchUserProfiles(creatorIds);
-          const newCreatorProfiles = new Map(creatorProfiles);
-          for (const creatorId of creatorIds) {
-            const profile = await getUserProfile(creatorId);
-            newCreatorProfiles.set(creatorId, {
-              name: profile.name,
-              image: profile.image,
-            });
-          }
-          creatorProfiles = newCreatorProfiles;
-        }
-      });
+      setupCupsQuery();
     })();
 
     return () => {
@@ -121,16 +138,28 @@
   <div class="max-w-7xl mx-auto">
     <!-- Header -->
     <div class="flex items-center justify-between mb-12">
-      <div>
-        <h1 class="text-6xl font-bold text-navy mb-3">Cups</h1>
-        <p class="text-navy/60 text-lg">
-          Tournament brackets where projects compete for victory
-        </p>
-      </div>
+          <div>
+            <h1 class="text-6xl font-bold text-navy mb-3">Cups</h1>
+            <p class="text-navy/60 text-lg">
+              Tournament brackets where projects compete for victory
+            </p>
+          </div>
 
-      {#if $session.data}
-        <a href="/alpha/cups/create" class="btn-primary"> Create Cup </a>
-      {/if}
+          <div class="flex gap-3">
+            {#if $session.data}
+              <a href="/alpha/cups/create" class="btn-primary"> Create Cup </a>
+            {/if}
+            <button
+              onclick={refreshCups}
+              class="btn-secondary"
+              title="Refresh cups list (forces sync from database)"
+            >
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+              Refresh
+            </button>
+          </div>
     </div>
 
     {#if loading}
@@ -282,6 +311,28 @@
   .btn-primary:hover {
     transform: translateY(-2px);
     box-shadow: 0 8px 20px rgba(78, 205, 196, 0.3);
+  }
+
+  .btn-secondary {
+    padding: 0.75rem 1.5rem;
+    background: white;
+    color: #1a1a4e;
+    border: 2px solid rgba(26, 26, 78, 0.1);
+    border-radius: 12px;
+    font-weight: 600;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .btn-secondary:hover {
+    border-color: #4ecdc4;
+    color: #4ecdc4;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(78, 205, 196, 0.2);
   }
 
   .card {
