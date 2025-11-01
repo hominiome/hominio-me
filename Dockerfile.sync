@@ -1,20 +1,14 @@
-# Dockerfile for Zero sync service using Bun
-FROM oven/bun:1
+# Dockerfile for Zero sync service
+# Use the official Zero Docker image as base
+FROM rocicorp/zero:0.24.2025101500
 
 WORKDIR /app
 
 # Copy schema file (needed for zero-cache)
 COPY src/zero-schema.ts ./src/zero-schema.ts
 
-# Set environment
-ENV NODE_ENV=production
-ENV ZERO_PORT=4848
-
-# Expose port
-EXPOSE 4848
-
-# Start zero-cache using bunx with admin password from environment variable
+# Start zero-cache with admin password from environment variable
 # Zero requires --admin-password in production mode
 # We reuse ZERO_AUTH_SECRET as the admin password (same secret, different purpose)
-CMD ["sh", "-c", "bunx zero-cache --schema-path=./src/zero-schema.ts --admin-password=\"${ZERO_AUTH_SECRET}\""]
+CMD ["sh", "-c", "zero-cache --schema-path=./src/zero-schema.ts --admin-password=\"${ZERO_AUTH_SECRET}\""]
 
