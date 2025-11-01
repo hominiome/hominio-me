@@ -45,6 +45,12 @@ ZERO_PORT = "4848"
 # ZERO_AUTH_SECRET will be set via Fly.io secrets
 # ZERO_ADMIN_PASSWORD will be set via Fly.io secrets (reusing ZERO_AUTH_SECRET value)
 LOG_LEVEL = "info"
+# Use different App ID for production to avoid conflicts with localhost Zero
+# Localhost uses default "zero", production uses "zero-prod"
+# This allows both to run against the same database without replication slot conflicts
+ZERO_APP_ID = "zero-prod"
+# Change streamer mode: dedicated mode shuts down when another takes over (single instance)
+ZERO_CHANGE_STREAMER_MODE = "dedicated"
 # Increase connection timeout to handle high-latency database connections
 ZERO_DB_CONNECT_TIMEOUT = "15"
 # Prevent Postgres from terminating idle replication connections
