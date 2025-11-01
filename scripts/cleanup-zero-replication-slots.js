@@ -5,7 +5,6 @@
  */
 
 import { neon } from '@neondatabase/serverless';
-import { sql } from 'drizzle-orm';
 
 const DATABASE_URL = process.env.SECRET_ZERO_DEV_PG;
 
@@ -17,13 +16,11 @@ if (!DATABASE_URL) {
 async function cleanupReplicationSlots() {
   console.log("🧹 Cleaning up stale Zero replication slots...\n");
 
-  const db = {
-    neon: neon(DATABASE_URL),
-  };
+  const db = neon(DATABASE_URL);
 
   try {
     // List all replication slots
-    const slots = await sql`
+    const slots = await db`
       SELECT 
         slot_name,
         slot_type,
@@ -32,24 +29,24 @@ async function cleanupReplicationSlots() {
       FROM pg_replication_slots
       WHERE slot_name LIKE 'zero_%'
       ORDER BY slot_name
-    `.execute(db);
+    `;
 
-    console.log(`Found ${slots.rows.length} Zero replication slot(s):\n`);
+    console.log(`Found ${slots.length} Zero replication slot(s):\n`);
 
-    if (slots.rows.length === 0) {
+    if (slots.length === 0) {
       console.log("✅ No Zero replication slots found. Nothing to clean up.");
       return;
     }
 
     // Display all slots
-    for (const slot of slots.rows) {
+    for (const slot of slots) {
       const status = slot.active ? "🟢 ACTIVE" : "🔴 INACTIVE";
       console.log(`  ${status} ${slot.slot_name}`);
       console.log(`     Type: ${slot.slot_type}, Lag: ${slot.lag_size || "N/A"}`);
     }
 
     // Count inactive slots
-    const inactiveSlots = slots.rows.filter(s => !s.active);
+    const inactiveSlots = slots.filter(s => !s.active);
     
     if (inactiveSlots.length === 0) {
       console.log("\n✅ All replication slots are active. No cleanup needed.");
@@ -63,7 +60,7 @@ async function cleanupReplicationSlots() {
     for (const slot of inactiveSlots) {
       try {
         console.log(`🗑️  Dropping inactive slot: ${slot.slot_name}...`);
-        await sql`SELECT pg_drop_replication_slot(${slot.slot_name})`.execute(db);
+        await db`SELECT pg_drop_replication_slot(${slot.slot_name})`;
         console.log(`   ✅ Dropped ${slot.slot_name}`);
       } catch (error) {
         console.error(`   ❌ Failed to drop ${slot.slot_name}:`, error.message);
@@ -79,8 +76,6 @@ async function cleanupReplicationSlots() {
   } catch (error) {
     console.error("❌ Error cleaning up replication slots:", error);
     throw error;
-  } finally {
-    await db.neon.end();
   }
 }
 
@@ -93,4 +88,3 @@ cleanupReplicationSlots()
     console.error("\n💥 Failed:", error);
     process.exit(1);
   });
-
