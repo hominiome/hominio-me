@@ -170,6 +170,7 @@
   .modal-backdrop {
     position: fixed;
     inset: 0;
+    bottom: 0;
     background: rgba(0, 0, 0, 0.6);
     backdrop-filter: blur(4px);
     display: flex;
@@ -177,6 +178,9 @@
     justify-content: center;
     z-index: 1003;
     animation: fadeIn 0.2s;
+    /* Prevent iOS scroll gap */
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
   }
 
   @keyframes fadeIn {
@@ -191,7 +195,8 @@
   .modal-content {
     background: white;
     border-radius: 24px 24px 0 0;
-    padding: 2.5rem 2rem 6.5rem 2rem;
+    padding: 2.5rem 2rem;
+    padding-bottom: calc(6.5rem + env(safe-area-inset-bottom));
     width: 100%;
     max-width: 600px;
     max-height: 70vh;
@@ -202,6 +207,16 @@
     display: flex;
     flex-direction: column;
     align-items: center;
+    /* Prevent iOS scroll gap */
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  @media (max-width: 768px) {
+    .modal-content {
+      padding: 1.75rem 1.5rem;
+      padding-bottom: calc(5.5rem + env(safe-area-inset-bottom));
+    }
   }
 
   .display-component-wrapper {
@@ -227,6 +242,14 @@
     border-top: 1px solid rgba(78, 205, 196, 0.2);
   }
 
+  @media (max-width: 768px) {
+    .actions-container {
+      margin-top: 1rem;
+      padding-top: 1rem;
+      gap: 0.5rem;
+    }
+  }
+
   .action-button {
     background: #1a1a4e;
     color: white;
@@ -239,6 +262,13 @@
     transition: all 0.2s;
     width: 100%;
     box-shadow: 0 2px 8px rgba(26, 26, 78, 0.15);
+  }
+
+  @media (max-width: 768px) {
+    .action-button {
+      padding: 0.875rem 1.5rem;
+      font-size: 0.9375rem;
+    }
   }
 
   .action-button:hover {
@@ -254,7 +284,7 @@
 
   .bottom-actions {
     position: absolute;
-    bottom: 2rem;
+    bottom: calc(2rem + env(safe-area-inset-bottom));
     left: 0;
     right: 0;
     display: flex;
@@ -262,6 +292,13 @@
     justify-content: center;
     gap: 1rem;
     padding: 0 2rem;
+  }
+
+  @media (max-width: 768px) {
+    .bottom-actions {
+      bottom: calc(1.5rem + env(safe-area-inset-bottom));
+      padding: 0 1.5rem;
+    }
   }
 
   .close-button {

@@ -167,6 +167,9 @@ export async function POST({ request }) {
           read: "false",
           createdAt: now,
           actions: actions,
+          sound: "/purchase-effect.mp3",
+          icon: "mdi:account-check",
+          displayComponent: "PrizePoolDisplay", // Display component for all identity purchases
         })
         .execute();
 
