@@ -76,3 +76,4 @@ export function isFutureDateTime(date, time) {
   const dateTime = new Date(`${date}T${time}`);
   return dateTime > new Date();
 }
+

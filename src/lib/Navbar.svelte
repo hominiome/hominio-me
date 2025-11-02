@@ -9,6 +9,24 @@
 
   // Track if user image failed to load
   let userImageFailed = $state(false);
+  let isAdmin = $state(false);
+
+  // Check if user is admin reactively
+  $effect(() => {
+    if (session?.data?.user) {
+      fetch("/alpha/api/is-admin")
+        .then((res) => res.json())
+        .then((data) => {
+          isAdmin = data.isAdmin;
+        })
+        .catch((err) => {
+          console.error("Failed to check admin status:", err);
+          isAdmin = false;
+        });
+    } else {
+      isAdmin = false;
+    }
+  });
 
   // Hearts balance - commented out for now
   // Can be re-enabled later by accessing Zero from context
@@ -45,6 +63,16 @@
       >
         Cups
       </a>
+
+      {#if isAdmin}
+        <a
+          href="/alpha/scan"
+          class="nav-link"
+          class:active={$page.url.pathname === "/alpha/scan"}
+        >
+          Scan
+        </a>
+      {/if}
 
       {#if session?.data?.user}
         <a href="/alpha/me" class="user-info-link">
@@ -105,12 +133,10 @@
         class="mobile-nav-item"
         class:active={$page.url.pathname.startsWith("/alpha/cups")}
       >
-        <svg
-          class="mobile-nav-icon"
-          fill="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+        <svg class="mobile-nav-icon" fill="currentColor" viewBox="0 0 24 24">
+          <path
+            d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"
+          />
         </svg>
         <span class="mobile-nav-label">Cups</span>
       </a>
@@ -135,6 +161,29 @@
         </svg>
         <span class="mobile-nav-label">Projects</span>
       </a>
+
+      {#if isAdmin}
+        <a
+          href="/alpha/scan"
+          class="mobile-nav-item"
+          class:active={$page.url.pathname === "/alpha/scan"}
+        >
+          <svg
+            class="mobile-nav-icon"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"
+            />
+          </svg>
+          <span class="mobile-nav-label">Scan</span>
+        </a>
+      {/if}
 
       {#if session?.data?.user}
         <a href="/alpha/me" class="mobile-nav-item mobile-nav-user">

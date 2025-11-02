@@ -2,11 +2,20 @@
   import { authClient } from "$lib/auth.client.js";
   import { goto } from "$app/navigation";
   import { onMount } from "svelte";
+  import { browser } from "$app/environment";
   import { useZero } from "$lib/zero-utils";
   import { formatPrizePool } from "$lib/prizePoolUtils.js";
+  import QRCodeDisplay from "$lib/QRCodeDisplay.svelte";
 
   // Session data from layout
   let { data } = $props();
+  
+  // Get the public profile URL
+  let profileUrl = $derived(
+    browser && data.session?.id 
+      ? `${window.location.origin}/alpha/user/${data.session.id}` 
+      : ""
+  );
 
   const zeroContext = useZero();
   const session = authClient.useSession();
@@ -201,6 +210,12 @@
       </div>
       <h1 class="profile-name">{data.session?.name || "User"}</h1>
       <p class="profile-email">{data.session?.email}</p>
+      
+      {#if profileUrl}
+        <div class="qr-code-section">
+          <QRCodeDisplay data={profileUrl} />
+        </div>
+      {/if}
     </div>
 
     <div class="profile-section">
@@ -431,7 +446,16 @@
   .profile-email {
     font-size: 1.125rem;
     color: #6b7280;
-    margin: 0;
+    margin: 0 0 1.5rem 0;
+  }
+
+  .qr-code-section {
+    margin: 1.5rem 0;
+    display: flex;
+    justify-content: center;
+    padding: 1rem;
+    background: rgba(78, 205, 196, 0.02);
+    border-radius: 12px;
   }
 
   .profile-section {
