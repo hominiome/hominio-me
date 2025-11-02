@@ -6,8 +6,7 @@ primary_region = 'fra'
 
 [build]
 # Use official Zero Docker image - latest version (pushed most recently)
-# Local version: 0.22.3000000000
-image = "registry.hub.docker.com/rocicorp/zero:0.22.3000000000"
+image = "registry.hub.docker.com/rocicorp/zero:0.24"
 
 [http_service]
 internal_port = 4848

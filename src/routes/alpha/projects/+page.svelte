@@ -12,6 +12,7 @@
   import Modal from "$lib/Modal.svelte";
   import { goto } from "$app/navigation";
   import TigrisImageUpload from "$lib/components/TigrisImageUpload.svelte";
+  import { browser } from "$app/environment";
 
   // Get Zero instance from context (initialized in layout)
   const zeroContext = getContext("zero");
@@ -416,33 +417,42 @@
         clearInterval(checkZero);
         zero = zeroContext.getInstance();
 
-        // Query ALL projects (everyone can read)
-        const projectsQuery = zero.query.project.orderBy("createdAt", "desc");
-        projectsView = projectsQuery.materialize();
+        // Use synced query (client-side only, SSR doesn't need this)
+        if (browser) {
+          import("$lib/synced-queries").then(({ allProjects }) => {
+            // Query ALL projects using synced query (server-controlled)
+            // Use zero.materialize() instead of query.materialize() for synced queries
+            const projectsQuery = allProjects();
+            projectsView = zero.materialize(projectsQuery);
 
-        projectsView.addListener(async (data) => {
-          const newProjects = Array.from(data);
-          projects = newProjects;
-          loading = false;
+            projectsView.addListener(async (data) => {
+              const newProjects = Array.from(data);
+              projects = newProjects;
+              loading = false;
 
-          // Fetch user profiles for all projects
-          const userIds = [
-            ...new Set(newProjects.map((p) => p.userId).filter(Boolean)),
-          ];
-          if (userIds.length > 0) {
-            await prefetchUserProfiles(userIds);
-            // Update userProfiles map
-            const newUserProfiles = new Map(userProfiles);
-            for (const userId of userIds) {
-              const profile = await getUserProfile(userId);
-              newUserProfiles.set(userId, {
-                name: profile.name,
-                image: profile.image,
-              });
-            }
-            userProfiles = newUserProfiles; // Trigger reactivity
-          }
-        });
+              // Fetch user profiles for all projects
+              const userIds = [
+                ...new Set(newProjects.map((p) => p.userId).filter(Boolean)),
+              ];
+              if (userIds.length > 0) {
+                await prefetchUserProfiles(userIds);
+                // Update userProfiles map
+                const newUserProfiles = new Map(userProfiles);
+                for (const userId of userIds) {
+                  const profile = await getUserProfile(userId);
+                  newUserProfiles.set(userId, {
+                    name: profile.name,
+                    image: profile.image,
+                  });
+                }
+                userProfiles = newUserProfiles; // Trigger reactivity
+              }
+            });
+          }).catch((error) => {
+            console.error("Failed to load synced queries:", error);
+            loading = false;
+          });
+        }
 
         // Query user identities to check for founder status
         if ($session.data?.user) {

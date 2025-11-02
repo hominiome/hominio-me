@@ -1,5 +1,6 @@
 import {
   createSchema,
+  createBuilder,
   table,
   string,
   number,
@@ -126,6 +127,9 @@ const notification = table('notification')
 export const schema = createSchema({
   tables: [project, cup, cupMatch, userIdentities, identityPurchase, vote, notification],
 });
+
+// Export builder for synced queries
+export const builder = createBuilder(schema);
 
 // AuthData type - JWT claims from BetterAuth
 // Zero validates the JWT and passes the claims to this function

@@ -55,11 +55,17 @@
         const hasAuth = !!($session.data?.user || data.session);
 
         // Initialize Zero client (works for both authenticated and anonymous users)
+        // For synced queries, we use cookie-based auth (no JWT needed)
+        // Cookies are automatically forwarded by zero-cache when ZERO_GET_QUERIES_FORWARD_COOKIES=true
         zero = new Zero({
           server: zeroServerUrl,
           schema,
           userID: userId,
-          // Only fetch JWT if user is logged in
+          // Configure synced queries endpoint (uses cookie-based auth)
+          getQueriesURL: browser ? `${window.location.origin}/alpha/api/zero/get-queries` : undefined,
+          // For synced queries + custom mutators, we can use opaque tokens or undefined
+          // Zero will forward cookies automatically to the server
+          // We still provide JWT auth for legacy queries/permissions if needed elsewhere
           auth: hasAuth
             ? async () => {
                 try {

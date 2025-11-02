@@ -103,6 +103,14 @@ export async function startZero(): Promise<void> {
         }
     }
 
+    // Get the server URL for get-queries endpoint
+    // Zero-cache needs this to call our server for synced query definitions
+    // In dev, default to localhost:5173 (SvelteKit default dev port)
+    // Can be overridden with SECRET_ZERO_GET_QUERIES_URL env var
+    // In production, set this to your actual domain
+    const devPort = process.env.PORT || '5173';
+    const getQueriesUrl = env.SECRET_ZERO_GET_QUERIES_URL || `http://localhost:${devPort}/alpha/api/zero/get-queries`;
+
     // Spawn zero-cache-dev process
     zeroProcess = spawn(
         'zero-cache-dev',
@@ -116,6 +124,11 @@ export async function startZero(): Promise<void> {
                 // Also set these for compatibility
                 SECRET_ZERO_DEV_PG: enhancedDbUrl,
                 SECRET_ZERO_AUTH_SECRET: ZERO_AUTH_SECRET,
+                // Configure synced queries endpoint for zero-cache
+                ZERO_GET_QUERIES_URL: getQueriesUrl,
+                // Forward cookies to server for synced queries (cookie-based auth)
+                // This allows BetterAuth cookies to be forwarded to our get-queries endpoint
+                ZERO_GET_QUERIES_FORWARD_COOKIES: 'true',
                 // Add connection timeout and retry settings
                 ZERO_DB_CONNECT_TIMEOUT: '10', // 10 seconds
                 NODE_ENV: process.env.NODE_ENV || 'development',

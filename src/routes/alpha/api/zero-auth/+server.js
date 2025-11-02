@@ -26,7 +26,7 @@ export async function GET({ request }) {
     // Include 'admin' flag for permission checks (as string 'true'/'false' matching Zero docs pattern)
     const payload = {
       sub: session.user.id,
-      admin: userIsAdmin ? 'true' : 'false', // Always include admin status as string for Zero permissions
+      admin: userIsAdmin ? "true" : "false", // Always include admin status as string for Zero permissions
       iat: Math.floor(Date.now() / 1000),
       exp: Math.floor(Date.now() / 1000) + 60 * 60, // 1 hour expiry
     };
