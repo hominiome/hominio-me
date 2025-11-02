@@ -366,15 +366,15 @@
       // Use Zero custom mutator for project update
       await zero.mutate.project.update({
         id: editProject.id,
-        title: editFormData.title.trim(),
-        description: editFormData.description.trim(),
-        country: editFormData.country?.name || editFormData.country || "",
-        city: editFormData.city.trim(),
-        videoUrl: (editFormData.videoUrl || "").trim(),
-        bannerImage: (editFormData.bannerImage || "").trim(),
-        profileImageUrl: (editFormData.profileImageUrl || "").trim(),
-        sdgs: JSON.stringify(editFormData.sdgs),
-        userId: newUserId,
+          title: editFormData.title.trim(),
+          description: editFormData.description.trim(),
+          country: editFormData.country?.name || editFormData.country || "",
+          city: editFormData.city.trim(),
+          videoUrl: (editFormData.videoUrl || "").trim(),
+          bannerImage: (editFormData.bannerImage || "").trim(),
+          profileImageUrl: (editFormData.profileImageUrl || "").trim(),
+          sdgs: JSON.stringify(editFormData.sdgs),
+          userId: newUserId,
       });
       
       handleEditModalClose();

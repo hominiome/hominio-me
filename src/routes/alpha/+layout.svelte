@@ -255,7 +255,7 @@
   }
 
   async function handleNotificationMarkRead(id: string) {
-    // Update local state immediately
+    // Update local state immediately (optimistic update)
     notifications = notifications.map((n) =>
       n.id === id ? { ...n, read: "true" } : n
     );
@@ -263,36 +263,45 @@
     // Remove from priority queue if it's there
     priorityNotificationQueue = priorityNotificationQueue.filter(n => n.id !== id);
 
-    // Also update via API to persist
+    // Persist via custom mutator (replaces legacy API)
     try {
-      await fetch("/alpha/api/notifications/mark-read", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ notificationId: id }),
-      });
+      if (zero) {
+        await zero.mutate.notification.markRead({ id });
+      }
     } catch (error) {
       console.error("Failed to mark notification as read:", error);
+      // Revert optimistic update on error
+      notifications = notifications.map((n) =>
+        n.id === id ? { ...n, read: "false" } : n
+      );
     }
   }
 
   async function markAllNonPriorityAsRead() {
-    // Update local state immediately - mark all non-priority unread notifications as read
+    // Get current user ID
+    const userId = $session.data?.user?.id || data.session?.id;
+    if (!userId) {
+      console.error("Cannot mark notifications as read: no user ID");
+      return;
+    }
+
+    // Store original state for potential rollback
+    const originalNotifications = [...notifications];
+
+    // Update local state immediately (optimistic update)
     notifications = notifications.map((n) =>
       n.read === "false" && n.priority !== "true" ? { ...n, read: "true" } : n
     );
 
-    // Also update via API to persist
+    // Persist via custom mutator (replaces legacy API)
     try {
-      await fetch("/alpha/api/notifications/mark-all-read", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-      });
+      if (zero) {
+        await zero.mutate.notification.markAllRead({ userId });
+      }
     } catch (error) {
       console.error("Failed to mark all notifications as read:", error);
+      // Revert optimistic update on error
+      notifications = originalNotifications;
     }
   }
 

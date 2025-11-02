@@ -189,15 +189,15 @@
       // Use Zero custom mutator for project update
       await zero.mutate.project.update({
         id: project.id,
-        title: title.trim(),
-        description: description.trim(),
-        country: country.name,
-        city: city.trim(),
-        videoUrl: videoUrl.trim() || "",
-        bannerImage: bannerImage.trim() || "",
+          title: title.trim(),
+          description: description.trim(),
+          country: country.name,
+          city: city.trim(),
+          videoUrl: videoUrl.trim() || "",
+          bannerImage: bannerImage.trim() || "",
         profileImageUrl: project.profileImageUrl || "", // Preserve existing profile image
-        sdgs: JSON.stringify(sdgs),
-        userId: newUserId, // Update owner if admin changed it
+          sdgs: JSON.stringify(sdgs),
+          userId: newUserId, // Update owner if admin changed it
       });
 
       // Redirect back to projects page
