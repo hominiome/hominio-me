@@ -171,9 +171,9 @@
 
   .notification-preview {
     position: relative;
-    background: #f4d03f;
-    border: 1px solid rgba(26, 26, 78, 0.1);
-    border-radius: 12px 12px 0 0;
+    background: white;
+    border: none;
+    border-radius: 24px 24px 0 0;
     width: 100%;
     max-width: 600px;
     height: 64px;
@@ -181,7 +181,7 @@
     display: flex;
     align-items: center;
     cursor: pointer;
-    box-shadow: 0 2px 8px rgba(26, 26, 78, 0.05);
+    box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.15);
     transition: all 0.3s ease;
     z-index: 1;
     overflow: visible;
@@ -208,8 +208,8 @@
   }
 
   .notification-badge {
-    background: #1a1a4e;
-    color: #f4d03f;
+    background: linear-gradient(135deg, #f4d03f 0%, #fcd34d 100%);
+    color: #1a1a4e;
     border-radius: 12px;
     min-width: 2.25rem;
     width: auto;
@@ -224,8 +224,8 @@
     flex-shrink: 0;
     position: static;
     margin-left: auto;
-    border: none;
-    box-shadow: none;
+    border: 1px solid rgba(244, 208, 63, 0.3);
+    box-shadow: 0 2px 4px rgba(244, 208, 63, 0.2);
     outline: none;
   }
 
@@ -242,9 +242,16 @@
   }
 
   .preview-icon.bell-icon {
-    color: #1a1a4e;
+    color: #4ecdc4;
     width: 3.5rem;
     height: 3.5rem;
+    background: linear-gradient(
+      135deg,
+      rgba(244, 208, 63, 0.15) 0%,
+      rgba(244, 208, 63, 0.05) 100%
+    );
+    border-radius: 50%;
+    padding: 0.5rem;
   }
 
   .preview-icon :global(svg) {
@@ -285,25 +292,6 @@
     display: -webkit-box;
     -webkit-line-clamp: 1;
     -webkit-box-orient: vertical;
-  }
-
-  .notification-badge {
-    background: #1a1a4e;
-    color: #f4d03f;
-    border-radius: 50%;
-    min-width: 1.75rem;
-    width: 1.75rem;
-    height: 1.75rem;
-    padding: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 0.75rem;
-    font-weight: 900;
-    flex-shrink: 0;
-    position: static;
-    border: 2px solid #f4d03f;
-    box-shadow: 0 2px 8px rgba(26, 26, 78, 0.2);
   }
 
   .chevron-icon {
@@ -353,8 +341,16 @@
     }
 
     .preview-icon.bell-icon {
+      color: #4ecdc4;
       width: 3rem;
       height: 3rem;
+      background: linear-gradient(
+        135deg,
+        rgba(244, 208, 63, 0.15) 0%,
+        rgba(244, 208, 63, 0.05) 100%
+      );
+      border-radius: 50%;
+      padding: 0.375rem;
     }
 
     .notification-badge {
@@ -367,24 +363,16 @@
       border-radius: 10px;
       line-height: 1;
       margin-left: auto;
-      border: none;
-      box-shadow: none;
+      border: 1px solid rgba(244, 208, 63, 0.3);
+      box-shadow: 0 2px 4px rgba(244, 208, 63, 0.2);
       outline: none;
+      background: linear-gradient(135deg, #f4d03f 0%, #fcd34d 100%);
+      color: #1a1a4e;
     }
 
     .preview-title {
       font-size: 0.875rem;
-    }
-
-    .preview-message {
-      font-size: 0.75rem;
-    }
-
-    .notification-badge {
-      min-width: 1.5rem;
-      height: 1.5rem;
-      font-size: 0.6875rem;
-      padding: 0 0.375rem;
+      color: #1a1a4e;
     }
 
     .chevron-icon {
