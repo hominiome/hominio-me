@@ -298,6 +298,38 @@ export function createMutators(authData: AuthData | undefined) {
         await tx.mutate.notification.delete({ id });
       },
     },
+
+    // ========================================
+    // IDENTITY PURCHASE MUTATORS
+    // ========================================
+    // Note: Purchases are typically created via /api/purchase-package (payment flow)
+    // These mutators are mainly for admin operations (testing, refunds, adjustments)
+
+    identityPurchase: {
+      /**
+       * Delete an identity purchase (admin only)
+       * Client-side: Runs optimistically
+       * Server-side: Only admins can delete purchases
+       */
+      delete: async (
+        tx: Transaction<Schema>,
+        args: {
+          id: string;
+        }
+      ) => {
+        const { id } = args;
+        
+        // Read existing purchase to check it exists
+        const purchase = await tx.query.identityPurchase.where('id', id).one();
+        
+        if (!purchase) {
+          throw new Error('Purchase not found');
+        }
+        
+        // Delete purchase
+        await tx.mutate.identityPurchase.delete({ id });
+      },
+    },
   } as const;
 }
 

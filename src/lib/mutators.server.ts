@@ -288,6 +288,46 @@ export function createServerMutators(
         await clientMutators.notification.delete(tx, args);
       },
     },
+
+    // ========================================
+    // IDENTITY PURCHASE MUTATORS
+    // ========================================
+    // Note: Purchases are created via /api/purchase-package (payment flow)
+    // These mutators are for admin operations only
+
+    identityPurchase: {
+      /**
+       * Delete an identity purchase (server-side)
+       * Only admins can delete purchases (for refunds, corrections, etc.)
+       */
+      delete: async (
+        tx: AnyTransaction,
+        args: {
+          id: string;
+        }
+      ) => {
+        // Check authentication
+        if (!authData?.sub) {
+          throw new Error('Unauthorized: Must be logged in to delete purchases');
+        }
+
+        // Only admins can delete purchases
+        const userIsAdmin = isAdmin(authData.sub);
+        if (!userIsAdmin) {
+          throw new Error('Forbidden: Only admins can delete purchases');
+        }
+
+        // Verify the purchase exists
+        const purchase = await tx.query.identityPurchase.where('id', args.id).one();
+
+        if (!purchase) {
+          throw new Error('Purchase not found');
+        }
+
+        // Delegate to client mutator
+        await clientMutators.identityPurchase.delete(tx, args);
+      },
+    },
   } as const;
 }
 
