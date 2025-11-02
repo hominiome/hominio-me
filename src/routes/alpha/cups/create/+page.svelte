@@ -9,11 +9,9 @@
   let size = $state(16); // Default to 16
   let creating = $state(false);
 
-  // Redirect to home if not authenticated
+  // Redirect to cups page with modal param
   $effect(() => {
-    if (!$session.isPending && !$session.data) {
-      goto("/alpha");
-    }
+    goto("/alpha/cups?modal=create-cup", { replaceState: true });
   });
 
   async function createCup() {

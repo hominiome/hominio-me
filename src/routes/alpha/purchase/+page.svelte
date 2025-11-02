@@ -82,7 +82,8 @@
   // PURCHASE ROUTE IS DISABLED - INVITE-ONLY MODE
   // Redirect all purchase page visits to invite-only page
   $effect(() => {
-    goto("/alpha/invite-only");
+    // Redirect to home with invite modal
+    goto("/alpha?modal=invite", { replaceState: false });
   });
 
   // Redirect to home if not authenticated

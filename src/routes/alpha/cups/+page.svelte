@@ -3,6 +3,11 @@
   import { authClient } from "$lib/auth.client.js";
   import { useZero } from "$lib/zero-utils";
   import { calculatePrizePool, formatPrizePool } from "$lib/prizePoolUtils.js";
+  import { page } from "$app/stores";
+  import { goto } from "$app/navigation";
+  import Modal from "$lib/Modal.svelte";
+  import CreateCupContent from "$lib/CreateCupContent.svelte";
+  import EditCupContent from "$lib/EditCupContent.svelte";
 
   const zeroContext = useZero();
   const session = authClient.useSession();
@@ -121,6 +126,33 @@
         return round;
     }
   }
+  
+  // Detect modal params from URL
+  const showCreateModal = $derived($page.url.searchParams.get("modal") === "create-cup");
+  const showEditModal = $derived($page.url.searchParams.get("modal") === "edit-cup");
+  const editCupId = $derived($page.url.searchParams.get("cupId") || "");
+  
+  function handleCreateModalClose() {
+    const url = new URL($page.url);
+    url.searchParams.delete("modal");
+    goto(url.pathname + url.search, { replaceState: true });
+  }
+  
+  function handleEditModalClose() {
+    const url = new URL($page.url);
+    url.searchParams.delete("modal");
+    url.searchParams.delete("cupId");
+    goto(url.pathname + url.search, { replaceState: true });
+  }
+  
+  function handleCreateSuccess(cupId: string) {
+    handleCreateModalClose();
+    goto(`/alpha/cups/${cupId}/admin`);
+  }
+  
+  function handleEditSuccess() {
+    handleEditModalClose();
+  }
 </script>
 
 <div class="min-h-screen bg-cream p-8">
@@ -135,7 +167,16 @@
       </div>
 
       {#if $session.data && isAdmin}
-        <a href="/alpha/cups/create" class="btn-primary"> Create Cup </a>
+        <button
+          onclick={() => {
+            const url = new URL($page.url);
+            url.searchParams.set("modal", "create-cup");
+            goto(url.pathname + url.search, { replaceState: false });
+          }}
+          class="btn-primary"
+        >
+          Create Cup
+        </button>
       {/if}
     </div>
 
@@ -154,9 +195,16 @@
           {/if}
         </p>
         {#if $session.data && isAdmin}
-          <a href="/alpha/cups/create" class="btn-primary">
+          <button
+            onclick={() => {
+              const url = new URL($page.url);
+              url.searchParams.set("modal", "create-cup");
+              goto(url.pathname + url.search, { replaceState: false });
+            }}
+            class="btn-primary"
+          >
             Create First Cup
-          </a>
+          </button>
         {/if}
       </div>
     {:else}
@@ -182,14 +230,20 @@
                       onclick={(e) => {
                         e.preventDefault();
                         e.stopPropagation();
-                        window.location.href = `/alpha/cups/${cup.id}/edit`;
+                        const url = new URL($page.url);
+                        url.searchParams.set("modal", "edit-cup");
+                        url.searchParams.set("cupId", cup.id);
+                        goto(url.pathname + url.search, { replaceState: false });
                       }}
                       role="button"
                       tabindex="0"
                       onkeydown={(e) => {
                         if (e.key === "Enter" || e.key === " ") {
                           e.preventDefault();
-                          window.location.href = `/alpha/cups/${cup.id}/edit`;
+                          const url = new URL($page.url);
+                          url.searchParams.set("modal", "edit-cup");
+                          url.searchParams.set("cupId", cup.id);
+                          goto(url.pathname + url.search, { replaceState: false });
                         }
                       }}
                     >
@@ -245,6 +299,20 @@
       </div>
     {/if}
   </div>
+  
+  <!-- Create Cup Modal -->
+  {#if showCreateModal && $session.data?.user}
+    <Modal open={showCreateModal} onClose={handleCreateModalClose}>
+      <CreateCupContent onSuccess={handleCreateSuccess} />
+    </Modal>
+  {/if}
+  
+  <!-- Edit Cup Modal -->
+  {#if showEditModal && $session.data?.user && editCupId}
+    <Modal open={showEditModal} onClose={handleEditModalClose}>
+      <EditCupContent cupId={editCupId} onSuccess={handleEditSuccess} />
+    </Modal>
+  {/if}
 </div>
 
 <style>

@@ -250,7 +250,7 @@
         {#if userIdentities.length === 0}
           <div class="empty-state">
             <p>You don't have any active voting identities yet.</p>
-            <a href="/alpha/invite-only" class="empty-state-link">
+            <a href="?modal=invite" class="empty-state-link">
               Get an identity (invite-only)
             </a>
           </div>

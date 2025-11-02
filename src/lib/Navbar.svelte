@@ -1,11 +1,13 @@
 <script lang="ts">
   import { page } from "$app/stores";
 
-  interface ModalButton {
-    label: string;
-    onClick: () => void;
-    ariaLabel?: string;
-  }
+    interface ModalButton {
+      label: string;
+      onClick: () => void;
+      ariaLabel?: string;
+      disabled?: boolean;
+      variant?: "primary" | "secondary";
+    }
 
   // Receive session and signIn function from parent layout
   let { 
@@ -159,8 +161,10 @@
               {#each modalRightButtons as button}
                 <button
                   class="modal-action-button"
+                  class:primary={button.variant === "primary"}
                   onclick={button.onClick}
                   aria-label={button.ariaLabel || button.label}
+                  disabled={button.disabled}
                 >
                   {button.label}
                 </button>
@@ -620,20 +624,46 @@
     cursor: pointer;
     transition: all 0.2s;
     font-weight: 600;
-    font-size: 0.7rem;
+    font-size: 0.8rem;
     white-space: nowrap;
     flex-shrink: 0;
     color: rgba(255, 255, 255, 0.9);
   }
 
-  .modal-action-button:hover {
+  .modal-action-button.primary {
+    background: #f4d03f; /* Yellow brand color */
+    border: 2px solid #f4d03f;
+    color: #1a1a4e; /* Dark blue text */
+    border-radius: 999px; /* Fully rounded */
+  }
+
+  .modal-action-button.primary:hover:not(:disabled) {
+    background: #fcd34d; /* Lighter yellow on hover */
+    border-color: #fcd34d;
+    transform: scale(1.02);
+  }
+
+  .modal-action-button.primary:disabled {
+    background: rgba(244, 208, 63, 0.5);
+    border-color: rgba(244, 208, 63, 0.5);
+    color: rgba(26, 26, 78, 0.5);
+    cursor: not-allowed;
+    opacity: 0.6;
+  }
+
+  .modal-action-button:hover:not(:disabled):not(.primary) {
     background: rgba(255, 255, 255, 0.15);
     border-color: rgba(255, 255, 255, 0.3);
     transform: scale(1.02);
   }
 
-  .modal-action-button:active {
+  .modal-action-button:active:not(:disabled) {
     transform: scale(1);
+  }
+
+  .modal-action-button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
   }
 
   @media (max-width: 768px) {

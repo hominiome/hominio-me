@@ -266,7 +266,10 @@
     // Check if user has an identity
     if (!userIdentity) {
       // Redirect to invite-only page (purchase is disabled, invite-only mode)
-      goto("/alpha/invite-only");
+      // Open invite modal on current route
+      const url = new URL($page.url);
+      url.searchParams.set("modal", "invite");
+      goto(url.pathname + url.search, { replaceState: false });
       return;
     }
 
@@ -426,7 +429,7 @@
             {/if}
             {#if isCreator || isAdmin}
               <a
-                href="/alpha/cups/{cupId}/edit"
+                href="/alpha/cups?modal=edit-cup&cupId={cupId}"
                 class="btn-secondary text-center"
               >
                 Edit

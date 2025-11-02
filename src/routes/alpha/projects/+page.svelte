@@ -9,6 +9,8 @@
   import CountryAutocomplete from "$lib/CountryAutocomplete.svelte";
   import { showError } from "$lib/toastStore.js";
   import ConfirmDialog from "$lib/ConfirmDialog.svelte";
+  import Modal from "$lib/Modal.svelte";
+  import { goto } from "$app/navigation";
 
   // Get Zero instance from context (initialized in layout)
   const zeroContext = getContext<{
@@ -92,9 +94,208 @@
     })();
   });
 
+  // Detect modal params from URL
+  const showCreateModal = $derived($page.url.searchParams.get("modal") === "create-project");
+  const showEditModal = $derived($page.url.searchParams.get("modal") === "edit-project");
+  const editProjectId = $derived($page.url.searchParams.get("projectId") || "");
+  
+  // Edit form state (declare before derived that uses it)
+  let editProject = $state<any>(null);
+  let editLoading = $state(false);
+  let editSaving = $state(false);
+  let editFormData = $state({
+    title: "",
+    description: "",
+    country: null as { name: string } | null,
+    city: "",
+    videoUrl: "",
+    videoThumbnail: "",
+    sdgs: [] as string[],
+  });
+  let editSelectedOwner = $state<{
+    id: string;
+    name: string | null;
+    image: string | null;
+  } | null>(null);
+  
+  // Form validation states (after state declarations)
+  const canCreateProject = $derived(
+    newProject.title.trim() &&
+    newProject.description.trim() &&
+    newProject.country &&
+    newProject.city.trim() &&
+    newProject.sdgs.length > 0
+  );
+  
+  const canSaveEditProject = $derived(
+    editProject &&
+    editFormData.title.trim() &&
+    editFormData.description.trim() &&
+    editFormData.country &&
+    editFormData.city.trim() &&
+    editFormData.sdgs.length > 0 &&
+    !editSaving
+  );
+  
+  // Submit handlers
+  function handleCreateSubmit() {
+    const form = document.getElementById("create-project-form") as HTMLFormElement;
+    if (form && canCreateProject) {
+      form.requestSubmit();
+    }
+  }
+  
+  function handleEditSubmit() {
+    const form = document.getElementById("edit-project-form") as HTMLFormElement;
+    if (form && canSaveEditProject) {
+      form.requestSubmit();
+    }
+  }
+  
+  // Expose submit functions and state globally for layout to access (reactive)
+  $effect(() => {
+    if (typeof window !== "undefined") {
+      (window as any).__projectModalActions = {
+        handleCreateSubmit,
+        handleEditSubmit,
+        canCreateProject,
+        canEditProject: canSaveEditProject,
+        editSaving,
+        showCreateModal,
+        showEditModal,
+      };
+    }
+  });
+  
+  function handleCreateModalClose() {
+    const url = new URL($page.url);
+    url.searchParams.delete("modal");
+    goto(url.pathname + url.search, { replaceState: true });
+  }
+  
+  function handleEditModalClose() {
+    const url = new URL($page.url);
+    url.searchParams.delete("modal");
+    url.searchParams.delete("projectId");
+    goto(url.pathname + url.search, { replaceState: true });
+    // Reset edit state
+    editProject = null;
+    editFormData = {
+      title: "",
+      description: "",
+      country: null,
+      city: "",
+      videoUrl: "",
+      videoThumbnail: "",
+      sdgs: [],
+    };
+    editSelectedOwner = null;
+  }
+  
+  // Load project data when edit modal opens
+  $effect(() => {
+    if (showEditModal && editProjectId && zero && projects.length > 0) {
+      // Reset state when projectId changes
+      if (editProject && editProject.id !== editProjectId) {
+        editProject = null;
+        editLoading = true;
+      }
+      
+      if (!editProject && !editLoading) {
+        editLoading = true;
+        const project = projects.find((p) => p.id === editProjectId);
+        if (project) {
+          editProject = project;
+          editFormData = {
+            title: project.title || "",
+            description: project.description || "",
+            country: project.country ? { name: project.country } : null,
+            city: project.city || "",
+            videoUrl: project.videoUrl || "",
+            videoThumbnail: project.videoThumbnail || "",
+            sdgs: project.sdgs ? (typeof project.sdgs === "string" ? JSON.parse(project.sdgs || "[]") : project.sdgs) : [],
+          };
+          if (project.userId) {
+            getUserProfile(project.userId).then((profile) => {
+              editSelectedOwner = {
+                id: profile.id,
+                name: profile.name,
+                image: profile.image,
+              };
+            });
+          }
+          editLoading = false;
+        } else {
+          editLoading = false;
+        }
+      }
+    } else if (!showEditModal) {
+      // Reset when modal closes
+      editProject = null;
+      editLoading = false;
+    }
+  });
+  
+  function toggleEditSDG(sdgId: string) {
+    if (editFormData.sdgs.includes(sdgId)) {
+      editFormData.sdgs = editFormData.sdgs.filter((id) => id !== sdgId);
+    } else {
+      if (editFormData.sdgs.length < 3) {
+        editFormData.sdgs = [...editFormData.sdgs, sdgId];
+      }
+    }
+  }
+  
+  async function updateProject() {
+    if (!editProject || editSaving || !editFormData.title.trim() || !editFormData.description.trim() || !editFormData.country || !editFormData.city.trim() || editFormData.sdgs.length === 0) {
+      return;
+    }
+    
+    if (!isAdmin) {
+      showError("Only admins can update projects");
+      return;
+    }
+    
+    const newUserId = editSelectedOwner ? editSelectedOwner.id : editProject.userId;
+    editSaving = true;
+    
+    try {
+      const response = await fetch("/alpha/api/update-project", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          projectId: editProject.id,
+          title: editFormData.title.trim(),
+          description: editFormData.description.trim(),
+          country: editFormData.country.name,
+          city: editFormData.city.trim(),
+          videoUrl: editFormData.videoUrl.trim() || "",
+          videoThumbnail: editFormData.videoThumbnail.trim() || "",
+          sdgs: JSON.stringify(editFormData.sdgs),
+          userId: newUserId,
+        }),
+      });
+      
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Failed to update project");
+      }
+      
+      handleEditModalClose();
+    } catch (error) {
+      console.error("Failed to update project:", error);
+      const message = error instanceof Error ? error.message : "Unknown error";
+      showError(`Failed to update project: ${message}`);
+    } finally {
+      editSaving = false;
+    }
+  }
+  
   onMount(() => {
-    // Check if URL has create parameter to open form directly
-    const shouldCreate = $page.url.searchParams.get("create") === "true";
+    // Check if URL has create parameter to open form directly (legacy support)
+    const shouldCreate = $page.url.searchParams.get("create") === "true" || $page.url.searchParams.get("modal") === "create-project";
     if (shouldCreate && $session.data?.user) {
       showCreateForm = true;
     }
@@ -187,6 +388,8 @@
     };
     selectedOwner = null;
     showCreateForm = false;
+    // Close modal by removing query param
+    handleCreateModalClose();
   }
 
   let showDeleteConfirm = $state(false);
@@ -271,7 +474,11 @@
           </div>
           {#if $session.data?.user}
             <button
-              onclick={() => (showCreateForm = !showCreateForm)}
+              onclick={() => {
+                const url = new URL($page.url);
+                url.searchParams.set("modal", "create-project");
+                goto(url.pathname + url.search, { replaceState: false });
+              }}
               class="btn-primary px-5 py-2 text-sm"
             >
               <span class="text-lg mr-1">+</span>
@@ -282,30 +489,14 @@
       </div>
 
       <!-- Create Form Modal -->
-      {#if showCreateForm}
-        <div
-          class="modal-overlay"
-          role="dialog"
-          aria-modal="true"
-          tabindex="-1"
-          onclick={(e) => {
-            if (e.target === e.currentTarget) showCreateForm = false;
-          }}
-          onkeydown={(e) => {
-            if (e.key === "Escape") showCreateForm = false;
-          }}
-        >
-          <div class="modal-content">
-            <button
-              onclick={() => (showCreateForm = false)}
-              class="absolute top-4 right-4 text-navy/40 hover:text-navy text-3xl leading-none"
-            >
-              ×
-            </button>
+      {#if showCreateModal && $session.data?.user}
+        <Modal open={showCreateModal} onClose={handleCreateModalClose}>
+          <div class="create-project-content">
             <h2 class="text-3xl font-bold text-navy mb-6">
               Create New Project
             </h2>
             <form
+              id="create-project-form"
               onsubmit={(e) => {
                 e.preventDefault();
                 createProject();
@@ -433,21 +624,187 @@
                 </div>
               </div>
 
-              <div class="flex gap-3 pt-2">
-                <button type="submit" class="btn-primary px-8 py-3 flex-1">
-                  Create Project
-                </button>
-                <button
-                  type="button"
-                  onclick={() => (showCreateForm = false)}
-                  class="btn-secondary px-8 py-3"
-                >
-                  Cancel
-                </button>
-              </div>
             </form>
           </div>
-        </div>
+        </Modal>
+      {/if}
+
+      <!-- Edit Project Modal -->
+      {#if showEditModal && $session.data?.user && editProjectId}
+        <Modal open={showEditModal} onClose={handleEditModalClose}>
+          <div class="edit-project-content">
+            <h2 class="text-3xl font-bold text-navy mb-6">
+              Edit Project
+            </h2>
+            {#if editLoading}
+              <div class="text-center py-8">
+                <p class="text-navy/70">Loading project...</p>
+              </div>
+            {:else if !editProject}
+              <div class="text-center py-8">
+                <p class="text-navy/70">Project not found</p>
+              </div>
+            {:else}
+              <form
+                id="edit-project-form"
+                onsubmit={(e) => {
+                  e.preventDefault();
+                  updateProject();
+                }}
+                class="space-y-5"
+              >
+                <!-- Title -->
+                <div>
+                  <label
+                    for="edit-project-title"
+                    class="block text-navy/80 font-medium mb-2">Title *</label
+                  >
+                  <input
+                    id="edit-project-title"
+                    type="text"
+                    bind:value={editFormData.title}
+                    placeholder="My Amazing Project"
+                    class="input w-full"
+                    required
+                  />
+                </div>
+
+                <!-- Description -->
+                <div>
+                  <label
+                    for="edit-project-description"
+                    class="block text-navy/80 font-medium mb-2">Description *</label
+                  >
+                  <textarea
+                    id="edit-project-description"
+                    bind:value={editFormData.description}
+                    placeholder="Tell us about your project..."
+                    rows="4"
+                    class="input w-full"
+                    required
+                  ></textarea>
+                </div>
+
+                <!-- Country -->
+                <div>
+                  <CountryAutocomplete
+                    bind:value={editFormData.country}
+                    label="Country"
+                    placeholder="Select a country..."
+                    required
+                  />
+                </div>
+
+                <!-- City -->
+                <div>
+                  <label
+                    for="edit-project-city"
+                    class="block text-navy/80 font-medium mb-2">City *</label
+                  >
+                  <input
+                    id="edit-project-city"
+                    type="text"
+                    bind:value={editFormData.city}
+                    placeholder="Berlin"
+                    class="input w-full"
+                    required
+                  />
+                </div>
+
+                <!-- Video URL (Optional) -->
+                <div>
+                  <label
+                    for="edit-project-videoUrl"
+                    class="block text-navy/80 font-medium mb-2"
+                  >
+                    YouTube Video URL (Optional)
+                  </label>
+                  <input
+                    id="edit-project-videoUrl"
+                    type="url"
+                    bind:value={editFormData.videoUrl}
+                    placeholder="https://www.youtube.com/watch?v=..."
+                    class="input w-full"
+                  />
+                  <p class="text-sm text-navy/60 mt-1">
+                    Add a YouTube link for your project pitch video
+                  </p>
+                </div>
+
+                <!-- Video Thumbnail URL (Optional) -->
+                <div>
+                  <label
+                    for="edit-project-videoThumbnail"
+                    class="block text-navy/80 font-medium mb-2"
+                  >
+                    Video Thumbnail Image URL (Optional)
+                  </label>
+                  <input
+                    id="edit-project-videoThumbnail"
+                    type="url"
+                    bind:value={editFormData.videoThumbnail}
+                    placeholder="https://example.com/thumbnail.jpg"
+                    class="input w-full"
+                  />
+                  <p class="text-sm text-navy/60 mt-1">
+                    Custom thumbnail image (falls back to Unsplash if not provided)
+                  </p>
+                </div>
+
+                <!-- Project Owner -->
+                {#if isAdmin}
+                  <div>
+                    <UserAutocomplete
+                      bind:value={editSelectedOwner}
+                      label="Project Owner"
+                      placeholder="Search for a user..."
+                    />
+                    <p class="text-sm text-navy/60 mt-1">
+                      Change the project owner (admin only)
+                    </p>
+                  </div>
+                {/if}
+
+                <!-- SDG Selection -->
+                <div>
+                  <label
+                    for="edit-project-sdgs"
+                    class="block text-navy/80 font-medium mb-2"
+                  >
+                    Sustainable Development Goals (Select 1-3) *
+                  </label>
+                  <p class="text-sm text-navy/60 mb-3">
+                    Selected: {editFormData.sdgs.length}/3
+                  </p>
+                  <div class="sdg-grid">
+                    {#each availableSDGs as sdg}
+                      <button
+                        type="button"
+                        onclick={() => toggleEditSDG(sdg.id)}
+                        class="sdg-selector {editFormData.sdgs.includes(sdg.id)
+                          ? 'selected'
+                          : ''}"
+                        disabled={!editFormData.sdgs.includes(sdg.id) &&
+                          editFormData.sdgs.length >= 3}
+                        title={sdg.name}
+                      >
+                        <img
+                          src="/sdgs/{sdg.id}.svg"
+                          alt={sdg.name}
+                          class="sdg-image"
+                        />
+                        {#if editFormData.sdgs.includes(sdg.id)}
+                          <div class="sdg-checkmark">✓</div>
+                        {/if}
+                      </button>
+                    {/each}
+                  </div>
+                </div>
+
+              </form>
+            {/if}
+          </div>
+        </Modal>
       {/if}
 
       <!-- Grid View Layout -->
@@ -589,7 +946,7 @@
                   <div class="project-footer-line"></div>
                   <div class="project-footer-actions">
                     <a
-                      href="/alpha/projects/{project.id}/edit"
+                      href="?modal=edit-project&projectId={project.id}"
                       class="btn-edit-small"
                     >
                       <svg
@@ -1021,29 +1378,9 @@
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
     gap: 0.75rem;
-    max-height: 300px;
-    overflow-y: auto;
     padding: 0.5rem;
     background: rgba(78, 205, 196, 0.03);
     border-radius: 12px;
-  }
-
-  .sdg-grid::-webkit-scrollbar {
-    width: 6px;
-  }
-
-  .sdg-grid::-webkit-scrollbar-track {
-    background: rgba(26, 26, 78, 0.05);
-    border-radius: 10px;
-  }
-
-  .sdg-grid::-webkit-scrollbar-thumb {
-    background: rgba(78, 205, 196, 0.3);
-    border-radius: 10px;
-  }
-
-  .sdg-grid::-webkit-scrollbar-thumb:hover {
-    background: rgba(78, 205, 196, 0.5);
   }
 
   .sdg-selector {
@@ -1100,30 +1437,30 @@
 
   /* SDG Display in Project Cards - unused styles removed */
 
-  /* Modal Overlay & Content */
-  .modal-overlay {
-    position: fixed;
-    inset: 0;
-    background: rgba(26, 26, 78, 0.2);
-    backdrop-filter: blur(12px);
-    z-index: 1001;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 1rem;
-  }
-
-  .modal-content {
-    background: white;
-    border-radius: 16px;
-    box-shadow: 0 2px 12px rgba(26, 26, 78, 0.06);
-    border: 1px solid rgba(26, 26, 78, 0.08);
-    max-width: 42rem;
+  /* Create/Edit Project Content */
+  .create-project-content,
+  .edit-project-content {
     width: 100%;
-    max-height: 90vh;
-    overflow-y: auto;
-    padding: 2rem;
-    position: relative;
+    overflow: visible; /* Don't constrain SDG grid */
+  }
+  
+  /* Ensure forms and all containers don't create scroll containers */
+  .create-project-content form,
+  .edit-project-content form {
+    overflow: visible;
+    max-height: none;
+  }
+  
+  /* Ensure SDG grid parent containers don't scroll */
+  .create-project-content *,
+  .edit-project-content * {
+    max-height: none;
+  }
+  
+  .create-project-content .sdg-grid,
+  .edit-project-content .sdg-grid {
+    overflow: visible !important;
+    max-height: none !important;
   }
 
   .project-title-link {

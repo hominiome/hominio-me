@@ -41,48 +41,9 @@
     })();
   });
 
-  onMount(() => {
-    let cupView: any;
-
-    (async () => {
-      // Wait for Zero to be ready
-      while (!zeroContext.isReady() || !zeroContext.getInstance()) {
-        await new Promise((resolve) => setTimeout(resolve, 100));
-      }
-      zero = zeroContext.getInstance();
-
-      // Query cup
-      const cupQuery = zero.query.cup.where("id", "=", cupId);
-      cupView = cupQuery.materialize();
-
-      cupView.addListener((data: any) => {
-        const cups = Array.from(data);
-        if (cups.length > 0) {
-          cup = cups[0];
-          // Populate form
-          name = cup.name || "";
-          description = cup.description || "";
-          logoImageUrl = cup.logoImageUrl || "";
-          
-          // Check if user is creator
-          isCreator = cup.creatorId === $session.data?.user?.id;
-          
-          // Check permissions
-          if (!isAdmin && !isCreator) {
-            goto(`/alpha/cups/${cupId}`);
-            return;
-          }
-          
-          loading = false;
-        } else if (cup === null) {
-          loading = false;
-        }
-      });
-    })();
-
-    return () => {
-      if (cupView) cupView.destroy();
-    };
+  // Redirect to cups page with modal param
+  $effect(() => {
+    goto(`/alpha/cups?modal=edit-cup&cupId=${cupId}`, { replaceState: true });
   });
 
   async function updateCup() {

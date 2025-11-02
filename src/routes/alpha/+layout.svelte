@@ -11,6 +11,9 @@
   import ToastContainer from "$lib/ToastContainer.svelte";
   import NotificationModal from "$lib/NotificationModal.svelte";
   import NotificationBell from "$lib/NotificationBell.svelte";
+  import Modal from "$lib/Modal.svelte";
+  import InviteOnlyContent from "$lib/InviteOnlyContent.svelte";
+  import { goto } from "$app/navigation";
 
   // Get session data from layout server and children snippet
   let { data, children } = $props<{
@@ -274,12 +277,177 @@
     return Math.max(0, unreadNotifications.length - 1);
   });
 
+  // Generic modal system: detect modal param from URL search params
+  const modalType = $derived($page.url.searchParams.get("modal"));
+  const modalProjectId = $derived($page.url.searchParams.get("projectId"));
+  const modalCupId = $derived($page.url.searchParams.get("cupId"));
+  const showInviteModal = $derived(modalType === "invite");
+  const showCreateProjectModal = $derived(modalType === "create-project");
+  const showEditProjectModal = $derived(modalType === "edit-project" && !!modalProjectId);
+  const showCreateCupModal = $derived(modalType === "create-cup");
+  const showEditCupModal = $derived(modalType === "edit-cup" && !!modalCupId);
+  
+  // Reactive state to track project modal actions
+  let projectActions = $state<any>(null);
+  
+  // Reactive state to track cup modal actions
+  let cupActions = $state<any>(null);
+  
+  // Watch for project modal actions updates
+  $effect(() => {
+    if (browser && (showCreateProjectModal || showEditProjectModal)) {
+      // Check immediately and then periodically for updates
+      const checkActions = () => {
+        const actions = (window as any).__projectModalActions;
+        if (actions) {
+          // Only update if values actually changed to trigger reactivity
+          const newActions = {
+            handleCreateSubmit: actions.handleCreateSubmit,
+            handleEditSubmit: actions.handleEditSubmit,
+            canCreateProject: actions.canCreateProject,
+            canEditProject: actions.canEditProject,
+            editSaving: actions.editSaving,
+            showCreateModal: actions.showCreateModal,
+            showEditModal: actions.showEditModal,
+          };
+          projectActions = newActions;
+        }
+      };
+      
+      checkActions(); // Check immediately
+      const interval = setInterval(checkActions, 100);
+      
+      return () => clearInterval(interval);
+    } else {
+      projectActions = null;
+    }
+  });
+  
+  // Watch for cup modal actions updates
+  $effect(() => {
+    if (browser && (showCreateCupModal || showEditCupModal)) {
+      // Check immediately and then periodically for updates
+      const checkActions = () => {
+        const actions = (window as any).__cupModalActions;
+        if (actions) {
+          const newActions = {
+            handleCreateSubmit: actions.handleCreateSubmit,
+            handleEditSubmit: actions.handleEditSubmit,
+            canCreateCup: actions.canCreateCup,
+            canEditCup: actions.canEditCup,
+            creating: actions.creating,
+            saving: actions.saving,
+          };
+          cupActions = newActions;
+        }
+      };
+      
+      checkActions(); // Check immediately
+      const interval = setInterval(checkActions, 100);
+      
+      return () => clearInterval(interval);
+    } else {
+      cupActions = null;
+    }
+  });
+  
+  // Get modal right buttons - combine notification and project modal buttons
+  const modalRightButtons = $derived(() => {
+    if (notificationModal && remainingUnreadCount() > 0) {
+      return [{
+        label: `Next (${remainingUnreadCount()})`,
+        onClick: goToNextNotification,
+        ariaLabel: "Next notification"
+      }];
+    }
+    
+    // Check for project modal buttons
+    if (showCreateProjectModal) {
+      // Only disable if we have validation state AND it's false
+      // If projectActions is null, enable the button (let form validation handle it)
+      const canCreate = projectActions ? (projectActions.canCreateProject ?? true) : true;
+      return [{
+        label: "Create Project",
+        onClick: () => {
+          const form = document.getElementById("create-project-form") as HTMLFormElement;
+          if (form) {
+            form.requestSubmit();
+          }
+        },
+        ariaLabel: "Create project",
+        disabled: projectActions ? !canCreate : false,
+        variant: "primary" as const
+      }];
+    } else if (showEditProjectModal) {
+      // Only disable if we have validation state AND it's false
+      // If projectActions is null, enable the button (let form validation handle it)
+      const canEdit = projectActions ? (projectActions.canEditProject ?? true) : true;
+      const saving = projectActions?.editSaving ?? false;
+      return [{
+        label: saving ? "Saving..." : "Save Changes",
+        onClick: () => {
+          const form = document.getElementById("edit-project-form") as HTMLFormElement;
+          if (form) {
+            form.requestSubmit();
+          }
+        },
+        ariaLabel: "Save project changes",
+        disabled: projectActions ? !canEdit : false,
+        variant: "primary" as const
+      }];
+    }
+    
+    // Check for cup modal buttons
+    if (showCreateCupModal) {
+      const canCreate = cupActions ? (cupActions.canCreateCup ?? true) : true;
+      const creating = cupActions?.creating ?? false;
+      return [{
+        label: creating ? "Creating..." : "Create Cup",
+        onClick: () => {
+          const form = document.getElementById("create-cup-form") as HTMLFormElement;
+          if (form) {
+            form.requestSubmit();
+          }
+        },
+        ariaLabel: "Create cup",
+        disabled: cupActions ? !canCreate : false,
+        variant: "primary" as const
+      }];
+    } else if (showEditCupModal) {
+      const canEdit = cupActions ? (cupActions.canEditCup ?? true) : true;
+      const saving = cupActions?.saving ?? false;
+      return [{
+        label: saving ? "Saving..." : "Save Changes",
+        onClick: () => {
+          const form = document.getElementById("edit-cup-form") as HTMLFormElement;
+          if (form) {
+            form.requestSubmit();
+          }
+        },
+        ariaLabel: "Save cup changes",
+        disabled: cupActions ? !canEdit : false,
+        variant: "primary" as const
+      }];
+    }
+    
+    return [];
+  });
+  
   // Derived modal open state for navbar - ensure reactivity  
-  const isModalOpenState = $derived(!!notificationModal);
+  const isModalOpenState = $derived(!!notificationModal || !!modalType);
+  
+  function handleModalClose() {
+    // Stay on the same route, just remove the modal param
+    const url = new URL($page.url);
+    url.searchParams.delete("modal");
+    url.searchParams.delete("projectId");
+    url.searchParams.delete("cupId");
+    goto(url.pathname + url.search, { replaceState: true });
+  }
   
   // Debug
   $effect(() => {
-    console.log("Layout - notificationModal:", notificationModal, "isModalOpenState:", isModalOpenState);
+    console.log("Layout - notificationModal:", notificationModal, "isModalOpenState:", isModalOpenState, "showInviteModal:", showInviteModal);
   });
 
   // Close modal if the current notification is marked as read and show next one
@@ -302,7 +470,7 @@
   });
 </script>
 
-{#if $session.data?.user && zeroReady && !notificationModal}
+{#if $session.data?.user && zeroReady && !notificationModal && !showInviteModal && !showCreateProjectModal && !showEditProjectModal && !showCreateCupModal && !showEditCupModal}
   <NotificationBell 
     unreadCount={unreadCount} 
     onClick={openNotificationModal}
@@ -316,12 +484,8 @@
   session={$session} 
   {signInWithGoogle}
   isModalOpen={isModalOpenState}
-  onModalClose={handleNotificationClose}
-  modalRightButtons={notificationModal && remainingUnreadCount() > 0 ? [{
-    label: `Next (${remainingUnreadCount()})`,
-    onClick: goToNextNotification,
-    ariaLabel: "Next notification"
-  }] : []}
+  onModalClose={modalType ? handleModalClose : handleNotificationClose}
+  modalRightButtons={modalRightButtons()}
 />
 
 <div class="content-wrapper">
@@ -338,6 +502,12 @@
     onNext={goToNextNotification}
     remainingCount={remainingUnreadCount()}
   />
+{/if}
+
+{#if showInviteModal && $session.data?.user}
+  <Modal open={showInviteModal} onClose={handleModalClose}>
+    <InviteOnlyContent />
+  </Modal>
 {/if}
 
 <style>

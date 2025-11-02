@@ -2,6 +2,7 @@
   import { onMount } from "svelte";
   import { authClient } from "$lib/auth.client.js";
   import { goto } from "$app/navigation";
+  import { page } from "$app/stores";
   import { useZero } from "$lib/zero-utils";
   import { getUserProfile } from "$lib/userProfileCache";
   import MatchDetail from "$lib/MatchDetail.svelte";
@@ -373,7 +374,10 @@
     const hasIdentity = userIdentities.some((id) => id.cupId === match.cupId);
     if (!hasIdentity) {
       // Redirect to invite-only page (purchase is disabled, invite-only mode)
-      goto("/alpha/invite-only");
+      // Open invite modal on current route
+      const url = new URL($page.url);
+      url.searchParams.set("modal", "invite");
+      goto(url.pathname + url.search, { replaceState: false });
       return;
     }
 
