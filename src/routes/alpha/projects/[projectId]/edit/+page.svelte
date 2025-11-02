@@ -9,6 +9,7 @@
   import CountryAutocomplete from "$lib/CountryAutocomplete.svelte";
   import { getUserProfile } from "$lib/userProfileCache";
   import { showError } from "$lib/toastStore.js";
+  import { projectById } from "$lib/synced-queries";
 
   const zeroContext = getContext<{
     getInstance: () => any;
@@ -104,9 +105,9 @@
         clearInterval(checkZero);
         zero = zeroContext.getInstance();
 
-        // Query project
-        const projectQuery = zero.query.project.where("id", "=", projectId);
-        projectView = projectQuery.materialize();
+        // Query project using synced query
+        const projectQuery = projectById(projectId);
+        projectView = zero.materialize(projectQuery);
 
         projectView.addListener((data: any) => {
           const projects = Array.from(data);
@@ -185,29 +186,19 @@
     saving = true;
 
     try {
-      // Use API endpoint to update project (handles userId persistence properly)
-      const response = await fetch("/alpha/api/update-project", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          projectId: project.id,
-          title: title.trim(),
-          description: description.trim(),
-          country: country.name,
-          city: city.trim(),
-          videoUrl: videoUrl.trim() || "",
-          bannerImage: bannerImage.trim() || "",
-          sdgs: JSON.stringify(sdgs),
-          userId: newUserId, // Update owner if admin changed it
-        }),
+      // Use Zero custom mutator for project update
+      await zero.mutate.project.update({
+        id: project.id,
+        title: title.trim(),
+        description: description.trim(),
+        country: country.name,
+        city: city.trim(),
+        videoUrl: videoUrl.trim() || "",
+        bannerImage: bannerImage.trim() || "",
+        profileImageUrl: project.profileImageUrl || "", // Preserve existing profile image
+        sdgs: JSON.stringify(sdgs),
+        userId: newUserId, // Update owner if admin changed it
       });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || "Failed to update project");
-      }
 
       // Redirect back to projects page
       goto(`/alpha/projects`);

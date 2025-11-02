@@ -3,6 +3,17 @@ import { getSession } from "$lib/api-helpers.server.js";
 import { isAdmin } from "$lib/admin.server.js";
 import { zeroDb } from "$lib/db.server.js";
 
+/**
+ * @deprecated This API endpoint is deprecated in favor of Zero custom mutators.
+ * New code should use `zero.mutate.project.update()` instead.
+ * See: src/lib/mutators.ts and src/lib/mutators.server.ts
+ * 
+ * Migration Status:
+ * ✅ /alpha/projects/[projectId]/edit - migrated to custom mutators
+ * ✅ /alpha/projects (inline edit modal) - migrated to custom mutators
+ * 
+ * This endpoint can be removed once all usages are confirmed migrated.
+ */
 export async function POST({ request }) {
   const { projectId, title, description, country, city, videoUrl, bannerImage, profileImageUrl, sdgs, userId } = await request.json();
 

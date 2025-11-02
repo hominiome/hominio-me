@@ -683,72 +683,6 @@
     position: relative;
   }
 
-  /* Inline Video Container */
-  .video-inline-container {
-    position: relative;
-    width: 100%;
-    padding-bottom: 56.25%; /* 16:9 aspect ratio */
-    height: 0;
-    overflow: hidden;
-    background: #000;
-    border-radius: 12px;
-  }
-
-  .video-iframe-inline {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    border: none;
-  }
-
-  .close-video-inline {
-    position: absolute;
-    top: 0.5rem;
-    right: 0.5rem;
-    width: 32px;
-    height: 32px;
-    background: rgba(0, 0, 0, 0.7);
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: white;
-    border: none;
-    cursor: pointer;
-    z-index: 10;
-    transition: all 0.2s;
-    backdrop-filter: blur(4px);
-  }
-
-  .close-video-inline:hover {
-    background: rgba(0, 0, 0, 0.9);
-    transform: scale(1.1);
-  }
-
-  .close-icon-small {
-    width: 18px;
-    height: 18px;
-  }
-
-  /* Voters below progress bar */
-  .voters-below-progress {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 1rem;
-    margin-top: 0; /* No padding between progress bar and voters */
-  }
-
-  .voters-below-progress :global(.voters-container) {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.5rem;
-    background: rgba(255, 255, 255, 0.5);
-    border-radius: 8px;
-  }
-
   .video-thumbnail {
     width: 100%;
     aspect-ratio: 16 / 9;
@@ -1074,36 +1008,6 @@
     cursor: not-allowed;
   }
 
-  /* Voted button styling */
-  .vote-button-bar.button-voted {
-    opacity: 0.7;
-    cursor: default;
-  }
-
-  .vote-button-bar.button-voted .vote-label {
-    font-weight: 700;
-  }
-
-  .vote-button-bar.voted-button {
-    background: linear-gradient(
-      90deg,
-      rgba(78, 205, 196, 0.4) 0%,
-      rgba(78, 205, 196, 0.3) 100%
-    ) !important;
-    border-color: rgba(78, 205, 196, 0.5) !important;
-    color: rgba(78, 205, 196, 0.8) !important;
-  }
-
-  .vote-button-bar-left.voted-button {
-    background: linear-gradient(
-      90deg,
-      rgba(244, 208, 63, 0.4) 0%,
-      rgba(244, 208, 63, 0.3) 100%
-    ) !important;
-    border-color: rgba(244, 208, 63, 0.5) !important;
-    color: rgba(244, 208, 63, 0.8) !important;
-  }
-
   .vote-button-content {
     display: flex;
     flex-direction: column;
@@ -1202,10 +1106,6 @@
     }
   }
 
-  .vote-pulse {
-    animation: votePulse 0.8s cubic-bezier(0.34, 1.56, 0.64, 1);
-  }
-
   /* Vote overlay animation - slides in from side */
   .vote-overlay {
     position: absolute;
@@ -1274,18 +1174,6 @@
     100% {
       opacity: 0;
     }
-  }
-
-  .match-waiting {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.5rem;
-    padding: 1rem;
-    background: rgba(26, 26, 78, 0.05);
-    color: rgba(26, 26, 78, 0.5);
-    font-weight: 600;
-    font-size: 0.875rem;
   }
 
   .w-5 {
@@ -1439,11 +1327,6 @@
       right: 8px;
       padding: 0.375rem 0.75rem;
       font-size: 0.75rem;
-    }
-
-    .match-waiting {
-      padding: 0.75rem;
-      font-size: 0.8125rem;
     }
   }
 

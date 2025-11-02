@@ -230,39 +230,6 @@
     outline: none;
   }
 
-  .preview-icon {
-    width: 4rem;
-    height: 4rem;
-    color: #4ecdc4;
-    flex-shrink: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    visibility: visible;
-    opacity: 1;
-  }
-
-  .preview-icon.bell-icon {
-    color: #4ecdc4;
-    width: 3.5rem;
-    height: 3.5rem;
-    background: linear-gradient(
-      135deg,
-      rgba(244, 208, 63, 0.15) 0%,
-      rgba(244, 208, 63, 0.05) 100%
-    );
-    border-radius: 50%;
-    padding: 0.5rem;
-  }
-
-  .preview-icon :global(svg) {
-    width: 100%;
-    height: 100%;
-    display: block;
-    visibility: visible;
-    opacity: 1;
-  }
-
   .preview-text {
     flex: 1;
     min-width: 0;
@@ -281,18 +248,6 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-  }
-
-  .preview-message {
-    font-size: 0.8125rem;
-    font-weight: 500;
-    color: rgba(26, 26, 78, 0.7);
-    line-height: 1.3;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    display: -webkit-box;
-    -webkit-line-clamp: 1;
-    -webkit-box-orient: vertical;
   }
 
   .chevron-icon {
@@ -339,19 +294,6 @@
 
     .icon-badge-group {
       gap: 0.375rem;
-    }
-
-    .preview-icon.bell-icon {
-      color: #4ecdc4;
-      width: 3rem;
-      height: 3rem;
-      background: linear-gradient(
-        135deg,
-        rgba(244, 208, 63, 0.15) 0%,
-        rgba(244, 208, 63, 0.05) 100%
-      );
-      border-radius: 50%;
-      padding: 0.375rem;
     }
 
     .notification-badge {

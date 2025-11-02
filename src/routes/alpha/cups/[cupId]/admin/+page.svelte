@@ -13,6 +13,7 @@
   import TimePicker from "$lib/TimePicker.svelte";
   import CountdownTimer from "$lib/CountdownTimer.svelte";
   import { combineDateAndTime, formatEndDate } from "$lib/dateUtils.js";
+  import { allProjects } from "$lib/synced-queries";
 
   const zeroContext = useZero();
   const session = authClient.useSession();
@@ -113,8 +114,8 @@
       }, 3000);
 
       // Query all projects
-      const projectsQuery = zero.query.project.orderBy("createdAt", "desc");
-      projectsView = projectsQuery.materialize();
+      const projectsQuery = allProjects();
+      projectsView = zero.materialize(projectsQuery);
 
       projectsView.addListener((data) => {
         projects = Array.from(data);
@@ -327,11 +328,14 @@
           country: fakeData.country || "",
           city: fakeData.city,
           userId: $session.data?.user?.id || "", // Cup creator owns fake projects
+          videoUrl: "",
+          bannerImage: "",
+          profileImageUrl: "",
           sdgs: JSON.stringify(fakeData.sdgs || []),
           createdAt: now,
         };
 
-        await zero.mutate.project.insert(newProject);
+        await zero.mutate.project.create(newProject);
         return newProject;
       });
 

@@ -180,25 +180,6 @@
     height: 3rem;
   }
 
-  .notification-icon-small {
-    flex-shrink: 0;
-    width: 2rem;
-    height: 2rem;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: #4ecdc4;
-  }
-
-  .notification-icon-small.thumb-down {
-    color: #f87171;
-  }
-
-  .notification-icon-small :global(svg) {
-    width: 100%;
-    height: 100%;
-  }
-
   .notification-title {
     color: #1a1a4e;
     font-size: 1.5rem;
@@ -270,21 +251,5 @@
     border-radius: 50%;
     flex-shrink: 0;
     margin-top: 0.25rem;
-  }
-
-  .notification-icon {
-    flex-shrink: 0;
-    width: 3rem;
-    height: 3rem;
-    margin-right: 1rem;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: #4ecdc4;
-  }
-
-  .notification-icon :global(svg) {
-    width: 100%;
-    height: 100%;
   }
 </style>

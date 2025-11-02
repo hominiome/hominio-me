@@ -26,11 +26,6 @@
     modalRightButtons?: ModalButton[];
   }>();
 
-  // Debug - check if prop is updating
-  $effect(() => {
-    console.log("Navbar isModalOpen prop:", isModalOpen, "type:", typeof isModalOpen, "modalRightButtons:", modalRightButtons);
-  });
-
   // Track if user image failed to load
   let userImageFailed = $state(false);
   let isAdmin = $state(false);

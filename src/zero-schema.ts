@@ -9,8 +9,6 @@ import {
 } from '@rocicorp/zero';
 
 // Define the project table
-// Public read, owner-only write/delete
-// Note: userName and userImage are fetched from user profile API, not stored here
 const project = table('project')
   .columns({
     id: string(),
@@ -18,11 +16,11 @@ const project = table('project')
     description: string(),
     country: string(),
     city: string(),
-    userId: string(), // Reference to user - fetch profile via /alpha/api/user/[userId]
+    userId: string(), // Reference to user
     videoUrl: string(), // YouTube URL for project pitch video (optional)
-    bannerImage: string(), // Custom banner image URL (optional, falls back to Unsplash)
-    profileImageUrl: string(), // Custom project profile image URL (optional, falls back to owner's profile image)
-    sdgs: string(), // JSON string array of SDG goals (1-3): ["01_NoPoverty", "13_Climate", ...]
+    bannerImage: string(), // Custom banner image URL (optional)
+    profileImageUrl: string(), // Custom project profile image URL (optional)
+    sdgs: string(), // JSON string array of SDG goals
     createdAt: string(), // ISO timestamp
   })
   .primaryKey('id');
@@ -33,12 +31,12 @@ const cup = table('cup')
     id: string(),
     name: string(),
     description: string(),
-    creatorId: string(), // Reference to user - fetch profile via /alpha/api/user/[userId]
+    creatorId: string(), // Reference to user
     logoImageUrl: string(), // Cup logo image URL (optional)
     size: number(), // Cup size: 4, 8, 16, 32, 64, or 128
-    selectedProjectIds: string(), // JSON array of selected project IDs (empty string or JSON array)
+    selectedProjectIds: string(), // JSON array of selected project IDs
     status: string(), // 'draft' | 'active' | 'completed'
-    currentRound: string(), // 'round_4' | 'round_8' | 'round_16' | 'round_32' | 'round_64' | 'round_128' | 'quarter' | 'semi' | 'final'
+    currentRound: string(), // Current round identifier
     winnerId: string(), // Project ID of winner
     createdAt: string(),
     startedAt: string(),
@@ -49,33 +47,31 @@ const cup = table('cup')
   .primaryKey('id');
 
 // Individual match in tournament bracket
-// Vote totals are calculated from the vote table, no wallet needed
 const cupMatch = table('cupMatch')
   .columns({
     id: string(),
     cupId: string(),
-    round: string(), // 'round_4' | 'round_8' | 'round_16' | 'round_32' | 'round_64' | 'round_128' | 'quarter' | 'semi' | 'final'
-    position: number(), // 0-14 (position in bracket)
+    round: string(), // Round identifier
+    position: number(), // Position in bracket
     project1Id: string(), // First project
     project2Id: string(), // Second project
     winnerId: string(), // Project ID of winner
     status: string(), // 'pending' | 'voting' | 'completed'
     completedAt: string(),
-    endDate: string(), // ISO timestamp for match end date/time (optional, falls back to round date)
+    endDate: string(), // ISO timestamp for match end date/time
   })
   .primaryKey('id');
 
 // User identities - tracks which voting weight identity a user has selected per cup
-// Note: cupId is optional in schema to allow migration, but should be set for new records
 const userIdentities = table('userIdentities')
   .columns({
     id: string(),
-    userId: string(), // User ID - indexed
-    cupId: string(), // Cup ID - indexed (optional for migration, required for new records)
+    userId: string(), // User ID
+    cupId: string(), // Cup ID
     identityType: string(), // 'hominio' | 'founder' | 'angel'
     votingWeight: number(), // 1 | 5 | 10
     selectedAt: string(), // ISO timestamp
-    upgradedFrom: string(), // Previous identity type if upgraded (nullable)
+    upgradedFrom: string(), // Previous identity type if upgraded
   })
   .primaryKey('id');
 
@@ -83,21 +79,21 @@ const userIdentities = table('userIdentities')
 const identityPurchase = table('identityPurchase')
   .columns({
     id: string(),
-    userId: string(), // User ID - indexed
-    cupId: string(), // Cup ID - indexed
+    userId: string(), // User ID
+    cupId: string(), // Cup ID
     identityType: string(), // 'hominio' | 'founder' | 'angel'
-    price: number(), // Price in cents (100 = 1.00€, 1000 = 10.00€)
+    price: number(), // Price in cents
     purchasedAt: string(), // ISO timestamp
     userIdentityId: string(), // Reference to userIdentities.id
   })
   .primaryKey('id');
 
-// Vote record - tracks individual votes on matches (one per user per match)
+// Vote record - tracks individual votes on matches
 const vote = table('vote')
   .columns({
     id: string(),
-    userId: string(), // User ID - indexed
-    matchId: string(), // Match ID - indexed
+    userId: string(), // User ID
+    matchId: string(), // Match ID
     projectSide: string(), // 'project1' | 'project2'
     votingWeight: number(), // Weight used for this vote
     createdAt: string(), // ISO timestamp
@@ -108,216 +104,105 @@ const vote = table('vote')
 const notification = table('notification')
   .columns({
     id: string(),
-    userId: string(), // User ID - indexed (private to user)
+    userId: string(), // User ID (private to user)
     resourceType: string(), // Type of resource: 'identityPurchase', 'match', etc.
     resourceId: string(), // ID of the resource
     title: string(), // Notification title
-    previewTitle: string(), // Optional preview title for curiosity loop (falls back to title if not set)
+    previewTitle: string(), // Optional preview title for curiosity loop
     message: string(), // Notification message
     read: string(), // 'true' | 'false' (as string for Zero compatibility)
     createdAt: string(), // ISO timestamp
-    actions: string(), // JSON string array of action objects: [{label: string, url: string}]
-    sound: string(), // Optional sound file path (e.g., "/purchase-effect.mp3")
-    icon: string(), // Optional Iconify icon name (e.g., "mdi:bell", "material-symbols:notifications")
-    displayComponent: string(), // Optional component name to display above header (e.g., "HelloEarth")
-    priority: string(), // 'true' | 'false' (as string for Zero compatibility) - force opens notification, closes other modals
+    actions: string(), // JSON string array of action objects
+    sound: string(), // Optional sound file path
+    icon: string(), // Optional Iconify icon name
+    displayComponent: string(), // Optional component name to display
+    priority: string(), // 'true' | 'false' (as string) - force opens notification
   })
   .primaryKey('id');
 
 export const schema = createSchema({
   tables: [project, cup, cupMatch, userIdentities, identityPurchase, vote, notification],
+  // Disable legacy queries - we use synced queries instead
+  enableLegacyQueries: false,
+  // Disable legacy CRUD mutators - we use custom mutators instead
+  enableLegacyMutators: false,
 });
 
 // Export builder for synced queries
 export const builder = createBuilder(schema);
 
-// AuthData type - JWT claims from BetterAuth
-// Zero validates the JWT and passes the claims to this function
-type AuthData = {
-  sub: string; // User ID from JWT 'sub' claim
-  admin: string; // Admin flag - 'true' if user is admin, 'false' otherwise (MUST always be present for Zero compilation)
-  iat?: number; // Issued at
-  exp?: number; // Expiry
-};
+// ⚠️ DUMMY PERMISSIONS - NOT USED ⚠️
+// These permissions exist ONLY to satisfy zero-cache-dev's automatic deployment script.
+// They are NOT enforced because:
+// 1. enableLegacyQueries: false - clients can't run arbitrary queries
+// 2. enableLegacyMutators: false - clients can't use CRUD mutators
+// 
+// Real security is enforced in:
+// - Custom mutators (src/lib/mutators.server.ts) for writes
+// - Synced queries (src/routes/alpha/api/zero/get-queries/+server.ts) for reads
+type DummyAuthData = { sub: string };
 
-// ⚠️ SERVER-SIDE SECURITY ENFORCEMENT ⚠️
-// These permissions are enforced by zero-cache server, NOT the client.
-export const permissions = definePermissions<AuthData, typeof schema>(
+export const permissions = definePermissions<DummyAuthData, typeof schema>(
   schema,
   () => ({
+    // Public read, no writes (custom mutators handle all writes)
     project: {
       row: {
-        // SELECT: Everyone can read all projects (public)
         select: ANYONE_CAN,
-        // INSERT: Users can only create projects for themselves
-        insert: [
-          (authData, { cmp }) => {
-            return cmp('userId', '=', authData.sub);
-          }
-        ],
-        // UPDATE: Users can only update their own projects
-        update: {
-          preMutation: [
-            (authData, { cmp }) => {
-              return cmp('userId', '=', authData.sub);
-            }
-          ],
-          postMutation: [
-            (authData, { cmp }) => {
-              return cmp('userId', '=', authData.sub);
-            }
-          ],
-        },
-        // DELETE: Users can only delete their own projects
-        delete: [
-          (authData, { cmp }) => {
-            return cmp('userId', '=', authData.sub);
-          }
-        ],
+        insert: [],
+        update: { preMutation: [], postMutation: [] },
+        delete: [],
       },
     },
     cup: {
       row: {
-        // SELECT: Everyone can read cups
         select: ANYONE_CAN,
-        // INSERT: Only admins can create cups (enforced by Zero permissions)
-        insert: [
-          (authData, { cmpLit }) => cmpLit(authData.admin, '=', 'true')
-        ],
-        // UPDATE: Only admins can update cups (enforced by Zero permissions)
-        update: {
-          preMutation: [
-            (authData, { cmpLit }) => cmpLit(authData.admin, '=', 'true')
-          ],
-          postMutation: [
-            (authData, { cmpLit }) => cmpLit(authData.admin, '=', 'true')
-          ],
-        },
-        // DELETE: Only admins can delete cups (enforced by Zero permissions)
-        delete: [
-          (authData, { cmpLit }) => cmpLit(authData.admin, '=', 'true')
-        ],
+        insert: [],
+        update: { preMutation: [], postMutation: [] },
+        delete: [],
       },
     },
     cupMatch: {
       row: {
-        // SELECT: Everyone can read matches
         select: ANYONE_CAN,
-        // INSERT: Only admins can create matches (enforced by Zero permissions)
-        insert: [
-          (authData, { cmpLit }) => cmpLit(authData.admin, '=', 'true')
-        ],
-        // UPDATE: Only admins can update matches (enforced by Zero permissions)
-        update: {
-          preMutation: [
-            (authData, { cmpLit }) => cmpLit(authData.admin, '=', 'true')
-          ],
-          postMutation: [
-            (authData, { cmpLit }) => cmpLit(authData.admin, '=', 'true')
-          ],
-        },
-        // DELETE: Nobody can delete matches
+        insert: [],
+        update: { preMutation: [], postMutation: [] },
         delete: [],
       },
     },
     userIdentities: {
       row: {
-        // SELECT: Everyone can read identities (public transparency)
         select: ANYONE_CAN,
-        // INSERT: Users can create their own identity for a cup
-        insert: [
-          (authData, { cmp }) => {
-            return cmp('userId', '=', authData.sub);
-          }
-        ],
-        // UPDATE: Users can update their own identity (for upgrades)
-        update: {
-          preMutation: [
-            (authData, { cmp }) => {
-              return cmp('userId', '=', authData.sub);
-            }
-          ],
-          postMutation: [
-            (authData, { cmp }) => {
-              return cmp('userId', '=', authData.sub);
-            }
-          ],
-        },
-        // DELETE: Nobody can delete identities
+        insert: [],
+        update: { preMutation: [], postMutation: [] },
         delete: [],
       },
     },
     identityPurchase: {
       row: {
-        // SELECT: Everyone can read purchases (public transparency)
         select: ANYONE_CAN,
-        // INSERT: Users can create their own purchase records
-        insert: [
-          (authData, { cmp }) => {
-            return cmp('userId', '=', authData.sub);
-          }
-        ],
-        // UPDATE/DELETE: Purchases are immutable
-        update: {
-          preMutation: [],
-          postMutation: [],
-        },
+        insert: [],
+        update: { preMutation: [], postMutation: [] },
         delete: [],
       },
     },
     vote: {
       row: {
-        // SELECT: Everyone can read votes (public transparency)
         select: ANYONE_CAN,
-        // INSERT: Users can create their own votes
-        insert: [
-          (authData, { cmp }) => {
-            return cmp('userId', '=', authData.sub);
-          }
-        ],
-        // UPDATE/DELETE: Votes are immutable
-        update: {
-          preMutation: [],
-          postMutation: [],
-        },
+        insert: [],
+        update: { preMutation: [], postMutation: [] },
         delete: [],
       },
     },
     notification: {
       row: {
-        // SELECT: Users can only read their own notifications
-        select: [
-          (authData, { cmp }) => {
-            return cmp('userId', '=', authData.sub);
-          }
-        ],
-        // INSERT: Only admins can create notifications (enforced by Zero permissions)
-        insert: [
-          (authData, { cmpLit }) => cmpLit(authData.admin, '=', 'true')
-        ],
-        // UPDATE: Users can update their own notifications (mark as read)
-        update: {
-          preMutation: [
-            (authData, { cmp }) => {
-              return cmp('userId', '=', authData.sub);
-            }
-          ],
-          postMutation: [
-            (authData, { cmp }) => {
-              return cmp('userId', '=', authData.sub);
-            }
-          ],
-        },
-        // DELETE: Users can delete their own notifications
-        delete: [
-          (authData, { cmp }) => {
-            return cmp('userId', '=', authData.sub);
-          }
-        ],
+        select: ANYONE_CAN,
+        insert: [],
+        update: { preMutation: [], postMutation: [] },
+        delete: [],
       },
     },
   })
 );
 
 export type Schema = typeof schema;
-

@@ -103,18 +103,21 @@ export async function startZero(): Promise<void> {
         }
     }
 
-    // Get the server URL for get-queries endpoint
-    // Zero-cache needs this to call our server for synced query definitions
+    // Get the server URL for get-queries and push endpoints
+    // Zero-cache needs these to call our server for synced queries and custom mutators
     // In dev, default to localhost:5173 (SvelteKit default dev port)
-    // Can be overridden with SECRET_ZERO_GET_QUERIES_URL env var
-    // In production, set this to your actual domain
+    // Can be overridden with SECRET_ZERO_GET_QUERIES_URL and SECRET_ZERO_PUSH_URL env vars
+    // In production, set these to your actual domain
     const devPort = process.env.PORT || '5173';
     const getQueriesUrl = env.SECRET_ZERO_GET_QUERIES_URL || `http://localhost:${devPort}/alpha/api/zero/get-queries`;
+    const pushUrl = env.SECRET_ZERO_PUSH_URL || `http://localhost:${devPort}/alpha/api/zero/push`;
 
     // Spawn zero-cache-dev process
     zeroProcess = spawn(
         'zero-cache-dev',
-        ['--schema-path=./src/zero-schema.ts'],
+        [
+            '--schema-path=./src/zero-schema.ts',
+        ],
         {
             env: {
                 ...process.env, // Include all env vars for the child process
@@ -129,6 +132,11 @@ export async function startZero(): Promise<void> {
                 // Forward cookies to server for synced queries (cookie-based auth)
                 // This allows BetterAuth cookies to be forwarded to our get-queries endpoint
                 ZERO_GET_QUERIES_FORWARD_COOKIES: 'true',
+                // Configure custom mutators endpoint for zero-cache
+                ZERO_PUSH_URL: pushUrl,
+                // Forward cookies to server for custom mutators (cookie-based auth)
+                // ⚠️ Correct env var name: ZERO_MUTATE_FORWARD_COOKIES (not ZERO_PUSH_FORWARD_COOKIES)
+                ZERO_MUTATE_FORWARD_COOKIES: 'true',
                 // Add connection timeout and retry settings
                 ZERO_DB_CONNECT_TIMEOUT: '10', // 10 seconds
                 NODE_ENV: process.env.NODE_ENV || 'development',

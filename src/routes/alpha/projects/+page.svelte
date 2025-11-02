@@ -13,6 +13,7 @@
   import { goto } from "$app/navigation";
   import TigrisImageUpload from "$lib/components/TigrisImageUpload.svelte";
   import { browser } from "$app/environment";
+  import { projectById } from "$lib/synced-queries";
 
   // Get Zero instance from context (initialized in layout)
   const zeroContext = getContext("zero");
@@ -252,8 +253,8 @@
               // Wait a bit for Zero to be fully ready
               await new Promise(resolve => setTimeout(resolve, 100));
               
-              const projectQuery = zero.query.project.where("id", "=", editProjectId);
-              projectView = projectQuery.materialize();
+              const projectQuery = projectById(editProjectId);
+              projectView = zero.materialize(projectQuery);
               
               // Use listener to get the project data
               projectView.addListener((data) => {
@@ -362,29 +363,19 @@
     editSaving = true;
     
     try {
-      const response = await fetch("/alpha/api/update-project", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          projectId: editProject.id,
-          title: editFormData.title.trim(),
-          description: editFormData.description.trim(),
-          country: editFormData.country?.name || editFormData.country || "",
-          city: editFormData.city.trim(),
-          videoUrl: (editFormData.videoUrl || "").trim(),
-          bannerImage: (editFormData.bannerImage || "").trim(),
-          profileImageUrl: (editFormData.profileImageUrl || "").trim(),
-          sdgs: JSON.stringify(editFormData.sdgs),
-          userId: newUserId,
-        }),
+      // Use Zero custom mutator for project update
+      await zero.mutate.project.update({
+        id: editProject.id,
+        title: editFormData.title.trim(),
+        description: editFormData.description.trim(),
+        country: editFormData.country?.name || editFormData.country || "",
+        city: editFormData.city.trim(),
+        videoUrl: (editFormData.videoUrl || "").trim(),
+        bannerImage: (editFormData.bannerImage || "").trim(),
+        profileImageUrl: (editFormData.profileImageUrl || "").trim(),
+        sdgs: JSON.stringify(editFormData.sdgs),
+        userId: newUserId,
       });
-      
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || "Failed to update project");
-      }
       
       handleEditModalClose();
     } catch (error) {
@@ -502,7 +493,7 @@
     const ownerId =
       isAdmin && selectedOwner ? selectedOwner.id : $session.data.user.id;
 
-    await zero.mutate.project.insert({
+    await zero.mutate.project.create({
       id: nanoid(),
       title: newProject.title,
       description: newProject.description,
@@ -1497,20 +1488,6 @@
     background: #2a2a6e;
     transform: translateY(-1px);
     box-shadow: 0 4px 12px rgba(26, 26, 78, 0.3);
-  }
-
-  .btn-secondary {
-    background: white;
-    color: #1a1a4e;
-    border-radius: 12px;
-    border: 2px solid rgba(26, 26, 78, 0.1);
-    font-weight: 600;
-    transition: all 0.2s ease;
-  }
-
-  .btn-secondary:hover {
-    border-color: #4ecdc4;
-    color: #4ecdc4;
   }
 
   .btn-edit-small {

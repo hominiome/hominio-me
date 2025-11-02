@@ -8,6 +8,7 @@
   import Modal from "$lib/Modal.svelte";
   import CreateCupContent from "$lib/CreateCupContent.svelte";
   import EditCupContent from "$lib/EditCupContent.svelte";
+  import { allProjects } from "$lib/synced-queries";
 
   const zeroContext = useZero();
   const session = authClient.useSession();
@@ -57,8 +58,8 @@
       purchasesView = purchasesQuery.materialize();
 
       // Query all projects (for winner display)
-      const projectsQuery = zero.query.project;
-      projectsView = projectsQuery.materialize();
+      const projectsQuery = allProjects();
+      projectsView = zero.materialize(projectsQuery);
 
       purchasesView.addListener((data: any) => {
         purchases = Array.from(data || []);

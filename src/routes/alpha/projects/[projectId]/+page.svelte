@@ -6,6 +6,7 @@
   import { authClient } from "$lib/auth.client.js";
   import { getUserProfile } from "$lib/userProfileCache";
   import { getYouTubeEmbedUrl } from "$lib/youtubeUtils";
+  import { projectById } from "$lib/synced-queries";
 
   const zeroContext = getContext<{
     getInstance: () => any;
@@ -48,9 +49,9 @@
         return;
       }
 
-      // Query project
-      const projectQuery = zero.query.project.where("id", "=", projectId);
-      projectView = projectQuery.materialize();
+      // Query project using synced query
+      const projectQuery = projectById(projectId);
+      projectView = zero.materialize(projectQuery);
 
       // Query matches where this project participated
       // We need to query both project1Id and project2Id separately and merge

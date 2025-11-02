@@ -36,6 +36,7 @@
 		"kysely": "^0.28.8",
 		"kysely-neon": "^2.0.2",
 		"nanoid": "^5.1.6",
+		"pg": "^8.16.3",
 		"qr-code-styling": "^1.9.2",
 		"sharp": "^0.34.4"
 	},

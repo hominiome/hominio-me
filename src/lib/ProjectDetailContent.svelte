@@ -5,6 +5,7 @@
   import { getUserProfile } from "$lib/userProfileCache";
   import { getYouTubeEmbedUrl } from "$lib/youtubeUtils";
   import { goto } from "$app/navigation";
+  import { projectById, allProjects } from "$lib/synced-queries";
 
   let {
     projectId,
@@ -47,9 +48,9 @@
         return;
       }
 
-      // Query project
-      const projectQuery = zero.query.project.where("id", "=", projectId);
-      projectView = projectQuery.materialize();
+      // Query project using synced query
+      const projectQuery = projectById(projectId);
+      projectView = zero.materialize(projectQuery);
 
       // Query matches where this project participated
       const matchesQuery1 = zero.query.cupMatch.where("project1Id", "=", projectId);
@@ -82,9 +83,9 @@
       const cupsQuery = zero.query.cup;
       cupsView = cupsQuery.materialize();
 
-      // Query all projects for opponent names
-      const projectsQuery = zero.query.project;
-      projectsView = projectsQuery.materialize();
+      // Query all projects for opponent names using synced query
+      const projectsQuery = allProjects();
+      projectsView = zero.materialize(projectsQuery);
 
       projectView.addListener(async (data) => {
         const projectsData = Array.from(data || []);

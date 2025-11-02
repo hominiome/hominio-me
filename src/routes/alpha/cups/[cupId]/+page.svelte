@@ -12,6 +12,7 @@
   import { formatEndDate, getMatchEndDate } from "$lib/dateUtils.js";
   import CountdownTimer from "$lib/CountdownTimer.svelte";
   import { calculatePrizePool, formatPrizePool } from "$lib/prizePoolUtils.js";
+  import { allProjects } from "$lib/synced-queries";
 
   const zeroContext = useZero();
   const session = authClient.useSession();
@@ -121,8 +122,8 @@
       }, 3000);
 
       // Query all projects
-      const projectsQuery = zero.query.project;
-      projectsView = projectsQuery.materialize();
+      const projectsQuery = allProjects();
+      projectsView = zero.materialize(projectsQuery);
 
       projectsView.addListener((data) => {
         projects = Array.from(data);

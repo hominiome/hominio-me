@@ -13,6 +13,7 @@
   import { calculatePrizePool, formatPrizePool } from "$lib/prizePoolUtils.js";
   import CupHeader from "$lib/CupHeader.svelte";
   import WinnerCard from "$lib/components/WinnerCard.svelte";
+  import { allProjects } from "$lib/synced-queries";
 
   const zeroContext = useZero();
   const session = authClient.useSession();
@@ -181,8 +182,8 @@
       });
 
       // Query all projects
-      const projectsQuery = zero.query.project;
-      projectsView = projectsQuery.materialize();
+      const projectsQuery = allProjects();
+      projectsView = zero.materialize(projectsQuery);
 
       projectsView.addListener((data) => {
         projects = Array.from(data);

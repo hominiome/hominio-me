@@ -6,6 +6,7 @@
   import { useZero } from "$lib/zero-utils";
   import { formatPrizePool } from "$lib/prizePoolUtils.js";
   import QRCodeDisplay from "$lib/QRCodeDisplay.svelte";
+  import { allProjects } from "$lib/synced-queries";
 
   // Session data from layout
   let { data } = $props();
@@ -163,9 +164,9 @@
         matches = Array.from(data || []);
       });
 
-      // Query all projects
-      const projectsQuery = zero.query.project;
-      projectsView = projectsQuery.materialize();
+      // Query all projects using synced query
+      const projectsQuery = allProjects();
+      projectsView = zero.materialize(projectsQuery);
 
       projectsView.addListener((data: any) => {
         projects = Array.from(data || []);

@@ -2,6 +2,8 @@
   import { Zero } from "@rocicorp/zero";
   import { nanoid } from "nanoid";
   import { schema } from "../../zero-schema";
+  import { createMutators } from "$lib/mutators";
+  import { myNotifications } from "$lib/synced-queries";
   import { onMount, setContext } from "svelte";
   import { authClient } from "$lib/auth.client.js";
   import { browser } from "$app/environment";
@@ -52,33 +54,27 @@
         // Use logged-in user ID from authClient session or layout data, or 'anonymous' for public access
         const userId =
           $session.data?.user?.id || data.session?.id || `anon-${nanoid()}`;
-        const hasAuth = !!($session.data?.user || data.session);
 
         // Initialize Zero client (works for both authenticated and anonymous users)
         // For synced queries, we use cookie-based auth (no JWT needed)
-        // Cookies are automatically forwarded by zero-cache when ZERO_GET_QUERIES_FORWARD_COOKIES=true
+        // New Architecture: Cookie-Based Auth Only (No JWT)
+        // zero-cache forwards cookies to our server endpoints
+        // Server reads BetterAuth session from cookies
         zero = new Zero({
           server: zeroServerUrl,
           schema,
           userID: userId,
+          // Register custom mutators for writes (create, update, delete)
+          mutators: createMutators(undefined), // AuthData passed to mutators at runtime
           // Configure synced queries endpoint (uses cookie-based auth)
           getQueriesURL: browser ? `${window.location.origin}/alpha/api/zero/get-queries` : undefined,
-          // For synced queries + custom mutators, we can use opaque tokens or undefined
-          // Zero will forward cookies automatically to the server
-          // We still provide JWT auth for legacy queries/permissions if needed elsewhere
-          auth: hasAuth
-            ? async () => {
-                try {
-                  const response = await fetch("/alpha/api/zero-auth");
-                  if (!response.ok) return null;
-                  const { token } = await response.json();
-                  return token;
-                } catch (error) {
-                  console.error("Zero auth error:", error);
-                  return null;
-                }
-              }
-            : undefined,
+          // Configure custom mutators endpoint (uses cookie-based auth)
+          mutateURL: browser ? `${window.location.origin}/alpha/api/zero/push` : undefined,
+          // ⚠️ NO AUTH FUNCTION - we use cookie-based auth only
+          // Cookies are automatically forwarded by zero-cache when:
+          // - ZERO_GET_QUERIES_FORWARD_COOKIES=true
+          // - ZERO_MUTATE_FORWARD_COOKIES=true
+          // Our server endpoints (get-queries, push) read BetterAuth session from cookies
         });
 
         zeroReady = true;
@@ -92,10 +88,9 @@
         if ($session.data?.user || data.session) {
           const userId = $session.data?.user?.id || data.session?.id;
           if (userId && zero) {
-            const notificationsQuery = zero.query.notification
-              .where("userId", "=", userId)
-              .orderBy("createdAt", "desc");
-            notificationsView = notificationsQuery.materialize();
+            // Use synced query instead of legacy query
+            const notificationsQuery = myNotifications(userId);
+            notificationsView = zero.materialize(notificationsQuery);
 
             notificationsView.addListener((data) => {
               const newNotifications = Array.from(data);
