@@ -1,6 +1,7 @@
 import { auth } from "$lib/auth.server.js";
 import { json } from "@sveltejs/kit";
 import { env } from "$env/dynamic/private";
+import { isAdmin } from "$lib/admin.server.js";
 
 /**
  * Zero Authentication Endpoint
@@ -17,10 +18,15 @@ export async function GET({ request }) {
       return json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    // Check if user is admin
+    const userIsAdmin = isAdmin(session.user.id);
+
     // Create JWT payload for Zero
     // Zero expects 'sub' (subject) claim with the user ID
+    // Include 'admin' flag for permission checks (as string 'true'/'false' matching Zero docs pattern)
     const payload = {
       sub: session.user.id,
+      admin: userIsAdmin ? 'true' : 'false', // Always include admin status as string for Zero permissions
       iat: Math.floor(Date.now() / 1000),
       exp: Math.floor(Date.now() / 1000) + 60 * 60, // 1 hour expiry
     };

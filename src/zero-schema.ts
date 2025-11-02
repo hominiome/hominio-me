@@ -131,6 +131,7 @@ export const schema = createSchema({
 // Zero validates the JWT and passes the claims to this function
 type AuthData = {
   sub: string; // User ID from JWT 'sub' claim
+  admin: string; // Admin flag - 'true' if user is admin, 'false' otherwise (MUST always be present for Zero compilation)
   iat?: number; // Issued at
   exp?: number; // Expiry
 };
@@ -151,11 +152,18 @@ export const permissions = definePermissions<AuthData, typeof schema>(
           }
         ],
         // UPDATE: Users can only update their own projects
-        update: [
-          (authData, { cmp }) => {
-            return cmp('userId', '=', authData.sub);
-          }
-        ],
+        update: {
+          preMutation: [
+            (authData, { cmp }) => {
+              return cmp('userId', '=', authData.sub);
+            }
+          ],
+          postMutation: [
+            (authData, { cmp }) => {
+              return cmp('userId', '=', authData.sub);
+            }
+          ],
+        },
         // DELETE: Users can only delete their own projects
         delete: [
           (authData, { cmp }) => {
@@ -168,27 +176,43 @@ export const permissions = definePermissions<AuthData, typeof schema>(
       row: {
         // SELECT: Everyone can read cups
         select: ANYONE_CAN,
-        // INSERT: Any authenticated user can create cups
-        // Admin-only restrictions apply to:
-        //   1. API endpoints (start-cup, end-round, etc.) require admin role
-        //   2. Certain admin actions on cups
-        // NOTE: Admin role is checked against ADMIN env var in application layer
-        insert: ANYONE_CAN,
-        // UPDATE: Controlled by application logic (admin checks in API endpoints)
-        update: ANYONE_CAN,
-        // DELETE: Controlled by application logic (admin checks in API endpoints)
-        delete: ANYONE_CAN,
+        // INSERT: Only admins can create cups (enforced by Zero permissions)
+        insert: [
+          (authData, { cmpLit }) => cmpLit(authData.admin, '=', 'true')
+        ],
+        // UPDATE: Only admins can update cups (enforced by Zero permissions)
+        update: {
+          preMutation: [
+            (authData, { cmpLit }) => cmpLit(authData.admin, '=', 'true')
+          ],
+          postMutation: [
+            (authData, { cmpLit }) => cmpLit(authData.admin, '=', 'true')
+          ],
+        },
+        // DELETE: Only admins can delete cups (enforced by Zero permissions)
+        delete: [
+          (authData, { cmpLit }) => cmpLit(authData.admin, '=', 'true')
+        ],
       },
     },
     cupMatch: {
       row: {
         // SELECT: Everyone can read matches
         select: ANYONE_CAN,
-        // INSERT: System only (created with cup)
-        insert: ANYONE_CAN, // Controlled by app logic
-        // UPDATE: System only (controlled by cup creator via app logic)
-        update: ANYONE_CAN, // Controlled by app logic
-        // DELETE: Nobody
+        // INSERT: Only admins can create matches (enforced by Zero permissions)
+        insert: [
+          (authData, { cmpLit }) => cmpLit(authData.admin, '=', 'true')
+        ],
+        // UPDATE: Only admins can update matches (enforced by Zero permissions)
+        update: {
+          preMutation: [
+            (authData, { cmpLit }) => cmpLit(authData.admin, '=', 'true')
+          ],
+          postMutation: [
+            (authData, { cmpLit }) => cmpLit(authData.admin, '=', 'true')
+          ],
+        },
+        // DELETE: Nobody can delete matches
         delete: [],
       },
     },
@@ -203,11 +227,18 @@ export const permissions = definePermissions<AuthData, typeof schema>(
           }
         ],
         // UPDATE: Users can update their own identity (for upgrades)
-        update: [
-          (authData, { cmp }) => {
-            return cmp('userId', '=', authData.sub);
-          }
-        ],
+        update: {
+          preMutation: [
+            (authData, { cmp }) => {
+              return cmp('userId', '=', authData.sub);
+            }
+          ],
+          postMutation: [
+            (authData, { cmp }) => {
+              return cmp('userId', '=', authData.sub);
+            }
+          ],
+        },
         // DELETE: Nobody can delete identities
         delete: [],
       },
@@ -223,7 +254,10 @@ export const permissions = definePermissions<AuthData, typeof schema>(
           }
         ],
         // UPDATE/DELETE: Purchases are immutable
-        update: [],
+        update: {
+          preMutation: [],
+          postMutation: [],
+        },
         delete: [],
       },
     },
@@ -238,7 +272,10 @@ export const permissions = definePermissions<AuthData, typeof schema>(
           }
         ],
         // UPDATE/DELETE: Votes are immutable
-        update: [],
+        update: {
+          preMutation: [],
+          postMutation: [],
+        },
         delete: [],
       },
     },
@@ -250,14 +287,23 @@ export const permissions = definePermissions<AuthData, typeof schema>(
             return cmp('userId', '=', authData.sub);
           }
         ],
-        // INSERT: System/admin can create notifications for users
-        insert: ANYONE_CAN, // Controlled by app logic (admin endpoints)
-        // UPDATE: Users can update their own notifications (mark as read)
-        update: [
-          (authData, { cmp }) => {
-            return cmp('userId', '=', authData.sub);
-          }
+        // INSERT: Only admins can create notifications (enforced by Zero permissions)
+        insert: [
+          (authData, { cmpLit }) => cmpLit(authData.admin, '=', 'true')
         ],
+        // UPDATE: Users can update their own notifications (mark as read)
+        update: {
+          preMutation: [
+            (authData, { cmp }) => {
+              return cmp('userId', '=', authData.sub);
+            }
+          ],
+          postMutation: [
+            (authData, { cmp }) => {
+              return cmp('userId', '=', authData.sub);
+            }
+          ],
+        },
         // DELETE: Users can delete their own notifications
         delete: [
           (authData, { cmp }) => {
