@@ -34,13 +34,22 @@
 {#if !loading && currentPool > 0}
   <div class="prize-pool-display">
     <div class="prize-pool-content">
-      <div class="prize-pool-section">
-        <span class="prize-pool-label">Prize Pool:</span>
+      <!-- Amount added (above, smaller) -->
+      {#if amountAdded > 0}
+        <div class="prize-pool-increase">
+          <span class="prize-pool-plus">+</span>
+          <span class="prize-pool-amount added">{formatAmount(amountAdded)}</span>
+        </div>
+      {/if}
+      
+      <!-- Total pool size (center, largest) -->
+      <div class="prize-pool-total">
         <span class="prize-pool-amount current">{formatAmount(currentPool)}</span>
       </div>
-      <div class="prize-pool-section increase">
-        <span class="prize-pool-plus">+</span>
-        <span class="prize-pool-amount added">{formatAmount(amountAdded)}</span>
+      
+      <!-- Label (below) -->
+      <div class="prize-pool-label-wrapper">
+        <span class="prize-pool-label">Prize Pool</span>
       </div>
     </div>
   </div>
@@ -60,29 +69,41 @@
 
   .prize-pool-content {
     display: flex;
-    flex-direction: row;
-    align-items: baseline;
+    flex-direction: column;
+    align-items: center;
     justify-content: center;
-    gap: 1.5rem;
+    gap: 0.5rem;
     color: #1a1a4e;
-    flex-wrap: wrap;
   }
 
-  .prize-pool-section {
+  .prize-pool-increase {
     display: flex;
     align-items: baseline;
-    gap: 0.5rem;
+    gap: 0.25rem;
+    opacity: 0.9;
+  }
+
+  .prize-pool-total {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .prize-pool-label-wrapper {
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
 
   .prize-pool-label {
     font-size: 0.875rem;
     font-weight: 600;
-    opacity: 0.8;
-    white-space: nowrap;
+    opacity: 0.7;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
   }
 
   .prize-pool-amount {
-    font-size: 2rem;
     line-height: 1;
     font-weight: 900;
     white-space: nowrap;
@@ -90,15 +111,15 @@
   }
 
   .prize-pool-amount.current {
-    font-size: 1.75rem;
+    font-size: 3rem;
   }
 
   .prize-pool-amount.added {
-    font-size: 2.5rem;
+    font-size: 1.5rem;
   }
 
   .prize-pool-plus {
-    font-size: 2rem;
+    font-size: 1.5rem;
     line-height: 1;
     font-weight: 900;
     color: #1a1a4e;
@@ -106,10 +127,6 @@
 
   @media (max-width: 768px) {
     .prize-pool-content {
-      gap: 1rem;
-    }
-
-    .prize-pool-section {
       gap: 0.375rem;
     }
 
@@ -117,20 +134,16 @@
       font-size: 0.75rem;
     }
 
-    .prize-pool-amount {
-      font-size: 1.5rem;
-    }
-
     .prize-pool-amount.current {
-      font-size: 1.25rem;
+      font-size: 2.5rem;
     }
 
     .prize-pool-amount.added {
-      font-size: 1.875rem;
+      font-size: 1.25rem;
     }
 
     .prize-pool-plus {
-      font-size: 1.5rem;
+      font-size: 1.25rem;
     }
   }
 </style>
