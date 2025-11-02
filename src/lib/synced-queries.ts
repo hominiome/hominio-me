@@ -132,3 +132,44 @@ export const purchaseById = syncedQuery(
   }
 );
 
+/**
+ * ========================================
+ * USER IDENTITIES QUERIES
+ * ========================================
+ */
+
+/**
+ * Get all user identities for a specific user
+ */
+export const identitiesByUser = syncedQuery(
+  'identitiesByUser',
+  z.tuple([z.string()]), // userId
+  (userId: string) => {
+    return builder.userIdentities.where('userId', '=', userId);
+  }
+);
+
+/**
+ * Get user's identity for a specific cup
+ */
+export const identityByUserAndCup = syncedQuery(
+  'identityByUserAndCup',
+  z.tuple([z.string(), z.string()]), // userId, cupId
+  (userId: string, cupId: string) => {
+    return builder.userIdentities
+      .where('userId', '=', userId)
+      .where('cupId', '=', cupId);
+  }
+);
+
+/**
+ * Get all identities for a specific cup
+ */
+export const identitiesByCup = syncedQuery(
+  'identitiesByCup',
+  z.tuple([z.string()]), // cupId
+  (cupId: string) => {
+    return builder.userIdentities.where('cupId', '=', cupId);
+  }
+);
+

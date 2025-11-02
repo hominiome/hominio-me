@@ -13,7 +13,7 @@
   import { calculatePrizePool, formatPrizePool } from "$lib/prizePoolUtils.js";
   import CupHeader from "$lib/CupHeader.svelte";
   import WinnerCard from "$lib/components/WinnerCard.svelte";
-  import { allProjects, allPurchases } from "$lib/synced-queries";
+  import { allProjects, allPurchases, identitiesByUser } from "$lib/synced-queries";
 
   const zeroContext = useZero();
   const session = authClient.useSession();
@@ -242,13 +242,9 @@
       if ($session.data?.user) {
         const userId = $session.data.user.id;
 
-        // Query all user identities (cup-specific)
-        const userIdentityQuery = zero.query.userIdentities.where(
-          "userId",
-          "=",
-          userId
-        );
-        userIdentityView = userIdentityQuery.materialize();
+        // Query all user identities (cup-specific) using synced query
+        const userIdentityQuery = identitiesByUser(userId);
+        userIdentityView = zero.materialize(userIdentityQuery);
 
         userIdentityView.addListener((data) => {
           userIdentities = Array.from(data);

@@ -13,7 +13,7 @@
   import { goto } from "$app/navigation";
   import TigrisImageUpload from "$lib/components/TigrisImageUpload.svelte";
   import { browser } from "$app/environment";
-  import { projectById } from "$lib/synced-queries";
+  import { projectById, identitiesByUser } from "$lib/synced-queries";
 
   // Get Zero instance from context (initialized in layout)
   const zeroContext = getContext("zero");
@@ -448,8 +448,8 @@
         // Query user identities to check for founder status
         if ($session.data?.user) {
           const userId = $session.data.user.id;
-          const identitiesQuery = zero.query.userIdentities.where("userId", "=", userId);
-          userIdentitiesView = identitiesQuery.materialize();
+          const identitiesQuery = identitiesByUser(userId);
+          userIdentitiesView = zero.materialize(identitiesQuery);
 
           userIdentitiesView.addListener((data) => {
             userIdentities = Array.from(data || []);

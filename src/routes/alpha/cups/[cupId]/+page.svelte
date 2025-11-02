@@ -12,7 +12,7 @@
   import { formatEndDate, getMatchEndDate } from "$lib/dateUtils.js";
   import CountdownTimer from "$lib/CountdownTimer.svelte";
   import { calculatePrizePool, formatPrizePool } from "$lib/prizePoolUtils.js";
-  import { allProjects, purchasesByCup } from "$lib/synced-queries";
+  import { allProjects, purchasesByCup, identityByUserAndCup } from "$lib/synced-queries";
 
   const zeroContext = useZero();
   const session = authClient.useSession();
@@ -171,11 +171,9 @@
       if ($session.data?.user) {
         const userId = $session.data.user.id;
 
-        // Query user's identity for this specific cup
-        const userIdentityQuery = zero.query.userIdentities
-          .where("userId", "=", userId)
-          .where("cupId", "=", cupId);
-        userIdentityView = userIdentityQuery.materialize();
+        // Query user's identity for this specific cup using synced query
+        const userIdentityQuery = identityByUserAndCup(userId, cupId);
+        userIdentityView = zero.materialize(userIdentityQuery);
 
         userIdentityView.addListener((data) => {
           const identities = Array.from(data);

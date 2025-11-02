@@ -6,6 +6,7 @@
   import { page } from "$app/stores";
   import { calculatePrizePool, formatPrizePool } from "$lib/prizePoolUtils.js";
   import CupHeader from "$lib/CupHeader.svelte";
+  import { identityByUserAndCup } from "$lib/synced-queries";
 
   const zeroContext = useZero();
   const session = authClient.useSession();
@@ -135,11 +136,9 @@
       identityView = null;
     }
 
-    // Query user's identity for selected cup
-    const identityQuery = zero.query.userIdentities
-      .where("userId", "=", userId)
-      .where("cupId", "=", selectedCupId);
-    identityView = identityQuery.materialize();
+    // Query user's identity for selected cup using synced query
+    const identityQuery = identityByUserAndCup(userId, selectedCupId);
+    identityView = zero.materialize(identityQuery);
 
     identityView.addListener((data: any) => {
       const identities = Array.from(data);

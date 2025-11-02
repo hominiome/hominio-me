@@ -6,7 +6,7 @@
   import { useZero } from "$lib/zero-utils";
   import { formatPrizePool } from "$lib/prizePoolUtils.js";
   import QRCodeDisplay from "$lib/QRCodeDisplay.svelte";
-  import { allProjects, purchasesByUser } from "$lib/synced-queries";
+  import { allProjects, purchasesByUser, identitiesByUser } from "$lib/synced-queries";
 
   // Session data from layout
   let { data } = $props();
@@ -116,13 +116,9 @@
         return;
       }
 
-      // Query user's identities
-      const identitiesQuery = zero.query.userIdentities.where(
-        "userId",
-        "=",
-        userId
-      );
-      identitiesView = identitiesQuery.materialize();
+      // Query user's identities using synced query
+      const identitiesQuery = identitiesByUser(userId);
+      identitiesView = zero.materialize(identitiesQuery);
 
       identitiesView.addListener((data: any) => {
         userIdentities = Array.from(data || []);
