@@ -214,3 +214,61 @@ export const votesByMatch = syncedQuery(
   }
 );
 
+/**
+ * ========================================
+ * CUP MATCH QUERIES
+ * ========================================
+ */
+
+/**
+ * Get all cup matches
+ */
+export const allMatches = syncedQuery(
+  'allMatches',
+  z.tuple([]), // No arguments
+  () => {
+    return builder.cupMatch.orderBy('position', 'asc');
+  }
+);
+
+/**
+ * Get all matches for a specific cup
+ */
+export const matchesByCup = syncedQuery(
+  'matchesByCup',
+  z.tuple([z.string()]), // cupId
+  (cupId: string) => {
+    return builder.cupMatch
+      .where('cupId', '=', cupId)
+      .orderBy('position', 'asc');
+  }
+);
+
+/**
+ * ========================================
+ * CUP QUERIES
+ * ========================================
+ */
+
+/**
+ * Get all cups
+ */
+export const allCups = syncedQuery(
+  'allCups',
+  z.tuple([]), // No arguments
+  () => {
+    return builder.cup;
+  }
+);
+
+/**
+ * Get a single cup by ID
+ */
+export const cupById = syncedQuery(
+  'cupById',
+  z.tuple([z.string()]), // cupId
+  (cupId: string) => {
+    return builder.cup.where('id', '=', cupId);
+  }
+);
+

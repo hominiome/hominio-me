@@ -6,7 +6,7 @@
   import { authClient } from "$lib/auth.client.js";
   import { getUserProfile } from "$lib/userProfileCache";
   import { getYouTubeEmbedUrl } from "$lib/youtubeUtils";
-  import { projectById } from "$lib/synced-queries";
+  import { projectById, allCups, allMatches, allProjects } from "$lib/synced-queries";
 
   const zeroContext = getContext<{
     getInstance: () => any;
@@ -53,42 +53,25 @@
       const projectQuery = projectById(projectId);
       projectView = zero.materialize(projectQuery);
 
-      // Query matches where this project participated
-      // We need to query both project1Id and project2Id separately and merge
-      const matchesQuery1 = zero.query.cupMatch.where("project1Id", "=", projectId);
-      const matchesQuery2 = zero.query.cupMatch.where("project2Id", "=", projectId);
-      const matchesView1 = matchesQuery1.materialize();
-      const matchesView2 = matchesQuery2.materialize();
+      // Query all matches (then filter by projectId in listener)
+      const matchesQuery = allMatches();
+      const matchesView = zero.materialize(matchesQuery);
 
-      let matches1Data: any[] = [];
-      let matches2Data: any[] = [];
-
-      const updateMatches = () => {
-        // Merge and deduplicate
-        const allMatches = [...matches1Data, ...matches2Data];
-        const uniqueMatches = Array.from(
-          new Map(allMatches.map((m) => [m.id, m])).values()
+      matchesView.addListener((data: any) => {
+        // Filter matches where this project participated (either as project1 or project2)
+        const allMatchesData = Array.from(data || []);
+        matches = allMatchesData.filter(
+          (m: any) => m.project1Id === projectId || m.project2Id === projectId
         );
-        matches = uniqueMatches;
-      };
-
-      matchesView1.addListener((data: any) => {
-        matches1Data = Array.from(data || []);
-        updateMatches();
       });
 
-      matchesView2.addListener((data: any) => {
-        matches2Data = Array.from(data || []);
-        updateMatches();
-      });
+      // Query all cups using synced query
+      const cupsQuery = allCups();
+      cupsView = zero.materialize(cupsQuery);
 
-      // Query all cups
-      const cupsQuery = zero.query.cup;
-      cupsView = cupsQuery.materialize();
-
-      // Query all projects for opponent names
-      const projectsQuery = zero.query.project;
-      projectsView = projectsQuery.materialize();
+      // Query all projects for opponent names using synced query
+      const projectsQuery = allProjects();
+      projectsView = zero.materialize(projectsQuery);
 
       projectView.addListener(async (data: any) => {
         const projectsData = Array.from(data || []);

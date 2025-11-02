@@ -35,7 +35,11 @@
   let videoUrl = $state("");
   let bannerImage = $state("");
   let sdgs = $state<string[]>([]);
-  let selectedOwner = $state<{ id: string; name: string | null; image: string | null } | null>(null);
+  let selectedOwner = $state<{
+    id: string;
+    name: string | null;
+    image: string | null;
+  } | null>(null);
 
   // All available SDGs
   const availableSDGs = [
@@ -113,7 +117,7 @@
           const projects = Array.from(data);
           if (projects.length > 0) {
             project = projects[0];
-            
+
             // Populate form
             title = project.title || "";
             description = project.description || "";
@@ -121,18 +125,19 @@
             city = project.city || "";
             videoUrl = project.videoUrl || "";
             bannerImage = project.bannerImage || "";
-            
+
             // Parse SDGs
             if (project.sdgs) {
               try {
-                sdgs = typeof project.sdgs === "string" 
-                  ? JSON.parse(project.sdgs || "[]")
-                  : project.sdgs;
+                sdgs =
+                  typeof project.sdgs === "string"
+                    ? JSON.parse(project.sdgs || "[]")
+                    : project.sdgs;
               } catch {
                 sdgs = [];
               }
             }
-            
+
             // Load current owner
             if (project.userId) {
               getUserProfile(project.userId).then((profile) => {
@@ -143,10 +148,10 @@
                 };
               });
             }
-            
+
             // Check if user is owner (for display purposes)
             isOwner = project.userId === $session.data?.user?.id;
-            
+
             // Wait for admin check to complete, then verify access
             if (!checking) {
               // Only admins can access the edit page
@@ -170,7 +175,15 @@
   });
 
   async function updateProject() {
-    if (!project || saving || !title.trim() || !description.trim() || !country || !city.trim() || sdgs.length === 0) {
+    if (
+      !project ||
+      saving ||
+      !title.trim() ||
+      !description.trim() ||
+      !country ||
+      !city.trim() ||
+      sdgs.length === 0
+    ) {
       return;
     }
 
@@ -187,17 +200,18 @@
 
     try {
       // Use Zero custom mutator for project update
-      await zero.mutate.project.update({
+      // Fire and forget - Zero handles optimistic updates
+      zero.mutate.project.update({
         id: project.id,
-          title: title.trim(),
-          description: description.trim(),
-          country: country.name,
-          city: city.trim(),
-          videoUrl: videoUrl.trim() || "",
-          bannerImage: bannerImage.trim() || "",
+        title: title.trim(),
+        description: description.trim(),
+        country: country.name,
+        city: city.trim(),
+        videoUrl: videoUrl.trim() || "",
+        bannerImage: bannerImage.trim() || "",
         profileImageUrl: project.profileImageUrl || "", // Preserve existing profile image
-          sdgs: JSON.stringify(sdgs),
-          userId: newUserId, // Update owner if admin changed it
+        sdgs: JSON.stringify(sdgs),
+        userId: newUserId, // Update owner if admin changed it
       });
 
       // Redirect back to projects page
@@ -216,13 +230,14 @@
   <div class="max-w-3xl mx-auto">
     <!-- Header -->
     <div class="mb-8">
-      <a href="/alpha/projects" class="text-teal hover:underline mb-4 inline-block">
+      <a
+        href="/alpha/projects"
+        class="text-teal hover:underline mb-4 inline-block"
+      >
         ← Back to Projects
       </a>
       <h1 class="text-6xl font-bold text-navy mb-3">Edit Project</h1>
-      <p class="text-navy/60 text-lg">
-        Update your project details
-      </p>
+      <p class="text-navy/60 text-lg">Update your project details</p>
     </div>
 
     {#if loading || checking}
@@ -243,9 +258,8 @@
       >
         <!-- Title -->
         <div>
-          <label
-            for="project-title"
-            class="block text-navy/80 font-medium mb-2">Title *</label
+          <label for="project-title" class="block text-navy/80 font-medium mb-2"
+            >Title *</label
           >
           <input
             id="project-title"
@@ -285,9 +299,8 @@
 
         <!-- City -->
         <div>
-          <label
-            for="project-city"
-            class="block text-navy/80 font-medium mb-2">City *</label
+          <label for="project-city" class="block text-navy/80 font-medium mb-2"
+            >City *</label
           >
           <input
             id="project-city"
@@ -358,10 +371,7 @@
 
         <!-- SDG Selection -->
         <div>
-          <label
-            for="project-sdgs"
-            class="block text-navy/80 font-medium mb-2"
-          >
+          <label for="project-sdgs" class="block text-navy/80 font-medium mb-2">
             SDG Goals * (Select 1-3)
           </label>
           <p class="text-sm text-navy/60 mb-3">
@@ -372,11 +382,8 @@
               <button
                 type="button"
                 onclick={() => toggleSDG(sdg.id)}
-                class="sdg-selector {sdgs.includes(sdg.id)
-                  ? 'selected'
-                  : ''}"
-                disabled={!sdgs.includes(sdg.id) &&
-                  sdgs.length >= 3}
+                class="sdg-selector {sdgs.includes(sdg.id) ? 'selected' : ''}"
+                disabled={!sdgs.includes(sdg.id) && sdgs.length >= 3}
                 title={sdg.name}
               >
                 <img
@@ -396,14 +403,17 @@
         <div class="flex gap-3 pt-2">
           <button
             type="submit"
-            disabled={saving || !title.trim() || !description.trim() || !country || !city.trim() || sdgs.length === 0}
+            disabled={saving ||
+              !title.trim() ||
+              !description.trim() ||
+              !country ||
+              !city.trim() ||
+              sdgs.length === 0}
             class="btn-primary px-8 py-3 flex-1"
           >
             {saving ? "Saving..." : "Save Changes"}
           </button>
-          <a href="/alpha/projects" class="btn-secondary px-8 py-3">
-            Cancel
-          </a>
+          <a href="/alpha/projects" class="btn-secondary px-8 py-3"> Cancel </a>
         </div>
       </form>
     {/if}
@@ -542,4 +552,3 @@
     color: #1a1a4e;
   }
 </style>
-

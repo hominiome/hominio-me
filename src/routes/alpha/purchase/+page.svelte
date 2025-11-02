@@ -6,7 +6,7 @@
   import { page } from "$app/stores";
   import { calculatePrizePool, formatPrizePool } from "$lib/prizePoolUtils.js";
   import CupHeader from "$lib/CupHeader.svelte";
-  import { identityByUserAndCup } from "$lib/synced-queries";
+  import { identityByUserAndCup, allCups, allMatches, allPurchases } from "$lib/synced-queries";
 
   const zeroContext = useZero();
   const session = authClient.useSession();
@@ -177,8 +177,8 @@
       purchaseSound.preload = "auto";
 
       // Query all cups
-      const cupsQuery = zero.query.cup.orderBy("createdAt", "desc");
-      cupsView = cupsQuery.materialize();
+      const cupsQuery = allCups();
+      cupsView = zero.materialize(cupsQuery);
 
       cupsView.addListener((data: any) => {
         cups = Array.from(data || []);
@@ -190,16 +190,16 @@
       });
 
       // Query all identity purchases for prize pool calculation
-      const purchasesQuery = zero.query.identityPurchase;
-      const purchasesView = purchasesQuery.materialize();
+      const purchasesQuery = allPurchases();
+      const purchasesView = zero.materialize(purchasesQuery);
 
       purchasesView.addListener((data: any) => {
         purchases = Array.from(data || []);
       });
 
       // Query matches for the selected cup to get round info
-      const matchesQuery = zero.query.cupMatch;
-      const matchesView = matchesQuery.materialize();
+      const matchesQuery = allMatches();
+      const matchesView = zero.materialize(matchesQuery);
 
       matchesView.addListener((data: any) => {
         matches = Array.from(data || []);

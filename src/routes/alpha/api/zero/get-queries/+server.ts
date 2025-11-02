@@ -160,6 +160,46 @@ function getQuery(name: string, args: readonly ReadonlyJSONValue[]) {
       query: builder.vote.where('matchId', '=', matchId),
     };
   }
+
+  // ========================================
+  // CUP MATCH QUERIES
+  // ========================================
+  
+  if (name === 'allMatches') {
+    z.tuple([]).parse(args);
+    return {
+      query: builder.cupMatch.orderBy('position', 'asc'),
+    };
+  }
+  
+  if (name === 'matchesByCup') {
+    z.tuple([z.string()]).parse(args);
+    const [cupId] = args as [string];
+    return {
+      query: builder.cupMatch
+        .where('cupId', '=', cupId)
+        .orderBy('position', 'asc'),
+    };
+  }
+
+  // ========================================
+  // CUP QUERIES
+  // ========================================
+  
+  if (name === 'allCups') {
+    z.tuple([]).parse(args);
+    return {
+      query: builder.cup,
+    };
+  }
+  
+  if (name === 'cupById') {
+    z.tuple([z.string()]).parse(args);
+    const [cupId] = args as [string];
+    return {
+      query: builder.cup.where('id', '=', cupId),
+    };
+  }
   
   throw new Error(`No such query: ${name}`);
 }

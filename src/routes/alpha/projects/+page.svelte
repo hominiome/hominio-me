@@ -99,16 +99,6 @@
   const showEditModal = $derived($page.url.searchParams.get("modal") === "edit-project");
   const editProjectId = $derived($page.url.searchParams.get("projectId") || "");
   
-  // Debug URL params
-  $effect(() => {
-    console.log("📋 URL params:", {
-      modal: $page.url.searchParams.get("modal"),
-      projectId: $page.url.searchParams.get("projectId"),
-      showEditModal,
-      editProjectId,
-    });
-  });
-  
   // Edit form state (declare before derived that uses it)
   let editProject = $state(null);
   let editLoading = $state(false);
@@ -201,25 +191,20 @@
   
   // Load project data when edit modal opens
   $effect(() => {
-    console.log("🔍 Edit modal effect:", { showEditModal, editProjectId, zero: !!zero, projectsCount: projects.length });
-    
     if (showEditModal && editProjectId && zero) {
       // Reset state when projectId changes
       if (editProject && editProject.id !== editProjectId) {
-        console.log("🔄 Project ID changed, resetting");
         editProject = null;
         editLoading = true;
       }
       
       if (!editProject && !editLoading) {
-        console.log("📥 Loading project for edit:", editProjectId);
         editLoading = true;
         
         // First try to find in already loaded projects
         const project = projects.find((p) => p.id === editProjectId);
         
         if (project) {
-          console.log("✅ Found project in list");
           // Found in list, use it
           editProject = project;
           editFormData = {
@@ -242,7 +227,6 @@
           }
           editLoading = false;
         } else {
-          console.log("🔍 Project not in list, querying Zero directly");
           // Not in list, query directly from Zero using a listener
           let projectView = null;
           let timeoutId = null;
@@ -333,7 +317,6 @@
       }
     } else if (!showEditModal) {
       // Reset when modal closes
-      console.log("🚪 Modal closed, resetting");
       editProject = null;
       editLoading = false;
     }
@@ -364,17 +347,18 @@
     
     try {
       // Use Zero custom mutator for project update
-      await zero.mutate.project.update({
+      // Fire and forget - Zero handles optimistic updates
+      zero.mutate.project.update({
         id: editProject.id,
-          title: editFormData.title.trim(),
-          description: editFormData.description.trim(),
-          country: editFormData.country?.name || editFormData.country || "",
-          city: editFormData.city.trim(),
-          videoUrl: (editFormData.videoUrl || "").trim(),
-          bannerImage: (editFormData.bannerImage || "").trim(),
-          profileImageUrl: (editFormData.profileImageUrl || "").trim(),
-          sdgs: JSON.stringify(editFormData.sdgs),
-          userId: newUserId,
+        title: editFormData.title.trim(),
+        description: editFormData.description.trim(),
+        country: editFormData.country?.name || editFormData.country || "",
+        city: editFormData.city.trim(),
+        videoUrl: (editFormData.videoUrl || "").trim(),
+        bannerImage: (editFormData.bannerImage || "").trim(),
+        profileImageUrl: (editFormData.profileImageUrl || "").trim(),
+        sdgs: JSON.stringify(editFormData.sdgs),
+        userId: newUserId,
       });
       
       handleEditModalClose();
@@ -493,7 +477,8 @@
     const ownerId =
       isAdmin && selectedOwner ? selectedOwner.id : $session.data.user.id;
 
-    await zero.mutate.project.create({
+    // Fire and forget - Zero handles optimistic updates
+    zero.mutate.project.create({
       id: nanoid(),
       title: newProject.title,
       description: newProject.description,

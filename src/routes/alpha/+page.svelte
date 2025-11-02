@@ -13,7 +13,7 @@
   import { calculatePrizePool, formatPrizePool } from "$lib/prizePoolUtils.js";
   import CupHeader from "$lib/CupHeader.svelte";
   import WinnerCard from "$lib/components/WinnerCard.svelte";
-  import { allProjects, allPurchases, identitiesByUser, allVotes, votesByUser } from "$lib/synced-queries";
+  import { allProjects, allPurchases, identitiesByUser, allVotes, votesByUser, allCups, allMatches } from "$lib/synced-queries";
 
   const zeroContext = useZero();
   const session = authClient.useSession();
@@ -21,7 +21,7 @@
   let zero = null;
   let cups = $state([]);
   let projects = $state([]);
-  let allMatches = $state([]); // All matches from database
+  let matches = $state([]); // All matches from database
   let votes = $state([]);
   let userIdentities = $state([]); // All user identities (cup-specific)
   let userVotes = $state([]);
@@ -35,59 +35,20 @@
 
   // Filter and group active matches by cup and round
   let groupedMatches = $derived.by(() => {
-    console.log("🟨 GROUPED MATCHES DERIVED RUNNING:", {
-      allMatchesCount: allMatches.length,
-      cupsCount: cups.length,
-      timestamp: new Date().toISOString(),
-    });
-
     // If no matches or cups, return empty
-    if (allMatches.length === 0 || cups.length === 0) {
-      console.log("⚠️ No matches or cups yet, returning empty");
+    if (matches.length === 0 || cups.length === 0) {
       return [];
     }
 
     const groups = new Map();
 
-    // Filter to only active matches - debug logging
-    console.log("🔍 Starting to filter matches...");
-    console.log(
-      "🔍 All matches:",
-      allMatches.map((m) => ({
-        id: m.id,
-        status: m.status,
-        round: m.round,
-        cupId: m.cupId,
-      }))
-    );
-    console.log(
-      "🔍 All cups:",
-      cups.map((c) => ({
-        id: c.id,
-        name: c.name,
-        status: c.status,
-        currentRound: c.currentRound,
-      }))
-    );
-
     const activeMatches = [];
-    for (const match of allMatches) {
+    for (const match of matches) {
       const isActive = isMatchActive(match);
-      console.log(
-        `🔍 Match ${match.id}: status=${match.status}, round=${match.round}, isActive=${isActive}`
-      );
       if (isActive) {
         activeMatches.push(match);
       }
     }
-
-    console.log("✅ FILTERED MATCHES RESULT:", {
-      totalMatches: allMatches.length,
-      activeMatches: activeMatches.length,
-      allMatchStatuses: [...new Set(allMatches.map((m) => m.status))],
-      cupsLoaded: cups.length,
-      activeMatchIds: activeMatches.map((m) => m.id),
-    });
 
     for (const match of activeMatches) {
       const cup = getCupById(match.cupId);
@@ -145,28 +106,17 @@
 
     (async () => {
       // Wait for Zero to be ready
-      console.log("⏳ Waiting for Zero to be ready...");
       while (!zeroContext.isReady() || !zeroContext.getInstance()) {
         await new Promise((resolve) => setTimeout(resolve, 100));
       }
       zero = zeroContext.getInstance();
-      console.log("✅ Zero is ready!");
 
       // Query all cups (we need all cups to check match status, not just active ones)
-      const cupsQuery = zero.query.cup;
-      cupsView = cupsQuery.materialize();
+      const cupsQuery = allCups();
+      cupsView = zero.materialize(cupsQuery);
 
       cupsView.addListener(async (data) => {
         cups = Array.from(data);
-        console.log("🟦 CUPS LOADED:", {
-          count: cups.length,
-          cups: cups.map((c) => ({
-            id: c.id,
-            name: c.name,
-            status: c.status,
-            currentRound: c.currentRound,
-          })),
-        });
         
         // Check if any cups/matches have expired and close them
         try {
@@ -190,24 +140,12 @@
       });
 
       // Query all matches (filtering happens reactively in $derived)
-      const matchesQuery = zero.query.cupMatch.orderBy("position", "asc");
-      matchesView = matchesQuery.materialize();
+      const matchesQuery = allMatches();
+      matchesView = zero.materialize(matchesQuery);
 
       matchesView.addListener(async (data) => {
         // Store all matches - filtering by active cups happens reactively
-        allMatches = Array.from(data);
-        console.log("🟩 MATCHES LOADED:", {
-          count: allMatches.length,
-          matches: allMatches.map((m) => ({
-            id: m.id,
-            cupId: m.cupId,
-            status: m.status,
-            round: m.round,
-            project1Id: m.project1Id,
-            project2Id: m.project2Id,
-          })),
-          statuses: [...new Set(allMatches.map((m) => m.status))],
-        });
+        matches = Array.from(data);
         
         // Check if any matches have expired and close them
         try {
@@ -359,7 +297,7 @@
     const matchIdParam = $page.url.searchParams.get("matchId");
     if (matchIdParam) {
       // Check if match exists and is active
-      const match = allMatches.find((m) => m.id === matchIdParam);
+      const match = matches.find((m) => m.id === matchIdParam);
       if (match && isMatchActive(match)) {
         expandedMatch = matchIdParam;
         // Scroll to match after a short delay to ensure DOM is ready
@@ -371,7 +309,7 @@
         }, 300);
       } else if (matchIdParam && !match) {
         // Match not found yet, might still be loading - wait a bit
-        // The effect will re-run when allMatches updates
+        // The effect will re-run when matches updates
       } else if (matchIdParam && match && !isMatchActive(match)) {
         // Match exists but is not active - remove from URL
         const url = new URL(window.location.href);
@@ -405,7 +343,7 @@
     if (voting) return;
 
     // Find the match first
-    const match = allMatches.find((m) => m.id === matchId);
+    const match = matches.find((m) => m.id === matchId);
     if (!match) return;
 
     // Check if user already voted on this match
@@ -595,7 +533,7 @@
           {#if group.matches.length > 0}
             {@const cup = getCupById(group.cupId)}
             {#if cup}
-              <CupHeader {cup} {purchases} matches={allMatches} />
+              <CupHeader {cup} {purchases} matches={matches} />
             {/if}
           {/if}
           <div class="group-matches">

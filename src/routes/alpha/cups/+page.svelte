@@ -3,6 +3,7 @@
   import { authClient } from "$lib/auth.client.js";
   import { useZero } from "$lib/zero-utils";
   import { calculatePrizePool, formatPrizePool } from "$lib/prizePoolUtils.js";
+  import { allCups, allMatches, allPurchases } from "$lib/synced-queries";
   import { page } from "$app/stores";
   import { goto } from "$app/navigation";
   import Modal from "$lib/Modal.svelte";
@@ -50,12 +51,12 @@
       zero = zeroContext.getInstance();
 
       // Query ALL cups (everyone can read)
-      const cupsQuery = zero.query.cup.orderBy("createdAt", "desc");
-      cupsView = cupsQuery.materialize();
+      const cupsQuery = allCups();
+      cupsView = zero.materialize(cupsQuery);
 
       // Query all identity purchases for prize pool calculation
-      const purchasesQuery = zero.query.identityPurchase;
-      purchasesView = purchasesQuery.materialize();
+      const purchasesQuery = allPurchases();
+      purchasesView = zero.materialize(purchasesQuery);
 
       // Query all projects (for winner display)
       const projectsQuery = allProjects();

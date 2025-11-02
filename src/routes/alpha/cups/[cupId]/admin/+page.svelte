@@ -13,7 +13,7 @@
   import TimePicker from "$lib/TimePicker.svelte";
   import CountdownTimer from "$lib/CountdownTimer.svelte";
   import { combineDateAndTime, formatEndDate } from "$lib/dateUtils.js";
-  import { allProjects, allVotes } from "$lib/synced-queries";
+  import { allProjects, allVotes, cupById, matchesByCup } from "$lib/synced-queries";
 
   const zeroContext = useZero();
   const session = authClient.useSession();
@@ -87,8 +87,8 @@
       zero = zeroContext.getInstance();
 
       // Query cup
-      const cupQuery = zero.query.cup.where("id", "=", cupId);
-      cupView = cupQuery.materialize();
+      const cupQuery = cupById(cupId);
+      cupView = zero.materialize(cupQuery);
 
       let hasReceivedData = false;
       let dataCheckTimeout = null;
@@ -122,10 +122,8 @@
       });
 
       // Query cup matches
-      const matchesQuery = zero.query.cupMatch
-        .where("cupId", "=", cupId)
-        .orderBy("position", "asc");
-      matchesView = matchesQuery.materialize();
+      const matchesQuery = matchesByCup(cupId);
+      matchesView = zero.materialize(matchesQuery);
 
       matchesView.addListener((data) => {
         matches = Array.from(data);
@@ -335,7 +333,8 @@
           createdAt: now,
         };
 
-        await zero.mutate.project.create(newProject);
+        // Fire and forget - Zero handles optimistic updates
+        zero.mutate.project.create(newProject);
         return newProject;
       });
 

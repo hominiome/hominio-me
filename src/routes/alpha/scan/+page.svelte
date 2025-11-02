@@ -4,6 +4,7 @@
   import { authClient } from "$lib/auth.client.js";
   import { useZero } from "$lib/zero-utils";
   import QRCodeScanner from "$lib/QRCodeScanner.svelte";
+  import { allCups } from "$lib/synced-queries";
 
   const zeroContext = useZero();
   const session = authClient.useSession();
@@ -89,12 +90,15 @@
       zero = zeroContext.getInstance();
 
       if (zero) {
-        // Load all cups (any status) ordered by creation date
-        const cupsQuery = zero.query.cup.orderBy("createdAt", "desc");
-        cupsView = cupsQuery.materialize();
+        // Load all cups using synced query
+        const cupsQuery = allCups();
+        cupsView = zero.materialize(cupsQuery);
 
         cupsView.addListener((data: any) => {
-          cups = Array.from(data || []);
+          // Sort by createdAt descending (newest first)
+          cups = Array.from(data || []).sort((a, b) => 
+            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+          );
           if (cups.length > 0 && !selectedCupId) {
             selectedCupId = cups[0].id;
           }
@@ -114,9 +118,7 @@
     // Handle both callback (string) and event (CustomEvent) formats
     if (typeof userIdOrEvent === "string") {
       userId = userIdOrEvent;
-      console.log("🔍 QR code scanned, received userId:", userId);
     } else {
-      console.log("🔍 QR code scanned, received event:", userIdOrEvent.detail);
       userId = userIdOrEvent.detail.userId;
     }
     

@@ -199,31 +199,41 @@ export function createMutators(authData: AuthData | undefined) {
 
 ## Current Implementation Status
 
-### ✅ Implemented
+### ✅ Fully Implemented & Complete
 
-- **Synced Queries**: All project queries migrated to synced queries
-- **Cookie-Based Auth**: `/get-queries` endpoint authenticates via BetterAuth cookies
-- **Zero-Cache Configuration**: 
-  - Cookie forwarding enabled (`ZERO_GET_QUERIES_FORWARD_COOKIES=true`)
+#### Synced Queries (All Tables)
+- **Project Queries**: `allProjects`, `projectById`, `projectsByUser` - ✅ Complete (14 files migrated)
+- **Notification Queries**: `myNotifications`, `unreadNotificationCount` - ✅ Complete
+- **Identity Purchase Queries**: `allPurchases`, `purchasesByUser`, `purchasesByCup`, `purchaseById` - ✅ Complete
+- **User Identity Queries**: `identitiesByUser`, `identityByUserAndCup`, `identitiesByCup` - ✅ Complete
+- **Vote Queries**: `allVotes`, `votesByUser`, `votesByMatch` - ✅ Complete
+- **Cup Match Queries**: `allMatches`, `matchesByCup` - ✅ Complete
+- **Cup Queries**: `allCups`, `cupById` - ✅ Complete
+
+#### Custom Mutators (Core Operations)
+- **Project Mutators**: `create`, `update`, `delete` - ✅ Complete with server-side permissions
+- **Notification Mutators**: `create`, `markRead`, `markAllRead`, `delete` - ✅ Complete
+- **Identity Purchase Mutators**: `delete` (admin only) - ✅ Complete
+
+#### Authentication & Authorization
+- **Cookie-Based Auth**: Full integration with BetterAuth - ✅ Complete
+- **Zero-Cache Configuration**: Cookie forwarding for both queries and mutations - ✅ Complete
+- **Role System**: Centralized `admin`, `founder`, `default` roles - ✅ Complete
+- **Permission Enforcement**: Server-side checks in all custom mutators - ✅ Complete
+- **Auth Context Extractor**: Unified `extractAuthData` utility - ✅ Complete
+
+#### Configuration & Schema
 - **Legacy Systems Disabled**: 
-  - `enableLegacyQueries: false` - clients can't run arbitrary queries
-  - `enableLegacyMutators: false` - clients can't use CRUD mutators
-  - Dummy permissions export exists only to satisfy `zero-cache-dev` deployment script
-  - **Real permissions are enforced in custom mutators and synced queries**
+  - `enableLegacyQueries: false` - ✅ Verified (no `zero.query.*` usage)
+  - `enableLegacyMutators: false` - ✅ Verified (all use custom mutators)
+  - Dummy permissions export (required by zero-cache-dev, not enforced) - ✅ Complete
+- **Migration Scripts**: Clean CREATE statements - ✅ Complete
 
-### ✅ Custom Mutators (Completed)
-
-- **Project CRUD**: All project operations (create, update, delete) use custom mutators
-- **Push Endpoint**: Server-side mutator handler with cookie-based auth
-- **Permission Enforcement**: Server-side permission checks in custom mutators
-- **Role System**: Centralized role definitions (`admin`, `founder`, `default`)
-
-### 🚧 Pending
-
-- **Notification Mutators**: Need to migrate notification operations
-- **Cup Mutators**: Need to migrate cup create/update operations
-- **Identity/Purchase Mutators**: Need to migrate identity purchase operations
-- **Vote Mutators**: Need to migrate voting operations
+### 🎯 Intentionally Preserved (Legacy Flows)
+- **Payment API**: `/api/purchase-package` - Complex Stripe integration maintained
+- **Voting API**: `/api/vote-match` - Tournament mechanics maintained
+- **Match Operations**: `/api/determine-match-winner`, `/api/close-match` - Game logic maintained
+- **Cup Progression**: `/api/start-cup`, `/api/end-round`, `/api/start-next-round` - Tournament flow maintained
 
 ## Migration Path
 
@@ -236,11 +246,11 @@ export function createMutators(authData: AuthData | undefined) {
 - [x] Create auth context extractor (`src/lib/server/auth-context.ts`)
 
 ### Phase 2: Project Migration (✅ Complete)
-- [x] Migrate all project queries to synced queries (7 files)
+- [x] Migrate all project queries to synced queries (14 files)
 - [x] Migrate project create to custom mutators
 - [x] Migrate project update to custom mutators
 - [x] Migrate project delete to custom mutators
-- [x] Remove legacy API endpoints
+- [x] Remove legacy API endpoints (`/api/update-project`)
 
 ### Phase 3: Schema & Configuration (✅ Complete)
 - [x] Disable legacy queries (`enableLegacyQueries: false`)
@@ -248,12 +258,32 @@ export function createMutators(authData: AuthData | undefined) {
 - [x] Add dummy permissions export (required by zero-cache-dev, not enforced)
 - [x] Document that permissions are now handled by custom mutators
 
-### Phase 4: Other Tables (🚧 Next)
-- [ ] Migrate notification queries and mutators
-- [ ] Migrate cup queries and mutators
-- [ ] Migrate identity/purchase queries and mutators
-- [ ] Migrate vote queries and mutators
-- [ ] Migrate cupMatch queries and mutators
+### Phase 4: Notification Migration (✅ Complete)
+- [x] Migrate notification queries (`myNotifications`, `unreadNotificationCount`)
+- [x] Migrate notification mutators (`create`, `markRead`, `markAllRead`, `delete`)
+- [x] Remove legacy API endpoints (`/api/notifications/*`)
+
+### Phase 5: Identity & Purchase Migration (✅ Complete)
+- [x] Migrate identityPurchase queries (`allPurchases`, `purchasesByUser`, etc.)
+- [x] Migrate identityPurchase mutators (`delete` - admin only)
+- [x] Migrate userIdentities queries (`identitiesByUser`, `identityByUserAndCup`, etc.)
+- [x] Keep `/api/purchase-package` API (complex Stripe integration)
+
+### Phase 6: Vote Migration (✅ Complete)
+- [x] Migrate vote queries (`allVotes`, `votesByUser`, `votesByMatch`)
+- [x] Keep `/api/vote-match` API (complex tournament mechanics)
+
+### Phase 7: Cup & Match Migration (✅ Complete)
+- [x] Migrate cupMatch queries (`allMatches`, `matchesByCup`)
+- [x] Migrate cup queries (`allCups`, `cupById`)
+- [x] Keep cup/match operation APIs (complex tournament progression logic)
+
+### Phase 8: Verification & Cleanup (✅ Complete)
+- [x] Verify no `zero.query.*` usage remains (all migrated to synced queries)
+- [x] Verify all `zero.mutate.*` calls use custom mutators
+- [x] Verify query handler covers all synced queries
+- [x] Verify push handler covers all custom mutators
+- [x] Remove legacy API endpoints (kept complex flow APIs as intended)
 
 ## Key Files
 

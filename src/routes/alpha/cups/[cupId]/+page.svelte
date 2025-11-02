@@ -12,7 +12,7 @@
   import { formatEndDate, getMatchEndDate } from "$lib/dateUtils.js";
   import CountdownTimer from "$lib/CountdownTimer.svelte";
   import { calculatePrizePool, formatPrizePool } from "$lib/prizePoolUtils.js";
-  import { allProjects, purchasesByCup, identityByUserAndCup, allVotes, votesByUser } from "$lib/synced-queries";
+  import { allProjects, purchasesByCup, identityByUserAndCup, allVotes, votesByUser, cupById, matchesByCup } from "$lib/synced-queries";
 
   const zeroContext = useZero();
   const session = authClient.useSession();
@@ -78,8 +78,8 @@
       zero = zeroContext.getInstance();
 
       // Query cup
-      const cupQuery = zero.query.cup.where("id", "=", cupId);
-      cupView = cupQuery.materialize();
+      const cupQuery = cupById(cupId);
+      cupView = zero.materialize(cupQuery);
 
       let hasReceivedData = false;
       let dataCheckTimeout = null;
@@ -129,11 +129,9 @@
         projects = Array.from(data);
       });
 
-      // Query cup matches
-      const matchesQuery = zero.query.cupMatch
-        .where("cupId", "=", cupId)
-        .orderBy("position", "asc");
-      matchesView = matchesQuery.materialize();
+      // Query cup matches using synced query
+      const matchesQuery = matchesByCup(cupId);
+      matchesView = zero.materialize(matchesQuery);
 
       matchesView.addListener(async (data) => {
         matches = Array.from(data);

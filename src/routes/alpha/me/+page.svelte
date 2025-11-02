@@ -6,7 +6,7 @@
   import { useZero } from "$lib/zero-utils";
   import { formatPrizePool } from "$lib/prizePoolUtils.js";
   import QRCodeDisplay from "$lib/QRCodeDisplay.svelte";
-  import { allProjects, purchasesByUser, identitiesByUser, votesByUser } from "$lib/synced-queries";
+  import { allProjects, purchasesByUser, identitiesByUser, votesByUser, allMatches, allCups } from "$lib/synced-queries";
 
   // Session data from layout
   let { data } = $props();
@@ -142,9 +142,9 @@
         votes = Array.from(data || []);
       });
 
-      // Query all matches
-      const matchesQuery = zero.query.cupMatch;
-      matchesView = matchesQuery.materialize();
+      // Query all matches using synced query
+      const matchesQuery = allMatches();
+      matchesView = zero.materialize(matchesQuery);
 
       matchesView.addListener((data: any) => {
         matches = Array.from(data || []);
@@ -158,9 +158,9 @@
         projects = Array.from(data || []);
       });
 
-      // Query all cups to get names
-      const cupsQuery = zero.query.cup;
-      cupsView = cupsQuery.materialize();
+      // Query all cups to get names using synced query
+      const cupsQuery = allCups();
+      cupsView = zero.materialize(cupsQuery);
 
       cupsView.addListener((data: any) => {
         cups = Array.from(data || []);

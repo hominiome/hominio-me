@@ -34,6 +34,7 @@
   let notificationSound = $state<HTMLAudioElement | null>(null);
   let previousNotificationIds = $state<Set<string>>(new Set());
   let priorityNotificationQueue = $state<any[]>([]);
+  let markingAsReadIds = $state<Set<string>>(new Set()); // Track notifications being marked as read
 
   // Get Zero server URL from environment (defaults to localhost:4848 for dev)
   const zeroServerUrl = browser
@@ -43,6 +44,21 @@
   // Initialize Zero once and make it available via context
   onMount(() => {
     if (!browser) return; // Only run on client
+
+    // Add global unhandled rejection handler for debugging
+    // This will help us see what mutations are failing
+    const unhandledRejectionHandler = (event: PromiseRejectionEvent) => {
+      console.error("Unhandled Promise Rejection detected:", event.reason);
+      // Log more details if available
+      if (event.reason && typeof event.reason === "object") {
+        console.error(
+          "Rejection details:",
+          JSON.stringify(event.reason, null, 2)
+        );
+      }
+      // Don't prevent default - let it log but we've captured it
+    };
+    window.addEventListener("unhandledrejection", unhandledRejectionHandler);
 
     let initZero = async () => {
       try {
@@ -67,9 +83,13 @@
           // Register custom mutators for writes (create, update, delete)
           mutators: createMutators(undefined), // AuthData passed to mutators at runtime
           // Configure synced queries endpoint (uses cookie-based auth)
-          getQueriesURL: browser ? `${window.location.origin}/alpha/api/zero/get-queries` : undefined,
+          getQueriesURL: browser
+            ? `${window.location.origin}/alpha/api/zero/get-queries`
+            : undefined,
           // Configure custom mutators endpoint (uses cookie-based auth)
-          mutateURL: browser ? `${window.location.origin}/alpha/api/zero/push` : undefined,
+          mutateURL: browser
+            ? `${window.location.origin}/alpha/api/zero/push`
+            : undefined,
           // ⚠️ NO AUTH FUNCTION - we use cookie-based auth only
           // Cookies are automatically forwarded by zero-cache when:
           // - ZERO_GET_QUERIES_FORWARD_COOKIES=true
@@ -94,58 +114,93 @@
 
             notificationsView.addListener((data) => {
               const newNotifications = Array.from(data);
-              
-              // Update notifications array FIRST so preview bell and derived values work immediately
+
+              // Update notifications array - Zero handles optimistic updates automatically
               notifications = newNotifications;
-              
-              // Check for new unread notifications
-              const newUnreadNotifications = newNotifications.filter(
-                (n) => n.read === "false" && !previousNotificationIds.has(n.id)
+
+              // Clean up markingAsReadIds: remove IDs that are now confirmed as read by server
+              for (const id of markingAsReadIds) {
+                const notification = newNotifications.find(
+                  (n: any) => n.id === id
+                ) as any;
+                if (!notification || notification.read === "true") {
+                  markingAsReadIds.delete(id);
+                }
+              }
+
+              // Get ALL unread notifications (not just new ones)
+              const allUnreadNotifications = newNotifications.filter(
+                (n: any) => n.read === "false"
               );
-              
-              // Check for priority notifications that should force open
-              const priorityNotifications = newUnreadNotifications.filter(
-                (n) => n.priority === "true"
+
+              // Check for new unread notifications (for sound/alert)
+              const newUnreadNotifications = allUnreadNotifications.filter(
+                (n: any) => !previousNotificationIds.has(n.id)
               );
-              
+
+              // Get ALL unread priority notifications (for queue management)
+              const allUnreadPriorityNotifications =
+                allUnreadNotifications.filter(
+                  (n: any) =>
+                    n.priority === "true" && !markingAsReadIds.has(n.id)
+                );
+
+              // Check for new priority notifications (for initial queue addition)
+              const newPriorityNotifications = newUnreadNotifications.filter(
+                (n: any) => n.priority === "true" && !markingAsReadIds.has(n.id)
+              );
+
               // Check for non-priority notifications (for preview bell)
               const nonPriorityNotifications = newUnreadNotifications.filter(
-                (n) => n.priority !== "true"
+                (n: any) => n.priority !== "true"
               );
-              
+
               // Handle priority notifications with queue system
-              if (priorityNotifications.length > 0) {
-                console.log("🔔 Priority notification detected:", priorityNotifications.length, "notifications");
-                
-                // Sort by createdAt descending (newest first)
-                const sortedPriority = priorityNotifications.sort((a, b) => 
-                  new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+              // Always maintain queue based on ALL unread priority notifications
+              if (
+                allUnreadPriorityNotifications.length > 0 ||
+                priorityNotificationQueue.length > 0
+              ) {
+                // Sort all unread priority notifications by createdAt descending (newest first)
+                const sortedAllPriority = allUnreadPriorityNotifications.sort(
+                  (a: any, b: any) =>
+                    new Date(b.createdAt).getTime() -
+                    new Date(a.createdAt).getTime()
                 );
-                
-                // Clean up queue: remove already-read notifications
-                priorityNotificationQueue = priorityNotificationQueue.filter(n => {
-                  const notification = newNotifications.find(notif => notif.id === n.id);
-                  return notification && notification.read === "false";
-                });
-                
-                // Add new priority notifications to queue (avoid duplicates and already-read)
-                const currentQueueIds = new Set(priorityNotificationQueue.map(n => n.id));
-                const newPriorityNotifications = sortedPriority.filter(n => 
-                  !currentQueueIds.has(n.id) && n.read === "false"
+
+                // Rebuild queue from ALL unread priority notifications (excluding those being marked as read)
+                // This ensures queue stays in sync with actual unread priority notifications
+                priorityNotificationQueue = sortedAllPriority.filter(
+                  (n: any) => !markingAsReadIds.has(n.id)
                 );
-                
-                if (newPriorityNotifications.length > 0) {
-                  // Add to queue, maintaining sort order (newest first)
-                  priorityNotificationQueue = [...priorityNotificationQueue, ...newPriorityNotifications]
-                    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-                  
-                  console.log("🔔 Priority queue updated:", priorityNotificationQueue.length, "notifications in queue");
+
+                // Add any NEW priority notifications that weren't in previous queue
+                // (This is mainly for initial notification, but queue is already rebuilt above)
+                const currentQueueIds = new Set(
+                  priorityNotificationQueue.map((n: any) => n.id)
+                );
+                const trulyNewPriority = newPriorityNotifications.filter(
+                  (n: any) => !currentQueueIds.has(n.id)
+                );
+
+                if (trulyNewPriority.length > 0) {
+                  // Merge and sort (though queue is already sorted from above)
+                  priorityNotificationQueue = [
+                    ...priorityNotificationQueue,
+                    ...trulyNewPriority,
+                  ].sort(
+                    (a: any, b: any) =>
+                      new Date(b.createdAt).getTime() -
+                      new Date(a.createdAt).getTime()
+                  );
                 }
-                
+
                 // Check if we should show a priority notification
-                const isCurrentModalPriority = notificationModal && 
-                  notifications.find(n => n.id === notificationModal.id)?.priority === "true";
-                
+                const isCurrentModalPriority =
+                  notificationModal &&
+                  notifications.find((n) => n.id === notificationModal.id)
+                    ?.priority === "true";
+
                 // Only show priority notification if:
                 // 1. No modal is currently open, OR
                 // 2. Current modal is not a priority notification
@@ -159,17 +214,20 @@
                       url.searchParams.delete("cupId");
                       goto(url.pathname + url.search, { replaceState: true });
                     }
-                    
+
                     // Show the first notification in queue
-                    const nextPriorityNotification = priorityNotificationQueue[0];
-                    console.log("🔔 Opening priority notification from queue:", nextPriorityNotification.id, nextPriorityNotification.title);
+                    const nextPriorityNotification =
+                      priorityNotificationQueue[0];
                     notificationModal = nextPriorityNotification;
                   }
                 }
+              } else {
+                // No unread priority notifications, clear the queue
+                priorityNotificationQueue = [];
               }
               // For non-priority notifications, they will show in the preview bell
               // Preview bell will show if there are unread notifications and no modal is open
-              
+
               // Play notification sound if there are new unread notifications
               if (newUnreadNotifications.length > 0 && notificationSound) {
                 try {
@@ -184,9 +242,11 @@
                   console.warn("Could not play notification sound:", error);
                 }
               }
-              
+
               // Update previous notification IDs
-              previousNotificationIds = new Set(newNotifications.map((n) => n.id));
+              previousNotificationIds = new Set(
+                newNotifications.map((n: any) => n.id)
+              );
             });
           }
         }
@@ -199,6 +259,12 @@
     initZero();
 
     return () => {
+      // Remove unhandled rejection handler
+      window.removeEventListener(
+        "unhandledrejection",
+        unhandledRejectionHandler
+      );
+
       // Cleanup Zero on unmount
       if (notificationsView) {
         notificationsView.destroy();
@@ -229,55 +295,52 @@
   function handleNotificationClose() {
     // Mark the current notification as read before closing
     if (notificationModal) {
-      const isPriority = notifications.find(n => n.id === notificationModal.id)?.priority === "true";
-      handleNotificationMarkRead(notificationModal.id);
-      
-      // If it was a priority notification, remove it from queue
-      if (isPriority) {
-        priorityNotificationQueue = priorityNotificationQueue.filter(n => n.id !== notificationModal.id);
-        console.log("🔔 Removed from priority queue, remaining:", priorityNotificationQueue.length);
-      }
-      
+      const notificationId = notificationModal.id;
+
+      // Mark as read (Zero handles optimistic updates)
+      handleNotificationMarkRead(notificationId);
+
+      // Close modal - the notification listener will automatically show
+      // the next priority notification from the queue if there is one
       notificationModal = null;
-      
-      // If there are more priority notifications in queue, show the next one
-      if (isPriority && priorityNotificationQueue.length > 0) {
-        const nextPriorityNotification = priorityNotificationQueue[0];
-        console.log("🔔 Opening next priority notification from queue:", nextPriorityNotification.id);
-        // Small delay to allow modal close animation
-        setTimeout(() => {
-          notificationModal = nextPriorityNotification;
-        }, 300);
-      }
     } else {
       notificationModal = null;
     }
   }
 
-  async function handleNotificationMarkRead(id: string) {
-    // Update local state immediately (optimistic update)
-    notifications = notifications.map((n) =>
-      n.id === id ? { ...n, read: "true" } : n
-    );
-    
-    // Remove from priority queue if it's there
-    priorityNotificationQueue = priorityNotificationQueue.filter(n => n.id !== id);
+  function handleNotificationMarkRead(id: string) {
+    // Track that we're marking this notification as read
+    // This prevents it from being re-added to priority queue before server confirms
+    markingAsReadIds.add(id);
 
-    // Persist via custom mutator (replaces legacy API)
-    try {
-      if (zero) {
-        await zero.mutate.notification.markRead({ id });
+    // Remove from priority queue immediately (UI-only state)
+    priorityNotificationQueue = priorityNotificationQueue.filter(
+      (n) => n.id !== id
+    );
+
+    // Call custom mutator - Zero handles optimistic updates automatically
+    if (zero) {
+      try {
+        // Fire and forget - Zero handles optimistic updates automatically
+        // The mutation runs instantly on client, then syncs to server
+        // Wrap in Promise.resolve to ensure we can catch any rejection
+        const mutation = zero.mutate.notification.markRead({ id });
+
+        // Handle promise rejection properly
+        Promise.resolve(mutation).catch((error: any) => {
+          console.error("Failed to mark notification as read:", error);
+          // Remove from tracking set on error so it can be retried
+          markingAsReadIds.delete(id);
+        });
+      } catch (error) {
+        // Handle synchronous errors
+        console.error("Failed to call markRead mutator:", error);
+        markingAsReadIds.delete(id);
       }
-    } catch (error) {
-      console.error("Failed to mark notification as read:", error);
-      // Revert optimistic update on error
-      notifications = notifications.map((n) =>
-        n.id === id ? { ...n, read: "false" } : n
-      );
     }
   }
 
-  async function markAllNonPriorityAsRead() {
+  function markAllNonPriorityAsRead() {
     // Get current user ID
     const userId = $session.data?.user?.id || data.session?.id;
     if (!userId) {
@@ -285,23 +348,30 @@
       return;
     }
 
-    // Store original state for potential rollback
-    const originalNotifications = [...notifications];
-
-    // Update local state immediately (optimistic update)
-    notifications = notifications.map((n) =>
-      n.read === "false" && n.priority !== "true" ? { ...n, read: "true" } : n
+    // Get all unread non-priority notifications
+    const unreadNonPriorityNotifications = notifications.filter(
+      (n) => n.read === "false" && n.priority !== "true"
     );
 
-    // Persist via custom mutator (replaces legacy API)
-    try {
-      if (zero) {
-        await zero.mutate.notification.markAllRead({ userId });
+    if (unreadNonPriorityNotifications.length === 0) {
+      return;
+    }
+
+    // Call custom mutator - Zero handles optimistic updates automatically
+    if (zero) {
+      try {
+        // Fire and forget - Zero handles optimistic updates automatically
+        // Wrap in Promise.resolve to ensure we can catch any rejection
+        const mutation = zero.mutate.notification.markAllRead({ userId });
+
+        // Handle promise rejection properly
+        Promise.resolve(mutation).catch((error: any) => {
+          console.error("Failed to mark all notifications as read:", error);
+        });
+      } catch (error) {
+        // Handle synchronous errors
+        console.error("Failed to call markAllRead mutator:", error);
       }
-    } catch (error) {
-      console.error("Failed to mark all notifications as read:", error);
-      // Revert optimistic update on error
-      notifications = originalNotifications;
     }
   }
 
@@ -317,10 +387,11 @@
     const unreadNotifications = notifications.filter((n) => n.read === "false");
     if (unreadNotifications.length > 0) {
       // Sort by createdAt descending to get the newest
-      const sorted = [...unreadNotifications].sort((a, b) => 
-        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      const sorted = [...unreadNotifications].sort(
+        (a, b) =>
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
       );
-      
+
       // If there's a non-priority notification, prefer it for preview
       // Only show priority notifications in preview if no non-priority ones exist
       // (but priority notifications usually open modals, so this is rare)
@@ -342,7 +413,7 @@
   const latestNotificationTitle = $derived(() => {
     const latest = latestNotification();
     if (!latest) return "";
-    
+
     // First try previewTitle
     if (latest.previewTitle && typeof latest.previewTitle === "string") {
       const trimmedPreview = latest.previewTitle.trim();
@@ -350,7 +421,7 @@
         return trimmedPreview;
       }
     }
-    
+
     // Fall back to title if previewTitle is empty/missing
     if (latest.title && typeof latest.title === "string") {
       const trimmedTitle = latest.title.trim();
@@ -358,7 +429,7 @@
         return trimmedTitle;
       }
     }
-    
+
     // Only return empty if both are truly empty
     return "";
   });
@@ -402,17 +473,18 @@
   // Function to go to next unread notification
   function goToNextNotification() {
     if (!notificationModal) return;
-    
+
     const unreadNotifications = notifications
       .filter((n) => n.read === "false")
-      .sort((a, b) => 
-        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      .sort(
+        (a, b) =>
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
       );
-    
+
     const currentIndex = unreadNotifications.findIndex(
       (n) => n.id === notificationModal.id
     );
-    
+
     if (currentIndex >= 0 && currentIndex < unreadNotifications.length - 1) {
       // Mark current as read
       handleNotificationMarkRead(notificationModal.id);
@@ -430,8 +502,9 @@
     if (!notificationModal) return 0;
     const unreadNotifications = notifications
       .filter((n) => n.read === "false")
-      .sort((a, b) => 
-        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      .sort(
+        (a, b) =>
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
       );
     const currentIndex = unreadNotifications.findIndex(
       (n) => n.id === notificationModal.id
@@ -455,11 +528,15 @@
   const modalCupId = $derived($page.url.searchParams.get("cupId"));
   const showInviteModal = $derived(modalType === "invite");
   const showCreateProjectModal = $derived(modalType === "create-project");
-  const showEditProjectModal = $derived(modalType === "edit-project" && !!modalProjectId);
-  const showProjectDetailModal = $derived(modalType === "project-detail" && !!modalProjectId);
+  const showEditProjectModal = $derived(
+    modalType === "edit-project" && !!modalProjectId
+  );
+  const showProjectDetailModal = $derived(
+    modalType === "project-detail" && !!modalProjectId
+  );
   const showCreateCupModal = $derived(modalType === "create-cup");
   const showEditCupModal = $derived(modalType === "edit-cup" && !!modalCupId);
-  
+
   // Ensure only one modal can be open at a time
   // If notification modal is open, close URL-based modals
   $effect(() => {
@@ -471,13 +548,15 @@
       goto(url.pathname + url.search, { replaceState: true });
     }
   });
-  
+
   // If URL-based modal is opened, close notification modal
   // BUT: Don't close if it's a priority notification (they should stay open)
   $effect(() => {
     if (modalType && notificationModal) {
       // Check if current notification is priority - if so, don't close it
-      const currentNotification = notifications.find(n => n.id === notificationModal.id);
+      const currentNotification = notifications.find(
+        (n) => n.id === notificationModal.id
+      );
       if (currentNotification && currentNotification.priority === "true") {
         // Priority notification should stay open, close URL modal instead
         const url = new URL($page.url);
@@ -487,17 +566,17 @@
         goto(url.pathname + url.search, { replaceState: true });
       } else {
         // Non-priority notification, close it when URL modal opens
-      notificationModal = null;
+        notificationModal = null;
       }
     }
   });
-  
+
   // Reactive state to track project modal actions
   let projectActions = $state<any>(null);
-  
+
   // Reactive state to track cup modal actions
   let cupActions = $state<any>(null);
-  
+
   // Watch for project modal actions updates
   $effect(() => {
     if (browser && (showCreateProjectModal || showEditProjectModal)) {
@@ -518,16 +597,16 @@
           projectActions = newActions;
         }
       };
-      
+
       checkActions(); // Check immediately
       const interval = setInterval(checkActions, 100);
-      
+
       return () => clearInterval(interval);
     } else {
       projectActions = null;
     }
   });
-  
+
   // Watch for cup modal actions updates
   $effect(() => {
     if (browser && (showCreateCupModal || showEditCupModal)) {
@@ -546,24 +625,26 @@
           cupActions = newActions;
         }
       };
-      
+
       checkActions(); // Check immediately
       const interval = setInterval(checkActions, 100);
-      
+
       return () => clearInterval(interval);
     } else {
       cupActions = null;
     }
   });
-  
+
   // Get modal left buttons - for notification modal
   const modalLeftButtons = $derived(() => {
     if (notificationModal && nonPriorityUnreadCount() > 0) {
-      return [{
-        label: `Mark all read (${nonPriorityUnreadCount()})`,
-        onClick: markAllNonPriorityAsRead,
-        ariaLabel: "Mark all non-priority notifications as read"
-      }];
+      return [
+        {
+          label: `Mark all read (${nonPriorityUnreadCount()})`,
+          onClick: markAllNonPriorityAsRead,
+          ariaLabel: "Mark all non-priority notifications as read",
+        },
+      ];
     }
     return [];
   });
@@ -571,88 +652,110 @@
   // Get modal right buttons - combine notification and project modal buttons
   const modalRightButtons = $derived(() => {
     if (notificationModal && remainingUnreadCount() > 0) {
-      return [{
-        label: `Next (${remainingUnreadCount()})`,
-        onClick: goToNextNotification,
-        ariaLabel: "Next notification"
-      }];
+      return [
+        {
+          label: `Next (${remainingUnreadCount()})`,
+          onClick: goToNextNotification,
+          ariaLabel: "Next notification",
+        },
+      ];
     }
-    
+
     // Check for project modal buttons
     if (showCreateProjectModal) {
       // Only disable if we have validation state AND it's false
       // If projectActions is null, enable the button (let form validation handle it)
-      const canCreate = projectActions ? (projectActions.canCreateProject ?? true) : true;
-      return [{
-        label: "Create Project",
-        onClick: () => {
-          const form = document.getElementById("create-project-form") as HTMLFormElement;
-          if (form) {
-            form.requestSubmit();
-          }
+      const canCreate = projectActions
+        ? (projectActions.canCreateProject ?? true)
+        : true;
+      return [
+        {
+          label: "Create Project",
+          onClick: () => {
+            const form = document.getElementById(
+              "create-project-form"
+            ) as HTMLFormElement;
+            if (form) {
+              form.requestSubmit();
+            }
+          },
+          ariaLabel: "Create project",
+          disabled: projectActions ? !canCreate : false,
+          variant: "primary" as const,
         },
-        ariaLabel: "Create project",
-        disabled: projectActions ? !canCreate : false,
-        variant: "primary" as const
-      }];
+      ];
     } else if (showEditProjectModal) {
       // Only disable if we have validation state AND it's false
       // If projectActions is null, enable the button (let form validation handle it)
-      const canEdit = projectActions ? (projectActions.canEditProject ?? true) : true;
+      const canEdit = projectActions
+        ? (projectActions.canEditProject ?? true)
+        : true;
       const saving = projectActions?.editSaving ?? false;
-      return [{
-        label: saving ? "Saving..." : "Save Changes",
-        onClick: () => {
-          const form = document.getElementById("edit-project-form") as HTMLFormElement;
-          if (form) {
-            form.requestSubmit();
-          }
+      return [
+        {
+          label: saving ? "Saving..." : "Save Changes",
+          onClick: () => {
+            const form = document.getElementById(
+              "edit-project-form"
+            ) as HTMLFormElement;
+            if (form) {
+              form.requestSubmit();
+            }
+          },
+          ariaLabel: "Save project changes",
+          disabled: projectActions ? !canEdit : false,
+          variant: "primary" as const,
         },
-        ariaLabel: "Save project changes",
-        disabled: projectActions ? !canEdit : false,
-        variant: "primary" as const
-      }];
+      ];
     }
-    
+
     // Check for cup modal buttons
     if (showCreateCupModal) {
       const canCreate = cupActions ? (cupActions.canCreateCup ?? true) : true;
       const creating = cupActions?.creating ?? false;
-      return [{
-        label: creating ? "Creating..." : "Create Cup",
-        onClick: () => {
-          const form = document.getElementById("create-cup-form") as HTMLFormElement;
-          if (form) {
-            form.requestSubmit();
-          }
+      return [
+        {
+          label: creating ? "Creating..." : "Create Cup",
+          onClick: () => {
+            const form = document.getElementById(
+              "create-cup-form"
+            ) as HTMLFormElement;
+            if (form) {
+              form.requestSubmit();
+            }
+          },
+          ariaLabel: "Create cup",
+          disabled: cupActions ? !canCreate : false,
+          variant: "primary" as const,
         },
-        ariaLabel: "Create cup",
-        disabled: cupActions ? !canCreate : false,
-        variant: "primary" as const
-      }];
+      ];
     } else if (showEditCupModal) {
       const canEdit = cupActions ? (cupActions.canEditCup ?? true) : true;
       const saving = cupActions?.saving ?? false;
-      return [{
-        label: saving ? "Saving..." : "Save Changes",
-        onClick: () => {
-          const form = document.getElementById("edit-cup-form") as HTMLFormElement;
-          if (form) {
-            form.requestSubmit();
-          }
+      return [
+        {
+          label: saving ? "Saving..." : "Save Changes",
+          onClick: () => {
+            const form = document.getElementById(
+              "edit-cup-form"
+            ) as HTMLFormElement;
+            if (form) {
+              form.requestSubmit();
+            }
+          },
+          ariaLabel: "Save cup changes",
+          disabled: cupActions ? !canEdit : false,
+          variant: "primary" as const,
         },
-        ariaLabel: "Save cup changes",
-        disabled: cupActions ? !canEdit : false,
-        variant: "primary" as const
-      }];
+      ];
     }
-    
+
     return [];
   });
-  
-  // Derived modal open state for navbar - ensure reactivity  
+
+  // Derived modal open state for navbar - ensure reactivity
   const isModalOpenState = $derived(!!notificationModal || !!modalType);
-  
+
   function handleModalClose() {
     // Stay on the same route, just remove the modal param
     const url = new URL($page.url);
@@ -661,54 +764,31 @@
     url.searchParams.delete("cupId");
     goto(url.pathname + url.search, { replaceState: true });
   }
-  
-  // Debug notification state
-  $effect(() => {
-    const latest = latestNotification();
-    console.log("🔔 Notification State:", {
-      notificationModal: notificationModal?.id || null,
-      unreadCount,
-      latestNotification: latest?.id || null,
-      latestNotificationData: latest ? {
-        id: latest.id,
-        previewTitle: latest.previewTitle,
-        title: latest.title,
-        previewTitleType: typeof latest.previewTitle,
-        titleType: typeof latest.title,
-      } : null,
-      latestTitle: latestNotificationTitle,
-      latestTitleLength: latestNotificationTitle?.length || 0,
-      showInviteModal,
-      showCreateProjectModal,
-      showEditProjectModal,
-      showCreateCupModal,
-      showEditCupModal,
-      shouldShowPreview: !notificationModal && !showInviteModal && !showCreateProjectModal && !showEditProjectModal && !showProjectDetailModal && !showCreateCupModal && !showEditCupModal && unreadCount > 0
-    });
-  });
 
   // Close modal if the current notification is marked as read
   // For priority notifications, show next in queue
   $effect(() => {
     if (notificationModal) {
       // Check if the current modal notification has been marked as read
-      const currentNotification = notifications.find(n => n.id === notificationModal.id);
+      const currentNotification = notifications.find(
+        (n) => n.id === notificationModal.id
+      );
       if (currentNotification && currentNotification.read === "true") {
         const isPriority = currentNotification.priority === "true";
-        
+
         // If it was a priority notification, remove it from queue
         if (isPriority) {
-          priorityNotificationQueue = priorityNotificationQueue.filter(n => n.id !== notificationModal.id);
-          console.log("🔔 Priority notification marked as read, removed from queue, remaining:", priorityNotificationQueue.length);
+          priorityNotificationQueue = priorityNotificationQueue.filter(
+            (n) => n.id !== notificationModal.id
+          );
         }
-        
+
         // Close current modal
         notificationModal = null;
-        
+
         // If there are more priority notifications in queue, show the next one
         if (isPriority && priorityNotificationQueue.length > 0) {
           const nextPriorityNotification = priorityNotificationQueue[0];
-          console.log("🔔 Opening next priority notification from queue:", nextPriorityNotification.id);
           // Small delay to allow modal close animation
           setTimeout(() => {
             notificationModal = nextPriorityNotification;
@@ -720,8 +800,8 @@
 </script>
 
 {#if $session.data?.user && zeroReady && !notificationModal && !showInviteModal && !showCreateProjectModal && !showEditProjectModal && !showProjectDetailModal && !showCreateCupModal && !showEditCupModal && unreadCount > 0}
-  <NotificationBell 
-    unreadCount={unreadCount} 
+  <NotificationBell
+    {unreadCount}
     onClick={openNotificationModal}
     latestTitle={latestNotificationTitle()}
     latestIcon={latestNotificationIcon()}
@@ -729,8 +809,8 @@
   />
 {/if}
 
-<Navbar 
-  session={$session} 
+<Navbar
+  session={$session}
   {signInWithGoogle}
   isModalOpen={isModalOpenState}
   onModalClose={modalType ? handleModalClose : handleNotificationClose}
@@ -762,7 +842,10 @@
 
 {#if showProjectDetailModal && modalProjectId}
   <Modal open={showProjectDetailModal} onClose={handleModalClose}>
-    <ProjectDetailContent projectId={modalProjectId} onClose={handleModalClose} />
+    <ProjectDetailContent
+      projectId={modalProjectId}
+      onClose={handleModalClose}
+    />
   </Modal>
 {/if}
 
