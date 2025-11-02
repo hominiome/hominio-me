@@ -1,18 +1,30 @@
 <script lang="ts">
-  import { onMount } from "svelte";
+  import { onMount, onDestroy } from "svelte";
   import { browser } from "$app/environment";
 
   let { data } = $props<{ data: string }>();
   let qrContainer: HTMLDivElement | null = $state(null);
   let qrCode: any = $state(null);
+  let qrSize = $state(500);
 
-  // QR code settings (copied from qr-code-settings.json, image removed)
-  const qrSettings = {
+  // Calculate responsive size based on viewport width
+  const calculateSize = () => {
+    if (!browser) return 500;
+    const viewportWidth = window.innerWidth;
+    // Use 80% of viewport width on mobile, max 500px on desktop
+    const maxSize = Math.min(viewportWidth * 0.8, 500);
+    // Ensure minimum size for readability
+    return Math.max(maxSize, 250);
+  };
+
+  // QR code settings
+  const getQrSettings = (size: number) => ({
     type: "canvas" as const,
     shape: "square" as const,
-    width: 500,
-    height: 500,
+    width: size,
+    height: size,
     margin: 5,
+    data: data,
     qrOptions: {
       typeNumber: "0",
       mode: "Byte",
@@ -41,7 +53,10 @@
       type: "dot",
       color: "#200a4b",
     },
-  };
+    image: browser ? `${window.location.origin}/logo_clean.png` : "",
+  });
+
+  let resizeHandler: (() => void) | null = null;
 
   onMount(async () => {
     if (!qrContainer || !browser) return;
@@ -49,58 +64,40 @@
     // Dynamically import QRCodeStyling only in browser
     const { default: QRCodeStyling } = await import("qr-code-styling");
 
-    // Calculate responsive size based on viewport width
-    const calculateSize = () => {
-      const viewportWidth = window.innerWidth;
-      // Use 80% of viewport width on mobile, max 500px on desktop
-      const maxSize = Math.min(viewportWidth * 0.8, 500);
-      // Ensure minimum size for readability
-      return Math.max(maxSize, 250);
-    };
+    // Calculate initial size
+    qrSize = calculateSize();
 
-    const qrSize = calculateSize();
-
-    // Get the full URL for the logo image
-    const imageUrl = browser ? `${window.location.origin}/logo_clean.png` : "";
-
-    // Create QR code with responsive settings
-    qrCode = new QRCodeStyling({
-      type: qrSettings.type,
-      shape: qrSettings.shape,
-      width: qrSize,
-      height: qrSize,
-      data: data,
-      margin: qrSettings.margin,
-      qrOptions: qrSettings.qrOptions,
-      imageOptions: qrSettings.imageOptions,
-      dotsOptions: qrSettings.dotsOptions,
-      backgroundOptions: qrSettings.backgroundOptions,
-      cornersSquareOptions: qrSettings.cornersSquareOptions,
-      cornersDotOptions: qrSettings.cornersDotOptions,
-      image: imageUrl,
-    });
-
+    // Create QR code with calculated size
+    qrCode = new QRCodeStyling(getQrSettings(qrSize));
     qrCode.append(qrContainer);
 
-    // Handle window resize for responsive updates
-    const handleResize = () => {
+    // Handle window resize - update QR code size dynamically
+    resizeHandler = () => {
       if (!qrCode || !qrContainer) return;
       const newSize = calculateSize();
-      qrCode.update({
-        width: newSize,
-        height: newSize,
-      });
+      if (newSize !== qrSize) {
+        qrSize = newSize;
+        // Update QR code with new size using the library's update method
+        qrCode.update({
+          width: qrSize,
+          height: qrSize,
+        });
+      }
     };
 
-    window.addEventListener("resize", handleResize);
-    
-    return () => {
-      window.removeEventListener("resize", handleResize);
-    };
+    window.addEventListener("resize", resizeHandler);
+  });
+
+  onDestroy(() => {
+    if (resizeHandler) {
+      window.removeEventListener("resize", resizeHandler);
+    }
   });
 
   $effect(() => {
-    if (qrCode && data && browser) {
+    if (qrCode && data && browser && qrContainer) {
+      const currentSize = qrSize;
+      // Update data without changing size
       qrCode.update({ data });
     }
   });
@@ -114,25 +111,6 @@
     justify-content: center;
     align-items: center;
     width: 100%;
-    max-width: 100%;
-  }
-
-  .qr-container :global(canvas) {
-    max-width: 100%;
-    height: auto;
-    display: block;
-  }
-
-  @media (max-width: 768px) {
-    .qr-container {
-      padding: 0 1rem;
-    }
-  }
-
-  @media (max-width: 480px) {
-    .qr-container {
-      padding: 0 0.5rem;
-    }
   }
 </style>
 
