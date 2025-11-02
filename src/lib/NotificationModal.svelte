@@ -4,6 +4,8 @@
   import NotificationItem from "./NotificationItem.svelte";
   import PrizePoolDisplay from "./components/PrizePoolDisplay.svelte";
   import VotingProgressDisplay from "./components/VotingProgressDisplay.svelte";
+  import OpponentReveal from "./components/OpponentReveal.svelte";
+  import VictoryCelebration from "./components/VictoryCelebration.svelte";
   import Modal from "./Modal.svelte";
 
   let {
@@ -33,14 +35,23 @@
   }>();
 
   // Component mapping
-  const componentMap: Record<string, any> = {
+  const componentMap = {
     PrizePoolDisplay: PrizePoolDisplay,
     VotingProgressDisplay: VotingProgressDisplay,
+    OpponentReveal: OpponentReveal,
+    VictoryCelebration: VictoryCelebration,
   };
 
   const DisplayComponent = $derived(() => {
     if (!notification.displayComponent) return null;
-    return componentMap[notification.displayComponent] || null;
+    const component = componentMap[notification.displayComponent] || null;
+    console.log("🔍 DisplayComponent check:", {
+      displayComponent: notification.displayComponent,
+      resourceType: notification.resourceType,
+      componentFound: !!component,
+      componentMapKeys: Object.keys(componentMap),
+    });
+    return component;
   });
 
   // Get component props based on component type
@@ -69,6 +80,39 @@
         projectSide,
         votesReceived,
         notificationIcon: notification.icon,
+      };
+    }
+
+    if (
+      notification.displayComponent === "OpponentReveal" &&
+      notification.resourceType === "opponentReveal"
+    ) {
+      // Parse matchId and opponentProjectId from resourceId (format: "matchId|opponentProjectId")
+      const parts = notification.resourceId.split("|");
+      const matchId = parts[0];
+      const opponentProjectId = parts[1] || "";
+      console.log("🎯 OpponentReveal props:", {
+        matchId,
+        opponentProjectId,
+        resourceId: notification.resourceId,
+      });
+      return {
+        matchId,
+        opponentProjectId,
+      };
+    }
+
+    if (
+      notification.displayComponent === "VictoryCelebration" &&
+      notification.resourceType === "cupWin"
+    ) {
+      // Parse cupId and projectId from resourceId (format: "cupId|projectId")
+      const parts = notification.resourceId.split("|");
+      const cupId = parts[0] || "";
+      // The cup name is not in the notification, but VictoryCelebration will fetch it
+      return {
+        cupId,
+        cupName: "", // Will be fetched by the component
       };
     }
 
@@ -167,7 +211,16 @@
     {@const props = getComponentProps()}
     {#if Component}
       <div class="display-component-wrapper">
-        <Component {...props} />
+        {#if notification.displayComponent === "OpponentReveal"}
+          <Component
+            matchId={props.matchId}
+            opponentProjectId={props.opponentProjectId}
+          />
+        {:else if notification.displayComponent === "VictoryCelebration"}
+          <Component cupId={props.cupId} cupName={props.cupName} />
+        {:else}
+          <Component {...props} />
+        {/if}
       </div>
     {/if}
   {/if}
@@ -199,6 +252,10 @@
     width: 100%;
     margin-bottom: 1.5rem;
     padding: 0;
+    min-height: 300px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
 
   .notification-content-wrapper {

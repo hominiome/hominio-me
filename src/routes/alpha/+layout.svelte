@@ -13,6 +13,7 @@
   import NotificationBell from "$lib/NotificationBell.svelte";
   import Modal from "$lib/Modal.svelte";
   import InviteOnlyContent from "$lib/InviteOnlyContent.svelte";
+  import ProjectDetailContent from "$lib/ProjectDetailContent.svelte";
   import { goto } from "$app/navigation";
 
   // Get session data from layout server and children snippet
@@ -30,6 +31,7 @@
   let notificationsView: any = null;
   let notificationSound = $state<HTMLAudioElement | null>(null);
   let previousNotificationIds = $state<Set<string>>(new Set());
+  let priorityNotificationQueue = $state<any[]>([]);
 
   // Get Zero server URL from environment (defaults to localhost:4848 for dev)
   const zeroServerUrl = browser
@@ -110,27 +112,59 @@
                 (n) => n.priority !== "true"
               );
               
-              // If there's a priority notification, force open it and close all other modals
-              // Priority notifications should always open, even if a notification modal is already open
+              // Handle priority notifications with queue system
               if (priorityNotifications.length > 0) {
                 console.log("🔔 Priority notification detected:", priorityNotifications.length, "notifications");
                 
-                // Close any other modals by clearing URL params
-                const url = new URL(window.location.href);
-                if (url.searchParams.has("modal")) {
-                  url.searchParams.delete("modal");
-                  url.searchParams.delete("projectId");
-                  url.searchParams.delete("cupId");
-                  goto(url.pathname + url.search, { replaceState: true });
+                // Sort by createdAt descending (newest first)
+                const sortedPriority = priorityNotifications.sort((a, b) => 
+                  new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+                );
+                
+                // Clean up queue: remove already-read notifications
+                priorityNotificationQueue = priorityNotificationQueue.filter(n => {
+                  const notification = newNotifications.find(notif => notif.id === n.id);
+                  return notification && notification.read === "false";
+                });
+                
+                // Add new priority notifications to queue (avoid duplicates and already-read)
+                const currentQueueIds = new Set(priorityNotificationQueue.map(n => n.id));
+                const newPriorityNotifications = sortedPriority.filter(n => 
+                  !currentQueueIds.has(n.id) && n.read === "false"
+                );
+                
+                if (newPriorityNotifications.length > 0) {
+                  // Add to queue, maintaining sort order (newest first)
+                  priorityNotificationQueue = [...priorityNotificationQueue, ...newPriorityNotifications]
+                    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+                  
+                  console.log("🔔 Priority queue updated:", priorityNotificationQueue.length, "notifications in queue");
                 }
                 
-                // Open the first priority notification directly (skip preview)
-                // Always open priority notifications, even if another notification modal is open
-                const priorityNotification = priorityNotifications.sort((a, b) => 
-                  new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-                )[0];
-                console.log("🔔 Opening priority notification:", priorityNotification.id, priorityNotification.title);
-                notificationModal = priorityNotification;
+                // Check if we should show a priority notification
+                const isCurrentModalPriority = notificationModal && 
+                  notifications.find(n => n.id === notificationModal.id)?.priority === "true";
+                
+                // Only show priority notification if:
+                // 1. No modal is currently open, OR
+                // 2. Current modal is not a priority notification
+                if (!notificationModal || !isCurrentModalPriority) {
+                  if (priorityNotificationQueue.length > 0) {
+                    // Close any other modals by clearing URL params
+                    const url = new URL(window.location.href);
+                    if (url.searchParams.has("modal")) {
+                      url.searchParams.delete("modal");
+                      url.searchParams.delete("projectId");
+                      url.searchParams.delete("cupId");
+                      goto(url.pathname + url.search, { replaceState: true });
+                    }
+                    
+                    // Show the first notification in queue
+                    const nextPriorityNotification = priorityNotificationQueue[0];
+                    console.log("🔔 Opening priority notification from queue:", nextPriorityNotification.id, nextPriorityNotification.title);
+                    notificationModal = nextPriorityNotification;
+                  }
+                }
               }
               // For non-priority notifications, they will show in the preview bell
               // Preview bell will show if there are unread notifications and no modal is open
@@ -194,9 +228,29 @@
   function handleNotificationClose() {
     // Mark the current notification as read before closing
     if (notificationModal) {
+      const isPriority = notifications.find(n => n.id === notificationModal.id)?.priority === "true";
       handleNotificationMarkRead(notificationModal.id);
+      
+      // If it was a priority notification, remove it from queue
+      if (isPriority) {
+        priorityNotificationQueue = priorityNotificationQueue.filter(n => n.id !== notificationModal.id);
+        console.log("🔔 Removed from priority queue, remaining:", priorityNotificationQueue.length);
+      }
+      
+      notificationModal = null;
+      
+      // If there are more priority notifications in queue, show the next one
+      if (isPriority && priorityNotificationQueue.length > 0) {
+        const nextPriorityNotification = priorityNotificationQueue[0];
+        console.log("🔔 Opening next priority notification from queue:", nextPriorityNotification.id);
+        // Small delay to allow modal close animation
+        setTimeout(() => {
+          notificationModal = nextPriorityNotification;
+        }, 300);
+      }
+    } else {
+      notificationModal = null;
     }
-    notificationModal = null;
   }
 
   async function handleNotificationMarkRead(id: string) {
@@ -204,6 +258,9 @@
     notifications = notifications.map((n) =>
       n.id === id ? { ...n, read: "true" } : n
     );
+    
+    // Remove from priority queue if it's there
+    priorityNotificationQueue = priorityNotificationQueue.filter(n => n.id !== id);
 
     // Also update via API to persist
     try {
@@ -363,6 +420,7 @@
   const showInviteModal = $derived(modalType === "invite");
   const showCreateProjectModal = $derived(modalType === "create-project");
   const showEditProjectModal = $derived(modalType === "edit-project" && !!modalProjectId);
+  const showProjectDetailModal = $derived(modalType === "project-detail" && !!modalProjectId);
   const showCreateCupModal = $derived(modalType === "create-cup");
   const showEditCupModal = $derived(modalType === "edit-cup" && !!modalCupId);
   
@@ -393,7 +451,7 @@
         goto(url.pathname + url.search, { replaceState: true });
       } else {
         // Non-priority notification, close it when URL modal opens
-        notificationModal = null;
+      notificationModal = null;
       }
     }
   });
@@ -577,25 +635,43 @@
       showEditProjectModal,
       showCreateCupModal,
       showEditCupModal,
-      shouldShowPreview: !notificationModal && !showInviteModal && !showCreateProjectModal && !showEditProjectModal && !showCreateCupModal && !showEditCupModal && unreadCount > 0
+      shouldShowPreview: !notificationModal && !showInviteModal && !showCreateProjectModal && !showEditProjectModal && !showProjectDetailModal && !showCreateCupModal && !showEditCupModal && unreadCount > 0
     });
   });
 
   // Close modal if the current notification is marked as read
-  // Don't auto-open next notification - let preview bell show instead
+  // For priority notifications, show next in queue
   $effect(() => {
     if (notificationModal) {
       // Check if the current modal notification has been marked as read
       const currentNotification = notifications.find(n => n.id === notificationModal.id);
       if (currentNotification && currentNotification.read === "true") {
-        // Close current modal - preview bell will show if there are remaining unread notifications
+        const isPriority = currentNotification.priority === "true";
+        
+        // If it was a priority notification, remove it from queue
+        if (isPriority) {
+          priorityNotificationQueue = priorityNotificationQueue.filter(n => n.id !== notificationModal.id);
+          console.log("🔔 Priority notification marked as read, removed from queue, remaining:", priorityNotificationQueue.length);
+        }
+        
+        // Close current modal
         notificationModal = null;
+        
+        // If there are more priority notifications in queue, show the next one
+        if (isPriority && priorityNotificationQueue.length > 0) {
+          const nextPriorityNotification = priorityNotificationQueue[0];
+          console.log("🔔 Opening next priority notification from queue:", nextPriorityNotification.id);
+          // Small delay to allow modal close animation
+          setTimeout(() => {
+            notificationModal = nextPriorityNotification;
+          }, 300);
+        }
       }
     }
   });
 </script>
 
-{#if $session.data?.user && zeroReady && !notificationModal && !showInviteModal && !showCreateProjectModal && !showEditProjectModal && !showCreateCupModal && !showEditCupModal && unreadCount > 0}
+{#if $session.data?.user && zeroReady && !notificationModal && !showInviteModal && !showCreateProjectModal && !showEditProjectModal && !showProjectDetailModal && !showCreateCupModal && !showEditCupModal && unreadCount > 0}
   <NotificationBell 
     unreadCount={unreadCount} 
     onClick={openNotificationModal}
@@ -632,6 +708,12 @@
 {#if showInviteModal && $session.data?.user}
   <Modal open={showInviteModal} onClose={handleModalClose}>
     <InviteOnlyContent />
+  </Modal>
+{/if}
+
+{#if showProjectDetailModal && modalProjectId}
+  <Modal open={showProjectDetailModal} onClose={handleModalClose}>
+    <ProjectDetailContent projectId={modalProjectId} onClose={handleModalClose} />
   </Modal>
 {/if}
 

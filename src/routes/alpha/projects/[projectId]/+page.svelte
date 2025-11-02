@@ -240,46 +240,49 @@
         ← Back to Projects
       </a>
 
+      <!-- Full-Width Video/Thumbnail Header -->
+      {#if showVideoThumbnail}
+        <div class="video-header-full-width mb-6">
+          <div class="video-thumbnail-full-width">
+            <img
+              src={thumbnailUrl}
+              alt={project.title}
+              class="video-thumbnail-img-full"
+              onerror={(e) => {
+                e.target.src = `https://picsum.photos/seed/${project.id || 'project'}/400/225`;
+              }}
+            />
+            <button
+              class="video-play-button-full"
+              title="Play {project.title}"
+              onclick={() => {
+                showVideoThumbnail = false;
+              }}
+            >
+              <svg class="play-icon-full" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M8 5v14l11-7z" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      {:else}
+        <div class="video-header-full-width mb-6">
+          <div class="video-embed-full-width">
+            <iframe
+              src={videoEmbedUrl}
+              class="video-iframe-full-width"
+              title="Project video"
+              frameborder="0"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowfullscreen
+            ></iframe>
+          </div>
+        </div>
+      {/if}
+
       <!-- Project Header -->
       <div class="card p-6 md:p-8 mb-6">
         <div class="flex flex-col md:flex-row md:items-start gap-6">
-          <!-- Video Player / Thumbnail -->
-          <div class="video-container">
-            {#if showVideoThumbnail}
-              <div class="video-wrapper">
-                <img
-                  src={thumbnailUrl}
-                  alt={project.title}
-                  class="video-thumbnail"
-                  onerror={(e) => {
-                    e.target.src = `https://picsum.photos/seed/${project.id || 'project'}/400/225`;
-                  }}
-                />
-                <button
-                  class="video-play-button"
-                  title="Play {project.title}"
-                  onclick={() => {
-                    showVideoThumbnail = false;
-                  }}
-                >
-                  <svg class="play-icon" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M8 5v14l11-7z" />
-                  </svg>
-                </button>
-              </div>
-            {:else}
-              <div class="video-embed">
-                <iframe
-                  src={videoEmbedUrl}
-                  class="video-iframe"
-                  title="Project video"
-                  frameborder="0"
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                  allowfullscreen
-                ></iframe>
-              </div>
-            {/if}
-          </div>
 
           <div class="flex-1">
             <div class="flex items-start justify-between gap-4 mb-4">
@@ -552,6 +555,79 @@
     }
   }
 
+  /* Full-width video/thumbnail header */
+  .video-header-full-width {
+    width: 100%;
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 8px 32px rgba(26, 26, 78, 0.12);
+  }
+
+  .video-thumbnail-full-width {
+    position: relative;
+    width: 100%;
+    padding-bottom: 56.25%; /* 16:9 aspect ratio */
+    height: 0;
+    overflow: hidden;
+    background: #000;
+  }
+
+  .video-thumbnail-img-full {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .video-play-button-full {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 80px;
+    height: 80px;
+    background: rgba(0, 0, 0, 0.7);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    border: none;
+    cursor: pointer;
+    transition: all 0.3s;
+    backdrop-filter: blur(4px);
+  }
+
+  .video-play-button-full:hover {
+    background: rgba(0, 0, 0, 0.9);
+    transform: translate(-50%, -50%) scale(1.1);
+  }
+
+  .play-icon-full {
+    width: 40px;
+    height: 40px;
+    margin-left: 4px; /* Center the triangle */
+  }
+
+  .video-embed-full-width {
+    position: relative;
+    padding-bottom: 56.25%; /* 16:9 aspect ratio */
+    height: 0;
+    overflow: hidden;
+    background: #000;
+  }
+
+  .video-iframe-full-width {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    border: none;
+  }
+
   .video-wrapper {
     position: relative;
     width: 100%;
@@ -673,8 +749,8 @@
   }
 
   .match-item.lost {
-    border-left-color: #ef4444;
-    background: #fef2f2;
+    background: linear-gradient(135deg, #f8f9fa 0%, #f5f5f5 100%);
+    border-left: 3px solid rgba(78, 205, 196, 0.3);
   }
 
   .match-item:hover {
@@ -712,8 +788,9 @@
   }
 
   .match-result.lost {
-    background: #ef4444;
-    color: white;
+    background: rgba(78, 205, 196, 0.15);
+    color: rgba(26, 26, 78, 0.7);
+    border: 1px solid rgba(78, 205, 196, 0.2);
   }
 
   .match-result.voting {

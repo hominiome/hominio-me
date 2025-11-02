@@ -4,6 +4,8 @@
   import { getYouTubeEmbedUrl } from "$lib/youtubeUtils";
   import CountdownTimer from "$lib/CountdownTimer.svelte";
   import { getMatchEndDate } from "$lib/dateUtils.js";
+  import { goto } from "$app/navigation";
+  import { page } from "$app/stores";
 
   // Props
   let {
@@ -179,6 +181,22 @@
               {project1.description}
             </p>
           {/if}
+
+          <!-- More Button -->
+          {#if project1?.id}
+            <button
+              class="project-more-button project-more-button-yellow"
+              onclick={(e) => {
+                e.stopPropagation();
+                const url = new URL($page.url);
+                url.searchParams.set("modal", "project-detail");
+                url.searchParams.set("projectId", project1.id);
+                goto(url.pathname + url.search, { replaceState: true, noScroll: true });
+              }}
+            >
+              More
+            </button>
+          {/if}
         </div>
 
         <!-- Video Preview Card (16:9) -->
@@ -274,6 +292,22 @@
               {project2.description}
             </p>
           {/if}
+
+          <!-- More Button -->
+          {#if project2?.id}
+            <button
+              class="project-more-button project-more-button-teal"
+              onclick={(e) => {
+                e.stopPropagation();
+                const url = new URL($page.url);
+                url.searchParams.set("modal", "project-detail");
+                url.searchParams.set("projectId", project2.id);
+                goto(url.pathname + url.search, { replaceState: true, noScroll: true });
+              }}
+            >
+              More
+            </button>
+          {/if}
         </div>
 
         <!-- Video Preview Card (16:9) -->
@@ -296,7 +330,7 @@
               style="background-image: url('{thumbnail2Url()}')"
             ></div>
             <button
-              class="play-btn-center"
+              class="play-btn-center play-btn-teal"
               onclick={() => toggleVideo(`${match.id}-p2`)}
               aria-label="Watch {project2?.title || 'project'} pitch"
             >
@@ -481,10 +515,9 @@
     border-top: 4px solid #4ecdc4;
   }
 
-  /* Loser styling - black and white/grey */
+  /* Loser styling - soft and encouraging */
   .project-card.loser {
-    filter: grayscale(100%);
-    opacity: 0.6;
+    opacity: 0.85;
     position: relative;
   }
 
@@ -495,8 +528,9 @@
     left: 0;
     right: 0;
     bottom: 0;
-    background: rgba(0, 0, 0, 0.15);
+    background: rgba(78, 205, 196, 0.05);
     pointer-events: none;
+    border-radius: 16px;
   }
 
   /* Project Info Section */
@@ -583,6 +617,60 @@
     margin: 0;
   }
 
+  /* More Button */
+  .project-more-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.375rem 0.75rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    border-radius: 6px;
+    text-decoration: none;
+    transition: all 0.2s ease;
+    margin-top: 0.25rem;
+    align-self: flex-start;
+    border: 2px solid;
+    background: white;
+    cursor: pointer;
+    font-family: inherit;
+  }
+
+  .project-more-button-yellow {
+    background: white;
+    color: #f4d03f;
+    border-color: #f4d03f;
+  }
+
+  .project-more-button-yellow:hover {
+    background: #f4d03f;
+    color: #1a1a4e;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(244, 208, 63, 0.3);
+  }
+
+  .project-more-button-teal {
+    background: white;
+    color: #4ecdc4;
+    border-color: #4ecdc4;
+  }
+
+  .project-more-button-teal:hover {
+    background: #4ecdc4;
+    color: #1a1a4e;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(78, 205, 196, 0.3);
+  }
+
+  /* Mobile responsive adjustments */
+  @media (max-width: 768px) {
+    .project-more-button {
+      padding: 0.25rem 0.5rem;
+      font-size: 0.6875rem;
+      margin-top: 0.125rem;
+    }
+  }
+
   /* Video Card (16:9) */
   .video-card {
     width: 100%;
@@ -590,6 +678,56 @@
     margin-top: auto; /* Push video to bottom of card */
     min-height: 0; /* Allow flex shrinking */
     align-self: flex-end; /* Align to bottom */
+    position: relative;
+  }
+
+  /* Inline Video Container */
+  .video-inline-container {
+    position: relative;
+    width: 100%;
+    padding-bottom: 56.25%; /* 16:9 aspect ratio */
+    height: 0;
+    overflow: hidden;
+    background: #000;
+    border-radius: 12px;
+  }
+
+  .video-iframe-inline {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    border: none;
+  }
+
+  .close-video-inline {
+    position: absolute;
+    top: 0.5rem;
+    right: 0.5rem;
+    width: 32px;
+    height: 32px;
+    background: rgba(0, 0, 0, 0.7);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    border: none;
+    cursor: pointer;
+    z-index: 10;
+    transition: all 0.2s;
+    backdrop-filter: blur(4px);
+  }
+
+  .close-video-inline:hover {
+    background: rgba(0, 0, 0, 0.9);
+    transform: scale(1.1);
+  }
+
+  .close-icon-small {
+    width: 18px;
+    height: 18px;
   }
 
   /* Voters below progress bar */
@@ -634,6 +772,10 @@
 
   /* Play Button (Centered) */
   .play-btn-center {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
     width: 80px;
     height: 80px;
     border: none;
@@ -645,12 +787,23 @@
     justify-content: center;
     transition: all 0.3s ease;
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+    z-index: 10;
   }
 
   .play-btn-center:hover {
-    transform: scale(1.1);
+    transform: translate(-50%, -50%) scale(1.1);
     background: rgba(244, 208, 63, 1);
     box-shadow: 0 12px 40px rgba(244, 208, 63, 0.5);
+  }
+
+  /* Teal play button for right competitor */
+  .play-btn-teal {
+    background: rgba(78, 205, 196, 0.95) !important;
+  }
+
+  .play-btn-teal:hover {
+    background: rgba(78, 205, 196, 1) !important;
+    box-shadow: 0 12px 40px rgba(78, 205, 196, 0.5) !important;
   }
 
   .play-icon {
@@ -1012,15 +1165,14 @@
     letter-spacing: -0.02em;
   }
 
-  /* Loser styling for progress bar and vote counts */
+  /* Loser styling for progress bar and vote counts - soft and encouraging */
   .loser-bar {
-    background: linear-gradient(90deg, #9e9e9e 0%, #757575 100%) !important;
-    filter: grayscale(100%);
+    background: linear-gradient(90deg, rgba(78, 205, 196, 0.25) 0%, rgba(78, 205, 196, 0.15) 100%) !important;
   }
 
   .loser-count {
-    background: linear-gradient(135deg, #e0e0e0 0%, #bdbdbd 100%) !important;
-    color: #757575 !important;
+    background: linear-gradient(135deg, rgba(78, 205, 196, 0.2) 0%, rgba(78, 205, 196, 0.1) 100%) !important;
+    color: rgba(26, 26, 78, 0.6) !important;
     text-shadow: none !important;
   }
 

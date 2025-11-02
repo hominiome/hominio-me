@@ -2,6 +2,7 @@ import { json } from "@sveltejs/kit";
 import { nanoid } from "nanoid";
 import { requireAdmin } from "$lib/api-helpers.server.js";
 import { zeroDb } from "$lib/db.server.js";
+import { getNotificationConfig } from "$lib/notification-helpers.server.js";
 
 export async function POST({ request }) {
   // Require admin access (throws 401/403 if not authenticated/admin)
@@ -174,6 +175,76 @@ export async function POST({ request }) {
             endDate: endDate, // Set round-level end date
           })
           .execute();
+
+        // Create opponent reveal notifications for both participants
+        // Get project owners
+        const project1 = await zeroDb
+          .selectFrom("project")
+          .select(["userId"])
+          .where("id", "=", winner1.winnerId)
+          .executeTakeFirst();
+
+        const project2 = await zeroDb
+          .selectFrom("project")
+          .select(["userId"])
+          .where("id", "=", winner2.winnerId)
+          .executeTakeFirst();
+
+        // Notify project1 owner about project2 (their opponent)
+        if (project1?.userId) {
+          const notificationConfig = getNotificationConfig("opponentReveal", "revealed", {
+            matchId: matchId,
+          });
+
+          const notificationId = nanoid();
+          await zeroDb
+            .insertInto("notification")
+            .values({
+              id: notificationId,
+              userId: project1.userId,
+              resourceType: "opponentReveal",
+              resourceId: `${matchId}|${winner2.winnerId}`, // matchId|opponentProjectId
+              title: notificationConfig.title,
+              previewTitle: notificationConfig.previewTitle || null,
+              message: notificationConfig.message,
+              read: "false",
+              createdAt: now,
+              actions: JSON.stringify(notificationConfig.actions),
+              sound: notificationConfig.sound || null,
+              icon: notificationConfig.icon || null,
+              displayComponent: notificationConfig.displayComponent || null,
+              priority: notificationConfig.priority ? "true" : "false",
+            })
+            .execute();
+        }
+
+        // Notify project2 owner about project1 (their opponent)
+        if (project2?.userId) {
+          const notificationConfig = getNotificationConfig("opponentReveal", "revealed", {
+            matchId: matchId,
+          });
+
+          const notificationId = nanoid();
+          await zeroDb
+            .insertInto("notification")
+            .values({
+              id: notificationId,
+              userId: project2.userId,
+              resourceType: "opponentReveal",
+              resourceId: `${matchId}|${winner1.winnerId}`, // matchId|opponentProjectId
+              title: notificationConfig.title,
+              previewTitle: notificationConfig.previewTitle || null,
+              message: notificationConfig.message,
+              read: "false",
+              createdAt: now,
+              actions: JSON.stringify(notificationConfig.actions),
+              sound: notificationConfig.sound || null,
+              icon: notificationConfig.icon || null,
+              displayComponent: notificationConfig.displayComponent || null,
+              priority: notificationConfig.priority ? "true" : "false",
+            })
+            .execute();
+        }
       }
     }
 

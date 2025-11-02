@@ -1,4 +1,4 @@
-<script lang="ts">
+<script>
   import { nanoid } from "nanoid";
   import { getContext } from "svelte";
   import { onMount } from "svelte";
@@ -13,38 +13,31 @@
   import { goto } from "$app/navigation";
 
   // Get Zero instance from context (initialized in layout)
-  const zeroContext = getContext<{
-    getInstance: () => any;
-    isReady: () => boolean;
-  }>("zero");
+  const zeroContext = getContext("zero");
 
-  let zero: any = null;
-  let projects = $state<any[]>([]);
+  let zero = null;
+  let projects = $state([]);
   let loading = $state(true);
   let showCreateForm = $state(false);
   let isAdmin = $state(false);
-  let userProfiles = $state<
-    Map<string, { name: string | null; image: string | null }>
-  >(new Map());
-  let userIdentities = $state<any[]>([]);
-  let userIdentitiesView: any = null;
+  let userProfiles = $state(
+    new Map()
+  );
+  let userIdentities = $state([]);
+  let userIdentitiesView = null;
   // Track which user images have failed to load
-  let failedImages = $state<Set<string>>(new Set());
+  let failedImages = $state(new Set());
 
   // Form state
   let newProject = $state({
     title: "",
     description: "",
-    country: null as { name: string } | null,
+    country: null,
     city: "",
     videoUrl: "",
-    sdgs: [] as string[],
+    sdgs: [],
   });
-  let selectedOwner = $state<{
-    id: string;
-    name: string | null;
-    image: string | null;
-  } | null>(null);
+  let selectedOwner = $state(null);
 
   // All available SDGs
   const availableSDGs = [
@@ -67,7 +60,7 @@
     { id: "17_Partnerships", name: "Partnerships" },
   ];
 
-  function toggleSDG(sdgId: string) {
+  function toggleSDG(sdgId) {
     if (newProject.sdgs.includes(sdgId)) {
       newProject.sdgs = newProject.sdgs.filter((id) => id !== sdgId);
     } else {
@@ -112,23 +105,19 @@
   });
   
   // Edit form state (declare before derived that uses it)
-  let editProject = $state<any>(null);
+  let editProject = $state(null);
   let editLoading = $state(false);
   let editSaving = $state(false);
   let editFormData = $state({
     title: "",
     description: "",
-    country: null as { name: string } | null,
+    country: null,
     city: "",
     videoUrl: "",
     videoThumbnail: "",
-    sdgs: [] as string[],
+    sdgs: [],
   });
-  let editSelectedOwner = $state<{
-    id: string;
-    name: string | null;
-    image: string | null;
-  } | null>(null);
+  let editSelectedOwner = $state(null);
   
   // Form validation states (after state declarations)
   const canCreateProject = $derived(
@@ -151,14 +140,14 @@
   
   // Submit handlers
   function handleCreateSubmit() {
-    const form = document.getElementById("create-project-form") as HTMLFormElement;
+    const form = document.getElementById("create-project-form");
     if (form && canCreateProject) {
       form.requestSubmit();
     }
   }
   
   function handleEditSubmit() {
-    const form = document.getElementById("edit-project-form") as HTMLFormElement;
+    const form = document.getElementById("edit-project-form");
     if (form && canSaveEditProject) {
       form.requestSubmit();
     }
@@ -167,7 +156,7 @@
   // Expose submit functions and state globally for layout to access (reactive)
   $effect(() => {
     if (typeof window !== "undefined") {
-      (window as any).__projectModalActions = {
+      window.__projectModalActions = {
         handleCreateSubmit,
         handleEditSubmit,
         canCreateProject,
@@ -249,8 +238,8 @@
         } else {
           console.log("🔍 Project not in list, querying Zero directly");
           // Not in list, query directly from Zero using a listener
-          let projectView: any = null;
-          let timeoutId: any = null;
+          let projectView = null;
+          let timeoutId = null;
           let hasReceivedData = false;
           
           (async () => {
@@ -262,7 +251,7 @@
               projectView = projectQuery.materialize();
               
               // Use listener to get the project data
-              projectView.addListener((data: any) => {
+              projectView.addListener((data) => {
                 hasReceivedData = true;
                 const projectData = Array.from(data || []);
                 console.log("📦 Zero query result:", { count: projectData.length, projectId: editProjectId, data: projectData[0]?.id });
@@ -343,7 +332,7 @@
     }
   });
   
-  function toggleEditSDG(sdgId: string) {
+  function toggleEditSDG(sdgId) {
     if (editFormData.sdgs.includes(sdgId)) {
       editFormData.sdgs = editFormData.sdgs.filter((id) => id !== sdgId);
     } else {
@@ -413,7 +402,7 @@
       return;
     }
 
-    let projectsView: any;
+    let projectsView = null;
 
     // Wait for Zero to be ready
     const checkZero = setInterval(() => {
@@ -425,14 +414,14 @@
         const projectsQuery = zero.query.project.orderBy("createdAt", "desc");
         projectsView = projectsQuery.materialize();
 
-        projectsView.addListener(async (data: any) => {
+        projectsView.addListener(async (data) => {
           const newProjects = Array.from(data);
           projects = newProjects;
           loading = false;
 
           // Fetch user profiles for all projects
           const userIds = [
-            ...new Set(newProjects.map((p: any) => p.userId).filter(Boolean)),
+            ...new Set(newProjects.map((p) => p.userId).filter(Boolean)),
           ];
           if (userIds.length > 0) {
             await prefetchUserProfiles(userIds);
@@ -455,7 +444,7 @@
           const identitiesQuery = zero.query.userIdentities.where("userId", "=", userId);
           userIdentitiesView = identitiesQuery.materialize();
 
-          userIdentitiesView.addListener((data: any) => {
+          userIdentitiesView.addListener((data) => {
             userIdentities = Array.from(data || []);
           });
         }
@@ -525,9 +514,9 @@
   }
 
   let showDeleteConfirm = $state(false);
-  let projectToDelete = $state<string | null>(null);
+  let projectToDelete = $state(null);
 
-  function requestDeleteProject(id: string) {
+  function requestDeleteProject(id) {
     if (!zero || !$session.data?.user) return;
 
     // Find the project
@@ -576,11 +565,11 @@
     }
   }
 
-  function isMyProject(project: any) {
+  function isMyProject(project) {
     return project.userId === $session.data?.user?.id;
   }
 
-  function canEditProject(project: any) {
+  function canEditProject(project) {
     // Only admins can edit projects
     return isAdmin;
   }

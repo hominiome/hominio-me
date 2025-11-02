@@ -1,7 +1,34 @@
 import { json } from "@sveltejs/kit";
+import { nanoid } from "nanoid";
 import { requireAdmin } from "$lib/api-helpers.server.js";
 import { zeroDb } from "$lib/db.server.js";
 import { checkAndCloseExpired } from "$lib/expiry-checker.server.js";
+import { getNotificationConfig } from "$lib/notification-helpers.server.js";
+
+function getRoundLabel(round) {
+  switch (round) {
+    case "round_4":
+      return "Round of 4";
+    case "round_8":
+      return "Round of 8";
+    case "round_16":
+      return "Round of 16";
+    case "round_32":
+      return "Round of 32";
+    case "round_64":
+      return "Round of 64";
+    case "round_128":
+      return "Round of 128";
+    case "quarter":
+      return "Quarter Finals";
+    case "semi":
+      return "Semi Finals";
+    case "final":
+      return "Final";
+    default:
+      return round;
+  }
+}
 
 export async function POST({ request }) {
   // Require admin access (throws 401/403 if not authenticated/admin)
@@ -122,8 +149,92 @@ export async function POST({ request }) {
     // Count winners
     const winnersCount = finalMatches.filter((m) => m.winnerId).length;
 
-    // Check if this is the final round
+    // Check if this is the final round BEFORE creating notifications
     const isFinalRound = currentRound === "final";
+
+    // Create round win notifications for all winners (only if NOT final round)
+    // Also create match loss notifications for losers
+    const roundLabel = getRoundLabel(currentRound);
+    for (const match of finalMatches) {
+      if (match.winnerId) {
+        // Get both projects to notify winner and loser
+        const project1 = await zeroDb
+          .selectFrom("project")
+          .select(["userId", "id", "name"])
+          .where("id", "=", match.project1Id)
+          .executeTakeFirst();
+
+        const project2 = await zeroDb
+          .selectFrom("project")
+          .select(["userId", "id", "name"])
+          .where("id", "=", match.project2Id)
+          .executeTakeFirst();
+
+        // Notify winner (only if NOT final round - final round gets champion notification instead)
+        const winningProject = match.winnerId === match.project1Id ? project1 : project2;
+        if (winningProject?.userId && !isFinalRound) {
+          const notificationConfig = getNotificationConfig("roundWin", "won", {
+            roundName: roundLabel,
+            cupName: updatedCup.name,
+          });
+
+          const notificationId = nanoid();
+          await zeroDb
+            .insertInto("notification")
+            .values({
+              id: notificationId,
+              userId: winningProject.userId,
+              resourceType: "roundWin",
+              resourceId: `${match.id}|${match.winnerId}`,
+              title: notificationConfig.title,
+              previewTitle: notificationConfig.previewTitle || null,
+              message: notificationConfig.message,
+              read: "false",
+              createdAt: now,
+              actions: JSON.stringify(notificationConfig.actions),
+              sound: notificationConfig.sound || null,
+              icon: notificationConfig.icon || null,
+              displayComponent: notificationConfig.displayComponent || null,
+              priority: notificationConfig.priority ? "true" : "false",
+            })
+            .execute();
+        }
+
+        // Notify loser
+        const losingProject = match.winnerId === match.project1Id ? project2 : project1;
+        const winningProjectName = winningProject?.name || "an opponent";
+        if (losingProject?.userId) {
+          // Create message with winning project name
+          const lossMessage = `This Time ${winningProjectName} made it. But success isn't just about winning - it's about the lessons learned. You've gained invaluable insights. Stand up quick and continue your founder journey! Your day will come soon!`;
+          
+          const notificationConfig = getNotificationConfig("matchLoss", "eliminated", {
+            message: lossMessage,
+            winningProjectName: winningProjectName,
+          });
+
+          const notificationId = nanoid();
+          await zeroDb
+            .insertInto("notification")
+            .values({
+              id: notificationId,
+              userId: losingProject.userId,
+              resourceType: "matchLoss",
+              resourceId: `${match.id}|${losingProject.id}`,
+              title: notificationConfig.title,
+              previewTitle: notificationConfig.previewTitle || null,
+              message: notificationConfig.message,
+              read: "false",
+              createdAt: now,
+              actions: JSON.stringify(notificationConfig.actions),
+              sound: notificationConfig.sound || null,
+              icon: notificationConfig.icon || null,
+              displayComponent: notificationConfig.displayComponent || null,
+              priority: notificationConfig.priority ? "true" : "false",
+            })
+            .execute();
+        }
+      }
+    }
 
     if (isFinalRound) {
       // Final round completed, mark cup as completed
@@ -138,6 +249,50 @@ export async function POST({ request }) {
         })
         .where("id", "=", cupId)
         .execute();
+
+      // Create cup win celebration notification for the champion
+      if (finalWinner?.winnerId) {
+        const championProject = await zeroDb
+          .selectFrom("project")
+          .select(["userId"])
+          .where("id", "=", finalWinner.winnerId)
+          .executeTakeFirst();
+
+        if (championProject?.userId) {
+          // Re-fetch cup to ensure we have the latest name
+          const finalCup = await zeroDb
+            .selectFrom("cup")
+            .selectAll()
+            .where("id", "=", cupId)
+            .executeTakeFirst();
+
+          const notificationConfig = getNotificationConfig("cupWin", "champion", {
+            cupName: finalCup?.name || updatedCup.name,
+            cupId: cupId,
+          });
+
+          const notificationId = nanoid();
+          await zeroDb
+            .insertInto("notification")
+            .values({
+              id: notificationId,
+              userId: championProject.userId,
+              resourceType: "cupWin",
+              resourceId: `${cupId}|${finalWinner.winnerId}`,
+              title: notificationConfig.title,
+              previewTitle: notificationConfig.previewTitle || null,
+              message: notificationConfig.message,
+              read: "false",
+              createdAt: now,
+              actions: JSON.stringify(notificationConfig.actions),
+              sound: notificationConfig.sound || null,
+              icon: notificationConfig.icon || null,
+              displayComponent: notificationConfig.displayComponent || null,
+              priority: notificationConfig.priority ? "true" : "false",
+            })
+            .execute();
+        }
+      }
     }
 
     return json({

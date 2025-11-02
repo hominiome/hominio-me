@@ -202,31 +202,32 @@ export async function POST({ request }) {
       .where("id", "=", match.project2Id)
       .executeTakeFirst();
 
-    // Motivating messages - 10 alternating messages
-    const aheadMessages = [
-      "Keep pushing forward! Your supporters believe in you.",
-      "You're leading the way—don't slow down now!",
-      "Momentum is on your side. Ride this wave!",
-      "Every vote counts—you're building something special!",
-      "The community sees your vision. Keep going!",
-      "You're in the lead! Channel this energy forward.",
-      "Your project is resonating. Stay focused!",
-      "Support is pouring in. Harness this power!",
-      "You're winning hearts and minds. Push harder!",
-      "The finish line is in sight. Don't let up!"
+    // Messages when THEY got a vote (encouraging/celebratory)
+    const receivedVoteMessages = [
+      "Awesome! Someone just voted for you. Keep the momentum going!",
+      "Great news! Your support is growing. Share your project with more people!",
+      "Another vote in your favor! Your vision is resonating with voters.",
+      "You're gaining ground! Keep spreading the word about your project.",
+      "Your supporters are showing up! This is your moment to shine.",
+      "Every vote brings you closer. Keep pushing forward!",
+      "Someone believes in your project! Keep sharing your story.",
+      "Your message is reaching people. Don't stop now!",
+      "Another supporter joined your cause. Rally your community!",
+      "You're building momentum! Every vote matters—keep going!"
     ];
 
-    const behindMessages = [
-      "Every comeback starts with a single step. Keep fighting!",
-      "The race isn't over yet. Rally your supporters!",
-      "You've got this! Turn the tide with determination.",
-      "Behind today, ahead tomorrow. Stay focused!",
-      "Your supporters need you now more than ever.",
-      "This is your moment to shine. Don't give up!",
-      "Great stories are written in moments like this. Push forward!",
-      "The best victories come from behind. Keep going!",
-      "You're building something bigger than numbers. Stay strong!",
-      "Momentum can shift in an instant. Believe!"
+    // Messages when OPPONENT got a vote (motivational/rallying)
+    const opponentReceivedVoteMessages = [
+      "Your opponent got a vote, but you're still in this! Rally your supporters!",
+      "The competition is heating up. Now's the time to push harder!",
+      "They got a vote, but don't let up! Your supporters are counting on you.",
+      "This is when champions step up. Share your project and fight back!",
+      "The race isn't over yet. Your community needs to see why you deserve to win!",
+      "They're gaining ground—turn this into motivation! Reach out to your network.",
+      "Every match has its momentum shifts. This is your chance to respond!",
+      "Your supporters are waiting to see you fight. Show them your determination!",
+      "Don't let this slow you down. Great comebacks start with moments like this!",
+      "The best victories come from behind. Rally your community and push forward!"
     ];
 
     // Create notifications for both project owners (if they exist and aren't the voter)
@@ -234,22 +235,22 @@ export async function POST({ request }) {
 
     // Notify project1 owner
     if (project1 && project1.userId !== userId) {
-      const isProject1Ahead = project1Votes > project2Votes;
-      const isProject1Behind = project1Votes < project2Votes;
-      const message = isProject1Ahead 
-        ? getRandomMessage(aheadMessages)
-        : isProject1Behind 
-        ? getRandomMessage(behindMessages)
-        : "The match is tied! Keep fighting for every vote.";
-
       const notificationId = nanoid();
       // Store matchId, projectSide, and votingWeight received in resourceId as "matchId|projectSide|votingWeight"
       // votingWeight is the weight added in THIS event (positive if voted for, negative if voted against)
       const votesReceived = projectSide === "project1" ? votingWeight : -votingWeight;
       
-      const notificationConfig = getNotificationConfig("vote", "received", {
+      // Determine if project1 got the vote or opponent got it
+      const project1GotVote = projectSide === "project1";
+      const notificationSubtype = project1GotVote ? "received" : "opponentReceived";
+      const message = project1GotVote 
+        ? getRandomMessage(receivedVoteMessages)
+        : getRandomMessage(opponentReceivedVoteMessages);
+      
+      const notificationConfig = getNotificationConfig("vote", notificationSubtype, {
         message,
         cupId: match.cupId,
+        matchId: matchId,
       });
       
       await zeroDb
@@ -275,22 +276,22 @@ export async function POST({ request }) {
 
     // Notify project2 owner
     if (project2 && project2.userId !== userId) {
-      const isProject2Ahead = project2Votes > project1Votes;
-      const isProject2Behind = project2Votes < project1Votes;
-      const message = isProject2Ahead 
-        ? getRandomMessage(aheadMessages)
-        : isProject2Behind 
-        ? getRandomMessage(behindMessages)
-        : "The match is tied! Keep fighting for every vote.";
-
       const notificationId = nanoid();
       // Store matchId, projectSide, and votingWeight received in resourceId as "matchId|projectSide|votingWeight"
       // votingWeight is the weight added in THIS event (positive if voted for, negative if voted against)
       const votesReceived = projectSide === "project2" ? votingWeight : -votingWeight;
       
-      const notificationConfig = getNotificationConfig("vote", "received", {
+      // Determine if project2 got the vote or opponent got it
+      const project2GotVote = projectSide === "project2";
+      const notificationSubtype = project2GotVote ? "received" : "opponentReceived";
+      const message = project2GotVote 
+        ? getRandomMessage(receivedVoteMessages)
+        : getRandomMessage(opponentReceivedVoteMessages);
+      
+      const notificationConfig = getNotificationConfig("vote", notificationSubtype, {
         message,
         cupId: match.cupId,
+        matchId: matchId,
       });
       
       await zeroDb

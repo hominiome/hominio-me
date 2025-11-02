@@ -342,12 +342,52 @@
   }
 
   function toggleMatchExpand(matchId) {
+    const url = new URL(window.location.href);
     if (expandedMatch === matchId) {
       expandedMatch = null;
+      // Remove matchId from URL
+      url.searchParams.delete("matchId");
     } else {
       expandedMatch = matchId;
+      // Add matchId to URL
+      url.searchParams.set("matchId", matchId);
     }
+    // Update URL without reloading
+    goto(url.pathname + url.search, { replaceState: true, noScroll: true });
   }
+
+  // Handle route params on mount and when URL changes
+  $effect(() => {
+    const matchIdParam = $page.url.searchParams.get("matchId");
+    if (matchIdParam) {
+      // Check if match exists and is active
+      const match = allMatches.find((m) => m.id === matchIdParam);
+      if (match && isMatchActive(match)) {
+        expandedMatch = matchIdParam;
+        // Scroll to match after a short delay to ensure DOM is ready
+        setTimeout(() => {
+          const element = document.querySelector(`[data-match-id="${matchIdParam}"]`);
+          if (element) {
+            element.scrollIntoView({ behavior: "smooth", block: "center" });
+          }
+        }, 300);
+      } else if (matchIdParam && !match) {
+        // Match not found yet, might still be loading - wait a bit
+        // The effect will re-run when allMatches updates
+      } else if (matchIdParam && match && !isMatchActive(match)) {
+        // Match exists but is not active - remove from URL
+        const url = new URL(window.location.href);
+        url.searchParams.delete("matchId");
+        goto(url.pathname + url.search, { replaceState: true });
+      }
+    } else {
+      // No matchId in URL, but if we have an expanded match, it should be collapsed
+      // Don't auto-collapse if user manually collapsed it
+      if (expandedMatch && !matchIdParam) {
+        // User likely collapsed manually, URL should already be updated
+      }
+    }
+  });
 
   function toggleVideo(videoKey) {
     if (expandedVideo === videoKey) {
@@ -559,7 +599,7 @@
               {@const isExpanded = expandedMatch === match.id}
               {@const roundMatches = group.matches}
 
-              <div class="timeline-item">
+              <div class="timeline-item" data-match-id={match.id}>
                 {#if isExpanded}
                   <!-- Expanded Detail View -->
                   <MatchDetail
