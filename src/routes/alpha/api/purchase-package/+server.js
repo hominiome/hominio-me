@@ -145,7 +145,7 @@ export async function POST({ request }) {
       let actions, message;
       if (isFounder) {
         actions = JSON.stringify([
-          { label: "Create Project", url: "/alpha/projects" }
+          { label: "Create Project", url: "/alpha/projects?create=true" }
         ]);
         message = `Welcome to the founder circle! You can now create and submit your project to compete in the "${cup.name}" competition.`;
       } else {
@@ -223,7 +223,7 @@ export async function POST({ request }) {
       let actions, message;
       if (isFounder) {
         actions = JSON.stringify([
-          { label: "Create Project", url: "/alpha/projects" }
+          { label: "Create Project", url: "/alpha/projects?create=true" }
         ]);
         message = `Welcome to the founder circle! You can now create and submit your project to compete in the "${cup.name}" competition.`;
       } else {

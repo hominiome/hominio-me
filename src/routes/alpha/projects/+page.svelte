@@ -2,6 +2,7 @@
   import { nanoid } from "nanoid";
   import { getContext } from "svelte";
   import { onMount } from "svelte";
+  import { page } from "$app/stores";
   import { authClient } from "$lib/auth.client.js";
   import { getUserProfile, prefetchUserProfiles } from "$lib/userProfileCache";
   import UserAutocomplete from "$lib/UserAutocomplete.svelte";
@@ -92,6 +93,12 @@
   });
 
   onMount(() => {
+    // Check if URL has create parameter to open form directly
+    const shouldCreate = $page.url.searchParams.get("create") === "true";
+    if (shouldCreate && $session.data?.user) {
+      showCreateForm = true;
+    }
+
     if (!zeroContext) {
       console.error("Zero context not found");
       loading = false;
