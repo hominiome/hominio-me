@@ -26,6 +26,8 @@
   let userProfiles = $state<
     Map<string, { name: string | null; image: string | null }>
   >(new Map());
+  let userIdentities = $state<any[]>([]);
+  let userIdentitiesView: any = null;
   // Track which user images have failed to load
   let failedImages = $state<Set<string>>(new Set());
 
@@ -446,17 +448,42 @@
             userProfiles = newUserProfiles; // Trigger reactivity
           }
         });
+
+        // Query user identities to check for founder status
+        if ($session.data?.user) {
+          const userId = $session.data.user.id;
+          const identitiesQuery = zero.query.userIdentities.where("userId", "=", userId);
+          userIdentitiesView = identitiesQuery.materialize();
+
+          userIdentitiesView.addListener((data: any) => {
+            userIdentities = Array.from(data || []);
+          });
+        }
       }
     }, 100);
 
     return () => {
       clearInterval(checkZero);
       if (projectsView) projectsView.destroy();
+      if (userIdentitiesView) userIdentitiesView.destroy();
     };
+  });
+
+  // Check if user has founder identity (any cup)
+  const hasFounderIdentity = $derived(() => {
+    if (!userIdentities || userIdentities.length === 0) return false;
+    return userIdentities.some((identity) => identity.identityType === "founder");
   });
 
   async function createProject() {
     if (!zero || !$session.data?.user) return;
+    
+    // Check if user has founder identity
+    if (!hasFounderIdentity() && !isAdmin) {
+      showError("Only founders can create projects. Please purchase a founder identity first.");
+      return;
+    }
+    
     if (
       !newProject.title.trim() ||
       !newProject.description.trim() ||
@@ -577,7 +604,7 @@
               Explore amazing projects from around the world
             </p>
           </div>
-          {#if $session.data?.user}
+          {#if $session.data?.user && (hasFounderIdentity() || isAdmin)}
             <button
               onclick={() => {
                 const url = new URL($page.url);
