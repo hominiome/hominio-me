@@ -66,7 +66,7 @@
           <div class="icon-badge-group">
             <Icon icon="mdi:bell" class="preview-icon bell-icon" />
             <div class="preview-text">
-              {#if latestTitle && latestTitle.trim() !== ""}
+              {#if latestTitle && typeof latestTitle === "string" && latestTitle.trim() !== ""}
                 <div class="preview-title">{latestTitle}</div>
               {:else}
                 <div class="preview-title">New notification</div>

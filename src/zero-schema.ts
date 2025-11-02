@@ -110,6 +110,7 @@ const notification = table('notification')
     resourceType: string(), // Type of resource: 'identityPurchase', 'match', etc.
     resourceId: string(), // ID of the resource
     title: string(), // Notification title
+    previewTitle: string(), // Optional preview title for curiosity loop (falls back to title if not set)
     message: string(), // Notification message
     read: string(), // 'true' | 'false' (as string for Zero compatibility)
     createdAt: string(), // ISO timestamp
@@ -117,6 +118,7 @@ const notification = table('notification')
     sound: string(), // Optional sound file path (e.g., "/purchase-effect.mp3")
     icon: string(), // Optional Iconify icon name (e.g., "mdi:bell", "material-symbols:notifications")
     displayComponent: string(), // Optional component name to display above header (e.g., "HelloEarth")
+    priority: string(), // 'true' | 'false' (as string for Zero compatibility) - force opens notification, closes other modals
   })
   .primaryKey('id');
 

@@ -91,10 +91,45 @@
 
             notificationsView.addListener((data) => {
               const newNotifications = Array.from(data);
+              
+              // Update notifications array FIRST so preview bell and derived values work immediately
+              notifications = newNotifications;
+              
               // Check for new unread notifications
               const newUnreadNotifications = newNotifications.filter(
                 (n) => n.read === "false" && !previousNotificationIds.has(n.id)
               );
+              
+              // Check for priority notifications that should force open
+              const priorityNotifications = newUnreadNotifications.filter(
+                (n) => n.priority === "true"
+              );
+              
+              // Check for non-priority notifications (for preview bell)
+              const nonPriorityNotifications = newUnreadNotifications.filter(
+                (n) => n.priority !== "true"
+              );
+              
+              // If there's a priority notification, force open it and close all other modals
+              // Only do this if no notification modal is currently open (to avoid interrupting user)
+              if (priorityNotifications.length > 0 && !notificationModal) {
+                // Close any other modals by clearing URL params
+                const url = new URL(window.location.href);
+                if (url.searchParams.has("modal")) {
+                  url.searchParams.delete("modal");
+                  url.searchParams.delete("projectId");
+                  url.searchParams.delete("cupId");
+                  goto(url.pathname + url.search, { replaceState: true });
+                }
+                
+                // Open the first priority notification directly (skip preview)
+                const priorityNotification = priorityNotifications.sort((a, b) => 
+                  new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+                )[0];
+                notificationModal = priorityNotification;
+              }
+              // For non-priority notifications, they will show in the preview bell
+              // Preview bell will show if there are unread notifications and no modal is open
               
               // Play notification sound if there are new unread notifications
               if (newUnreadNotifications.length > 0 && notificationSound) {
@@ -113,7 +148,6 @@
               
               // Update previous notification IDs
               previousNotificationIds = new Set(newNotifications.map((n) => n.id));
-              notifications = newNotifications;
             });
           }
         }
@@ -187,6 +221,8 @@
   );
 
   // Get latest unread notification details
+  // For preview bell, prefer non-priority notifications (to show preview)
+  // Priority notifications will be force-opened and won't show preview
   const latestNotification = $derived(() => {
     const unreadNotifications = notifications.filter((n) => n.read === "false");
     if (unreadNotifications.length > 0) {
@@ -194,18 +230,48 @@
       const sorted = [...unreadNotifications].sort((a, b) => 
         new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
       );
-      return sorted[0] || null;
+      
+      // If there's a non-priority notification, prefer it for preview
+      // Only show priority notifications in preview if no non-priority ones exist
+      // (but priority notifications usually open modals, so this is rare)
+      const nonPriority = sorted.find((n) => n.priority !== "true");
+      if (nonPriority) {
+        return nonPriority;
+      }
+      // Only return priority notification if no modal is open (shouldn't happen often)
+      // If modal is open, don't show preview
+      if (!notificationModal) {
+        return sorted[0] || null;
+      }
+      return null;
     }
     return null;
   });
 
-  const latestNotificationTitle = $derived(
-    latestNotification()?.title?.trim() || ""
-  );
+  // Use previewTitle if available, otherwise fall back to title
+  const latestNotificationTitle = $derived(() => {
+    const latest = latestNotification();
+    if (!latest) return "";
+    const previewTitle = latest.previewTitle;
+    const title = latest.title;
+    // Ensure we return a string, handle null/undefined
+    if (previewTitle && typeof previewTitle === "string") {
+      return previewTitle.trim() || "";
+    }
+    if (title && typeof title === "string") {
+      return title.trim() || "";
+    }
+    return "";
+  });
   const latestNotificationIcon = $derived(latestNotification()?.icon || "");
-  const latestNotificationMessage = $derived(
-    latestNotification()?.message?.trim() || ""
-  );
+  const latestNotificationMessage = $derived(() => {
+    const latest = latestNotification();
+    if (!latest || !latest.message) return "";
+    if (typeof latest.message === "string") {
+      return latest.message.trim() || "";
+    }
+    return "";
+  });
 
   // Function to open notification modal (called by bell click)
   function openNotificationModal() {
@@ -286,6 +352,25 @@
   const showEditProjectModal = $derived(modalType === "edit-project" && !!modalProjectId);
   const showCreateCupModal = $derived(modalType === "create-cup");
   const showEditCupModal = $derived(modalType === "edit-cup" && !!modalCupId);
+  
+  // Ensure only one modal can be open at a time
+  // If notification modal is open, close URL-based modals
+  $effect(() => {
+    if (notificationModal && modalType) {
+      const url = new URL($page.url);
+      url.searchParams.delete("modal");
+      url.searchParams.delete("projectId");
+      url.searchParams.delete("cupId");
+      goto(url.pathname + url.search, { replaceState: true });
+    }
+  });
+  
+  // If URL-based modal is opened, close notification modal
+  $effect(() => {
+    if (modalType && notificationModal) {
+      notificationModal = null;
+    }
+  });
   
   // Reactive state to track project modal actions
   let projectActions = $state<any>(null);
@@ -445,32 +530,37 @@
     goto(url.pathname + url.search, { replaceState: true });
   }
   
-  // Debug
+  // Debug notification state
   $effect(() => {
-    console.log("Layout - notificationModal:", notificationModal, "isModalOpenState:", isModalOpenState, "showInviteModal:", showInviteModal);
+    console.log("🔔 Notification State:", {
+      notificationModal: notificationModal?.id || null,
+      unreadCount,
+      latestNotification: latestNotification()?.id || null,
+      latestTitle: latestNotificationTitle,
+      showInviteModal,
+      showCreateProjectModal,
+      showEditProjectModal,
+      showCreateCupModal,
+      showEditCupModal,
+      shouldShowPreview: !notificationModal && !showInviteModal && !showCreateProjectModal && !showEditProjectModal && !showCreateCupModal && !showEditCupModal && unreadCount > 0
+    });
   });
 
-  // Close modal if the current notification is marked as read and show next one
+  // Close modal if the current notification is marked as read
+  // Don't auto-open next notification - let preview bell show instead
   $effect(() => {
     if (notificationModal) {
       // Check if the current modal notification has been marked as read
       const currentNotification = notifications.find(n => n.id === notificationModal.id);
       if (currentNotification && currentNotification.read === "true") {
-        // Close current modal
+        // Close current modal - preview bell will show if there are remaining unread notifications
         notificationModal = null;
-        // Show next unread notification if available
-        setTimeout(() => {
-          const nextUnread = notifications.find((n) => n.read === "false");
-          if (nextUnread) {
-            notificationModal = nextUnread;
-          }
-        }, 300);
       }
     }
   });
 </script>
 
-{#if $session.data?.user && zeroReady && !notificationModal && !showInviteModal && !showCreateProjectModal && !showEditProjectModal && !showCreateCupModal && !showEditCupModal}
+{#if $session.data?.user && zeroReady && !notificationModal && !showInviteModal && !showCreateProjectModal && !showEditProjectModal && !showCreateCupModal && !showEditCupModal && unreadCount > 0}
   <NotificationBell 
     unreadCount={unreadCount} 
     onClick={openNotificationModal}

@@ -430,10 +430,30 @@
     // Match is active if:
     // 1. Status is "voting", OR
     // 2. Status is "pending" AND cup is active AND match is in current round
+    // Exclude matches where cup is completed or match is completed
     const cup = getCupById(match.cupId);
 
-    // Always return true for voting status
-    if (match.status === "voting") {
+    // Exclude matches from completed cups
+    if (cup?.status === "completed") {
+      console.log("❌ Match NOT active: Cup is completed", {
+        matchId: match.id,
+        cupId: cup?.id,
+        cupStatus: cup?.status,
+      });
+      return false;
+    }
+
+    // Exclude matches that are completed
+    if (match.status === "completed") {
+      console.log("❌ Match NOT active: Match is completed", {
+        matchId: match.id,
+        matchStatus: match.status,
+      });
+      return false;
+    }
+
+    // Always return true for voting status (if cup is active)
+    if (match.status === "voting" && cup?.status === "active") {
       console.log("✅ Match is voting:", match.id, "cup found:", !!cup);
       return true;
     }

@@ -1,0 +1,67 @@
+{
+  "identityPurchase": {
+    "hominio": {
+      "title": "You are now Hominio",
+      "previewTitle": "Something special just happened...",
+      "message": "May the wisdom be with you. You can now vote in matches.",
+      "priority": true,
+      "icon": "mdi:account-check",
+      "sound": "/purchase-effect.mp3",
+      "displayComponent": "PrizePoolDisplay",
+      "actions": [
+        {
+          "label": "Open Matches",
+          "url": "/alpha"
+        }
+      ]
+    },
+    "founder": {
+      "title": "You are now a Founder",
+      "previewTitle": "Welcome to an exclusive circle...",
+      "message": "Welcome to the founder circle! You can now create and submit your project to compete in the competition.",
+      "priority": true,
+      "icon": "mdi:account-check",
+      "sound": "/purchase-effect.mp3",
+      "displayComponent": "PrizePoolDisplay",
+      "actions": [
+        {
+          "label": "Create Project",
+          "url": "/alpha/projects?modal=create-project"
+        }
+      ]
+    },
+    "other": {
+      "title": "You are now an {identityName}",
+      "previewTitle": "Your status has changed...",
+      "message": "May the wisdom be with you. You can now vote in the \"{cupName}\" competition matches.",
+      "priority": true,
+      "icon": "mdi:account-check",
+      "sound": "/purchase-effect.mp3",
+      "displayComponent": "PrizePoolDisplay",
+      "actions": [
+        {
+          "label": "Open Matches",
+          "url": "/alpha"
+        }
+      ]
+    }
+  },
+  "vote": {
+    "received": {
+      "title": "Someone voted on your match",
+      "previewTitle": "New activity on your match...",
+      "message": "{message}",
+      "priority": false,
+      "icon": "mdi:thumb-up",
+      "sound": "/voting-effect.mp3",
+      "displayComponent": "VotingProgressDisplay",
+      "actions": [
+        {
+          "label": "View Match",
+          "url": "/alpha/cups/{cupId}"
+        }
+      ]
+    }
+  }
+}
+

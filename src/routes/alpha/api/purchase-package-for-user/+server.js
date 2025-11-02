@@ -3,6 +3,7 @@ import { nanoid } from "nanoid";
 import { getSession } from "$lib/api-helpers.server.js";
 import { requireAdmin } from "$lib/api-helpers.server.js";
 import { zeroDb } from "$lib/db.server.js";
+import { getNotificationConfig } from "$lib/notification-helpers.server.js";
 
 // Package definitions
 const PACKAGES = {
@@ -139,21 +140,13 @@ export async function POST({ request }) {
       const isHominio = selectedPackage.name === "I am Hominio";
       const isFounder = selectedPackage.packageType === "founder";
       const identityName = isHominio ? "Hominio" : selectedPackage.name.replace("Hominio ", "");
-      const title = isHominio ? "You are now Hominio" : `You are now an ${identityName}`;
       
-      // Founder notifications get different action and message
-      let actions, message;
-      if (isFounder) {
-        actions = JSON.stringify([
-          { label: "Create Project", url: "/alpha/projects?create=true" }
-        ]);
-        message = `Welcome to the founder circle! You can now create and submit your project to compete in the "${cup.name}" competition.`;
-      } else {
-        actions = JSON.stringify([
-          { label: "Open Matches", url: "/alpha" }
-        ]);
-        message = `May the wisdom be with you. You can now vote in the "${cup.name}" competition matches.`;
-      }
+      // Get notification config based on identity type
+      const notificationSubtype = isHominio ? "hominio" : isFounder ? "founder" : "other";
+      const notificationConfig = getNotificationConfig("identityPurchase", notificationSubtype, {
+        identityName,
+        cupName: cup.name,
+      });
       
       await zeroDb
         .insertInto("notification")
@@ -162,14 +155,16 @@ export async function POST({ request }) {
           userId,
           resourceType: "identityPurchase",
           resourceId: purchaseId,
-          title: title,
-          message: message,
+          title: notificationConfig.title,
+          previewTitle: notificationConfig.previewTitle || null,
+          message: notificationConfig.message,
           read: "false",
           createdAt: now,
-          actions: actions,
-          sound: "/purchase-effect.mp3",
-          icon: "mdi:account-check",
-          displayComponent: "PrizePoolDisplay", // Display component for all identity purchases
+          actions: JSON.stringify(notificationConfig.actions),
+          sound: notificationConfig.sound || null,
+          icon: notificationConfig.icon || null,
+          displayComponent: notificationConfig.displayComponent || null,
+          priority: notificationConfig.priority ? "true" : "false",
         })
         .execute();
 
@@ -220,21 +215,13 @@ export async function POST({ request }) {
       const isHominio = selectedPackage.name === "I am Hominio";
       const isFounder = selectedPackage.packageType === "founder";
       const identityName = isHominio ? "Hominio" : selectedPackage.name.replace("Hominio ", "");
-      const title = isHominio ? "You are now Hominio" : `You are now an ${identityName}`;
       
-      // Founder notifications get different action and message
-      let actions, message;
-      if (isFounder) {
-        actions = JSON.stringify([
-          { label: "Create Project", url: "/alpha/projects?create=true" }
-        ]);
-        message = `Welcome to the founder circle! You can now create and submit your project to compete in the "${cup.name}" competition.`;
-      } else {
-        actions = JSON.stringify([
-          { label: "Open Matches", url: "/alpha" }
-        ]);
-        message = `May the wisdom be with you. You can now vote in the "${cup.name}" competition matches.`;
-      }
+      // Get notification config based on identity type
+      const notificationSubtype = isHominio ? "hominio" : isFounder ? "founder" : "other";
+      const notificationConfig = getNotificationConfig("identityPurchase", notificationSubtype, {
+        identityName,
+        cupName: cup.name,
+      });
       
       await zeroDb
         .insertInto("notification")
@@ -243,14 +230,16 @@ export async function POST({ request }) {
           userId,
           resourceType: "identityPurchase",
           resourceId: purchaseId,
-          title: title,
-          message: message,
+          title: notificationConfig.title,
+          previewTitle: notificationConfig.previewTitle || null,
+          message: notificationConfig.message,
           read: "false",
           createdAt: now,
-          actions: actions,
-          sound: "/purchase-effect.mp3",
-          icon: "mdi:account-check", // Iconify icon name
-          displayComponent: "PrizePoolDisplay", // Display component for all identity purchases
+          actions: JSON.stringify(notificationConfig.actions),
+          sound: notificationConfig.sound || null,
+          icon: notificationConfig.icon || null,
+          displayComponent: notificationConfig.displayComponent || null,
+          priority: notificationConfig.priority ? "true" : "false",
         })
         .execute();
 

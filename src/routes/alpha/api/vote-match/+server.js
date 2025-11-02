@@ -2,6 +2,8 @@ import { json } from "@sveltejs/kit";
 import { nanoid } from "nanoid";
 import { getSession } from "$lib/api-helpers.server.js";
 import { zeroDb } from "$lib/db.server.js";
+import { getNotificationConfig } from "$lib/notification-helpers.server.js";
+import { getMatchEndDate } from "$lib/dateUtils.js";
 
 export async function POST({ request }) {
   // Get session
@@ -23,6 +25,7 @@ export async function POST({ request }) {
 
   const userId = session.user.id;
   const now = new Date().toISOString();
+  const nowDate = new Date();
 
   try {
     // Get match to find cupId
@@ -34,6 +37,68 @@ export async function POST({ request }) {
 
     if (!match) {
       return json({ error: "Match not found" }, { status: 404 });
+    }
+
+    // Check if match is already completed
+    if (match.status === "completed") {
+      return json(
+        {
+          error: "This match has already ended. Voting is closed.",
+        },
+        { status: 400 }
+      );
+    }
+
+    // Get all matches in the same round to determine end date (fallback logic)
+    const roundMatches = await zeroDb
+      .selectFrom("cupMatch")
+      .selectAll()
+      .where("cupId", "=", match.cupId)
+      .where("round", "=", match.round)
+      .execute();
+
+    // Get the effective end date for this match (match-specific or round-level)
+    const matchEndDate = getMatchEndDate(match, roundMatches);
+
+    // Check if voting has ended
+    if (matchEndDate) {
+      const endDate = new Date(matchEndDate);
+      if (nowDate >= endDate) {
+        // Time is over - determine if this is a match-specific or round-level endDate
+        const isMatchSpecific = !!match.endDate;
+        
+        if (isMatchSpecific) {
+          // Match has its own endDate - only close this match
+          await zeroDb
+            .updateTable("cupMatch")
+            .set({
+              status: "completed",
+              completedAt: now,
+            })
+            .where("id", "=", matchId)
+            .execute();
+        } else {
+          // Round-level endDate - close all matches in this round that aren't already completed
+          const matchesToClose = roundMatches.filter((m) => m.status !== "completed");
+          for (const matchToClose of matchesToClose) {
+            await zeroDb
+              .updateTable("cupMatch")
+              .set({
+                status: "completed",
+                completedAt: now,
+              })
+              .where("id", "=", matchToClose.id)
+              .execute();
+          }
+        }
+
+        return json(
+          {
+            error: "Voting for this match has ended. The match is now closed.",
+          },
+          { status: 400 }
+        );
+      }
     }
 
     // Check if user has an identity for this specific cup
@@ -181,6 +246,12 @@ export async function POST({ request }) {
       // Store matchId, projectSide, and votingWeight received in resourceId as "matchId|projectSide|votingWeight"
       // votingWeight is the weight added in THIS event (positive if voted for, negative if voted against)
       const votesReceived = projectSide === "project1" ? votingWeight : -votingWeight;
+      
+      const notificationConfig = getNotificationConfig("vote", "received", {
+        message,
+        cupId: match.cupId,
+      });
+      
       await zeroDb
         .insertInto("notification")
         .values({
@@ -188,16 +259,16 @@ export async function POST({ request }) {
           userId: project1.userId,
           resourceType: "vote",
           resourceId: `${matchId}|project1|${votesReceived}`,
-          title: "Someone voted on your match",
-          message: message,
+          title: notificationConfig.title,
+          previewTitle: notificationConfig.previewTitle || null,
+          message: notificationConfig.message,
           read: "false",
           createdAt: now,
-          actions: JSON.stringify([
-            { label: "View Match", url: `/alpha/cups/${match.cupId}` }
-          ]),
-          sound: "/voting-effect.mp3",
+          actions: JSON.stringify(notificationConfig.actions),
+          sound: notificationConfig.sound || null,
           icon: projectSide === "project1" ? "mdi:thumb-up" : "mdi:thumb-down",
-          displayComponent: "VotingProgressDisplay",
+          displayComponent: notificationConfig.displayComponent || null,
+          priority: notificationConfig.priority ? "true" : "false",
         })
         .execute();
     }
@@ -216,6 +287,12 @@ export async function POST({ request }) {
       // Store matchId, projectSide, and votingWeight received in resourceId as "matchId|projectSide|votingWeight"
       // votingWeight is the weight added in THIS event (positive if voted for, negative if voted against)
       const votesReceived = projectSide === "project2" ? votingWeight : -votingWeight;
+      
+      const notificationConfig = getNotificationConfig("vote", "received", {
+        message,
+        cupId: match.cupId,
+      });
+      
       await zeroDb
         .insertInto("notification")
         .values({
@@ -223,16 +300,16 @@ export async function POST({ request }) {
           userId: project2.userId,
           resourceType: "vote",
           resourceId: `${matchId}|project2|${votesReceived}`,
-          title: "Someone voted on your match",
-          message: message,
+          title: notificationConfig.title,
+          previewTitle: notificationConfig.previewTitle || null,
+          message: notificationConfig.message,
           read: "false",
           createdAt: now,
-          actions: JSON.stringify([
-            { label: "View Match", url: `/alpha/cups/${match.cupId}` }
-          ]),
-          sound: "/voting-effect.mp3",
+          actions: JSON.stringify(notificationConfig.actions),
+          sound: notificationConfig.sound || null,
           icon: projectSide === "project2" ? "mdi:thumb-up" : "mdi:thumb-down",
-          displayComponent: "VotingProgressDisplay",
+          displayComponent: notificationConfig.displayComponent || null,
+          priority: notificationConfig.priority ? "true" : "false",
         })
         .execute();
     }

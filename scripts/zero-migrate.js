@@ -270,9 +270,8 @@ async function createTables() {
           await sql`DROP INDEX IF EXISTS "userVotingPackage_userId_unique"`.execute(
             db
           );
-          await sql`CREATE UNIQUE INDEX IF NOT EXISTS userIdentities_userId_unique ON "userIdentities" ("userId")`.execute(
-            db
-          );
+          // Don't create userId-only unique constraint - we want multiple identities per user (one per cup)
+          // The compound unique constraint (userId, cupId) will be created later
           console.log("✅ Updated indexes");
         } catch (e) {
           console.log("ℹ️  Index update skipped (may not exist)");
@@ -521,6 +520,7 @@ async function createTables() {
       .addColumn("resourceType", "text", (col) => col.notNull())
       .addColumn("resourceId", "text", (col) => col.notNull())
       .addColumn("title", "text", (col) => col.notNull())
+      .addColumn("previewTitle", "text", (col) => col.defaultTo(null))
       .addColumn("message", "text", (col) => col.notNull())
       .addColumn("read", "text", (col) => col.notNull().defaultTo("false"))
       .addColumn("createdAt", "text", (col) => col.notNull())
@@ -528,6 +528,7 @@ async function createTables() {
       .addColumn("sound", "text", (col) => col.defaultTo(null))
       .addColumn("icon", "text", (col) => col.defaultTo(null))
       .addColumn("displayComponent", "text", (col) => col.defaultTo(null))
+      .addColumn("priority", "text", (col) => col.defaultTo("false"))
       .execute();
     console.log("✅ Notification table created");
 
@@ -588,6 +589,36 @@ async function createTables() {
         console.log("ℹ️  displayComponent column already exists in notification table");
       } else {
         console.log("⚠️  Could not add displayComponent column:", error.message);
+      }
+    }
+
+    // Add previewTitle column to existing notification table if it doesn't exist
+    try {
+      await db.schema
+        .alterTable("notification")
+        .addColumn("previewTitle", "text", (col) => col.defaultTo(null))
+        .execute();
+      console.log("✅ Added previewTitle column to notification table");
+    } catch (error) {
+      if (error.message?.includes("duplicate column") || error.message?.includes("already exists")) {
+        console.log("ℹ️  previewTitle column already exists in notification table");
+      } else {
+        console.log("⚠️  Could not add previewTitle column:", error.message);
+      }
+    }
+
+    // Add priority column to existing notification table if it doesn't exist
+    try {
+      await db.schema
+        .alterTable("notification")
+        .addColumn("priority", "text", (col) => col.defaultTo("false"))
+        .execute();
+      console.log("✅ Added priority column to notification table");
+    } catch (error) {
+      if (error.message?.includes("duplicate column") || error.message?.includes("already exists")) {
+        console.log("ℹ️  priority column already exists in notification table");
+      } else {
+        console.log("⚠️  Could not add priority column:", error.message);
       }
     }
 
