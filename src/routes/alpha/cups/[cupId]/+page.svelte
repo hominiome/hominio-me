@@ -94,6 +94,15 @@
           loading = false;
           if (dataCheckTimeout) clearTimeout(dataCheckTimeout);
 
+          // Check if cup or its matches have expired and close them
+          try {
+            await fetch(`/alpha/api/check-expiry?cupId=${cupId}`, {
+              method: "GET",
+            });
+          } catch (error) {
+            console.warn("Failed to check expiry:", error);
+          }
+
           // Fetch creator profile
           if (cup.creatorId) {
             const profile = await getUserProfile(cup.creatorId);
@@ -125,8 +134,17 @@
         .orderBy("position", "asc");
       matchesView = matchesQuery.materialize();
 
-      matchesView.addListener((data) => {
+      matchesView.addListener(async (data) => {
         matches = Array.from(data);
+        
+        // Check if any matches have expired and close them
+        try {
+          await fetch(`/alpha/api/check-expiry?cupId=${cupId}`, {
+            method: "GET",
+          });
+        } catch (error) {
+          console.warn("Failed to check expiry:", error);
+        }
       });
 
       // Query all votes for vote counts and voter display

@@ -347,10 +347,35 @@ async function createTables() {
 
     // Remove old unique constraint on userId (now allows multiple identities per user, one per cup)
     try {
+      // Try dropping as index first
       await sql`DROP INDEX IF EXISTS userIdentities_userId_unique`.execute(db);
+      console.log("✅ Removed old unique index on userId");
+    } catch (error) {
+      console.log("ℹ️  Old unique index doesn't exist");
+    }
+    
+    try {
+      // Try dropping as constraint (might be named differently)
+      await sql`ALTER TABLE "userIdentities" DROP CONSTRAINT IF EXISTS userIdentities_userId_unique`.execute(db);
       console.log("✅ Removed old unique constraint on userId");
     } catch (error) {
       console.log("ℹ️  Old unique constraint doesn't exist");
+    }
+    
+    try {
+      // Try dropping the uservotingpackage constraint (old name)
+      await sql`ALTER TABLE "userIdentities" DROP CONSTRAINT IF EXISTS uservotingpackage_userid_unique`.execute(db);
+      console.log("✅ Removed old uservotingpackage_userid_unique constraint");
+    } catch (error) {
+      console.log("ℹ️  Old uservotingpackage constraint doesn't exist");
+    }
+    
+    try {
+      // Try dropping as index with old name
+      await sql`DROP INDEX IF EXISTS uservotingpackage_userid_unique`.execute(db);
+      console.log("✅ Removed old uservotingpackage index");
+    } catch (error) {
+      console.log("ℹ️  Old uservotingpackage index doesn't exist");
     }
 
     // Add unique constraint on (userId, cupId) - one identity per user per cup

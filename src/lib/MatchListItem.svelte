@@ -44,52 +44,49 @@
       </span>
     </div>
 
-    <!-- Center: Scores and VS with Status Indicator -->
+    <!-- Center: Scores with Status Indicator -->
     <div class="match-list-center">
       <span class="team-list-votes">{votes1}</span>
-      <div class="vs-container">
-        <span class="match-list-vs">VS</span>
-        <!-- Match State Indicator - centered below VS -->
-        <div class="match-list-indicator">
-          {#if match.winnerId}
-            <svg
-              class="status-icon completed"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-            >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                d="M5 13l4 4L19 7"
-              />
-            </svg>
-          {:else if isActive}
-            <svg
-              class="status-icon pending"
-              viewBox="0 0 24 24"
-              fill="currentColor"
-            >
-              <circle cx="12" cy="12" r="6" />
-            </svg>
-          {:else}
-            <svg
-              class="status-icon waiting"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-            >
-              <rect x="3" y="3" width="18" height="18" rx="2" />
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                d="M8 7h8M8 12h8M8 17h4"
-              />
-            </svg>
-          {/if}
-        </div>
+      <!-- Match State Indicator - centered between scores -->
+      <div class="match-list-indicator">
+        {#if match.winnerId}
+          <svg
+            class="status-icon completed"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              d="M5 13l4 4L19 7"
+            />
+          </svg>
+        {:else if isActive}
+          <svg
+            class="status-icon pending"
+            viewBox="0 0 24 24"
+            fill="currentColor"
+          >
+            <circle cx="12" cy="12" r="6" />
+          </svg>
+        {:else}
+          <svg
+            class="status-icon waiting"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+          >
+            <rect x="3" y="3" width="18" height="18" rx="2" />
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              d="M8 7h8M8 12h8M8 17h4"
+            />
+          </svg>
+        {/if}
       </div>
       <span class="team-list-votes">{votes2}</span>
     </div>
@@ -189,7 +186,7 @@
 
     .match-list-center {
       justify-self: center;
-      gap: 0.375rem; /* Reduce gap on mobile */
+      gap: 0.2rem; /* Reduce gap on mobile */
     }
 
     .team-list-name {
@@ -203,10 +200,6 @@
       min-width: 28px;
     }
 
-    .match-list-vs {
-      font-size: 0.7rem;
-    }
-
     .match-list-indicator {
       width: 12px;
       height: 12px;
@@ -216,10 +209,6 @@
     .status-icon {
       width: 10px;
       height: 10px;
-    }
-
-    .vs-container {
-      gap: 0.125rem;
     }
   }
 
@@ -244,12 +233,8 @@
       min-width: 24px;
     }
 
-    .match-list-vs {
-      font-size: 0.65rem;
-    }
-
     .match-list-center {
-      gap: 0.25rem;
+      gap: 0.15rem;
     }
 
     .match-list-indicator {
@@ -260,10 +245,6 @@
     .status-icon {
       width: 8px;
       height: 8px;
-    }
-
-    .vs-container {
-      gap: 0.125rem;
     }
   }
 
@@ -296,9 +277,6 @@
     color: rgba(26, 26, 78, 0.5);
   }
 
-  .match-list-item.voted-match .match-list-vs {
-    color: rgba(26, 26, 78, 0.25);
-  }
 
   /* Left: Project 1 */
   .match-list-project-left {
@@ -308,21 +286,13 @@
     overflow: hidden;
   }
 
-  /* Center: Scores and VS */
+  /* Center: Scores with Status Indicator */
   .match-list-center {
     display: flex;
     align-items: center;
-    gap: 1rem;
+    gap: 0.25rem;
     justify-self: center;
     flex-shrink: 0; /* Prevent scores from shrinking */
-  }
-
-  /* VS Container with status indicator below */
-  .vs-container {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 0.125rem;
   }
 
   /* Right: Project 2 */
@@ -372,13 +342,6 @@
     flex-shrink: 0; /* Prevent score from shrinking */
   }
 
-  .match-list-vs {
-    color: rgba(26, 26, 78, 0.4);
-    font-weight: 600;
-    font-size: 0.875rem;
-    white-space: nowrap; /* Prevent line breaks */
-    flex-shrink: 0; /* Prevent VS from shrinking */
-  }
 
   .status-icon {
     width: 12px;

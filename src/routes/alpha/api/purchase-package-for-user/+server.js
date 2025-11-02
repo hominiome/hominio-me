@@ -76,6 +76,17 @@ export async function POST({ request }) {
       );
     }
 
+    // Check if cup has expired and close it if needed
+    const { checkAndCloseExpiredCups } = await import("$lib/expiry-checker.server.js");
+    await checkAndCloseExpiredCups([cup]);
+    
+    // Re-fetch cup in case it was just closed
+    const updatedCup = await zeroDb
+      .selectFrom("cup")
+      .selectAll()
+      .where("id", "=", cupId)
+      .executeTakeFirst();
+
     // Check if user already has an identity for this cup
     const existingIdentity = await zeroDb
       .selectFrom("userIdentities")
@@ -145,7 +156,7 @@ export async function POST({ request }) {
       const notificationSubtype = isHominio ? "hominio" : isFounder ? "founder" : "other";
       const notificationConfig = getNotificationConfig("identityPurchase", notificationSubtype, {
         identityName,
-        cupName: cup.name,
+        cupName: updatedCup.name,
       });
       
       await zeroDb
@@ -220,7 +231,7 @@ export async function POST({ request }) {
       const notificationSubtype = isHominio ? "hominio" : isFounder ? "founder" : "other";
       const notificationConfig = getNotificationConfig("identityPurchase", notificationSubtype, {
         identityName,
-        cupName: cup.name,
+        cupName: updatedCup.name,
       });
       
       await zeroDb

@@ -31,11 +31,31 @@ export async function POST({ request }) {
       return json({ error: "Cup not found" }, { status: 404 });
     }
 
-    if (cup.status !== "active") {
+    // Check if cup or matches have expired before processing
+    const currentRound = cup.currentRound;
+    const currentMatches = await zeroDb
+      .selectFrom("cupMatch")
+      .selectAll()
+      .where("cupId", "=", cupId)
+      .where("round", "=", currentRound)
+      .execute();
+    
+    const { checkAndCloseExpired } = await import("$lib/expiry-checker.server.js");
+    await checkAndCloseExpired(currentMatches, [cup]);
+    
+    // Re-fetch cup in case it was just closed
+    const updatedCup = await zeroDb
+      .selectFrom("cup")
+      .selectAll()
+      .where("id", "=", cupId)
+      .executeTakeFirst();
+
+    if (updatedCup.status !== "active") {
       return json({ error: "Cup is not active" }, { status: 400 });
     }
 
-    const currentRound = cup.currentRound;
+    // Use updated cup's current round (in case it changed)
+    const finalCurrentRound = updatedCup.currentRound || currentRound;
 
     // Calculate next round name based on current round
     // Round progression:
@@ -46,23 +66,23 @@ export async function POST({ request }) {
     // round_8 → semi → final
     // round_4 → final
     let nextRound = null;
-    if (currentRound === "round_128") {
+    if (finalCurrentRound === "round_128") {
       nextRound = "round_64";
-    } else if (currentRound === "round_64") {
+    } else if (finalCurrentRound === "round_64") {
       nextRound = "round_32";
-    } else if (currentRound === "round_32") {
+    } else if (finalCurrentRound === "round_32") {
       nextRound = "round_16";
-    } else if (currentRound === "round_16") {
+    } else if (finalCurrentRound === "round_16") {
       nextRound = "quarter";
-    } else if (currentRound === "round_8") {
+    } else if (finalCurrentRound === "round_8") {
       nextRound = "semi";
-    } else if (currentRound === "round_4") {
+    } else if (finalCurrentRound === "round_4") {
       nextRound = "final";
-    } else if (currentRound === "quarter") {
+    } else if (finalCurrentRound === "quarter") {
       nextRound = "semi";
-    } else if (currentRound === "semi") {
+    } else if (finalCurrentRound === "semi") {
       nextRound = "final";
-    } else if (currentRound === "final") {
+    } else if (finalCurrentRound === "final") {
       return json({ error: "Final round has no next round" }, { status: 400 });
     }
 
@@ -87,18 +107,18 @@ export async function POST({ request }) {
       );
     }
 
-    // Get all matches in current round to collect winners
-    const currentMatches = await zeroDb
+    // Re-fetch matches in current round to collect winners (in case any were closed)
+    const finalCurrentMatches = await zeroDb
       .selectFrom("cupMatch")
       .selectAll()
       .where("cupId", "=", cupId)
-      .where("round", "=", currentRound)
+      .where("round", "=", finalCurrentRound)
       .execute();
 
     // Collect winners from current round matches
     const winners = [];
 
-    for (const match of currentMatches) {
+    for (const match of finalCurrentMatches) {
       if (!match.winnerId) {
         return json(
           {
@@ -157,7 +177,7 @@ export async function POST({ request }) {
       }
     }
 
-    // Update cup to next round
+    // Update cup to next round (use updatedCup to ensure we have latest status)
     await zeroDb
       .updateTable("cup")
       .set({

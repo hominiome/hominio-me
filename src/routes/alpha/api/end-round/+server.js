@@ -1,6 +1,7 @@
 import { json } from "@sveltejs/kit";
 import { requireAdmin } from "$lib/api-helpers.server.js";
 import { zeroDb } from "$lib/db.server.js";
+import { checkAndCloseExpired } from "$lib/expiry-checker.server.js";
 
 export async function POST({ request }) {
   // Require admin access (throws 401/403 if not authenticated/admin)
@@ -26,21 +27,37 @@ export async function POST({ request }) {
       return json({ error: "Cup not found" }, { status: 404 });
     }
 
-    if (cup.status !== "active") {
-      return json({ error: "Cup is not active" }, { status: 400 });
-    }
-
+    // Check if cup or matches have expired before processing
     const currentRound = cup.currentRound;
-
-    // Get all matches in current round
     const currentMatches = await zeroDb
       .selectFrom("cupMatch")
       .selectAll()
       .where("cupId", "=", cupId)
       .where("round", "=", currentRound)
       .execute();
+    
+    await checkAndCloseExpired(currentMatches, [cup]);
+    
+    // Re-fetch cup in case it was just closed
+    const updatedCup = await zeroDb
+      .selectFrom("cup")
+      .selectAll()
+      .where("id", "=", cupId)
+      .executeTakeFirst();
 
-    if (currentMatches.length === 0) {
+    if (updatedCup.status !== "active") {
+      return json({ error: "Cup is not active" }, { status: 400 });
+    }
+
+    // Re-fetch matches in case any were closed
+    const updatedMatches = await zeroDb
+      .selectFrom("cupMatch")
+      .selectAll()
+      .where("cupId", "=", cupId)
+      .where("round", "=", currentRound)
+      .execute();
+
+    if (updatedMatches.length === 0) {
       return json(
         { error: "No matches found in current round" },
         { status: 400 }
@@ -48,7 +65,7 @@ export async function POST({ request }) {
     }
 
     // Automatically determine winners for matches that don't have winners yet
-    const matchesWithoutWinners = currentMatches.filter((m) => !m.winnerId);
+    const matchesWithoutWinners = updatedMatches.filter((m) => !m.winnerId);
 
     for (const match of matchesWithoutWinners) {
       // Get vote counts from vote table
@@ -94,8 +111,8 @@ export async function POST({ request }) {
         .execute();
     }
 
-    // Re-fetch all matches in current round to get updated winners
-    const updatedMatches = await zeroDb
+    // Re-fetch all matches in current round to get updated winners (after determining winners)
+    const finalMatches = await zeroDb
       .selectFrom("cupMatch")
       .selectAll()
       .where("cupId", "=", cupId)
@@ -103,14 +120,14 @@ export async function POST({ request }) {
       .execute();
 
     // Count winners
-    const winnersCount = updatedMatches.filter((m) => m.winnerId).length;
+    const winnersCount = finalMatches.filter((m) => m.winnerId).length;
 
     // Check if this is the final round
     const isFinalRound = currentRound === "final";
 
     if (isFinalRound) {
       // Final round completed, mark cup as completed
-      const finalWinner = updatedMatches.find((m) => m.winnerId);
+      const finalWinner = finalMatches.find((m) => m.winnerId);
       await zeroDb
         .updateTable("cup")
         .set({

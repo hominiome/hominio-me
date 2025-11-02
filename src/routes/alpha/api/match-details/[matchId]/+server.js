@@ -1,5 +1,6 @@
 import { json } from "@sveltejs/kit";
 import { zeroDb } from "$lib/db.server.js";
+import { checkAndCloseExpiredMatches } from "$lib/expiry-checker.server.js";
 
 export async function GET({ params }) {
   const { matchId } = params;
@@ -20,21 +21,39 @@ export async function GET({ params }) {
       return json({ error: "Match not found" }, { status: 404 });
     }
 
+    // Check if match has expired and close it if needed
+    // Get all matches in the same round to check round-level endDate
+    const roundMatches = await zeroDb
+      .selectFrom("cupMatch")
+      .selectAll()
+      .where("cupId", "=", match.cupId)
+      .where("round", "=", match.round)
+      .execute();
+    
+    await checkAndCloseExpiredMatches([match, ...roundMatches]);
+    
+    // Re-fetch match in case it was just closed
+    const updatedMatch = await zeroDb
+      .selectFrom("cupMatch")
+      .selectAll()
+      .where("id", "=", matchId)
+      .executeTakeFirst();
+
     // Get both projects
     const project1 = await zeroDb
       .selectFrom("project")
       .selectAll()
-      .where("id", "=", match.project1Id)
+      .where("id", "=", updatedMatch.project1Id)
       .executeTakeFirst();
 
     const project2 = await zeroDb
       .selectFrom("project")
       .selectAll()
-      .where("id", "=", match.project2Id)
+      .where("id", "=", updatedMatch.project2Id)
       .executeTakeFirst();
 
     return json({
-      match,
+      match: updatedMatch,
       project1,
       project2,
     });

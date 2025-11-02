@@ -154,7 +154,7 @@
       const cupsQuery = zero.query.cup;
       cupsView = cupsQuery.materialize();
 
-      cupsView.addListener((data) => {
+      cupsView.addListener(async (data) => {
         cups = Array.from(data);
         console.log("🟦 CUPS LOADED:", {
           count: cups.length,
@@ -165,6 +165,16 @@
             currentRound: c.currentRound,
           })),
         });
+        
+        // Check if any cups/matches have expired and close them
+        try {
+          await fetch("/alpha/api/check-expiry", {
+            method: "GET",
+          });
+        } catch (error) {
+          console.warn("Failed to check expiry:", error);
+        }
+        
         // Set loading to false once we have the cups data (even if empty)
         loading = false;
       });
@@ -181,7 +191,7 @@
       const matchesQuery = zero.query.cupMatch.orderBy("position", "asc");
       matchesView = matchesQuery.materialize();
 
-      matchesView.addListener((data) => {
+      matchesView.addListener(async (data) => {
         // Store all matches - filtering by active cups happens reactively
         allMatches = Array.from(data);
         console.log("🟩 MATCHES LOADED:", {
@@ -196,6 +206,15 @@
           })),
           statuses: [...new Set(allMatches.map((m) => m.status))],
         });
+        
+        // Check if any matches have expired and close them
+        try {
+          await fetch("/alpha/api/check-expiry", {
+            method: "GET",
+          });
+        } catch (error) {
+          console.warn("Failed to check expiry:", error);
+        }
       });
 
       // Query all votes for vote counts
