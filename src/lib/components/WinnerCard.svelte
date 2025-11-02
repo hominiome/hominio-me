@@ -201,12 +201,6 @@
         </div>
       </div>
     {/if}
-
-    <!-- Winner Badge -->
-    <div class="winner-badge winner-badge-large">
-      <Icon icon="mdi:trophy" />
-      <span>Champion</span>
-    </div>
   </div>
 </div>
 
@@ -514,34 +508,6 @@
   }
 
   .close-icon {
-    width: 20px;
-    height: 20px;
-  }
-
-  /* Winner Badge */
-  .winner-badge {
-    position: absolute;
-    top: 1rem;
-    right: 1rem;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.5rem 1rem;
-    background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
-    border-radius: 12px;
-    font-size: 0.875rem;
-    font-weight: 700;
-    color: #1a1a4e;
-    box-shadow: 0 4px 12px rgba(251, 191, 36, 0.4);
-    z-index: 10;
-  }
-
-  .winner-badge-large {
-    font-size: 1rem;
-    padding: 0.75rem 1.25rem;
-  }
-
-  .winner-badge :global(svg) {
     width: 20px;
     height: 20px;
   }

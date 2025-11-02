@@ -701,7 +701,7 @@
       {#if completedCupsWithWinners.length > 0}
         <div class="winners-section">
           <div class="winners-section-header">
-            <h2 class="winners-section-title">🏆 Past Champions</h2>
+            <h2 class="winners-section-title">🏆 Champions</h2>
             <p class="winners-section-subtitle">Celebrating tournament winners</p>
           </div>
           <div class="winners-grid">
