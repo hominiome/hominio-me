@@ -3,6 +3,7 @@
   import Icon from "@iconify/svelte";
   import NotificationItem from "./NotificationItem.svelte";
   import PrizePoolDisplay from "./components/PrizePoolDisplay.svelte";
+  import VotingProgressDisplay from "./components/VotingProgressDisplay.svelte";
 
   let { notification, onClose, onMarkRead, onNext, remainingCount = 0 } = $props<{
     notification: {
@@ -27,6 +28,7 @@
   // Component mapping
   const componentMap: Record<string, any> = {
     PrizePoolDisplay: PrizePoolDisplay,
+    VotingProgressDisplay: VotingProgressDisplay,
   };
 
   const DisplayComponent = $derived(() => {
@@ -39,6 +41,15 @@
     if (notification.displayComponent === "PrizePoolDisplay" && notification.resourceType === "identityPurchase") {
       return { purchaseId: notification.resourceId };
     }
+    
+    if (notification.displayComponent === "VotingProgressDisplay" && notification.resourceType === "vote") {
+      // Parse matchId and projectSide from resourceId (format: "matchId|projectSide")
+      const parts = notification.resourceId.split("|");
+      const matchId = parts[0];
+      const projectSide = (parts[1] === "project1" || parts[1] === "project2") ? parts[1] : "project1";
+      return { matchId, projectSide };
+    }
+    
     return {};
   });
 
