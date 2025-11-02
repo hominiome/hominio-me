@@ -78,3 +78,57 @@ export const projectsByUser = syncedQuery(
   }
 );
 
+/**
+ * ========================================
+ * IDENTITY PURCHASE QUERIES
+ * ========================================
+ */
+
+/**
+ * Get all identity purchases, ordered by purchase date (newest first)
+ */
+export const allPurchases = syncedQuery(
+  'allPurchases',
+  z.tuple([]), // No arguments needed
+  () => {
+    return builder.identityPurchase.orderBy('purchasedAt', 'desc');
+  }
+);
+
+/**
+ * Get all purchases for a specific user, ordered by purchase date (newest first)
+ */
+export const purchasesByUser = syncedQuery(
+  'purchasesByUser',
+  z.tuple([z.string()]), // userId
+  (userId: string) => {
+    return builder.identityPurchase
+      .where('userId', '=', userId)
+      .orderBy('purchasedAt', 'desc');
+  }
+);
+
+/**
+ * Get all purchases for a specific cup, ordered by purchase date (newest first)
+ */
+export const purchasesByCup = syncedQuery(
+  'purchasesByCup',
+  z.tuple([z.string()]), // cupId
+  (cupId: string) => {
+    return builder.identityPurchase
+      .where('cupId', '=', cupId)
+      .orderBy('purchasedAt', 'desc');
+  }
+);
+
+/**
+ * Get a single purchase by ID
+ */
+export const purchaseById = syncedQuery(
+  'purchaseById',
+  z.tuple([z.string()]), // purchaseId
+  (purchaseId: string) => {
+    return builder.identityPurchase.where('id', '=', purchaseId);
+  }
+);
+

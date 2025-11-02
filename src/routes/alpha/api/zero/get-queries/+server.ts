@@ -62,6 +62,45 @@ function getQuery(name: string, args: readonly ReadonlyJSONValue[]) {
         .orderBy('createdAt', 'desc'),
     };
   }
+
+  // ========================================
+  // IDENTITY PURCHASE QUERIES
+  // ========================================
+  
+  if (name === 'allPurchases') {
+    z.tuple([]).parse(args);
+    return {
+      query: builder.identityPurchase.orderBy('purchasedAt', 'desc'),
+    };
+  }
+  
+  if (name === 'purchasesByUser') {
+    z.tuple([z.string()]).parse(args);
+    const [userId] = args as [string];
+    return {
+      query: builder.identityPurchase
+        .where('userId', '=', userId)
+        .orderBy('purchasedAt', 'desc'),
+    };
+  }
+  
+  if (name === 'purchasesByCup') {
+    z.tuple([z.string()]).parse(args);
+    const [cupId] = args as [string];
+    return {
+      query: builder.identityPurchase
+        .where('cupId', '=', cupId)
+        .orderBy('purchasedAt', 'desc'),
+    };
+  }
+  
+  if (name === 'purchaseById') {
+    z.tuple([z.string()]).parse(args);
+    const [purchaseId] = args as [string];
+    return {
+      query: builder.identityPurchase.where('id', '=', purchaseId),
+    };
+  }
   
   throw new Error(`No such query: ${name}`);
 }

@@ -13,7 +13,7 @@
   import { calculatePrizePool, formatPrizePool } from "$lib/prizePoolUtils.js";
   import CupHeader from "$lib/CupHeader.svelte";
   import WinnerCard from "$lib/components/WinnerCard.svelte";
-  import { allProjects } from "$lib/synced-queries";
+  import { allProjects, allPurchases } from "$lib/synced-queries";
 
   const zeroContext = useZero();
   const session = authClient.useSession();
@@ -227,9 +227,9 @@
         votes = Array.from(data);
       });
 
-      // Query all identity purchases for prize pool calculation
-      const purchasesQuery = zero.query.identityPurchase;
-      const purchasesView = purchasesQuery.materialize();
+      // Query all identity purchases for prize pool calculation using synced query
+      const purchasesQuery = allPurchases();
+      const purchasesView = zero.materialize(purchasesQuery);
 
       purchasesView.addListener((data) => {
         purchases = Array.from(data);

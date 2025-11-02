@@ -12,7 +12,7 @@
   import { formatEndDate, getMatchEndDate } from "$lib/dateUtils.js";
   import CountdownTimer from "$lib/CountdownTimer.svelte";
   import { calculatePrizePool, formatPrizePool } from "$lib/prizePoolUtils.js";
-  import { allProjects } from "$lib/synced-queries";
+  import { allProjects, purchasesByCup } from "$lib/synced-queries";
 
   const zeroContext = useZero();
   const session = authClient.useSession();
@@ -156,13 +156,9 @@
         votes = Array.from(data);
       });
 
-      // Query identity purchases for this cup for prize pool calculation
-      const purchasesQuery = zero.query.identityPurchase.where(
-        "cupId",
-        "=",
-        cupId
-      );
-      purchasesView = purchasesQuery.materialize();
+      // Query identity purchases for this cup for prize pool calculation using synced query
+      const purchasesQuery = purchasesByCup(cupId);
+      purchasesView = zero.materialize(purchasesQuery);
 
       purchasesView.addListener((data) => {
         purchases = Array.from(data);
