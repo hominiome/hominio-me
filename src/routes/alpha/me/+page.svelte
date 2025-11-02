@@ -250,8 +250,8 @@
         {#if userIdentities.length === 0}
           <div class="empty-state">
             <p>You don't have any active voting identities yet.</p>
-            <a href="/alpha/purchase" class="empty-state-link">
-              Purchase an identity to start voting
+            <a href="/alpha/invite-only" class="empty-state-link">
+              Get an identity (invite-only)
             </a>
           </div>
         {:else}

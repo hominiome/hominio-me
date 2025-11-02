@@ -90,7 +90,7 @@
 <style>
   .notification-bell-container {
     position: fixed;
-    bottom: 70px;
+    bottom: 60px;
     left: 0;
     right: 0;
     width: 100%;
@@ -311,7 +311,7 @@
 
   @media (max-width: 768px) {
     .notification-bell-container {
-      bottom: 65px;
+      bottom: 60px;
       left: 0;
       right: 0;
       transform: none;

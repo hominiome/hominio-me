@@ -372,10 +372,8 @@
     // Check if user has an identity for this cup
     const hasIdentity = userIdentities.some((id) => id.cupId === match.cupId);
     if (!hasIdentity) {
-      // Redirect to purchase page with return URL and cupId
-      const returnUrl = encodeURIComponent(`/alpha`);
-      const cupId = encodeURIComponent(match.cupId);
-      goto(`/alpha/purchase?returnUrl=${returnUrl}&cupId=${cupId}`);
+      // Redirect to invite-only page (purchase is disabled, invite-only mode)
+      goto("/alpha/invite-only");
       return;
     }
 

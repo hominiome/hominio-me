@@ -4,6 +4,7 @@
   import NotificationItem from "./NotificationItem.svelte";
   import PrizePoolDisplay from "./components/PrizePoolDisplay.svelte";
   import VotingProgressDisplay from "./components/VotingProgressDisplay.svelte";
+  import Modal from "./Modal.svelte";
 
   let {
     notification,
@@ -160,125 +161,40 @@
   });
 </script>
 
-<div class="modal-backdrop" onclick={handleBackdropClick}>
-  <div class="modal-content" onclick={(e) => e.stopPropagation()}>
-    {#if DisplayComponent()}
+<Modal open={true} {onClose}>
+  {#if DisplayComponent()}
+    {@const Component = DisplayComponent()}
+    {@const props = getComponentProps()}
+    {#if Component}
       <div class="display-component-wrapper">
-        <svelte:component this={DisplayComponent()} {...getComponentProps()} />
+        <Component {...props} />
       </div>
     {/if}
+  {/if}
 
-    <div class="notification-content-wrapper">
-      <NotificationItem
-        {notification}
-        onMarkRead={handleMarkRead}
-        showActions={false}
-      />
-    </div>
-
-    {#if actions().length > 0}
-      <div class="actions-container">
-        {#each actions() as action}
-          <button
-            class="action-button"
-            onclick={() => handleActionClick(action.url)}
-          >
-            {action.label}
-          </button>
-        {/each}
-      </div>
-    {/if}
-
-    <div class="bottom-actions">
-      <div class="bottom-actions-container">
-        <button class="close-button" onclick={handleClose} aria-label="Close">
-          <svg
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            class="close-icon"
-          >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
-              d="M6 18L18 6M6 6l12 12"
-            />
-          </svg>
-        </button>
-        {#if remainingCount > 0 && onNext}
-          <button
-            class="next-button"
-            onclick={onNext}
-            aria-label="Next notification"
-          >
-            Next ({remainingCount})
-          </button>
-        {/if}
-      </div>
-    </div>
+  <div class="notification-content-wrapper">
+    <NotificationItem
+      {notification}
+      onMarkRead={handleMarkRead}
+      showActions={false}
+    />
   </div>
-</div>
+
+  {#if actions().length > 0}
+    <div class="actions-container">
+      {#each actions() as action}
+        <button
+          class="action-button"
+          onclick={() => handleActionClick(action.url)}
+        >
+          {action.label}
+        </button>
+      {/each}
+    </div>
+  {/if}
+</Modal>
 
 <style>
-  .modal-backdrop {
-    position: fixed;
-    inset: 0;
-    bottom: 0;
-    background: linear-gradient(
-      135deg,
-      rgba(255, 255, 255, 0.2) 0%,
-      rgba(255, 255, 255, 0.1) 100%
-    );
-    backdrop-filter: blur(30px) saturate(200%);
-    -webkit-backdrop-filter: blur(30px) saturate(200%);
-    display: flex;
-    align-items: flex-end;
-    justify-content: center;
-    z-index: 1003;
-    animation: fadeIn 0.2s;
-    /* Prevent iOS scroll gap */
-    overscroll-behavior: contain;
-    -webkit-overflow-scrolling: touch;
-  }
-
-  @keyframes fadeIn {
-    from {
-      opacity: 0;
-    }
-    to {
-      opacity: 1;
-    }
-  }
-
-  .modal-content {
-    background: white;
-    border-radius: 24px 24px 0 0;
-    padding: 2.5rem 2rem;
-    padding-bottom: 0;
-    width: 100%;
-    max-width: 600px;
-    max-height: 85vh;
-    overflow-y: auto;
-    position: relative;
-    animation: slideUp 0.3s ease-out;
-    box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.15);
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    /* Prevent iOS scroll gap */
-    overscroll-behavior: contain;
-    -webkit-overflow-scrolling: touch;
-  }
-
-  @media (max-width: 768px) {
-    .modal-content {
-      padding: 1.75rem 1.5rem;
-      padding-bottom: 0;
-      max-height: 90vh;
-    }
-  }
-
   .display-component-wrapper {
     width: 100%;
     margin-bottom: 1.5rem;
@@ -312,15 +228,6 @@
     display: block;
   }
 
-  @keyframes slideUp {
-    from {
-      transform: translateY(100%);
-    }
-    to {
-      transform: translateY(0);
-    }
-  }
-
   .actions-container {
     display: flex;
     flex-direction: column;
@@ -350,7 +257,7 @@
     font-size: 0.9375rem;
     cursor: pointer;
     transition: all 0.2s;
-    width: 100%;
+    width: auto;
     box-shadow: none;
   }
 
@@ -370,115 +277,5 @@
   .action-button:active {
     transform: translateY(0);
     box-shadow: 0 2px 6px rgba(78, 205, 196, 0.15);
-  }
-
-  .bottom-actions {
-    position: sticky;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    width: calc(100% + 4rem);
-    margin-left: calc(-2rem);
-    margin-right: calc(-2rem);
-    padding: 0.25rem 0.5rem;
-    padding-bottom: calc(0.25rem + env(safe-area-inset-bottom));
-    background: #1a1a4e;
-    backdrop-filter: blur(12px);
-    margin-top: auto;
-    z-index: 10;
-    box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.2);
-    border-top: none;
-  }
-
-  .bottom-actions-container {
-    width: 100%;
-    max-width: 600px;
-    margin: 0 auto;
-    padding: 0.25rem 0.5rem;
-    padding-bottom: calc(0.25rem + env(safe-area-inset-bottom));
-    display: flex;
-    align-items: center;
-    justify-content: flex-start;
-    position: relative;
-    min-height: 56px;
-    height: 56px;
-  }
-
-  .close-button {
-    position: absolute;
-    left: 50%;
-    transform: translateX(-50%);
-    z-index: 2;
-    background: rgba(255, 255, 255, 0.1);
-    border: 2px solid rgba(255, 255, 255, 0.2);
-    border-radius: 50%;
-    width: 2rem;
-    height: 2rem;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    transition: all 0.2s;
-    flex-shrink: 0;
-  }
-
-  .close-button:hover {
-    background: rgba(255, 255, 255, 0.15);
-    border-color: rgba(255, 255, 255, 0.3);
-    transform: translateX(-50%) scale(1.05);
-  }
-
-  .close-icon {
-    width: 0.875rem;
-    height: 0.875rem;
-    color: rgba(255, 255, 255, 0.9);
-  }
-
-  .next-button {
-    position: absolute;
-    right: 2rem;
-    z-index: 1;
-    background: rgba(255, 255, 255, 0.1);
-    border: 2px solid rgba(255, 255, 255, 0.2);
-    border-radius: 999px;
-    padding: 0.375rem 0.875rem;
-    cursor: pointer;
-    transition: all 0.2s;
-    font-weight: 600;
-    font-size: 0.7rem;
-    white-space: nowrap;
-    flex-shrink: 0;
-    color: rgba(255, 255, 255, 0.9);
-  }
-
-  .next-button:hover {
-    background: rgba(255, 255, 255, 0.15);
-    border-color: rgba(255, 255, 255, 0.3);
-    transform: scale(1.02);
-  }
-
-  .next-button:active {
-    transform: scale(1);
-  }
-
-  @media (max-width: 768px) {
-    .bottom-actions {
-      margin-left: calc(-1.5rem);
-      margin-right: calc(-1.5rem);
-      width: calc(100% + 3rem);
-      padding: 0.25rem 0.5rem;
-      padding-bottom: calc(0.25rem + env(safe-area-inset-bottom));
-    }
-
-    .bottom-actions-container {
-      padding: 0.25rem 0.5rem;
-      padding-bottom: calc(0.25rem + env(safe-area-inset-bottom));
-      min-height: 56px;
-      height: 56px;
-    }
-
-    .next-button {
-      right: 1.5rem;
-    }
   }
 </style>

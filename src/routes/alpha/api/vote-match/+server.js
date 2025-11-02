@@ -47,7 +47,7 @@ export async function POST({ request }) {
     if (!userIdentity) {
       return json(
         {
-          error: "You need to purchase a voting identity for this cup before you can vote. Please visit the purchase page.",
+          error: "You need a voting identity for this cup before you can vote. This platform is currently invite-only - please show your QR code to an admin.",
         },
         { status: 400 }
       );

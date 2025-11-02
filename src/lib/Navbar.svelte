@@ -1,11 +1,33 @@
 <script lang="ts">
   import { page } from "$app/stores";
 
+  interface ModalButton {
+    label: string;
+    onClick: () => void;
+    ariaLabel?: string;
+  }
+
   // Receive session and signIn function from parent layout
-  let { session, signInWithGoogle } = $props<{
+  let { 
+    session, 
+    signInWithGoogle,
+    isModalOpen = false,
+    onModalClose,
+    modalLeftButtons = [],
+    modalRightButtons = [],
+  } = $props<{
     session: any;
     signInWithGoogle: () => Promise<void>;
+    isModalOpen?: boolean;
+    onModalClose?: () => void;
+    modalLeftButtons?: ModalButton[];
+    modalRightButtons?: ModalButton[];
   }>();
+
+  // Debug - check if prop is updating
+  $effect(() => {
+    console.log("Navbar isModalOpen prop:", isModalOpen, "type:", typeof isModalOpen, "modalRightButtons:", modalRightButtons);
+  });
 
   // Track if user image failed to load
   let userImageFailed = $state(false);
@@ -98,7 +120,56 @@
     </div>
 
     <!-- Mobile Bottom Navigation -->
-    <div class="mobile-bottom-nav">
+    <div class="mobile-bottom-nav" class:modal-mode={isModalOpen}>
+      {#if isModalOpen}
+        <!-- Modal Mode: Container constrained to modal max-width -->
+        <div class="modal-nav-container">
+          {#if modalLeftButtons.length > 0}
+            <div class="modal-left-buttons">
+              {#each modalLeftButtons as button}
+                <button
+                  class="modal-action-button"
+                  onclick={button.onClick}
+                  aria-label={button.ariaLabel || button.label}
+                >
+                  {button.label}
+                </button>
+              {/each}
+            </div>
+          {/if}
+
+          <button class="modal-close-button" onclick={() => onModalClose?.()} aria-label="Close">
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              class="modal-close-icon"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M6 18L18 6M6 6l12 12"
+              />
+            </svg>
+          </button>
+
+          {#if modalRightButtons.length > 0}
+            <div class="modal-right-buttons">
+              {#each modalRightButtons as button}
+                <button
+                  class="modal-action-button"
+                  onclick={button.onClick}
+                  aria-label={button.ariaLabel || button.label}
+                >
+                  {button.label}
+                </button>
+              {/each}
+            </div>
+          {/if}
+        </div>
+      {:else}
+        <!-- Default Mode: Normal navigation -->
       <a
         href="/alpha"
         class="mobile-nav-item mobile-nav-home"
@@ -221,6 +292,7 @@
           <span class="mobile-nav-label">Sign In</span>
         </button>
       {/if}
+      {/if}
     </div>
   </div>
 </nav>
@@ -233,7 +305,7 @@
     left: 0;
     right: 0;
     width: 100vw;
-    z-index: 1000;
+    z-index: 10000; /* Highest z-index - must be above everything including backdrop blur */
     margin: 0;
     padding: 0;
     border-bottom: none;
@@ -454,10 +526,121 @@
     justify-content: space-around;
     width: 100%;
     padding: 0.375rem 0.5rem;
+    padding-bottom: calc(0.375rem + env(safe-area-inset-bottom));
     margin: 0;
     background: #1a1a4e; /* Dark marine blue brand color */
     backdrop-filter: blur(12px);
     gap: 0;
+    min-height: 60px;
+    height: 60px;
+  }
+
+  /* Modal Mode Styles */
+  .mobile-bottom-nav.modal-mode {
+    position: relative;
+    justify-content: center;
+    padding: 0;
+    padding-bottom: 0;
+    min-height: 60px;
+    height: 60px;
+    backdrop-filter: none; /* No blur in modal mode */
+  }
+
+  /* Container for modal mode buttons - matches modal content max-width */
+  .modal-nav-container {
+    width: 100%;
+    max-width: 600px;
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.25rem 0.5rem;
+    padding-bottom: calc(0.25rem + env(safe-area-inset-bottom));
+    position: relative;
+    min-height: 60px;
+    height: 60px;
+  }
+
+  /* Hide normal nav items when in modal mode */
+  .mobile-bottom-nav.modal-mode .mobile-nav-item {
+    display: none;
+  }
+
+  .modal-close-button {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 2;
+    background: rgba(255, 255, 255, 0.1);
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    border-radius: 50%;
+    width: 2rem;
+    height: 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    flex-shrink: 0;
+  }
+
+  .modal-close-button:hover {
+    background: rgba(255, 255, 255, 0.15);
+    border-color: rgba(255, 255, 255, 0.3);
+    transform: translateX(-50%) scale(1.05);
+  }
+
+  .modal-close-icon {
+    width: 0.875rem;
+    height: 0.875rem;
+    color: rgba(255, 255, 255, 0.9);
+  }
+
+  .modal-left-buttons {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    z-index: 1;
+    margin-right: auto;
+  }
+
+  .modal-right-buttons {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    z-index: 1;
+    margin-left: auto;
+  }
+
+  .modal-action-button {
+    background: rgba(255, 255, 255, 0.1);
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    border-radius: 999px;
+    padding: 0.375rem 0.875rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-weight: 600;
+    font-size: 0.7rem;
+    white-space: nowrap;
+    flex-shrink: 0;
+    color: rgba(255, 255, 255, 0.9);
+  }
+
+  .modal-action-button:hover {
+    background: rgba(255, 255, 255, 0.15);
+    border-color: rgba(255, 255, 255, 0.3);
+    transform: scale(1.02);
+  }
+
+  .modal-action-button:active {
+    transform: scale(1);
+  }
+
+  @media (max-width: 768px) {
+    .modal-action-button {
+      padding: 0.375rem 0.75rem;
+      font-size: 0.65rem;
+    }
   }
 
   .mobile-nav-item {

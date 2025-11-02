@@ -151,6 +151,10 @@
   }
 
   function handleNotificationClose() {
+    // Mark the current notification as read before closing
+    if (notificationModal) {
+      handleNotificationMarkRead(notificationModal.id);
+    }
     notificationModal = null;
   }
 
@@ -270,6 +274,14 @@
     return Math.max(0, unreadNotifications.length - 1);
   });
 
+  // Derived modal open state for navbar - ensure reactivity  
+  const isModalOpenState = $derived(!!notificationModal);
+  
+  // Debug
+  $effect(() => {
+    console.log("Layout - notificationModal:", notificationModal, "isModalOpenState:", isModalOpenState);
+  });
+
   // Close modal if the current notification is marked as read and show next one
   $effect(() => {
     if (notificationModal) {
@@ -290,7 +302,7 @@
   });
 </script>
 
-{#if $session.data?.user && zeroReady}
+{#if $session.data?.user && zeroReady && !notificationModal}
   <NotificationBell 
     unreadCount={unreadCount} 
     onClick={openNotificationModal}
@@ -300,7 +312,17 @@
   />
 {/if}
 
-<Navbar session={$session} {signInWithGoogle} />
+<Navbar 
+  session={$session} 
+  {signInWithGoogle}
+  isModalOpen={isModalOpenState}
+  onModalClose={handleNotificationClose}
+  modalRightButtons={notificationModal && remainingUnreadCount() > 0 ? [{
+    label: `Next (${remainingUnreadCount()})`,
+    onClick: goToNextNotification,
+    ariaLabel: "Next notification"
+  }] : []}
+/>
 
 <div class="content-wrapper">
   {@render children()}

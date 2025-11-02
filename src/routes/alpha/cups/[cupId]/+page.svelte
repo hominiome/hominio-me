@@ -265,8 +265,8 @@
 
     // Check if user has an identity
     if (!userIdentity) {
-      // Redirect directly to purchase page without showing error
-      goto("/alpha/purchase");
+      // Redirect to invite-only page (purchase is disabled, invite-only mode)
+      goto("/alpha/invite-only");
       return;
     }
 
