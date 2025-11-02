@@ -49,8 +49,8 @@
   });
 
   const totalVotes = projectVotes + opponentVotes;
-  const projectPercentage = totalVotes > 0 ? (projectVotes / totalVotes) * 100 : 50;
-  const opponentPercentage = totalVotes > 0 ? (opponentVotes / totalVotes) * 100 : 50;
+  const projectPercentage = totalVotes > 0 ? (projectVotes / totalVotes) * 100 : 0;
+  const opponentPercentage = totalVotes > 0 ? (opponentVotes / totalVotes) * 100 : 0;
   const isAhead = voteDifference > 0;
   const isBehind = voteDifference < 0;
   const isTied = voteDifference === 0;
@@ -59,7 +59,7 @@
   const isProject1 = projectSide === "project1";
 </script>
 
-{#if !loading && project && totalVotes > 0}
+{#if !loading && project}
   <div class="voting-progress-display">
     <!-- Compact project card -->
     <div class="project-card-compact" class:project-card-yellow={isProject1} class:project-card-teal={!isProject1}>

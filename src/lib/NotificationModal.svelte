@@ -207,7 +207,7 @@
     background: white;
     border-radius: 24px 24px 0 0;
     padding: 2.5rem 2rem;
-    padding-bottom: calc(7rem + env(safe-area-inset-bottom));
+    padding-bottom: 0;
     width: 100%;
     max-width: 600px;
     max-height: 85vh;
@@ -226,7 +226,7 @@
   @media (max-width: 768px) {
     .modal-content {
       padding: 1.75rem 1.5rem;
-      padding-bottom: calc(6rem + env(safe-area-inset-bottom));
+      padding-bottom: 0;
       max-height: 90vh;
     }
   }
@@ -302,20 +302,24 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 1.5rem;
-    padding: 1.5rem 2rem;
-    padding-bottom: calc(1.5rem + env(safe-area-inset-bottom));
+    gap: 1rem;
+    padding: 1rem 2rem;
+    padding-bottom: calc(1rem + env(safe-area-inset-bottom));
     background: white;
     border-top: 1px solid rgba(26, 26, 78, 0.08);
     margin-top: auto;
     z-index: 10;
   }
 
+  .bottom-actions.has-next {
+    justify-content: space-between;
+  }
+
   @media (max-width: 768px) {
     .bottom-actions {
-      padding: 1.25rem 1.5rem;
-      padding-bottom: calc(1.25rem + env(safe-area-inset-bottom));
-      gap: 1rem;
+      padding: 0.875rem 1.5rem;
+      padding-bottom: calc(0.875rem + env(safe-area-inset-bottom));
+      gap: 0.75rem;
     }
   }
 
@@ -340,9 +344,8 @@
   }
 
   .next-button {
-    background: #1a1a4e;
-    color: white;
-    border: none;
+    background: rgba(26, 26, 78, 0.1);
+    border: 2px solid rgba(26, 26, 78, 0.2);
     border-radius: 20px;
     padding: 0.625rem 1.25rem;
     cursor: pointer;
@@ -351,16 +354,18 @@
     font-size: 0.875rem;
     white-space: nowrap;
     flex-shrink: 0;
+    color: #1a1a4e;
+    margin-left: auto;
   }
 
   .next-button:hover {
-    background: #4ecdc4;
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(78, 205, 196, 0.3);
+    background: rgba(26, 26, 78, 0.15);
+    border-color: rgba(26, 26, 78, 0.3);
+    transform: scale(1.02);
   }
 
   .next-button:active {
-    transform: translateY(0);
+    transform: scale(1);
   }
 
   .close-icon {
