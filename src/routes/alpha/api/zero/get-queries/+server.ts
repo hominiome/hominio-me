@@ -131,6 +131,35 @@ function getQuery(name: string, args: readonly ReadonlyJSONValue[]) {
       query: builder.userIdentities.where('cupId', '=', cupId),
     };
   }
+
+  // ========================================
+  // VOTE QUERIES
+  // ========================================
+  
+  if (name === 'allVotes') {
+    z.tuple([]).parse(args);
+    return {
+      query: builder.vote.orderBy('createdAt', 'desc'),
+    };
+  }
+  
+  if (name === 'votesByUser') {
+    z.tuple([z.string()]).parse(args);
+    const [userId] = args as [string];
+    return {
+      query: builder.vote
+        .where('userId', '=', userId)
+        .orderBy('createdAt', 'desc'),
+    };
+  }
+  
+  if (name === 'votesByMatch') {
+    z.tuple([z.string()]).parse(args);
+    const [matchId] = args as [string];
+    return {
+      query: builder.vote.where('matchId', '=', matchId),
+    };
+  }
   
   throw new Error(`No such query: ${name}`);
 }

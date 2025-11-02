@@ -173,3 +173,44 @@ export const identitiesByCup = syncedQuery(
   }
 );
 
+/**
+ * ========================================
+ * VOTE QUERIES
+ * ========================================
+ */
+
+/**
+ * Get all votes
+ */
+export const allVotes = syncedQuery(
+  'allVotes',
+  z.tuple([]), // No arguments
+  () => {
+    return builder.vote.orderBy('createdAt', 'desc');
+  }
+);
+
+/**
+ * Get all votes by a specific user
+ */
+export const votesByUser = syncedQuery(
+  'votesByUser',
+  z.tuple([z.string()]), // userId
+  (userId: string) => {
+    return builder.vote
+      .where('userId', '=', userId)
+      .orderBy('createdAt', 'desc');
+  }
+);
+
+/**
+ * Get all votes for a specific match
+ */
+export const votesByMatch = syncedQuery(
+  'votesByMatch',
+  z.tuple([z.string()]), // matchId
+  (matchId: string) => {
+    return builder.vote.where('matchId', '=', matchId);
+  }
+);
+

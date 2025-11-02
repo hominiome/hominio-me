@@ -6,7 +6,7 @@
   import { useZero } from "$lib/zero-utils";
   import { formatPrizePool } from "$lib/prizePoolUtils.js";
   import QRCodeDisplay from "$lib/QRCodeDisplay.svelte";
-  import { allProjects, purchasesByUser, identitiesByUser } from "$lib/synced-queries";
+  import { allProjects, purchasesByUser, identitiesByUser, votesByUser } from "$lib/synced-queries";
 
   // Session data from layout
   let { data } = $props();
@@ -133,16 +133,13 @@
         purchases = Array.from(data || []);
       });
 
-      // Query user's votes
-      const votesQuery = zero.query.vote.where("userId", "=", userId);
-      votesView = votesQuery.materialize();
+      // Query user's votes using synced query
+      const votesQuery = votesByUser(userId);
+      votesView = zero.materialize(votesQuery);
 
       votesView.addListener((data: any) => {
-        votes = Array.from(data || []).sort(
-          (a: any, b: any) =>
-            new Date(b.createdAt || 0).getTime() -
-            new Date(a.createdAt || 0).getTime()
-        );
+        // Already sorted by createdAt desc from synced query
+        votes = Array.from(data || []);
       });
 
       // Query all matches

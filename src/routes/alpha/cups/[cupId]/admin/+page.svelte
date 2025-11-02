@@ -13,7 +13,7 @@
   import TimePicker from "$lib/TimePicker.svelte";
   import CountdownTimer from "$lib/CountdownTimer.svelte";
   import { combineDateAndTime, formatEndDate } from "$lib/dateUtils.js";
-  import { allProjects } from "$lib/synced-queries";
+  import { allProjects, allVotes } from "$lib/synced-queries";
 
   const zeroContext = useZero();
   const session = authClient.useSession();
@@ -131,9 +131,9 @@
         matches = Array.from(data);
       });
 
-      // Query all votes to show vote counts
-      const votesQuery = zero.query.vote;
-      votesView = votesQuery.materialize();
+      // Query all votes to show vote counts using synced query
+      const votesQuery = allVotes();
+      votesView = zero.materialize(votesQuery);
 
       votesView.addListener((data) => {
         votes = Array.from(data);

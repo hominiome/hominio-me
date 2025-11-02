@@ -12,7 +12,7 @@
   import { formatEndDate, getMatchEndDate } from "$lib/dateUtils.js";
   import CountdownTimer from "$lib/CountdownTimer.svelte";
   import { calculatePrizePool, formatPrizePool } from "$lib/prizePoolUtils.js";
-  import { allProjects, purchasesByCup, identityByUserAndCup } from "$lib/synced-queries";
+  import { allProjects, purchasesByCup, identityByUserAndCup, allVotes, votesByUser } from "$lib/synced-queries";
 
   const zeroContext = useZero();
   const session = authClient.useSession();
@@ -148,9 +148,9 @@
         }
       });
 
-      // Query all votes for vote counts and voter display
-      const votesQuery = zero.query.vote;
-      votesView = votesQuery.materialize();
+      // Query all votes for vote counts and voter display using synced query
+      const votesQuery = allVotes();
+      votesView = zero.materialize(votesQuery);
 
       votesView.addListener((data) => {
         votes = Array.from(data);
@@ -184,9 +184,9 @@
           }
         });
 
-        // Query user's votes to check which matches they've voted on
-        const userVotesQuery = zero.query.vote.where("userId", "=", userId);
-        userVotesView = userVotesQuery.materialize();
+        // Query user's votes to check which matches they've voted on using synced query
+        const userVotesQuery = votesByUser(userId);
+        userVotesView = zero.materialize(userVotesQuery);
 
         userVotesView.addListener((data) => {
           userVotes = Array.from(data);
