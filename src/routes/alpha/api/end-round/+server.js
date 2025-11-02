@@ -160,13 +160,13 @@ export async function POST({ request }) {
         // Get both projects to notify winner and loser
         const project1 = await zeroDb
           .selectFrom("project")
-          .select(["userId", "id", "name"])
+          .select(["userId", "id", "title"])
           .where("id", "=", match.project1Id)
           .executeTakeFirst();
 
         const project2 = await zeroDb
           .selectFrom("project")
-          .select(["userId", "id", "name"])
+          .select(["userId", "id", "title"])
           .where("id", "=", match.project2Id)
           .executeTakeFirst();
 
@@ -202,7 +202,7 @@ export async function POST({ request }) {
 
         // Notify loser
         const losingProject = match.winnerId === match.project1Id ? project2 : project1;
-        const winningProjectName = winningProject?.name || "an opponent";
+        const winningProjectName = winningProject?.title || "an opponent";
         if (losingProject?.userId) {
           // Create message with winning project name
           const lossMessage = `This Time ${winningProjectName} made it. But success isn't just about winning - it's about the lessons learned. You've gained invaluable insights. Stand up quick and continue your founder journey! Your day will come soon!`;

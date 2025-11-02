@@ -276,6 +276,25 @@
     }
   }
 
+  async function markAllNonPriorityAsRead() {
+    // Update local state immediately - mark all non-priority unread notifications as read
+    notifications = notifications.map((n) =>
+      n.read === "false" && n.priority !== "true" ? { ...n, read: "true" } : n
+    );
+
+    // Also update via API to persist
+    try {
+      await fetch("/alpha/api/notifications/mark-all-read", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+    } catch (error) {
+      console.error("Failed to mark all notifications as read:", error);
+    }
+  }
+
   // Calculate unread notifications count
   const unreadCount = $derived(
     notifications.filter((n) => n.read === "false").length
@@ -413,6 +432,13 @@
     return Math.max(0, unreadNotifications.length - 1);
   });
 
+  // Calculate count of non-priority unread notifications
+  const nonPriorityUnreadCount = $derived(() => {
+    return notifications.filter(
+      (n) => n.read === "false" && n.priority !== "true"
+    ).length;
+  });
+
   // Generic modal system: detect modal param from URL search params
   const modalType = $derived($page.url.searchParams.get("modal"));
   const modalProjectId = $derived($page.url.searchParams.get("projectId"));
@@ -520,6 +546,18 @@
     }
   });
   
+  // Get modal left buttons - for notification modal
+  const modalLeftButtons = $derived(() => {
+    if (notificationModal && nonPriorityUnreadCount() > 0) {
+      return [{
+        label: `Mark all read (${nonPriorityUnreadCount()})`,
+        onClick: markAllNonPriorityAsRead,
+        ariaLabel: "Mark all non-priority notifications as read"
+      }];
+    }
+    return [];
+  });
+
   // Get modal right buttons - combine notification and project modal buttons
   const modalRightButtons = $derived(() => {
     if (notificationModal && remainingUnreadCount() > 0) {
@@ -686,6 +724,7 @@
   {signInWithGoogle}
   isModalOpen={isModalOpenState}
   onModalClose={modalType ? handleModalClose : handleNotificationClose}
+  modalLeftButtons={modalLeftButtons()}
   modalRightButtons={modalRightButtons()}
 />
 
