@@ -1,27 +1,23 @@
 <script lang="ts">
-  let { 
-    unreadCount, 
-    onClick,
-    latestTitle 
-  } = $props<{
-    unreadCount: number;
-    onClick: () => void;
-    latestTitle?: string;
-  }>();
+  import Icon from "@iconify/svelte";
+
+  let { unreadCount, onClick, latestTitle, latestIcon, latestMessage } =
+    $props<{
+      unreadCount: number;
+      onClick: () => void;
+      latestTitle?: string;
+      latestIcon?: string;
+      latestMessage?: string;
+    }>();
 
   let previousCount = $state(0);
   let animateStack = $state(false);
 
   const hasUnread = $derived(unreadCount > 0);
-  const displayTitle = $derived(
-    latestTitle 
-      ? (latestTitle.length > 20 ? latestTitle.substring(0, 20) + "..." : latestTitle)
-      : ""
-  );
-  
-  // Show stacked previews if there are 2+ notifications (max 3 total including the main one)
+
+  // Show stacked previews if there are 2+ notifications (max 3 additional stacked)
   const stackedCount = $derived(
-    unreadCount > 1 ? Math.min(unreadCount - 1, 2) : 0
+    unreadCount > 1 ? Math.min(unreadCount - 1, 3) : 0
   );
 
   // Trigger animation when new notifications arrive
@@ -35,90 +31,86 @@
     }
     previousCount = unreadCount;
   });
+
+  function handleClick() {
+    onClick();
+  }
 </script>
 
 {#if hasUnread}
   <div class="notification-bell-container">
-    <!-- Stacked previews (fake) -->
+    <!-- Stacked previews (fake) - stacked to the right -->
     {#if stackedCount > 0}
       {#each Array(stackedCount) as _, i}
-        <div 
-          class="stacked-preview" 
+        <div
+          class="stacked-preview"
           class:animate={animateStack}
-          style="--translate-y: {(stackedCount - i) * 4}px; --final-opacity: {0.4 - (i * 0.15)}; z-index: {1000 - i}; animation-delay: {i * 0.1}s;"
+          style="--translate-x: {(stackedCount - i) *
+            -4}px; --final-opacity: {0.3 - i * 0.08}; z-index: {1000 -
+            i}; animation-delay: {i * 0.1}s;"
         >
           <div class="stacked-preview-border"></div>
         </div>
       {/each}
     {/if}
-    
-    <!-- Main notification bell -->
-    <button 
-      class="notification-bell" 
-      class:wiggle={hasUnread}
-      onclick={onClick}
-      aria-label={`${unreadCount} unread notification${unreadCount === 1 ? '' : 's'}`}
-    >
-      <svg 
-        class="bell-icon" 
-        fill="none" 
-        stroke="currentColor" 
-        viewBox="0 0 24 24"
+
+    <!-- Liquid glass wrapper -->
+    <div class="glass-wrapper">
+      <!-- Main notification preview - navbar height -->
+      <button
+        class="notification-preview"
+        onclick={handleClick}
+        aria-label={`${unreadCount} unread notification${unreadCount === 1 ? "" : "s"}`}
       >
-        <path 
-          stroke-linecap="round" 
-          stroke-linejoin="round" 
-          stroke-width="2" 
-          d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"
-        />
-      </svg>
-      {#if unreadCount > 0}
-        <span class="notification-badge">{unreadCount > 99 ? '99+' : unreadCount}</span>
-      {/if}
-      {#if displayTitle}
-        <span class="notification-title-text">{displayTitle}</span>
-      {:else}
-        <span class="notification-label">Unread notifications</span>
-      {/if}
-      <span class="click-indicator">
-        <svg 
-          class="click-icon" 
-          fill="none" 
-          stroke="currentColor" 
-          viewBox="0 0 24 24"
-        >
-          <path 
-            stroke-linecap="round" 
-            stroke-linejoin="round" 
-            stroke-width="2" 
-            d="M5 15l7-7 7 7"
-          />
-        </svg>
-      </span>
-    </button>
+        <div class="preview-content">
+          <div class="icon-badge-group">
+            <Icon icon="mdi:bell" class="preview-icon bell-icon" />
+            <div class="preview-text">
+              {#if latestTitle && latestTitle.trim() !== ""}
+                <div class="preview-title">{latestTitle}</div>
+              {:else}
+                <div class="preview-title">New notification</div>
+              {/if}
+            </div>
+            {#if unreadCount > 0}
+              <span class="notification-badge"
+                >{unreadCount > 99 ? "99+" : unreadCount}</span
+              >
+            {/if}
+          </div>
+          <div class="chevron-icon">
+            <Icon icon="mdi:chevron-up" />
+          </div>
+        </div>
+      </button>
+    </div>
   </div>
 {/if}
 
 <style>
   .notification-bell-container {
     position: fixed;
-    bottom: 5rem;
-    left: 50%;
-    transform: translateX(-50%);
+    bottom: 70px;
+    left: 0;
+    right: 0;
+    width: 100%;
     z-index: 1001;
     display: flex;
-    flex-direction: column;
-    align-items: center;
+    flex-direction: row;
+    align-items: flex-end;
+    justify-content: center;
+    gap: 0;
   }
 
   .stacked-preview {
     position: absolute;
     bottom: 0;
-    left: 50%;
-    width: calc(100% - 8px);
+    right: 0;
+    width: 100%;
+    height: 80px;
     pointer-events: none;
-    transform: translateX(-50%) translateY(var(--translate-y, 0px));
-    opacity: var(--final-opacity, 0.4);
+    transform: translateX(var(--translate-x, 0px));
+    opacity: var(--final-opacity, 0.3);
     transition: all 0.3s ease;
   }
 
@@ -128,173 +120,276 @@
 
   @keyframes stackSlideIn {
     0% {
-      transform: translateX(-50%) translateY(-12px) scale(0.7);
+      transform: translateX(12px) scale(0.7);
       opacity: 0;
     }
     50% {
-      transform: translateX(-50%) translateY(calc(var(--translate-y, 0px) - 4px)) scale(1.1);
-      opacity: calc(var(--final-opacity, 0.4) + 0.3);
+      transform: translateX(calc(var(--translate-x, 0px) + 4px)) scale(1.05);
+      opacity: calc(var(--final-opacity, 0.3) + 0.2);
     }
     100% {
-      transform: translateX(-50%) translateY(var(--translate-y, 0px)) scale(1);
-      opacity: var(--final-opacity, 0.4);
+      transform: translateX(var(--translate-x, 0px)) scale(1);
+      opacity: var(--final-opacity, 0.3);
     }
   }
 
   .stacked-preview-border {
     width: 100%;
-    height: 4px;
+    height: 100%;
     background: white;
-    border: 2px solid rgba(220, 38, 127, 0.2);
-    border-top: none;
+    border: 1px solid rgba(26, 26, 78, 0.1);
     border-left: none;
-    border-right: none;
-    border-radius: 0 0 50px 50px;
+    border-radius: 0 16px 16px 0;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
   }
 
-  .notification-bell {
+  .glass-wrapper {
     position: relative;
-    background: white;
-    border: 2px solid rgba(220, 38, 127, 0.4);
-    border-radius: 50px;
-    padding: 0.75rem 1rem;
+    width: 100%;
+    padding: 1.25rem 1.25rem 0 1.25rem;
+    background: linear-gradient(
+      135deg,
+      rgba(255, 255, 255, 0.2) 0%,
+      rgba(255, 255, 255, 0.1) 100%
+    );
+    backdrop-filter: blur(30px) saturate(200%);
+    -webkit-backdrop-filter: blur(30px) saturate(200%);
+    border-radius: 24px 24px 0 0;
+    border: 1px solid rgba(255, 255, 255, 0.4);
+    border-bottom: none;
+    box-shadow:
+      0 -8px 32px rgba(0, 0, 0, 0.15),
+      inset 0 2px 4px rgba(255, 255, 255, 0.5),
+      inset 0 -2px 4px rgba(255, 255, 255, 0.2),
+      0 0 0 1px rgba(255, 255, 255, 0.1) inset;
+    z-index: 1002;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    margin-bottom: -1px;
+  }
+
+  .notification-preview {
+    position: relative;
+    background: #f4d03f;
+    border: 1px solid rgba(26, 26, 78, 0.1);
+    border-radius: 12px 12px 0 0;
+    width: 100%;
+    max-width: 600px;
+    height: 64px;
+    padding: 0 1.25rem;
     display: flex;
     align-items: center;
-    gap: 0.75rem;
     cursor: pointer;
-    box-shadow: 0 4px 12px rgba(220, 38, 127, 0.25);
+    box-shadow: 0 2px 8px rgba(26, 26, 78, 0.05);
     transition: all 0.3s ease;
-    z-index: 1002;
+    z-index: 1;
+    overflow: visible;
+    margin: 0 auto;
   }
 
-  .notification-bell:hover {
-    border-color: rgba(220, 38, 127, 0.6);
-    box-shadow: 0 6px 16px rgba(220, 38, 127, 0.35);
-    transform: translateY(-2px);
+  .preview-content {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    width: 100%;
+    min-height: 0;
+    overflow: visible;
   }
 
-  .notification-bell.wiggle {
-    animation: pulse 2s ease-in-out infinite;
-  }
-
-  @keyframes pulse {
-    0%, 100% {
-      transform: scale(1);
-      box-shadow: 0 4px 12px rgba(220, 38, 127, 0.25);
-    }
-    50% {
-      transform: scale(1.05);
-      box-shadow: 0 6px 20px rgba(220, 38, 127, 0.4);
-    }
-  }
-
-  .bell-icon {
-    width: 1.5rem;
-    height: 1.5rem;
-    color: #dc267f;
-    flex-shrink: 0;
+  .icon-badge-group {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex: 1;
+    min-width: 0;
+    position: relative;
+    justify-content: flex-start;
   }
 
   .notification-badge {
-    background: linear-gradient(135deg, #dc267f 0%, #b91c73 100%);
-    color: white;
+    background: #1a1a4e;
+    color: #f4d03f;
+    border-radius: 12px;
+    min-width: 2.25rem;
+    width: auto;
+    height: 2.25rem;
+    padding: 0 0.75rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1rem;
+    font-weight: 900;
+    line-height: 1;
+    flex-shrink: 0;
+    position: static;
+    margin-left: auto;
+    border: none;
+    box-shadow: none;
+    outline: none;
+  }
+
+  .preview-icon {
+    width: 4rem;
+    height: 4rem;
+    color: #4ecdc4;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    visibility: visible;
+    opacity: 1;
+  }
+
+  .preview-icon.bell-icon {
+    color: #1a1a4e;
+    width: 3.5rem;
+    height: 3.5rem;
+  }
+
+  .preview-icon :global(svg) {
+    width: 100%;
+    height: 100%;
+    display: block;
+    visibility: visible;
+    opacity: 1;
+  }
+
+  .preview-text {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    overflow: hidden;
+    text-align: left;
+  }
+
+  .preview-title {
+    font-size: 0.9375rem;
+    font-weight: 700;
+    color: #1a1a4e;
+    line-height: 1.2;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .preview-message {
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: rgba(26, 26, 78, 0.7);
+    line-height: 1.3;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: -webkit-box;
+    -webkit-line-clamp: 1;
+    -webkit-box-orient: vertical;
+  }
+
+  .notification-badge {
+    background: #1a1a4e;
+    color: #f4d03f;
     border-radius: 50%;
+    min-width: 1.75rem;
     width: 1.75rem;
     height: 1.75rem;
+    padding: 0;
     display: flex;
     align-items: center;
     justify-content: center;
     font-size: 0.75rem;
-    font-weight: 700;
+    font-weight: 900;
     flex-shrink: 0;
-    box-shadow: 0 2px 8px rgba(220, 38, 127, 0.4);
+    position: static;
+    border: 2px solid #f4d03f;
+    box-shadow: 0 2px 8px rgba(26, 26, 78, 0.2);
   }
 
-  .notification-label {
-    font-size: 0.875rem;
-    font-weight: 600;
-    color: #1a1a4e;
-    white-space: nowrap;
-  }
-
-  .notification-title-text {
-    font-size: 0.875rem;
-    font-weight: 600;
-    color: #1a1a4e;
-    white-space: nowrap;
-    max-width: 200px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
-  .click-indicator {
+  .chevron-icon {
+    width: 1.75rem;
+    height: 1.75rem;
+    color: rgba(26, 26, 78, 0.5);
+    flex-shrink: 0;
     display: flex;
     align-items: center;
-    margin-left: 0.25rem;
-    animation: clickPulse 1.5s ease-in-out infinite;
+    justify-content: center;
   }
 
-  .click-icon {
-    width: 1rem;
-    height: 1rem;
-    color: #dc267f;
-    opacity: 0.7;
-  }
-
-  @keyframes clickPulse {
-    0%, 100% {
-      transform: scale(1);
-      opacity: 0.7;
-    }
-    50% {
-      transform: scale(1.2);
-      opacity: 1;
-    }
+  .chevron-icon :global(svg) {
+    width: 100%;
+    height: 100%;
   }
 
   @media (max-width: 768px) {
     .notification-bell-container {
-      bottom: 5rem;
+      bottom: 65px;
+      left: 0;
+      right: 0;
+      transform: none;
+      width: 100%;
+      padding: 0;
+      margin: 0;
     }
 
-    .notification-bell {
-      padding: 0.625rem 0.875rem;
+    .glass-wrapper {
+      width: 100%;
+      padding: 1rem 1rem 0 1rem;
+      border-radius: 20px 20px 0 0;
+      margin: 0;
+      margin-bottom: -1px;
     }
 
-    .notification-bell.wiggle {
-      animation: pulseMobile 2s ease-in-out infinite;
+    .notification-preview {
+      width: 100%;
+      height: 56px;
+      padding: 0 1rem;
+      border-radius: 12px 12px 0 0;
+      border-bottom: none;
     }
 
-    @keyframes pulseMobile {
-      0%, 100% {
-        transform: scale(1);
-        box-shadow: 0 4px 12px rgba(220, 38, 127, 0.25);
-      }
-      50% {
-        transform: scale(1.05);
-        box-shadow: 0 6px 20px rgba(220, 38, 127, 0.4);
-      }
+    .icon-badge-group {
+      gap: 0.375rem;
     }
 
-    .notification-label {
-      display: none;
-    }
-
-    .bell-icon {
-      width: 1.25rem;
-      height: 1.25rem;
+    .preview-icon.bell-icon {
+      width: 3rem;
+      height: 3rem;
     }
 
     .notification-badge {
-      width: 1.5rem;
-      height: 1.5rem;
-      font-size: 0.6875rem;
+      min-width: 2rem;
+      width: auto;
+      height: 2rem;
+      font-size: 0.9375rem;
+      padding: 0 0.625rem;
+      position: static;
+      border-radius: 10px;
+      line-height: 1;
+      margin-left: auto;
+      border: none;
+      box-shadow: none;
+      outline: none;
     }
 
-    .click-icon {
-      width: 0.875rem;
-      height: 0.875rem;
+    .preview-title {
+      font-size: 0.875rem;
+    }
+
+    .preview-message {
+      font-size: 0.75rem;
+    }
+
+    .notification-badge {
+      min-width: 1.5rem;
+      height: 1.5rem;
+      font-size: 0.6875rem;
+      padding: 0 0.375rem;
+    }
+
+    .chevron-icon {
+      width: 1.5rem;
+      height: 1.5rem;
     }
   }
 </style>
-

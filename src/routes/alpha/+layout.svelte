@@ -179,18 +179,26 @@
     notifications.filter((n) => n.read === "false").length
   );
 
-  // Get latest unread notification title
-  const latestNotificationTitle = $derived(() => {
+  // Get latest unread notification details
+  const latestNotification = $derived(() => {
     const unreadNotifications = notifications.filter((n) => n.read === "false");
     if (unreadNotifications.length > 0) {
       // Sort by createdAt descending to get the newest
       const sorted = [...unreadNotifications].sort((a, b) => 
         new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
       );
-      return sorted[0]?.title || "";
+      return sorted[0] || null;
     }
-    return "";
+    return null;
   });
+
+  const latestNotificationTitle = $derived(
+    latestNotification()?.title?.trim() || ""
+  );
+  const latestNotificationIcon = $derived(latestNotification()?.icon || "");
+  const latestNotificationMessage = $derived(
+    latestNotification()?.message?.trim() || ""
+  );
 
   // Function to open notification modal (called by bell click)
   function openNotificationModal() {
@@ -286,7 +294,9 @@
   <NotificationBell 
     unreadCount={unreadCount} 
     onClick={openNotificationModal}
-    latestTitle={latestNotificationTitle()}
+    latestTitle={latestNotificationTitle}
+    latestIcon={latestNotificationIcon}
+    latestMessage={latestNotificationMessage}
   />
 {/if}
 

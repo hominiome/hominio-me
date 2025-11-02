@@ -5,7 +5,13 @@
   import PrizePoolDisplay from "./components/PrizePoolDisplay.svelte";
   import VotingProgressDisplay from "./components/VotingProgressDisplay.svelte";
 
-  let { notification, onClose, onMarkRead, onNext, remainingCount = 0 } = $props<{
+  let {
+    notification,
+    onClose,
+    onMarkRead,
+    onNext,
+    remainingCount = 0,
+  } = $props<{
     notification: {
       id: string;
       title: string;
@@ -38,18 +44,33 @@
 
   // Get component props based on component type
   const getComponentProps = $derived(() => {
-    if (notification.displayComponent === "PrizePoolDisplay" && notification.resourceType === "identityPurchase") {
+    if (
+      notification.displayComponent === "PrizePoolDisplay" &&
+      notification.resourceType === "identityPurchase"
+    ) {
       return { purchaseId: notification.resourceId };
     }
-    
-    if (notification.displayComponent === "VotingProgressDisplay" && notification.resourceType === "vote") {
-      // Parse matchId and projectSide from resourceId (format: "matchId|projectSide")
+
+    if (
+      notification.displayComponent === "VotingProgressDisplay" &&
+      notification.resourceType === "vote"
+    ) {
+      // Parse matchId, projectSide, and votesReceived from resourceId (format: "matchId|projectSide|votesReceived")
       const parts = notification.resourceId.split("|");
       const matchId = parts[0];
-      const projectSide = (parts[1] === "project1" || parts[1] === "project2") ? parts[1] : "project1";
-      return { matchId, projectSide };
+      const projectSide =
+        parts[1] === "project1" || parts[1] === "project2"
+          ? parts[1]
+          : "project1";
+      const votesReceived = parts[2] ? parseInt(parts[2], 10) : 0;
+      return {
+        matchId,
+        projectSide,
+        votesReceived,
+        notificationIcon: notification.icon,
+      };
     }
-    
+
     return {};
   });
 
@@ -57,12 +78,12 @@
   $effect(() => {
     // Determine which sound to play
     let soundPath = notification.sound;
-    
+
     // If no custom sound, use purchase sound for identity purchase notifications
     if (!soundPath && notification.resourceType === "identityPurchase") {
       soundPath = "/purchase-effect.mp3";
     }
-    
+
     // If still no sound, use default notification sound
     if (!soundPath) {
       soundPath = "/notification.mp3";
@@ -72,7 +93,7 @@
     if (notification.read === "false" && soundPath) {
       const notificationSound = new Audio(soundPath);
       notificationSound.preload = "auto";
-      
+
       try {
         notificationSound.currentTime = 0;
         const playPromise = notificationSound.play();
@@ -89,7 +110,7 @@
 
   async function markAsRead() {
     if (notification.read === "true") return;
-    
+
     try {
       const response = await fetch("/alpha/api/notifications/mark-read", {
         method: "POST",
@@ -146,9 +167,15 @@
         <svelte:component this={DisplayComponent()} {...getComponentProps()} />
       </div>
     {/if}
-    
-    <NotificationItem {notification} onMarkRead={handleMarkRead} showActions={false} />
-    
+
+    <div class="notification-content-wrapper">
+      <NotificationItem
+        {notification}
+        onMarkRead={handleMarkRead}
+        showActions={false}
+      />
+    </div>
+
     {#if actions().length > 0}
       <div class="actions-container">
         {#each actions() as action}
@@ -163,16 +190,32 @@
     {/if}
 
     <div class="bottom-actions">
-      <button class="close-button" onclick={handleClose} aria-label="Close">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" class="close-icon">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-        </svg>
-      </button>
-      {#if remainingCount > 0 && onNext}
-        <button class="next-button" onclick={onNext} aria-label="Next notification">
-          Next ({remainingCount})
+      <div class="bottom-actions-container">
+        <button class="close-button" onclick={handleClose} aria-label="Close">
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            class="close-icon"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M6 18L18 6M6 6l12 12"
+            />
+          </svg>
         </button>
-      {/if}
+        {#if remainingCount > 0 && onNext}
+          <button
+            class="next-button"
+            onclick={onNext}
+            aria-label="Next notification"
+          >
+            Next ({remainingCount})
+          </button>
+        {/if}
+      </div>
     </div>
   </div>
 </div>
@@ -182,8 +225,13 @@
     position: fixed;
     inset: 0;
     bottom: 0;
-    background: rgba(0, 0, 0, 0.6);
-    backdrop-filter: blur(4px);
+    background: linear-gradient(
+      135deg,
+      rgba(255, 255, 255, 0.2) 0%,
+      rgba(255, 255, 255, 0.1) 100%
+    );
+    backdrop-filter: blur(30px) saturate(200%);
+    -webkit-backdrop-filter: blur(30px) saturate(200%);
     display: flex;
     align-items: flex-end;
     justify-content: center;
@@ -234,6 +282,34 @@
   .display-component-wrapper {
     width: 100%;
     margin-bottom: 1.5rem;
+    padding: 0;
+  }
+
+  .notification-content-wrapper {
+    width: 100%;
+    padding: 0;
+  }
+
+  .notification-content-wrapper
+    :global(.notification-item.modal-mode .title-row) {
+    justify-content: center;
+  }
+
+  .notification-content-wrapper
+    :global(.notification-item.modal-mode .notification-title) {
+    text-align: center;
+    flex: 0 1 auto;
+  }
+
+  .notification-content-wrapper
+    :global(.notification-item.modal-mode .notification-message) {
+    text-align: center;
+  }
+
+  .notification-content-wrapper
+    :global(.notification-item.modal-mode .notification-time) {
+    text-align: center;
+    display: block;
   }
 
   @keyframes slideUp {
@@ -251,6 +327,7 @@
     gap: 0.75rem;
     margin-top: 1.5rem;
     padding-top: 1.5rem;
+    padding-bottom: 1rem;
     border-top: 1px solid rgba(78, 205, 196, 0.2);
   }
 
@@ -258,40 +335,41 @@
     .actions-container {
       margin-top: 1rem;
       padding-top: 1rem;
+      padding-bottom: 1rem;
       gap: 0.5rem;
     }
   }
 
   .action-button {
-    background: #1a1a4e;
-    color: white;
-    padding: 1rem 1.75rem;
-    border-radius: 16px;
-    border: none;
+    background: transparent;
+    color: #4ecdc4;
+    padding: 0.875rem 1.5rem;
+    border-radius: 999px;
+    border: 2px solid #4ecdc4;
     font-weight: 600;
-    font-size: 1rem;
+    font-size: 0.9375rem;
     cursor: pointer;
     transition: all 0.2s;
     width: 100%;
-    box-shadow: 0 2px 8px rgba(26, 26, 78, 0.15);
+    box-shadow: none;
   }
 
   @media (max-width: 768px) {
     .action-button {
-      padding: 0.875rem 1.5rem;
-      font-size: 0.9375rem;
+      padding: 0.75rem 1.25rem;
+      font-size: 0.875rem;
     }
   }
 
   .action-button:hover {
-    background: #4ecdc4;
+    background: rgba(78, 205, 196, 0.1);
     transform: translateY(-2px);
-    box-shadow: 0 6px 16px rgba(78, 205, 196, 0.3);
+    box-shadow: 0 4px 12px rgba(78, 205, 196, 0.2);
   }
 
   .action-button:active {
     transform: translateY(0);
-    box-shadow: 0 2px 8px rgba(26, 26, 78, 0.15);
+    box-shadow: 0 2px 6px rgba(78, 205, 196, 0.15);
   }
 
   .bottom-actions {
@@ -299,36 +377,43 @@
     bottom: 0;
     left: 0;
     right: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 1rem;
-    padding: 1rem 2rem;
-    padding-bottom: calc(1rem + env(safe-area-inset-bottom));
-    background: white;
-    border-top: 1px solid rgba(26, 26, 78, 0.08);
+    width: calc(100% + 4rem);
+    margin-left: calc(-2rem);
+    margin-right: calc(-2rem);
+    padding: 0.25rem 0.5rem;
+    padding-bottom: calc(0.25rem + env(safe-area-inset-bottom));
+    background: #1a1a4e;
+    backdrop-filter: blur(12px);
     margin-top: auto;
     z-index: 10;
+    box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.2);
+    border-top: none;
   }
 
-  .bottom-actions.has-next {
-    justify-content: space-between;
-  }
-
-  @media (max-width: 768px) {
-    .bottom-actions {
-      padding: 0.875rem 1.5rem;
-      padding-bottom: calc(0.875rem + env(safe-area-inset-bottom));
-      gap: 0.75rem;
-    }
+  .bottom-actions-container {
+    width: 100%;
+    max-width: 600px;
+    margin: 0 auto;
+    padding: 0.25rem 0.5rem;
+    padding-bottom: calc(0.25rem + env(safe-area-inset-bottom));
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    position: relative;
+    min-height: 56px;
+    height: 56px;
   }
 
   .close-button {
-    background: rgba(26, 26, 78, 0.1);
-    border: 2px solid rgba(26, 26, 78, 0.2);
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 2;
+    background: rgba(255, 255, 255, 0.1);
+    border: 2px solid rgba(255, 255, 255, 0.2);
     border-radius: 50%;
-    width: 3rem;
-    height: 3rem;
+    width: 2rem;
+    height: 2rem;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -338,29 +423,37 @@
   }
 
   .close-button:hover {
-    background: rgba(26, 26, 78, 0.15);
-    border-color: rgba(26, 26, 78, 0.3);
-    transform: scale(1.05);
+    background: rgba(255, 255, 255, 0.15);
+    border-color: rgba(255, 255, 255, 0.3);
+    transform: translateX(-50%) scale(1.05);
+  }
+
+  .close-icon {
+    width: 0.875rem;
+    height: 0.875rem;
+    color: rgba(255, 255, 255, 0.9);
   }
 
   .next-button {
-    background: rgba(26, 26, 78, 0.1);
-    border: 2px solid rgba(26, 26, 78, 0.2);
-    border-radius: 20px;
-    padding: 0.625rem 1.25rem;
+    position: absolute;
+    right: 2rem;
+    z-index: 1;
+    background: rgba(255, 255, 255, 0.1);
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    border-radius: 999px;
+    padding: 0.375rem 0.875rem;
     cursor: pointer;
     transition: all 0.2s;
     font-weight: 600;
-    font-size: 0.875rem;
+    font-size: 0.7rem;
     white-space: nowrap;
     flex-shrink: 0;
-    color: #1a1a4e;
-    margin-left: auto;
+    color: rgba(255, 255, 255, 0.9);
   }
 
   .next-button:hover {
-    background: rgba(26, 26, 78, 0.15);
-    border-color: rgba(26, 26, 78, 0.3);
+    background: rgba(255, 255, 255, 0.15);
+    border-color: rgba(255, 255, 255, 0.3);
     transform: scale(1.02);
   }
 
@@ -368,9 +461,24 @@
     transform: scale(1);
   }
 
-  .close-icon {
-    width: 1.25rem;
-    height: 1.25rem;
-    color: #1a1a4e;
+  @media (max-width: 768px) {
+    .bottom-actions {
+      margin-left: calc(-1.5rem);
+      margin-right: calc(-1.5rem);
+      width: calc(100% + 3rem);
+      padding: 0.25rem 0.5rem;
+      padding-bottom: calc(0.25rem + env(safe-area-inset-bottom));
+    }
+
+    .bottom-actions-container {
+      padding: 0.25rem 0.5rem;
+      padding-bottom: calc(0.25rem + env(safe-area-inset-bottom));
+      min-height: 56px;
+      height: 56px;
+    }
+
+    .next-button {
+      right: 1.5rem;
+    }
   }
 </style>

@@ -178,14 +178,16 @@ export async function POST({ request }) {
         : "The match is tied! Keep fighting for every vote.";
 
       const notificationId = nanoid();
-      // Store matchId and projectSide in resourceId as "matchId|projectSide"
+      // Store matchId, projectSide, and votingWeight received in resourceId as "matchId|projectSide|votingWeight"
+      // votingWeight is the weight added in THIS event (positive if voted for, negative if voted against)
+      const votesReceived = projectSide === "project1" ? votingWeight : -votingWeight;
       await zeroDb
         .insertInto("notification")
         .values({
           id: notificationId,
           userId: project1.userId,
           resourceType: "vote",
-          resourceId: `${matchId}|project1`,
+          resourceId: `${matchId}|project1|${votesReceived}`,
           title: "Someone voted on your match",
           message: message,
           read: "false",
@@ -211,14 +213,16 @@ export async function POST({ request }) {
         : "The match is tied! Keep fighting for every vote.";
 
       const notificationId = nanoid();
-      // Store matchId and projectSide in resourceId as "matchId|projectSide"
+      // Store matchId, projectSide, and votingWeight received in resourceId as "matchId|projectSide|votingWeight"
+      // votingWeight is the weight added in THIS event (positive if voted for, negative if voted against)
+      const votesReceived = projectSide === "project2" ? votingWeight : -votingWeight;
       await zeroDb
         .insertInto("notification")
         .values({
           id: notificationId,
           userId: project2.userId,
           resourceType: "vote",
-          resourceId: `${matchId}|project2`,
+          resourceId: `${matchId}|project2|${votesReceived}`,
           title: "Someone voted on your match",
           message: message,
           read: "false",

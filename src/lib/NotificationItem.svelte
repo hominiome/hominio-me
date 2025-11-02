@@ -21,6 +21,30 @@
   const isRead = $derived(notification.read === "true");
   const createdAt = $derived(new Date(notification.createdAt));
 
+  function formatRelativeTime(date: Date): string {
+    const now = new Date();
+    const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+    
+    if (diffInSeconds < 60) {
+      return `${diffInSeconds} sec ago`;
+    }
+    
+    const diffInMinutes = Math.floor(diffInSeconds / 60);
+    if (diffInMinutes < 60) {
+      return `${diffInMinutes} min ago`;
+    }
+    
+    const diffInHours = Math.floor(diffInMinutes / 60);
+    if (diffInHours < 24) {
+      return `${diffInHours} h ago`;
+    }
+    
+    const diffInDays = Math.floor(diffInHours / 24);
+    return `${diffInDays} d ago`;
+  }
+
+  const relativeTime = $derived(formatRelativeTime(createdAt));
+
   async function handleMarkRead() {
     if (isRead) return;
 
@@ -58,17 +82,17 @@
 
 <div class="notification-item" class:read={isRead} class:modal-mode={!showActions} onclick={handleMarkRead}>
   <div class="notification-content">
+    {#if notification.icon && !showActions}
+      <div class="notification-icon-above" class:thumb-down={notification.icon === "mdi:thumb-down"}>
+        <Icon icon={notification.icon} />
+      </div>
+    {/if}
     <div class="title-row">
-      {#if notification.icon && !showActions}
-        <div class="notification-icon-small">
-          <Icon icon={notification.icon} />
-        </div>
-      {/if}
       <h3 class="notification-title">{notification.title}</h3>
     </div>
     <p class="notification-message">{notification.message}</p>
     <time class="notification-time" datetime={notification.createdAt}>
-      {createdAt.toLocaleDateString()} {createdAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+      {relativeTime}
     </time>
     
     {#if actions().length > 0 && showActions}
@@ -138,6 +162,24 @@
     margin-bottom: 1rem;
   }
 
+  .notification-icon-above {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    margin-bottom: 1rem;
+    color: #4ecdc4;
+  }
+
+  .notification-icon-above.thumb-down {
+    color: #f87171;
+  }
+
+  .notification-icon-above :global(svg) {
+    width: 3rem;
+    height: 3rem;
+  }
+
   .notification-icon-small {
     flex-shrink: 0;
     width: 2rem;
@@ -146,6 +188,10 @@
     align-items: center;
     justify-content: center;
     color: #4ecdc4;
+  }
+
+  .notification-icon-small.thumb-down {
+    color: #f87171;
   }
 
   .notification-icon-small :global(svg) {

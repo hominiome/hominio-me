@@ -2,17 +2,30 @@
   import { onMount } from "svelte";
   import { getUserProfile } from "$lib/userProfileCache";
 
-  let { matchId, projectSide } = $props<{
+  let {
+    matchId,
+    projectSide,
+    votesReceived = 0,
+    notificationIcon,
+  } = $props<{
     matchId: string;
     projectSide: "project1" | "project2";
+    votesReceived?: number; // Votes received in THIS event (positive if voted for, negative if voted against)
+    notificationIcon?: string; // Icon name to determine color (mdi:thumb-up or mdi:thumb-down)
   }>();
 
-  let projectVotes = $state<number>(0);
-  let opponentVotes = $state<number>(0);
-  let voteDifference = $state<number>(0);
-  let project = $state<any>(null);
-  let opponentProject = $state<any>(null);
-  let founderProfile = $state<{ name: string | null; image: string | null } | null>(null);
+  let project1Votes = $state<number>(0);
+  let project2Votes = $state<number>(0);
+  let project1 = $state<any>(null);
+  let project2 = $state<any>(null);
+  let founder1Profile = $state<{
+    name: string | null;
+    image: string | null;
+  } | null>(null);
+  let founder2Profile = $state<{
+    name: string | null;
+    image: string | null;
+  } | null>(null);
   let loading = $state(true);
 
   onMount(async () => {
@@ -20,26 +33,30 @@
       // Fetch match details and vote data in parallel
       const [matchResponse, voteResponse] = await Promise.all([
         fetch(`/alpha/api/match-details/${matchId}`),
-        fetch(`/alpha/api/match-vote-data/${matchId}`)
+        fetch(`/alpha/api/match-vote-data/${matchId}`),
       ]);
 
       if (matchResponse.ok) {
         const matchData = await matchResponse.json();
-        project = projectSide === "project1" ? matchData.project1 : matchData.project2;
-        opponentProject = projectSide === "project1" ? matchData.project2 : matchData.project1;
-        
-        // Fetch founder profile
-        if (project?.userId) {
-          const profile = await getUserProfile(project.userId);
-          founderProfile = { name: profile.name, image: profile.image };
+        project1 = matchData.project1;
+        project2 = matchData.project2;
+
+        // Fetch founder profiles for both projects
+        if (project1?.userId) {
+          const profile1 = await getUserProfile(project1.userId);
+          founder1Profile = { name: profile1.name, image: profile1.image };
+        }
+        if (project2?.userId) {
+          const profile2 = await getUserProfile(project2.userId);
+          founder2Profile = { name: profile2.name, image: profile2.image };
         }
       }
 
       if (voteResponse.ok) {
         const voteData = await voteResponse.json();
-        projectVotes = voteData[projectSide] || 0;
-        opponentVotes = voteData[projectSide === "project1" ? "project2" : "project1"] || 0;
-        voteDifference = projectVotes - opponentVotes;
+        project1Votes = Number(voteData.project1 || 0);
+        project2Votes = Number(voteData.project2 || 0);
+        console.log("Vote data:", { project1Votes, project2Votes, matchId });
       }
     } catch (error) {
       console.error("Failed to fetch voting progress data:", error);
@@ -48,88 +65,162 @@
     }
   });
 
-  const totalVotes = projectVotes + opponentVotes;
-  const projectPercentage = totalVotes > 0 ? (projectVotes / totalVotes) * 100 : 0;
-  const opponentPercentage = totalVotes > 0 ? (opponentVotes / totalVotes) * 100 : 0;
-  const isAhead = voteDifference > 0;
-  const isBehind = voteDifference < 0;
-  const isTied = voteDifference === 0;
-  
-  // Determine which color scheme based on project side
-  const isProject1 = projectSide === "project1";
+  const totalVotes = $derived(project1Votes + project2Votes);
+
+  // Calculate percentages - if no votes, show 50/50, otherwise calculate correctly
+  const percent1 = $derived(
+    totalVotes > 0 ? (project1Votes / totalVotes) * 100 : 50
+  );
+  const percent2 = $derived(
+    totalVotes > 0 ? (project2Votes / totalVotes) * 100 : 50
+  );
+
+  // Round to 1 decimal place to match MatchDetail
+  const normalizedPercent1 = $derived(Math.round(percent1 * 10) / 10);
+  const normalizedPercent2 = $derived(Math.round(percent2 * 10) / 10);
+
+  // Debug logging
+  $effect(() => {
+    if (!loading && project1 && project2) {
+      console.log("Vote data:", {
+        project1Votes,
+        project2Votes,
+        totalVotes,
+        percent1: normalizedPercent1,
+        percent2: normalizedPercent2,
+        calculatedPercent1: percent1,
+        calculatedPercent2: percent2,
+      });
+    }
+  });
+
+  // Determine if this is a thumb-up (positive vote) or thumb-down (negative vote)
+  const isThumbUp = notificationIcon === "mdi:thumb-up";
+  const isThumbDown = notificationIcon === "mdi:thumb-down";
+
+  // Color vote count buttons based on thumb icon
+  // Yellow (#f4d03f) for thumb-up, Teal (#4ecdc4) for thumb-down
+  const project1ColorClass =
+    projectSide === "project1"
+      ? isThumbUp
+        ? "vote-count-yellow"
+        : isThumbDown
+          ? "vote-count-teal"
+          : ""
+      : "";
+  const project2ColorClass =
+    projectSide === "project2"
+      ? isThumbUp
+        ? "vote-count-yellow"
+        : isThumbDown
+          ? "vote-count-teal"
+          : ""
+      : "";
 </script>
 
-{#if !loading && project}
+{#if !loading && project1 && project2}
   <div class="voting-progress-display">
-    <!-- Compact project card -->
-    <div class="project-card-compact" class:project-card-yellow={isProject1} class:project-card-teal={!isProject1}>
-      <div class="project-header-compact">
-        {#if founderProfile?.image}
-          <img 
-            src={founderProfile.image} 
-            alt={founderProfile.name || "Founder"} 
-            class="founder-avatar-compact"
-            onerror={(e) => { e.currentTarget.style.display = 'none'; }}
-          />
-        {/if}
-        {#if (!founderProfile?.image || founderProfile.image === null)}
-          <div class="founder-avatar-placeholder-compact" class:project-card-yellow={isProject1} class:project-card-teal={!isProject1}>
-            {founderProfile?.name?.[0]?.toUpperCase() || "?"}
+    <!-- Both project cards side by side -->
+    <div class="projects-grid-compact">
+      <!-- Project 1 Card -->
+      <div class="project-card-compact project-card-yellow">
+        <div class="project-header-compact">
+          {#if founder1Profile?.image}
+            <img
+              src={founder1Profile.image}
+              alt={founder1Profile.name || "Founder"}
+              class="founder-avatar-compact"
+              onerror={(e) => {
+                e.currentTarget.style.display = "none";
+              }}
+            />
+          {/if}
+          {#if !founder1Profile?.image || founder1Profile.image === null}
+            <div class="founder-avatar-placeholder-compact project-card-yellow">
+              {founder1Profile?.name?.[0]?.toUpperCase() || "?"}
+            </div>
+          {/if}
+          <div class="project-info-compact">
+            <h3 class="project-title-compact">{project1.title}</h3>
+            <p class="founder-name-compact">
+              {founder1Profile?.name || "Unknown"}
+            </p>
           </div>
-        {/if}
-        <div class="project-info-compact">
-          <h3 class="project-title-compact">{project.title}</h3>
-          <p class="founder-name-compact">{founderProfile?.name || "Unknown"}</p>
+        </div>
+      </div>
+
+      <!-- Project 2 Card -->
+      <div class="project-card-compact project-card-teal">
+        <div class="project-header-compact">
+          {#if founder2Profile?.image}
+            <img
+              src={founder2Profile.image}
+              alt={founder2Profile.name || "Founder"}
+              class="founder-avatar-compact"
+              onerror={(e) => {
+                e.currentTarget.style.display = "none";
+              }}
+            />
+          {/if}
+          {#if !founder2Profile?.image || founder2Profile.image === null}
+            <div class="founder-avatar-placeholder-compact project-card-teal">
+              {founder2Profile?.name?.[0]?.toUpperCase() || "?"}
+            </div>
+          {/if}
+          <div class="project-info-compact">
+            <h3 class="project-title-compact">{project2.title}</h3>
+            <p class="founder-name-compact">
+              {founder2Profile?.name || "Unknown"}
+            </p>
+          </div>
         </div>
       </div>
     </div>
 
-    <!-- Progress bar similar to match cards -->
-    <div class="progress-bar-wrapper-compact">
-      <div class="progress-bar-container-compact">
-        <div 
-          class="progress-bar" 
-          class:progress-bar-yellow={isProject1}
-          class:progress-bar-teal={!isProject1}
-          style="width: {projectPercentage}%"
-        >
-          {#if projectPercentage >= 5}
-            <span class="progress-percent">{projectPercentage.toFixed(1)}%</span>
+    <!-- Progress Bar with Vote Counts and Percentages (exact match from MatchDetail.svelte) -->
+    <div class="progress-bar-wrapper">
+      <!-- Vote count left -->
+      <div class="vote-count-inline vote-count-left vote-count-square">
+        <span class="count-number">{project1Votes || 0}</span>
+      </div>
+
+      <div class="progress-bar-container">
+        <div class="progress-bar-yellow" style="width: {normalizedPercent1}%">
+          {#if normalizedPercent1 >= 5}
+            <span class="progress-percent"
+              >{normalizedPercent1.toFixed(1)}%</span
+            >
           {/if}
         </div>
-        <div 
-          class="progress-bar" 
-          class:progress-bar-yellow={!isProject1}
-          class:progress-bar-teal={isProject1}
-          style="width: {opponentPercentage}%"
-        >
-          {#if opponentPercentage >= 5}
-            <span class="progress-percent">{opponentPercentage.toFixed(1)}%</span>
+        <div class="progress-bar-teal" style="width: {normalizedPercent2}%">
+          {#if normalizedPercent2 >= 5}
+            <span class="progress-percent"
+              >{normalizedPercent2.toFixed(1)}%</span
+            >
           {/if}
         </div>
       </div>
-      
-      <!-- Vote counts -->
-      <div class="vote-count-compact vote-count-left">
-        <span class="count-number">{projectVotes || 0}</span>
-      </div>
-      <div class="vote-count-compact vote-count-right">
-        <span class="count-number">{opponentVotes || 0}</span>
+
+      <!-- Vote count right -->
+      <div class="vote-count-inline vote-count-right vote-count-square">
+        <span class="count-number">{project2Votes || 0}</span>
       </div>
     </div>
 
-    <!-- Vote difference display -->
+    <!-- Votes received in this event -->
     <div class="vote-difference">
-      {#if isAhead}
-        <span class="vote-sign positive">+</span>
-        <span class="vote-number positive">{Math.abs(voteDifference)}</span>
-      {:else if isBehind}
-        <span class="vote-sign negative">-</span>
-        <span class="vote-number negative">{Math.abs(voteDifference)}</span>
-      {:else}
-        <span class="vote-sign neutral">=</span>
-        <span class="vote-number neutral">0</span>
-      {/if}
+      <div class="vote-badge-wrapper">
+        {#if votesReceived > 0}
+          <span class="vote-sign positive">+</span>
+          <span class="vote-number positive">{Math.abs(votesReceived)}</span>
+        {:else if votesReceived < 0}
+          <span class="vote-sign negative">-</span>
+          <span class="vote-number negative">{Math.abs(votesReceived)}</span>
+        {:else}
+          <span class="vote-sign neutral">=</span>
+          <span class="vote-number neutral">0</span>
+        {/if}
+      </div>
     </div>
   </div>
 {/if}
@@ -142,6 +233,12 @@
     border-radius: 16px;
     display: flex;
     flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .projects-grid-compact {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
     gap: 0.75rem;
   }
 
@@ -220,100 +317,142 @@
     margin: 0;
   }
 
-  .progress-bar-wrapper-compact {
+  .progress-bar-wrapper {
     display: flex;
-    align-items: stretch;
+    align-items: stretch; /* Stretch to remove gaps */
     gap: 0;
     position: relative;
-    height: 50px;
+    margin-bottom: 0; /* No margin between progress bar and voters */
   }
 
-  .progress-bar-container-compact {
-    height: 100%;
+  .progress-bar-container {
+    height: 60px;
     display: flex;
     flex: 1;
     position: relative;
-    overflow: hidden;
-  }
-
-  .progress-bar {
-    height: 100%;
-    transition: width 0.3s ease;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    position: relative;
-    min-width: 0;
+    overflow: hidden; /* Ensure no gaps between progress segments */
   }
 
   .progress-bar-yellow {
+    height: 100%;
     background: linear-gradient(
       90deg,
       rgba(244, 208, 63, 0.25) 0%,
       rgba(244, 208, 63, 0.15) 100%
     );
+    transition: width 0.1s ease-in-out; /* Fast default transition */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: absolute;
     left: 0;
-    transform-origin: left center;
+    top: 0;
+    bottom: 0;
+    transform-origin: left center; /* Flow from left */
+    min-width: 0; /* Allow shrinking to 0% smoothly */
+    z-index: 1;
   }
 
   .progress-bar-teal {
+    height: 100%;
     background: linear-gradient(
       90deg,
       rgba(78, 205, 196, 0.15) 0%,
       rgba(78, 205, 196, 0.25) 100%
     );
-    right: 0;
-    margin-left: auto;
-    transform-origin: right center;
-  }
-
-  .progress-percent {
-    font-size: 1.125rem;
-    font-weight: 800;
-    color: #1a1a4e;
-    white-space: nowrap;
-  }
-
-  .progress-bar-yellow .progress-percent {
-    color: #b8860b;
-  }
-
-  .progress-bar-teal .progress-percent {
-    color: #1e8b85;
-  }
-
-  .vote-count-compact {
-    height: 50px;
-    width: 50px;
+    transition: width 0.1s ease-in-out; /* Fast default transition */
     display: flex;
     align-items: center;
     justify-content: center;
+    position: absolute;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    transform-origin: right center; /* Flow from right */
+    min-width: 0; /* Allow shrinking to 0% smoothly */
+    z-index: 2;
+  }
+
+  /* Ensure both bars are always visible during transition */
+  .progress-bar-container .progress-bar-yellow,
+  .progress-bar-container .progress-bar-teal {
+    overflow: visible; /* Don't clip during transition */
+  }
+
+  .progress-percent {
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: #1a1a4e;
+    white-space: nowrap;
+    position: relative;
+    z-index: 10;
+    pointer-events: none;
+  }
+
+  .progress-bar-yellow .progress-percent {
+    color: #b8860b; /* Darker yellow */
+  }
+
+  .progress-bar-teal .progress-percent {
+    color: #1e8b85; /* Darker teal */
+  }
+
+  .vote-count-inline {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 900;
+    font-size: 1.75rem;
     flex-shrink: 0;
-    background: white;
-    border-radius: 8px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  }
+
+  /* 16:9 vote count - same aspect ratio as button, replaces button when voted */
+  .vote-count-square {
+    height: 60px;
+    width: 95px; /* 16:9 aspect ratio, slightly reduced */
+    padding: 0;
   }
 
   .vote-count-left {
-    margin-right: 0.5rem;
+    background: linear-gradient(
+      90deg,
+      rgba(244, 208, 63, 0.55) 0%,
+      rgba(244, 208, 63, 0.45) 100%
+    );
+    color: #b8860b; /* Darker yellow */
+    border-radius: 12px 0 0 12px; /* Rounded left corners */
   }
 
   .vote-count-right {
-    margin-left: 0.5rem;
+    background: linear-gradient(
+      90deg,
+      rgba(78, 205, 196, 0.45) 0%,
+      rgba(78, 205, 196, 0.55) 100%
+    );
+    color: #1e8b85; /* Darker teal */
+    border-radius: 0 12px 12px 0; /* Rounded right corners */
   }
 
   .count-number {
-    font-size: 1.25rem;
     font-weight: 900;
-    color: #1a1a4e;
+    letter-spacing: -0.02em;
   }
 
   .vote-difference {
     display: flex;
-    align-items: baseline;
+    align-items: center;
     justify-content: center;
-    gap: 0.25rem;
     padding-top: 0.5rem;
+  }
+
+  .vote-badge-wrapper {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 0.25rem;
+    padding: 0.5rem 1rem;
+    background: rgba(255, 255, 255, 0.6);
+    border-radius: 999px;
+    backdrop-filter: blur(8px);
   }
 
   .vote-sign {
@@ -335,7 +474,7 @@
 
   .vote-sign.negative,
   .vote-number.negative {
-    color: #dc267f;
+    color: #f87171;
   }
 
   .vote-sign.neutral,
@@ -369,21 +508,39 @@
       font-size: 0.7rem;
     }
 
-    .progress-bar-wrapper-compact {
-      height: 45px;
+    .progress-bar-wrapper {
+      flex-wrap: nowrap; /* Keep stats in one row */
+      gap: 0; /* No gap - elements flush together */
     }
 
-    .vote-count-compact {
-      height: 45px;
-      width: 45px;
+    .progress-bar-container {
+      height: 50px;
+      flex: 1; /* Take remaining space */
+      min-width: 0; /* Allow shrinking */
+      order: 0; /* Natural order - between vote counts */
     }
 
-    .count-number {
-      font-size: 1.125rem;
+    .vote-count-inline {
+      font-size: 1rem; /* Smaller font */
+      flex-shrink: 0; /* Don't shrink */
+    }
+
+    .vote-count-square {
+      height: 50px;
+      width: 80px; /* 16:9 aspect ratio, slightly reduced */
+      padding: 0;
+    }
+
+    .vote-count-left {
+      order: -1; /* After left button, before progress bar */
+    }
+
+    .vote-count-right {
+      order: 1; /* After progress bar, before right button */
     }
 
     .progress-percent {
-      font-size: 1rem;
+      font-size: 0.875rem;
     }
 
     .vote-sign {
@@ -395,4 +552,3 @@
     }
   }
 </style>
-

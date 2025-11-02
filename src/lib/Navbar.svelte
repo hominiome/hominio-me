@@ -227,27 +227,27 @@
 
 <style>
   .navbar {
-    position: sticky;
-    top: 0;
-    bottom: auto;
+    position: fixed;
+    top: auto;
+    bottom: 0;
     left: 0;
     right: 0;
-    width: 100%;
+    width: 100vw;
     z-index: 1000;
-    background: rgba(255, 255, 255, 0.95);
-    backdrop-filter: blur(12px);
-    border-bottom: 1px solid rgba(26, 26, 78, 0.08);
-    box-shadow: 0 2px 12px rgba(26, 26, 78, 0.04);
+    margin: 0;
+    padding: 0;
+    border-bottom: none;
+    border-top: none;
+    box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.2);
   }
 
   .nav-container {
-    max-width: 1400px;
-    margin: 0 auto;
-    padding: 0 2rem;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    height: 80px;
+    padding: 0;
+    margin: 0;
+    max-width: none;
+    width: 100%;
+    height: auto;
+    flex-direction: column;
   }
 
   /* Logo */
@@ -447,9 +447,17 @@
     box-shadow: 0 4px 12px rgba(78, 205, 196, 0.3);
   }
 
-  /* Mobile Bottom Navigation */
+  /* Mobile Bottom Navigation - Now used on all screen sizes */
   .mobile-bottom-nav {
-    display: none;
+    display: flex;
+    align-items: center;
+    justify-content: space-around;
+    width: 100%;
+    padding: 0.375rem 0.5rem;
+    margin: 0;
+    background: #1a1a4e; /* Dark marine blue brand color */
+    backdrop-filter: blur(12px);
+    gap: 0;
   }
 
   .mobile-nav-item {
@@ -524,49 +532,19 @@
     font-size: 1rem;
   }
 
+  /* Hide desktop nav links and logo on all screen sizes */
+  .desktop-nav-links {
+    display: none;
+  }
+
+  .logo-link {
+    display: none; /* Hide logo - using bottom nav on all screens */
+  }
+
   /* Responsive */
   @media (max-width: 768px) {
-    .navbar {
-      position: fixed;
-      top: auto;
-      bottom: 0;
-      left: 0;
-      right: 0;
-      width: 100vw;
-      margin: 0;
-      padding: 0;
-      border-bottom: none;
-      border-top: none;
-      box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.2);
-    }
-
-    .nav-container {
-      padding: 0;
-      margin: 0;
-      max-width: none;
-      width: 100%;
-      height: auto;
-      flex-direction: column;
-    }
-
     .logo-link {
       display: none; /* Hide logo on mobile */
-    }
-
-    .desktop-nav-links {
-      display: none; /* Hide desktop nav on mobile */
-    }
-
-    .mobile-bottom-nav {
-      display: flex;
-      align-items: center;
-      justify-content: space-around;
-      width: 100%;
-      padding: 0.375rem 0.5rem;
-      margin: 0;
-      background: #1a1a4e; /* Dark marine blue brand color */
-      backdrop-filter: blur(12px);
-      gap: 0;
     }
 
     .mobile-nav-item {
