@@ -137,11 +137,23 @@ export async function POST({ request }) {
       // Create notification for identity purchase
       const notificationId = nanoid();
       const isHominio = selectedPackage.name === "I am Hominio";
+      const isFounder = selectedPackage.packageType === "founder";
       const identityName = isHominio ? "Hominio" : selectedPackage.name.replace("Hominio ", "");
       const title = isHominio ? "You are now Hominio" : `You are now an ${identityName}`;
-      const actions = JSON.stringify([
-        { label: "Open Matches", url: "/alpha" }
-      ]);
+      
+      // Founder notifications get different action and message
+      let actions, message;
+      if (isFounder) {
+        actions = JSON.stringify([
+          { label: "Create Project", url: "/alpha/projects" }
+        ]);
+        message = `Welcome to the founder circle! You can now create and submit your project to compete in the "${cup.name}" competition.`;
+      } else {
+        actions = JSON.stringify([
+          { label: "Open Matches", url: "/alpha" }
+        ]);
+        message = `May the wisdom be with you. You can now vote in the "${cup.name}" competition matches.`;
+      }
       
       await zeroDb
         .insertInto("notification")
@@ -151,7 +163,7 @@ export async function POST({ request }) {
           resourceType: "identityPurchase",
           resourceId: purchaseId,
           title: title,
-          message: `May the wisdom be with you. You can now vote in the "${cup.name}" competition matches.`,
+          message: message,
           read: "false",
           createdAt: now,
           actions: actions,
@@ -203,11 +215,23 @@ export async function POST({ request }) {
       // Create notification for identity purchase
       const notificationId = nanoid();
       const isHominio = selectedPackage.name === "I am Hominio";
+      const isFounder = selectedPackage.packageType === "founder";
       const identityName = isHominio ? "Hominio" : selectedPackage.name.replace("Hominio ", "");
       const title = isHominio ? "You are now Hominio" : `You are now an ${identityName}`;
-      const actions = JSON.stringify([
-        { label: "Open Matches", url: "/alpha" }
-      ]);
+      
+      // Founder notifications get different action and message
+      let actions, message;
+      if (isFounder) {
+        actions = JSON.stringify([
+          { label: "Create Project", url: "/alpha/projects" }
+        ]);
+        message = `Welcome to the founder circle! You can now create and submit your project to compete in the "${cup.name}" competition.`;
+      } else {
+        actions = JSON.stringify([
+          { label: "Open Matches", url: "/alpha" }
+        ]);
+        message = `May the wisdom be with you. You can now vote in the "${cup.name}" competition matches.`;
+      }
       
       await zeroDb
         .insertInto("notification")
@@ -217,7 +241,7 @@ export async function POST({ request }) {
           resourceType: "identityPurchase",
           resourceId: purchaseId,
           title: title,
-          message: `May the wisdom be with you. You can now vote in the "${cup.name}" competition matches.`,
+          message: message,
           read: "false",
           createdAt: now,
           actions: actions,

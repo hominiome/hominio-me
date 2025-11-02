@@ -298,5 +298,115 @@
             "16_PeaceJusticeInstitutions",
             "05_GenderEquality"
         ]
+    },
+    {
+        "title": "WasteWise",
+        "description": "AI-powered waste sorting system for households that automatically categorizes trash and schedules pickups. Reduces landfill waste by 80% through smart recycling recommendations.",
+        "country": "Belgium",
+        "city": "Antwerp",
+        "sdgs": [
+            "12_ResponsibleConsumption",
+            "13_Climate",
+            "11_SustainableCities"
+        ]
+    },
+    {
+        "title": "EduBridge",
+        "description": "Connecting refugee students with online education opportunities and mentorship programs. Provides free language learning, vocational training, and academic support for displaced learners.",
+        "country": "Greece",
+        "city": "Athens",
+        "sdgs": [
+            "04_QualityEducation",
+            "10_ReducedInequalities",
+            "17_Partnerships"
+        ]
+    },
+    {
+        "title": "SolarShare",
+        "description": "Community solar energy marketplace where neighbors share excess solar power. Participants earn credits for contributing clean energy to the local grid, making renewables accessible to all.",
+        "country": "Austria",
+        "city": "Salzburg",
+        "sdgs": [
+            "07_CleanEnergy",
+            "13_Climate",
+            "11_SustainableCities"
+        ]
+    },
+    {
+        "title": "HealthHub",
+        "description": "Telemedicine platform connecting rural patients with urban specialists via video consultations. Includes mobile clinics that travel to underserved areas with portable diagnostic equipment.",
+        "country": "Romania",
+        "city": "Bucharest",
+        "sdgs": [
+            "03_GoodHealth",
+            "10_ReducedInequalities",
+            "09_Industry"
+        ]
+    },
+    {
+        "title": "ReFarm",
+        "description": "Transforming abandoned urban lots into productive micro-farms using hydroponic systems. Local communities manage shared gardens and sell produce through our marketplace.",
+        "country": "Hungary",
+        "city": "Budapest",
+        "sdgs": [
+            "02_ZeroHunger",
+            "11_SustainableCities",
+            "15_LifeOnLand"
+        ]
+    },
+    {
+        "title": "WaterWatch",
+        "description": "IoT sensor network monitoring water quality in real-time across cities. Alerts authorities and citizens about contamination, leaks, and conservation opportunities instantly.",
+        "country": "Poland",
+        "city": "Krakow",
+        "sdgs": [
+            "06_CleanWaterSanitation",
+            "09_Industry",
+            "11_SustainableCities"
+        ]
+    },
+    {
+        "title": "SkillMatch",
+        "description": "Job matching platform using AI to connect workers with opportunities based on transferable skills, not just resumes. Helps career changers and helps reduce unemployment gaps.",
+        "country": "Portugal",
+        "city": "Porto",
+        "sdgs": [
+            "08_DecentWork",
+            "04_QualityEducation",
+            "10_ReducedInequalities"
+        ]
+    },
+    {
+        "title": "BioPlastic",
+        "description": "Manufacturing biodegradable plastic alternatives from agricultural waste. Our materials decompose in 90 days and can be produced locally, reducing dependency on fossil fuels.",
+        "country": "Netherlands",
+        "city": "Utrecht",
+        "sdgs": [
+            "12_ResponsibleConsumption",
+            "13_Climate",
+            "09_Industry"
+        ]
+    },
+    {
+        "title": "AccessMap",
+        "description": "Mapping app that identifies and rates accessibility features for people with disabilities. Crowdsourced data helps wheelchair users, visually impaired, and others navigate cities confidently.",
+        "country": "Ireland",
+        "city": "Cork",
+        "sdgs": [
+            "10_ReducedInequalities",
+            "11_SustainableCities",
+            "17_Partnerships"
+        ]
+    },
+    {
+        "title": "CleanAir",
+        "description": "Personal air quality monitors that sync with city-wide networks to provide hyperlocal pollution data. Alerts users when air quality drops and suggests cleaner routes and times.",
+        "country": "Slovakia",
+        "city": "Bratislava",
+        "sdgs": [
+            "03_GoodHealth",
+            "13_Climate",
+            "11_SustainableCities"
+        ]
     }
 ]
