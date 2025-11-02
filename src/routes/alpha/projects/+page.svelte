@@ -1091,33 +1091,7 @@
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
   }
 
-  /* SDG Display in Project Cards */
-  .sdg-display-container {
-    margin-bottom: 1rem;
-    padding-top: 0.75rem;
-    border-top: 1px solid rgba(26, 26, 78, 0.08);
-  }
-
-  .sdg-display-row {
-    display: flex;
-    gap: 0.5rem;
-    flex-wrap: wrap;
-  }
-
-  .sdg-badge {
-    width: 72px;
-    height: 72px;
-    border-radius: 8px;
-    border: 2px solid rgba(26, 26, 78, 0.1);
-    transition: all 0.2s ease;
-    cursor: help;
-  }
-
-  .sdg-badge:hover {
-    transform: scale(1.1);
-    border-color: #4ecdc4;
-    box-shadow: 0 4px 12px rgba(78, 205, 196, 0.25);
-  }
+  /* SDG Display in Project Cards - unused styles removed */
 
   /* Modal Overlay & Content */
   .modal-overlay {

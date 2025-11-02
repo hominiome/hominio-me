@@ -1,7 +1,11 @@
 <script lang="ts">
   import { onMount, onDestroy } from "svelte";
   import { browser } from "$app/environment";
-  import { goto } from "$app/navigation";
+  import { createEventDispatcher } from "svelte";
+
+  const dispatch = createEventDispatcher<{ scanned: { userId: string } }>();
+
+  let { onScanned } = $props<{ onScanned?: (userId: string) => void }>();
 
   let scannerId = "qr-scanner";
   let html5QrCode: any = $state(null);
@@ -50,36 +54,57 @@
   }
 
   function handleScanResult(decodedText: string) {
-    if (!html5QrCode) return;
+    console.log("📱 QR code detected:", decodedText);
+    if (!html5QrCode) {
+      console.error("❌ html5QrCode not available");
+      return;
+    }
 
-    // Stop scanning
+    // Stop scanning first
     html5QrCode.stop().then(() => {
+      scanning = false;
+      console.log("✅ Scanner stopped");
+    }).catch((err) => {
+      console.error("❌ Error stopping scanner:", err);
       scanning = false;
     });
 
     // Try to parse as URL
     try {
       const url = new URL(decodedText);
+      console.log("🔗 Parsed URL:", url.pathname);
+      
       // Check if it's a user profile URL
       const userMatch = url.pathname.match(/\/alpha\/user\/([^\/]+)/);
       if (userMatch) {
         const userId = userMatch[1];
-        goto(`/alpha/user/${userId}`);
+        console.log("✅ User ID extracted:", userId);
+        
+        // Use callback if provided, otherwise dispatch event
+        if (onScanned) {
+          console.log("📤 Calling onScanned callback with userId:", userId);
+          onScanned(userId);
+          console.log("✅ Callback called");
+        } else {
+          console.log("📤 Dispatching scanned event with userId:", userId);
+          dispatch("scanned", { userId });
+          console.log("✅ Event dispatched");
+        }
       } else {
-        // If it's a valid URL but not a user profile, navigate to it
-        window.location.href = decodedText;
-      }
-    } catch {
-      // If not a URL, try to navigate to it as a path
-      if (decodedText.startsWith("/")) {
-        goto(decodedText);
-      } else {
-        error = "Invalid QR code format";
+        console.warn("⚠️ URL doesn't match user profile pattern:", url.pathname);
+        error = "QR code must be a user profile link";
         // Restart scanning after a delay
         setTimeout(() => {
           startScanning();
         }, 2000);
       }
+    } catch (err) {
+      console.error("❌ Error parsing QR code URL:", err);
+      error = "Invalid QR code format - must be a user profile URL";
+      // Restart scanning after a delay
+      setTimeout(() => {
+        startScanning();
+      }, 2000);
     }
   }
 
@@ -124,7 +149,7 @@
   .scanner {
     width: 100%;
     max-width: 500px;
-    height: 500px;
+    aspect-ratio: 1 / 1;
     border-radius: 12px;
     overflow: hidden;
     border: 2px solid rgba(78, 205, 196, 0.3);

@@ -102,8 +102,26 @@ const vote = table('vote')
   })
   .primaryKey('id');
 
+// Notifications - generic notification system for users
+const notification = table('notification')
+  .columns({
+    id: string(),
+    userId: string(), // User ID - indexed (private to user)
+    resourceType: string(), // Type of resource: 'identityPurchase', 'match', etc.
+    resourceId: string(), // ID of the resource
+    title: string(), // Notification title
+    message: string(), // Notification message
+    read: string(), // 'true' | 'false' (as string for Zero compatibility)
+    createdAt: string(), // ISO timestamp
+    actions: string(), // JSON string array of action objects: [{label: string, url: string}]
+    sound: string(), // Optional sound file path (e.g., "/purchase-effect.mp3")
+    icon: string(), // Optional Iconify icon name (e.g., "mdi:bell", "material-symbols:notifications")
+    displayComponent: string(), // Optional component name to display above header (e.g., "HelloEarth")
+  })
+  .primaryKey('id');
+
 export const schema = createSchema({
-  tables: [project, cup, cupMatch, userIdentities, identityPurchase, vote],
+  tables: [project, cup, cupMatch, userIdentities, identityPurchase, vote, notification],
 });
 
 // AuthData type - JWT claims from BetterAuth
@@ -219,6 +237,30 @@ export const permissions = definePermissions<AuthData, typeof schema>(
         // UPDATE/DELETE: Votes are immutable
         update: [],
         delete: [],
+      },
+    },
+    notification: {
+      row: {
+        // SELECT: Users can only read their own notifications
+        select: [
+          (authData, { cmp }) => {
+            return cmp('userId', '=', authData.sub);
+          }
+        ],
+        // INSERT: System/admin can create notifications for users
+        insert: ANYONE_CAN, // Controlled by app logic (admin endpoints)
+        // UPDATE: Users can update their own notifications (mark as read)
+        update: [
+          (authData, { cmp }) => {
+            return cmp('userId', '=', authData.sub);
+          }
+        ],
+        // DELETE: Users can delete their own notifications
+        delete: [
+          (authData, { cmp }) => {
+            return cmp('userId', '=', authData.sub);
+          }
+        ],
       },
     },
   })

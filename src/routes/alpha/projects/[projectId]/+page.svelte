@@ -272,6 +272,7 @@
                 <iframe
                   src={videoEmbedUrl}
                   class="video-iframe"
+                  title="Project video"
                   frameborder="0"
                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                   allowfullscreen

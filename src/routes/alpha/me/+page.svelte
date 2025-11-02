@@ -540,32 +540,7 @@
     height: 16px;
   }
 
-  .btn {
-    flex: 1;
-    padding: 0.875rem 1.5rem;
-    border: none;
-    border-radius: 12px;
-    font-size: 1rem;
-    font-weight: 700;
-    cursor: pointer;
-    transition: all 0.2s ease;
-  }
-
-  .btn:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-  }
-
-  .btn-secondary {
-    background: #4fc3c3;
-    color: white;
-  }
-
-  .btn-secondary:hover:not(:disabled) {
-    background: #3da8a8;
-    transform: translateY(-2px);
-    box-shadow: 0 4px 16px rgba(79, 195, 195, 0.3);
-  }
+  /* Unused button styles removed */
 
   .loading-text {
     color: #6b7280;
@@ -811,10 +786,6 @@
 
     .profile-name {
       font-size: 1.625rem;
-    }
-
-    .profile-actions {
-      flex-direction: column;
     }
 
     .purchase-main {

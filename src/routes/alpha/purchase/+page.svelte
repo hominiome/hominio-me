@@ -600,11 +600,7 @@
     align-items: center;
   }
 
-  .package-description {
-    font-size: 0.875rem;
-    color: rgba(26, 26, 78, 0.7);
-    margin-bottom: 0.5rem;
-  }
+  /* Unused package-description style removed */
 
   .price {
     font-size: 2rem;
@@ -756,11 +752,6 @@
       font-size: 0.9375rem;
       text-align: left;
       padding-right: 0.5rem;
-    }
-
-    .package-card .package-description {
-      order: 5;
-      display: none;
     }
 
     .package-card .price {

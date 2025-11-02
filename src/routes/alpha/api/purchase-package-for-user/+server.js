@@ -1,6 +1,7 @@
 import { json } from "@sveltejs/kit";
 import { nanoid } from "nanoid";
 import { getSession } from "$lib/api-helpers.server.js";
+import { requireAdmin } from "$lib/api-helpers.server.js";
 import { zeroDb } from "$lib/db.server.js";
 
 // Package definitions
@@ -33,14 +34,14 @@ const UPGRADE_PATHS = {
 };
 
 export async function POST({ request }) {
-  // Get session
-  const session = await getSession(request);
+  // Require admin
+  await requireAdmin(request);
 
-  if (!session?.user?.id) {
-    return json({ error: "Unauthorized" }, { status: 401 });
+  const { userId, packageType, cupId } = await request.json();
+
+  if (!userId) {
+    return json({ error: "userId is required" }, { status: 400 });
   }
-
-  const { packageType, cupId } = await request.json();
 
   if (!packageType || !PACKAGES[packageType]) {
     return json(
@@ -56,7 +57,6 @@ export async function POST({ request }) {
     );
   }
 
-  const userId = session.user.id;
   const now = new Date().toISOString();
   const selectedPackage = PACKAGES[packageType];
 
@@ -90,7 +90,7 @@ export async function POST({ request }) {
       // Cannot select the same identity
       if (currentIdentityType === packageType) {
         return json(
-          { error: `You already have ${selectedPackage.name}` },
+          { error: `User already has ${selectedPackage.name}` },
           { status: 400 }
         );
       }
@@ -166,7 +166,7 @@ export async function POST({ request }) {
           name: selectedPackage.name,
           upgradedFrom: currentIdentityType,
         },
-        message: `Successfully upgraded to ${selectedPackage.name}`,
+        message: `Successfully upgraded user to ${selectedPackage.name}`,
       });
     } else {
       // No existing identity for this cup - create new one
@@ -234,11 +234,11 @@ export async function POST({ request }) {
           votingWeight: selectedPackage.votingWeight,
           name: selectedPackage.name,
         },
-        message: `Successfully selected ${selectedPackage.name}`,
+        message: `Successfully assigned ${selectedPackage.name} to user`,
       });
     }
   } catch (error) {
-    console.error("Purchase package error:", error);
+    console.error("Purchase package for user error:", error);
     return json({ error: "Purchase failed" }, { status: 500 });
   }
 }

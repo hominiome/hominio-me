@@ -6,7 +6,7 @@
   let imageFailed = $state(false);
   
   // Get the public profile URL
-  $: profileUrl = browser ? `${window.location.origin}/alpha/user/${data.user.id}` : "";
+  const profileUrl = $derived(browser ? `${window.location.origin}/alpha/user/${data.user.id}` : "");
 </script>
 
 <div class="container">

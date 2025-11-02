@@ -239,6 +239,7 @@
         userVotesView.addListener((data) => {
           userVotes = Array.from(data);
         });
+
       }
 
       return () => {

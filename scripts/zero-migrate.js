@@ -512,10 +512,102 @@ async function createTables() {
     await sql`ALTER TABLE "identityPurchase" REPLICA IDENTITY FULL`.execute(db);
     console.log("✅ Enabled replica identity for identityPurchase table");
 
+    // Notification table
+    await db.schema
+      .createTable("notification")
+      .ifNotExists()
+      .addColumn("id", "text", (col) => col.primaryKey())
+      .addColumn("userId", "text", (col) => col.notNull())
+      .addColumn("resourceType", "text", (col) => col.notNull())
+      .addColumn("resourceId", "text", (col) => col.notNull())
+      .addColumn("title", "text", (col) => col.notNull())
+      .addColumn("message", "text", (col) => col.notNull())
+      .addColumn("read", "text", (col) => col.notNull().defaultTo("false"))
+      .addColumn("createdAt", "text", (col) => col.notNull())
+      .addColumn("actions", "text", (col) => col.defaultTo("[]"))
+      .addColumn("sound", "text", (col) => col.defaultTo(null))
+      .addColumn("icon", "text", (col) => col.defaultTo(null))
+      .addColumn("displayComponent", "text", (col) => col.defaultTo(null))
+      .execute();
+    console.log("✅ Notification table created");
+
+    // Add actions column to existing notification table if it doesn't exist
+    try {
+      await db.schema
+        .alterTable("notification")
+        .addColumn("actions", "text", (col) => col.defaultTo("[]"))
+        .execute();
+      console.log("✅ Added actions column to notification table");
+    } catch (error) {
+      if (error.message?.includes("duplicate column") || error.message?.includes("already exists")) {
+        console.log("ℹ️  actions column already exists in notification table");
+      } else {
+        console.log("⚠️  Could not add actions column:", error.message);
+      }
+    }
+
+    // Add sound column to existing notification table if it doesn't exist
+    try {
+      await db.schema
+        .alterTable("notification")
+        .addColumn("sound", "text", (col) => col.defaultTo(null))
+        .execute();
+      console.log("✅ Added sound column to notification table");
+    } catch (error) {
+      if (error.message?.includes("duplicate column") || error.message?.includes("already exists")) {
+        console.log("ℹ️  sound column already exists in notification table");
+      } else {
+        console.log("⚠️  Could not add sound column:", error.message);
+      }
+    }
+
+    // Add icon column to existing notification table if it doesn't exist
+    try {
+      await db.schema
+        .alterTable("notification")
+        .addColumn("icon", "text", (col) => col.defaultTo(null))
+        .execute();
+      console.log("✅ Added icon column to notification table");
+    } catch (error) {
+      if (error.message?.includes("duplicate column") || error.message?.includes("already exists")) {
+        console.log("ℹ️  icon column already exists in notification table");
+      } else {
+        console.log("⚠️  Could not add icon column:", error.message);
+      }
+    }
+
+    // Add displayComponent column to existing notification table if it doesn't exist
+    try {
+      await db.schema
+        .alterTable("notification")
+        .addColumn("displayComponent", "text", (col) => col.defaultTo(null))
+        .execute();
+      console.log("✅ Added displayComponent column to notification table");
+    } catch (error) {
+      if (error.message?.includes("duplicate column") || error.message?.includes("already exists")) {
+        console.log("ℹ️  displayComponent column already exists in notification table");
+      } else {
+        console.log("⚠️  Could not add displayComponent column:", error.message);
+      }
+    }
+
+    // Add index on userId for notification table
+    await db.schema
+      .createIndex("notification_userId_idx")
+      .ifNotExists()
+      .on("notification")
+      .column("userId")
+      .execute();
+    console.log("✅ Notification userId index created");
+
+    // Enable WAL replication for notification table
+    await sql`ALTER TABLE notification REPLICA IDENTITY FULL`.execute(db);
+    console.log("✅ Enabled replica identity for notification table");
+
     // Create or update publication with current tables
     try {
       // Try to create publication
-      await sql`CREATE PUBLICATION zero_data FOR TABLE project, cup, "cupMatch", "userIdentities", "identityPurchase", vote`.execute(
+      await sql`CREATE PUBLICATION zero_data FOR TABLE project, cup, "cupMatch", "userIdentities", "identityPurchase", vote, notification`.execute(
         db
       );
       console.log("✅ Created publication for Zero");
@@ -539,6 +631,7 @@ async function createTables() {
           { name: "userIdentities", quoted: true },
           { name: "identityPurchase", quoted: true },
           { name: "vote", quoted: false },
+          { name: "notification", quoted: false },
         ];
 
         for (const table of tablesToAdd) {
@@ -612,6 +705,22 @@ async function createTables() {
       console.log("\n✅ userIdentities.cupId column exists");
     } else {
       console.log("\n⚠️  WARNING: userIdentities.cupId column not found!");
+    }
+
+    // Verify notification table exists and has correct columns
+    const notificationCheck = await sql`
+      SELECT column_name, data_type 
+      FROM information_schema.columns 
+      WHERE table_name = 'notification'
+      ORDER BY ordinal_position
+    `.execute(db);
+    if (notificationCheck.rows.length > 0) {
+      console.log("\n✅ notification table columns:");
+      notificationCheck.rows.forEach((row) => {
+        console.log(`   - ${row.column_name} (${row.data_type})`);
+      });
+    } else {
+      console.log("\n⚠️  WARNING: notification table not found!");
     }
 
     console.log("\n🎉 Zero database migration completed successfully!");
