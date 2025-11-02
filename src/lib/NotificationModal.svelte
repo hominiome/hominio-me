@@ -207,10 +207,10 @@
     background: white;
     border-radius: 24px 24px 0 0;
     padding: 2.5rem 2rem;
-    padding-bottom: calc(6.5rem + env(safe-area-inset-bottom));
+    padding-bottom: calc(7rem + env(safe-area-inset-bottom));
     width: 100%;
     max-width: 600px;
-    max-height: 70vh;
+    max-height: 85vh;
     overflow-y: auto;
     position: relative;
     animation: slideUp 0.3s ease-out;
@@ -226,7 +226,8 @@
   @media (max-width: 768px) {
     .modal-content {
       padding: 1.75rem 1.5rem;
-      padding-bottom: calc(5.5rem + env(safe-area-inset-bottom));
+      padding-bottom: calc(6rem + env(safe-area-inset-bottom));
+      max-height: 90vh;
     }
   }
 
@@ -294,21 +295,27 @@
   }
 
   .bottom-actions {
-    position: absolute;
-    bottom: calc(2rem + env(safe-area-inset-bottom));
+    position: sticky;
+    bottom: 0;
     left: 0;
     right: 0;
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 1rem;
-    padding: 0 2rem;
+    gap: 1.5rem;
+    padding: 1.5rem 2rem;
+    padding-bottom: calc(1.5rem + env(safe-area-inset-bottom));
+    background: white;
+    border-top: 1px solid rgba(26, 26, 78, 0.08);
+    margin-top: auto;
+    z-index: 10;
   }
 
   @media (max-width: 768px) {
     .bottom-actions {
-      bottom: calc(1.5rem + env(safe-area-inset-bottom));
-      padding: 0 1.5rem;
+      padding: 1.25rem 1.5rem;
+      padding-bottom: calc(1.25rem + env(safe-area-inset-bottom));
+      gap: 1rem;
     }
   }
 
@@ -323,16 +330,13 @@
     justify-content: center;
     cursor: pointer;
     transition: all 0.2s;
-    position: absolute;
-    left: 50%;
-    transform: translateX(-50%);
     flex-shrink: 0;
   }
 
   .close-button:hover {
     background: rgba(26, 26, 78, 0.15);
     border-color: rgba(26, 26, 78, 0.3);
-    transform: translateX(-50%) scale(1.05);
+    transform: scale(1.05);
   }
 
   .next-button {
@@ -346,8 +350,6 @@
     font-weight: 600;
     font-size: 0.875rem;
     white-space: nowrap;
-    position: absolute;
-    left: calc(50% + 2.5rem);
     flex-shrink: 0;
   }
 
