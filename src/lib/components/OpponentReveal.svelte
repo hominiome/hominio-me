@@ -20,13 +20,13 @@
     // Start spinning immediately
     startTime = Date.now();
     
-    // Always spin for 5 seconds regardless of load time
+    // Always spin for 5.5 seconds regardless of load time
     setTimeout(() => {
       spinning = false;
       setTimeout(() => {
         revealed = true;
       }, 500); // Small delay for transition
-    }, 5000);
+    }, 5500);
     
     try {
       // Fetch project details in parallel

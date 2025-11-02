@@ -12,6 +12,7 @@
   import CountdownTimer from "$lib/CountdownTimer.svelte";
   import { calculatePrizePool, formatPrizePool } from "$lib/prizePoolUtils.js";
   import CupHeader from "$lib/CupHeader.svelte";
+  import WinnerCard from "$lib/components/WinnerCard.svelte";
 
   const zeroContext = useZero();
   const session = authClient.useSession();
@@ -551,6 +552,17 @@
     });
     return false;
   }
+
+  // Filter completed cups with winners
+  const completedCupsWithWinners = $derived(
+    cups.filter((cup) => cup.status === "completed" && cup.winnerId)
+      .sort((a, b) => {
+        // Sort by completedAt descending (most recent first)
+        const dateA = a.completedAt ? new Date(a.completedAt).getTime() : 0;
+        const dateB = b.completedAt ? new Date(b.completedAt).getTime() : 0;
+        return dateB - dateA;
+      })
+  );
 </script>
 
 <div class="alpha-timeline-container">
@@ -558,7 +570,7 @@
     <div class="loading-state">
       <p>Loading matches...</p>
     </div>
-  {:else if groupedMatches.length === 0}
+  {:else if groupedMatches.length === 0 && completedCupsWithWinners.length === 0}
     <div class="empty-state">
       <p class="empty-message">
         {#if $session.data?.user}
@@ -571,6 +583,16 @@
     </div>
   {:else}
     <div class="timeline">
+      <!-- Active Matches Section -->
+      {#if groupedMatches.length > 0}
+        <div class="active-matches-section">
+          <div class="active-matches-header">
+            <h2 class="active-matches-title">Active Matches</h2>
+            <p class="active-matches-subtitle">Vote on ongoing tournaments</p>
+          </div>
+        </div>
+      {/if}
+
       {#each groupedMatches as group (group.cupName + group.round)}
         <div class="match-group">
           {#if group.matches.length > 0}
@@ -674,6 +696,24 @@
           </div>
         </div>
       {/each}
+
+      <!-- Past Champions Section -->
+      {#if completedCupsWithWinners.length > 0}
+        <div class="winners-section">
+          <div class="winners-section-header">
+            <h2 class="winners-section-title">🏆 Past Champions</h2>
+            <p class="winners-section-subtitle">Celebrating tournament winners</p>
+          </div>
+          <div class="winners-grid">
+            {#each completedCupsWithWinners as cup}
+              {@const winnerProject = projects.find((p) => p.id === cup.winnerId)}
+              {#if winnerProject}
+                <WinnerCard {cup} {winnerProject} />
+              {/if}
+            {/each}
+          </div>
+        </div>
+      {/if}
     </div>
   {/if}
 </div>
@@ -753,6 +793,63 @@
     height: 20px;
   }
 
+  /* Winners Section */
+  .winners-section {
+    margin-bottom: 3rem;
+  }
+
+  .winners-section-header {
+    text-align: center;
+    margin-bottom: 2rem;
+  }
+
+  .winners-section-title {
+    font-size: 2.5rem;
+    font-weight: 800;
+    color: #1a1a4e;
+    margin: 0 0 0.5rem 0;
+    background: linear-gradient(135deg, #f4d03f 0%, #1a1a4e 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .winners-section-subtitle {
+    font-size: 1.125rem;
+    color: rgba(26, 26, 78, 0.7);
+    margin: 0;
+  }
+
+  .winners-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+    gap: 2rem;
+    padding: 0;
+  }
+
+  /* Active Matches Section */
+  .active-matches-section {
+    margin-bottom: 0.5rem;
+  }
+
+  .active-matches-header {
+    text-align: center;
+    margin-bottom: 0.75rem;
+  }
+
+  .active-matches-title {
+    font-size: 2rem;
+    font-weight: 800;
+    color: #1a1a4e;
+    margin: 0 0 0.5rem 0;
+  }
+
+  .active-matches-subtitle {
+    font-size: 1rem;
+    color: rgba(26, 26, 78, 0.7);
+    margin: 0;
+  }
+
   @media (max-width: 768px) {
     .alpha-timeline-container {
       padding: 1rem;
@@ -760,6 +857,23 @@
 
     .timeline {
       gap: 1rem;
+    }
+
+    .winners-section {
+      margin-bottom: 2rem;
+    }
+
+    .winners-section-title {
+      font-size: 2rem;
+    }
+
+    .winners-grid {
+      grid-template-columns: 1fr;
+      gap: 1.5rem;
+    }
+
+    .active-matches-title {
+      font-size: 1.5rem;
     }
   }
 </style>
