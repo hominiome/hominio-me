@@ -4,7 +4,7 @@ import { isAdmin } from "$lib/admin.server.js";
 import { zeroDb } from "$lib/db.server.js";
 
 export async function POST({ request }) {
-  const { projectId, title, description, country, city, videoUrl, videoThumbnail, sdgs, userId } = await request.json();
+  const { projectId, title, description, country, city, videoUrl, bannerImage, profileImageUrl, sdgs, userId } = await request.json();
 
   if (!projectId || !title || !description || !country || !city) {
     return json({ error: "Project ID, title, description, country, and city are required" }, { status: 400 });
@@ -43,7 +43,8 @@ export async function POST({ request }) {
       country: country.trim(),
       city: city.trim(),
       videoUrl: (videoUrl || "").trim(),
-      videoThumbnail: (videoThumbnail || "").trim(),
+      bannerImage: (bannerImage || "").trim(),
+      profileImageUrl: (profileImageUrl || "").trim(),
       sdgs: sdgs || "",
     };
 

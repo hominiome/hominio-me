@@ -25,7 +25,7 @@
     if (failedThumbnail) {
       return `https://picsum.photos/seed/${projectId}/1280/720`;
     }
-    const customThumbnail = winnerProject?.videoThumbnail;
+    const customThumbnail = winnerProject?.bannerImage;
     if (
       customThumbnail &&
       typeof customThumbnail === "string" &&
@@ -72,9 +72,14 @@
       <!-- Founder Profile & Project Info -->
       <div class="project-header">
         <div class="founder-avatar-container">
-          {#if winnerProfile.image && !failedImage}
+          {#if ((winnerProject?.profileImageUrl && winnerProject.profileImageUrl.trim()) || winnerProfile.image) && !failedImage}
+            {@const projectImageUrl =
+              winnerProject?.profileImageUrl &&
+              winnerProject.profileImageUrl.trim()
+                ? winnerProject.profileImageUrl.trim()
+                : winnerProfile.image || null}
             <img
-              src={winnerProfile.image}
+              src={projectImageUrl}
               alt={winnerProfile.name || "User"}
               class="founder-avatar"
               onerror={() => {

@@ -19,7 +19,8 @@ const project = table('project')
     city: string(),
     userId: string(), // Reference to user - fetch profile via /alpha/api/user/[userId]
     videoUrl: string(), // YouTube URL for project pitch video (optional)
-    videoThumbnail: string(), // Custom video thumbnail image URL (optional, falls back to Unsplash)
+    bannerImage: string(), // Custom banner image URL (optional, falls back to Unsplash)
+    profileImageUrl: string(), // Custom project profile image URL (optional, falls back to owner's profile image)
     sdgs: string(), // JSON string array of SDG goals (1-3): ["01_NoPoverty", "13_Climate", ...]
     createdAt: string(), // ISO timestamp
   })

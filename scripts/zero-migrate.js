@@ -59,14 +59,39 @@ async function createTables() {
       console.log("✅ Project videoUrl column already exists");
     }
 
-    // Add videoThumbnail column if it doesn't exist
+    // Rename videoThumbnail to bannerImage if videoThumbnail exists
     try {
-      await sql`ALTER TABLE project ADD COLUMN IF NOT EXISTS "videoThumbnail" TEXT DEFAULT ''`.execute(
-        db
-      );
-      console.log("✅ Project videoThumbnail column added");
+      // Check if videoThumbnail column exists
+      const columnExists = await sql`
+        SELECT EXISTS (
+          SELECT FROM information_schema.columns 
+          WHERE table_name = 'project' AND column_name = 'videoThumbnail'
+        )
+      `.execute(db);
+      
+      if (columnExists.rows[0]?.exists) {
+        // Rename the column
+        await sql`ALTER TABLE project RENAME COLUMN "videoThumbnail" TO "bannerImage"`.execute(db);
+        console.log("✅ Project videoThumbnail column renamed to bannerImage");
+      } else {
+        // Check if bannerImage already exists
+        const bannerImageExists = await sql`
+          SELECT EXISTS (
+            SELECT FROM information_schema.columns 
+            WHERE table_name = 'project' AND column_name = 'bannerImage'
+          )
+        `.execute(db);
+        
+        if (!bannerImageExists.rows[0]?.exists) {
+          // Add bannerImage column if it doesn't exist
+          await sql`ALTER TABLE project ADD COLUMN IF NOT EXISTS "bannerImage" TEXT DEFAULT ''`.execute(db);
+          console.log("✅ Project bannerImage column added");
+        } else {
+          console.log("✅ Project bannerImage column already exists");
+        }
+      }
     } catch (error) {
-      console.log("✅ Project videoThumbnail column already exists");
+      console.log("✅ Project bannerImage column migration completed");
     }
 
     // Add country column if it doesn't exist
@@ -77,6 +102,16 @@ async function createTables() {
       console.log("✅ Project country column added");
     } catch (error) {
       console.log("✅ Project country column already exists");
+    }
+
+    // Add profileImageUrl column if it doesn't exist
+    try {
+      await sql`ALTER TABLE project ADD COLUMN IF NOT EXISTS "profileImageUrl" TEXT DEFAULT ''`.execute(
+        db
+      );
+      console.log("✅ Project profileImageUrl column added");
+    } catch (error) {
+      console.log("✅ Project profileImageUrl column already exists");
     }
 
     // Add index on userId for project table

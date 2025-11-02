@@ -52,7 +52,7 @@
     if (failedThumbnails.has(`${projectId}-1`)) {
       return `https://picsum.photos/seed/${projectId}/1280/720`;
     }
-    const customThumbnail = project1?.videoThumbnail;
+    const customThumbnail = project1?.bannerImage;
     if (
       customThumbnail &&
       typeof customThumbnail === "string" &&
@@ -68,7 +68,7 @@
     if (failedThumbnails.has(`${projectId}-2`)) {
       return `https://picsum.photos/seed/${projectId}/1280/720`;
     }
-    const customThumbnail = project2?.videoThumbnail;
+    const customThumbnail = project2?.bannerImage;
     if (
       customThumbnail &&
       typeof customThumbnail === "string" &&
@@ -151,10 +151,11 @@
           <!-- Founder Profile & Project Info -->
           <div class="project-header">
             <div class="founder-avatar-container">
-              {#if user1 && user1.image && !failedImages.has(project1?.userId || "")}
+              {#if ((project1?.profileImageUrl && project1.profileImageUrl.trim()) || user1?.image) && !failedImages.has(project1?.userId || "")}
+                {@const projectImageUrl = project1?.profileImageUrl && project1.profileImageUrl.trim() ? project1.profileImageUrl.trim() : (user1?.image || null)}
                 <img
-                  src={user1.image}
-                  alt={user1.name || "User"}
+                  src={projectImageUrl}
+                  alt={user1?.name || "User"}
                   class="founder-avatar"
                   onerror={() => {
                     if (project1?.userId) {
@@ -262,10 +263,11 @@
           <!-- Founder Profile & Project Info -->
           <div class="project-header">
             <div class="founder-avatar-container">
-              {#if user2 && user2.image && !failedImages.has(project2?.userId || "")}
+              {#if ((project2?.profileImageUrl && project2.profileImageUrl.trim()) || user2?.image) && !failedImages.has(project2?.userId || "")}
+                {@const projectImageUrl2 = project2?.profileImageUrl && project2.profileImageUrl.trim() ? project2.profileImageUrl.trim() : (user2?.image || null)}
                 <img
-                  src={user2.image}
-                  alt={user2.name || "User"}
+                  src={projectImageUrl2}
+                  alt={user2?.name || "User"}
                   class="founder-avatar"
                   onerror={() => {
                     if (project2?.userId) {

@@ -2,6 +2,7 @@
   import { authClient } from "$lib/auth.client.js";
   import { goto } from "$app/navigation";
   import { showSuccess, showError } from "$lib/toastStore.js";
+  import TigrisImageUpload from "$lib/components/TigrisImageUpload.svelte";
   const session = authClient.useSession();
   let name = $state("");
   let description = $state("");
@@ -135,22 +136,26 @@
           </p>
         </div>
 
-        <!-- Logo Image URL -->
+        <!-- Logo Image -->
         <div class="form-group">
-          <label for="logoImageUrl" class="form-label"
-            >Logo Image URL (Optional)</label
-          >
-          <input
-            type="url"
-            id="logoImageUrl"
-            bind:value={logoImageUrl}
-            placeholder="https://example.com/logo.png"
-            class="form-input"
-            maxlength="500"
+          <label class="form-label">Logo Image (Optional)</label>
+          <TigrisImageUpload
+            uploadButtonLabel="Upload Logo"
+            showPreview={false}
+            existingImageUrl={logoImageUrl || null}
+            onUploadSuccess={(image) => {
+              logoImageUrl = image.original.url;
+            }}
+            onUploadError={(error) => {
+              showError(`Failed to upload logo: ${error}`);
+            }}
+            onChange={() => {
+              // Allow changing the logo
+            }}
+            onClear={() => {
+              logoImageUrl = "";
+            }}
           />
-          <p class="text-sm text-navy/60 mt-1">
-            Add a logo image URL for your cup tournament
-          </p>
         </div>
 
         <!-- Info Box -->

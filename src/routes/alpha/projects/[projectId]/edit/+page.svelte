@@ -32,7 +32,7 @@
   let country = $state<{ name: string } | null>(null);
   let city = $state("");
   let videoUrl = $state("");
-  let videoThumbnail = $state("");
+  let bannerImage = $state("");
   let sdgs = $state<string[]>([]);
   let selectedOwner = $state<{ id: string; name: string | null; image: string | null } | null>(null);
 
@@ -119,7 +119,7 @@
             country = project.country ? { name: project.country } : null;
             city = project.city || "";
             videoUrl = project.videoUrl || "";
-            videoThumbnail = project.videoThumbnail || "";
+            bannerImage = project.bannerImage || "";
             
             // Parse SDGs
             if (project.sdgs) {
@@ -198,7 +198,7 @@
           country: country.name,
           city: city.trim(),
           videoUrl: videoUrl.trim() || "",
-          videoThumbnail: videoThumbnail.trim() || "",
+          bannerImage: bannerImage.trim() || "",
           sdgs: JSON.stringify(sdgs),
           userId: newUserId, // Update owner if admin changed it
         }),
@@ -328,23 +328,23 @@
           </p>
         </div>
 
-        <!-- Video Thumbnail URL (Optional) -->
+        <!-- Banner Image URL (Optional) -->
         <div>
           <label
-            for="project-videoThumbnail"
+            for="project-bannerImage"
             class="block text-navy/80 font-medium mb-2"
           >
-            Video Thumbnail Image URL (Optional)
+            Banner Image URL (Optional)
           </label>
           <input
-            id="project-videoThumbnail"
+            id="project-bannerImage"
             type="url"
-            bind:value={videoThumbnail}
-            placeholder="https://example.com/thumbnail.jpg"
+            bind:value={bannerImage}
+            placeholder="https://example.com/banner.jpg"
             class="input w-full"
           />
           <p class="text-sm text-navy/60 mt-1">
-            Custom thumbnail image (falls back to Unsplash if not provided)
+            Custom banner image (falls back to Unsplash if not provided)
           </p>
         </div>
 

@@ -3,6 +3,7 @@
   import { authClient } from "$lib/auth.client.js";
   import { useZero } from "$lib/zero-utils";
   import { showError } from "$lib/toastStore.js";
+  import TigrisImageUpload from "$lib/components/TigrisImageUpload.svelte";
   
   let { cupId, onSuccess } = $props<{
     cupId: string;
@@ -189,20 +190,26 @@
         ></textarea>
       </div>
 
-      <!-- Logo Image URL -->
+      <!-- Logo Image -->
       <div>
-        <label for="edit-cup-logoImageUrl" class="block text-navy/80 font-medium mb-2">Logo Image URL (Optional)</label>
-        <input
-          id="edit-cup-logoImageUrl"
-          type="url"
-          bind:value={logoImageUrl}
-          placeholder="https://example.com/logo.png"
-          class="input w-full"
-          maxlength="500"
+        <label class="block text-navy/80 font-medium mb-2">Logo Image (Optional)</label>
+        <TigrisImageUpload
+          uploadButtonLabel="Upload Logo"
+          showPreview={false}
+          existingImageUrl={logoImageUrl || null}
+          onUploadSuccess={(image) => {
+            logoImageUrl = image.original.url;
+          }}
+          onUploadError={(error) => {
+            showError(`Failed to upload logo: ${error}`);
+          }}
+          onChange={() => {
+            // Allow changing the logo
+          }}
+          onClear={() => {
+            logoImageUrl = "";
+          }}
         />
-        <p class="text-sm text-navy/60 mt-1">
-          Add a logo image URL for your cup tournament
-        </p>
       </div>
     </form>
   {/if}

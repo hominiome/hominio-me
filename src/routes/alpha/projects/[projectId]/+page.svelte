@@ -204,8 +204,8 @@
   );
 
   const thumbnailUrl = $derived(
-    project?.videoThumbnail && project.videoThumbnail.trim()
-      ? project.videoThumbnail.trim()
+    project?.bannerImage && project.bannerImage.trim()
+      ? project.bannerImage.trim()
       : `https://picsum.photos/seed/${project?.id || 'project'}/400/225`
   );
 

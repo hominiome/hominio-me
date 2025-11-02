@@ -115,3 +115,29 @@ export function getCachedUserProfile(userId: string): UserProfile | null {
   return cache.get(userId) || null;
 }
 
+/**
+ * Get project image URL with fallback
+ * Uses project.profileImageUrl if set, otherwise falls back to owner's profile image
+ * @param project - Project object with profileImageUrl and userId
+ * @param ownerProfile - Owner's user profile (optional, will fetch if not provided)
+ * @returns Image URL or null
+ */
+export function getProjectImageUrl(
+  project: { profileImageUrl?: string | null; userId?: string } | null | undefined,
+  ownerProfile: UserProfile | null | undefined
+): string | null {
+  if (!project) return null;
+  
+  // Use project's custom profile image if set
+  if (project.profileImageUrl && project.profileImageUrl.trim()) {
+    return project.profileImageUrl.trim();
+  }
+  
+  // Fall back to owner's profile image
+  if (ownerProfile?.image) {
+    return ownerProfile.image;
+  }
+  
+  return null;
+}
+

@@ -2,10 +2,7 @@
   import { onMount } from "svelte";
   import { getUserProfile } from "$lib/userProfileCache";
 
-  let {
-    matchId = "",
-    opponentProjectId = "",
-  } = $props();
+  let { matchId = "", opponentProjectId = "" } = $props();
 
   let opponentProject = $state(null);
   let opponentProfile = $state({
@@ -19,7 +16,7 @@
   onMount(async () => {
     // Start spinning immediately
     startTime = Date.now();
-    
+
     // Always spin for 5.5 seconds regardless of load time
     setTimeout(() => {
       spinning = false;
@@ -27,13 +24,15 @@
         revealed = true;
       }, 500); // Small delay for transition
     }, 5500);
-    
+
     try {
       // Fetch project details in parallel
-      const projectResponse = await fetch(`/alpha/api/project/${opponentProjectId}`);
+      const projectResponse = await fetch(
+        `/alpha/api/project/${opponentProjectId}`
+      );
       if (projectResponse.ok) {
         opponentProject = await projectResponse.json();
-        
+
         // Fetch founder profile
         if (opponentProject?.userId) {
           const profile = await getUserProfile(opponentProject.userId);
@@ -54,24 +53,30 @@
       </div>
     </div>
   {:else if revealed && opponentProject}
-    <div class="opponent-card" class:revealed={revealed}>
+    <div class="opponent-card" class:revealed>
       <div class="opponent-header">
         <h3 class="opponent-title">Your Next Opponent</h3>
       </div>
-      
+
       <div class="opponent-content">
         <div class="opponent-avatar">
-          {#if opponentProfile.image}
-            <img src={opponentProfile.image} alt={opponentProfile.name || "Opponent"} />
+          {#if (opponentProject?.profileImageUrl && opponentProject.profileImageUrl.trim()) || opponentProfile.image}
+            {@const opponentProjectImageUrl = opponentProject?.profileImageUrl && opponentProject.profileImageUrl.trim() ? opponentProject.profileImageUrl.trim() : (opponentProfile.image || null)}
+            <img
+              src={opponentProjectImageUrl}
+              alt={opponentProfile.name || "Opponent"}
+            />
           {:else}
             <div class="avatar-placeholder">
               {opponentProfile.name?.[0]?.toUpperCase() || "?"}
             </div>
           {/if}
         </div>
-        
+
         <div class="opponent-info">
-          <h4 class="project-name">{opponentProject.title || "Unknown Project"}</h4>
+          <h4 class="project-name">
+            {opponentProject.title || "Unknown Project"}
+          </h4>
           {#if opponentProfile.name}
             <p class="founder-name">by {opponentProfile.name}</p>
           {/if}
@@ -228,4 +233,3 @@
     margin: 0;
   }
 </style>
-

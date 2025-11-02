@@ -30,7 +30,7 @@ async function refreshSchema() {
     // Make innocuous UPDATEs to trigger Zero to sync new columns
     // This is required after adding columns to existing tables
     
-    // Update project table (for videoThumbnail column)
+    // Update project table (for bannerImage column)
     // Use a simple UPDATE that doesn't change anything to trigger replication
     const projectCount = await db
       .selectFrom("project")

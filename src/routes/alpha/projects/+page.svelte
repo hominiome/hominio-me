@@ -11,6 +11,7 @@
   import ConfirmDialog from "$lib/ConfirmDialog.svelte";
   import Modal from "$lib/Modal.svelte";
   import { goto } from "$app/navigation";
+  import TigrisImageUpload from "$lib/components/TigrisImageUpload.svelte";
 
   // Get Zero instance from context (initialized in layout)
   const zeroContext = getContext("zero");
@@ -35,6 +36,8 @@
     country: null,
     city: "",
     videoUrl: "",
+    bannerImage: "",
+    profileImageUrl: "",
     sdgs: [],
   });
   let selectedOwner = $state(null);
@@ -114,7 +117,8 @@
     country: null,
     city: "",
     videoUrl: "",
-    videoThumbnail: "",
+    bannerImage: "",
+    profileImageUrl: "",
     sdgs: [],
   });
   let editSelectedOwner = $state(null);
@@ -187,7 +191,7 @@
       country: null,
       city: "",
       videoUrl: "",
-      videoThumbnail: "",
+      bannerImage: "",
       sdgs: [],
     };
     editSelectedOwner = null;
@@ -222,7 +226,7 @@
             country: project.country ? { name: project.country } : null,
             city: project.city || "",
             videoUrl: project.videoUrl || "",
-            videoThumbnail: project.videoThumbnail || "",
+            bannerImage: project.bannerImage || "",
             sdgs: project.sdgs ? (typeof project.sdgs === "string" ? JSON.parse(project.sdgs || "[]") : project.sdgs) : [],
           };
           if (project.userId) {
@@ -269,7 +273,8 @@
                       country: fetchedProject.country ? { name: fetchedProject.country } : null,
                       city: fetchedProject.city || "",
                       videoUrl: fetchedProject.videoUrl || "",
-                      videoThumbnail: fetchedProject.videoThumbnail || "",
+                      bannerImage: fetchedProject.bannerImage || "",
+                      profileImageUrl: fetchedProject.profileImageUrl || "",
                       sdgs: fetchedProject.sdgs ? (typeof fetchedProject.sdgs === "string" ? JSON.parse(fetchedProject.sdgs || "[]") : fetchedProject.sdgs) : [],
                     };
                     if (fetchedProject.userId) {
@@ -365,10 +370,11 @@
           projectId: editProject.id,
           title: editFormData.title.trim(),
           description: editFormData.description.trim(),
-          country: editFormData.country.name,
+          country: editFormData.country?.name || editFormData.country || "",
           city: editFormData.city.trim(),
-          videoUrl: editFormData.videoUrl.trim() || "",
-          videoThumbnail: editFormData.videoThumbnail.trim() || "",
+          videoUrl: (editFormData.videoUrl || "").trim(),
+          bannerImage: (editFormData.bannerImage || "").trim(),
+          profileImageUrl: (editFormData.profileImageUrl || "").trim(),
           sdgs: JSON.stringify(editFormData.sdgs),
           userId: newUserId,
         }),
@@ -493,6 +499,8 @@
       country: newProject.country.name,
       city: newProject.city,
       videoUrl: newProject.videoUrl.trim() || "",
+      bannerImage: newProject.bannerImage.trim() || "",
+      profileImageUrl: newProject.profileImageUrl.trim() || "",
       userId: ownerId,
       sdgs: JSON.stringify(newProject.sdgs),
       createdAt: new Date().toISOString(),
@@ -505,6 +513,8 @@
       country: null,
       city: "",
       videoUrl: "",
+      bannerImage: "",
+      profileImageUrl: "",
       sdgs: [],
     };
     selectedOwner = null;
@@ -675,6 +685,31 @@
                 />
               </div>
 
+              <!-- Profile Image (Optional) -->
+              <div>
+                <label class="block text-navy/80 font-medium mb-2">Profile Image (Optional)</label>
+                <TigrisImageUpload
+                  uploadButtonLabel="Upload Profile Image"
+                  showPreview={false}
+                  existingImageUrl={newProject.profileImageUrl || null}
+                  onUploadSuccess={(image) => {
+                    newProject.profileImageUrl = image.original.url;
+                  }}
+                  onUploadError={(error) => {
+                    showError(`Failed to upload profile image: ${error}`);
+                  }}
+                  onChange={() => {
+                    // Allow changing the image
+                  }}
+                  onClear={() => {
+                    newProject.profileImageUrl = "";
+                  }}
+                />
+                <p class="text-xs text-navy/50 mt-1">
+                  Falls back to project owner's profile image if not set
+                </p>
+              </div>
+
               <!-- Video URL (Optional) -->
               <div>
                 <label
@@ -692,6 +727,31 @@
                 />
                 <p class="text-sm text-navy/60 mt-1">
                   Add a YouTube link for your project pitch video
+                </p>
+              </div>
+
+              <!-- Banner Image (Optional) -->
+              <div>
+                <label class="block text-navy/80 font-medium mb-2">Banner Image (Optional)</label>
+                <TigrisImageUpload
+                  uploadButtonLabel="Upload Banner"
+                  showPreview={false}
+                  existingImageUrl={newProject.bannerImage || null}
+                  onUploadSuccess={(image) => {
+                    newProject.bannerImage = image.original.url;
+                  }}
+                  onUploadError={(error) => {
+                    showError(`Failed to upload banner: ${error}`);
+                  }}
+                  onChange={() => {
+                    // Allow changing the banner
+                  }}
+                  onClear={() => {
+                    newProject.bannerImage = "";
+                  }}
+                />
+                <p class="text-sm text-navy/60 mt-1">
+                  Custom banner image (falls back to Unsplash if not provided)
                 </p>
               </div>
 
@@ -832,6 +892,31 @@
                   />
                 </div>
 
+                <!-- Profile Image (Optional) -->
+                <div>
+                  <label class="block text-navy/80 font-medium mb-2">Profile Image (Optional)</label>
+                  <TigrisImageUpload
+                    uploadButtonLabel="Upload Profile Image"
+                    showPreview={false}
+                    existingImageUrl={editFormData.profileImageUrl || null}
+                    onUploadSuccess={(image) => {
+                      editFormData.profileImageUrl = image.original.url;
+                    }}
+                    onUploadError={(error) => {
+                      showError(`Failed to upload profile image: ${error}`);
+                    }}
+                    onChange={() => {
+                      // Allow changing the image
+                    }}
+                    onClear={() => {
+                      editFormData.profileImageUrl = "";
+                    }}
+                  />
+                  <p class="text-xs text-navy/50 mt-1">
+                    Falls back to project owner's profile image if not set
+                  </p>
+                </div>
+
                 <!-- Video URL (Optional) -->
                 <div>
                   <label
@@ -852,23 +937,28 @@
                   </p>
                 </div>
 
-                <!-- Video Thumbnail URL (Optional) -->
+                <!-- Banner Image (Optional) -->
                 <div>
-                  <label
-                    for="edit-project-videoThumbnail"
-                    class="block text-navy/80 font-medium mb-2"
-                  >
-                    Video Thumbnail Image URL (Optional)
-                  </label>
-                  <input
-                    id="edit-project-videoThumbnail"
-                    type="url"
-                    bind:value={editFormData.videoThumbnail}
-                    placeholder="https://example.com/thumbnail.jpg"
-                    class="input w-full"
+                  <label class="block text-navy/80 font-medium mb-2">Banner Image (Optional)</label>
+                  <TigrisImageUpload
+                    uploadButtonLabel="Upload Banner"
+                    showPreview={false}
+                    existingImageUrl={editFormData.bannerImage || null}
+                    onUploadSuccess={(image) => {
+                      editFormData.bannerImage = image.original.url;
+                    }}
+                    onUploadError={(error) => {
+                      showError(`Failed to upload banner: ${error}`);
+                    }}
+                    onChange={() => {
+                      // Allow changing the banner
+                    }}
+                    onClear={() => {
+                      editFormData.bannerImage = "";
+                    }}
                   />
                   <p class="text-sm text-navy/60 mt-1">
-                    Custom thumbnail image (falls back to Unsplash if not provided)
+                    Custom banner image (falls back to Unsplash if not provided)
                   </p>
                 </div>
 
@@ -942,10 +1032,10 @@
           {#each projects as project (project.id)}
             {@const userProfile = userProfiles.get(project.userId)}
             {@const thumbnailUrl =
-              project.videoThumbnail &&
-              typeof project.videoThumbnail === "string" &&
-              project.videoThumbnail.trim().length > 0
-                ? project.videoThumbnail.trim()
+              project.bannerImage &&
+              typeof project.bannerImage === "string" &&
+              project.bannerImage.trim().length > 0
+                ? project.bannerImage.trim()
                 : `https://picsum.photos/seed/${project.id || "project"}/400/225`}
             <div class="project-list-card">
               <!-- Top Section: Thumbnail and Content Side by Side -->

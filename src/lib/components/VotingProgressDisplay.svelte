@@ -125,17 +125,17 @@
       <!-- Project 1 Card -->
       <div class="project-card-compact project-card-yellow">
         <div class="project-header-compact">
-          {#if founder1Profile?.image}
+          {#if (project1?.profileImageUrl && project1.profileImageUrl.trim()) || founder1Profile?.image}
+            {@const project1ImageUrl = project1?.profileImageUrl && project1.profileImageUrl.trim() ? project1.profileImageUrl.trim() : (founder1Profile?.image || null)}
             <img
-              src={founder1Profile.image}
+              src={project1ImageUrl}
               alt={founder1Profile.name || "Founder"}
               class="founder-avatar-compact"
               onerror={(e) => {
                 e.currentTarget.style.display = "none";
               }}
             />
-          {/if}
-          {#if !founder1Profile?.image || founder1Profile.image === null}
+          {:else}
             <div class="founder-avatar-placeholder-compact project-card-yellow">
               {founder1Profile?.name?.[0]?.toUpperCase() || "?"}
             </div>
@@ -152,17 +152,17 @@
       <!-- Project 2 Card -->
       <div class="project-card-compact project-card-teal">
         <div class="project-header-compact">
-          {#if founder2Profile?.image}
+          {#if (project2?.profileImageUrl && project2.profileImageUrl.trim()) || founder2Profile?.image}
+            {@const project2ImageUrl = project2?.profileImageUrl && project2.profileImageUrl.trim() ? project2.profileImageUrl.trim() : (founder2Profile?.image || null)}
             <img
-              src={founder2Profile.image}
+              src={project2ImageUrl}
               alt={founder2Profile.name || "Founder"}
               class="founder-avatar-compact"
               onerror={(e) => {
                 e.currentTarget.style.display = "none";
               }}
             />
-          {/if}
-          {#if !founder2Profile?.image || founder2Profile.image === null}
+          {:else}
             <div class="founder-avatar-placeholder-compact project-card-teal">
               {founder2Profile?.name?.[0]?.toUpperCase() || "?"}
             </div>
