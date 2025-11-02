@@ -49,15 +49,26 @@
     // Dynamically import QRCodeStyling only in browser
     const { default: QRCodeStyling } = await import("qr-code-styling");
 
+    // Calculate responsive size based on viewport width
+    const calculateSize = () => {
+      const viewportWidth = window.innerWidth;
+      // Use 80% of viewport width on mobile, max 500px on desktop
+      const maxSize = Math.min(viewportWidth * 0.8, 500);
+      // Ensure minimum size for readability
+      return Math.max(maxSize, 250);
+    };
+
+    const qrSize = calculateSize();
+
     // Get the full URL for the logo image
     const imageUrl = browser ? `${window.location.origin}/logo_clean.png` : "";
 
-    // Create QR code with settings
+    // Create QR code with responsive settings
     qrCode = new QRCodeStyling({
       type: qrSettings.type,
       shape: qrSettings.shape,
-      width: qrSettings.width,
-      height: qrSettings.height,
+      width: qrSize,
+      height: qrSize,
       data: data,
       margin: qrSettings.margin,
       qrOptions: qrSettings.qrOptions,
@@ -70,6 +81,22 @@
     });
 
     qrCode.append(qrContainer);
+
+    // Handle window resize for responsive updates
+    const handleResize = () => {
+      if (!qrCode || !qrContainer) return;
+      const newSize = calculateSize();
+      qrCode.update({
+        width: newSize,
+        height: newSize,
+      });
+    };
+
+    window.addEventListener("resize", handleResize);
+    
+    return () => {
+      window.removeEventListener("resize", handleResize);
+    };
   });
 
   $effect(() => {
@@ -86,6 +113,26 @@
     display: flex;
     justify-content: center;
     align-items: center;
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .qr-container :global(canvas) {
+    max-width: 100%;
+    height: auto;
+    display: block;
+  }
+
+  @media (max-width: 768px) {
+    .qr-container {
+      padding: 0 1rem;
+    }
+  }
+
+  @media (max-width: 480px) {
+    .qr-container {
+      padding: 0 0.5rem;
+    }
   }
 </style>
 

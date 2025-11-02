@@ -121,6 +121,22 @@
     padding: 1rem;
     background: rgba(78, 205, 196, 0.02);
     border-radius: 12px;
+    width: 100%;
+    overflow: hidden;
+  }
+
+  @media (max-width: 768px) {
+    .qr-code-section {
+      padding: 0.75rem;
+      margin: 1rem 0;
+    }
+  }
+
+  @media (max-width: 480px) {
+    .qr-code-section {
+      padding: 0.5rem;
+      margin: 0.75rem 0;
+    }
   }
 
   .profile-id {
