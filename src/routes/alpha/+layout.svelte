@@ -252,15 +252,24 @@
   const latestNotificationTitle = $derived(() => {
     const latest = latestNotification();
     if (!latest) return "";
-    const previewTitle = latest.previewTitle;
-    const title = latest.title;
-    // Ensure we return a string, handle null/undefined
-    if (previewTitle && typeof previewTitle === "string") {
-      return previewTitle.trim() || "";
+    
+    // First try previewTitle
+    if (latest.previewTitle && typeof latest.previewTitle === "string") {
+      const trimmedPreview = latest.previewTitle.trim();
+      if (trimmedPreview) {
+        return trimmedPreview;
+      }
     }
-    if (title && typeof title === "string") {
-      return title.trim() || "";
+    
+    // Fall back to title if previewTitle is empty/missing
+    if (latest.title && typeof latest.title === "string") {
+      const trimmedTitle = latest.title.trim();
+      if (trimmedTitle) {
+        return trimmedTitle;
+      }
     }
+    
+    // Only return empty if both are truly empty
     return "";
   });
   const latestNotificationIcon = $derived(latestNotification()?.icon || "");
@@ -532,11 +541,20 @@
   
   // Debug notification state
   $effect(() => {
+    const latest = latestNotification();
     console.log("🔔 Notification State:", {
       notificationModal: notificationModal?.id || null,
       unreadCount,
-      latestNotification: latestNotification()?.id || null,
+      latestNotification: latest?.id || null,
+      latestNotificationData: latest ? {
+        id: latest.id,
+        previewTitle: latest.previewTitle,
+        title: latest.title,
+        previewTitleType: typeof latest.previewTitle,
+        titleType: typeof latest.title,
+      } : null,
       latestTitle: latestNotificationTitle,
+      latestTitleLength: latestNotificationTitle?.length || 0,
       showInviteModal,
       showCreateProjectModal,
       showEditProjectModal,
@@ -564,9 +582,9 @@
   <NotificationBell 
     unreadCount={unreadCount} 
     onClick={openNotificationModal}
-    latestTitle={latestNotificationTitle}
-    latestIcon={latestNotificationIcon}
-    latestMessage={latestNotificationMessage}
+    latestTitle={latestNotificationTitle()}
+    latestIcon={latestNotificationIcon()}
+    latestMessage={latestNotificationMessage()}
   />
 {/if}
 

@@ -69,6 +69,7 @@
               {#if latestTitle && typeof latestTitle === "string" && latestTitle.trim() !== ""}
                 <div class="preview-title">{latestTitle}</div>
               {:else}
+                <!-- Only show fallback if we truly have no title (shouldn't happen normally) -->
                 <div class="preview-title">New notification</div>
               {/if}
             </div>

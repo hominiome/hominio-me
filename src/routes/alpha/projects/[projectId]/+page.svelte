@@ -295,7 +295,7 @@
               </div>
               {#if isOwner}
                 <a
-                  href="/alpha/projects/{projectId}/edit"
+                  href="/alpha/projects?modal=edit-project&projectId={projectId}"
                   class="btn-secondary flex-shrink-0"
                 >
                   Edit

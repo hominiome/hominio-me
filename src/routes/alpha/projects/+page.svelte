@@ -99,6 +99,16 @@
   const showEditModal = $derived($page.url.searchParams.get("modal") === "edit-project");
   const editProjectId = $derived($page.url.searchParams.get("projectId") || "");
   
+  // Debug URL params
+  $effect(() => {
+    console.log("📋 URL params:", {
+      modal: $page.url.searchParams.get("modal"),
+      projectId: $page.url.searchParams.get("projectId"),
+      showEditModal,
+      editProjectId,
+    });
+  });
+  
   // Edit form state (declare before derived that uses it)
   let editProject = $state<any>(null);
   let editLoading = $state(false);
@@ -194,17 +204,26 @@
   
   // Load project data when edit modal opens
   $effect(() => {
-    if (showEditModal && editProjectId && zero && projects.length > 0) {
+    console.log("🔍 Edit modal effect:", { showEditModal, editProjectId, zero: !!zero, projectsCount: projects.length });
+    
+    if (showEditModal && editProjectId && zero) {
       // Reset state when projectId changes
       if (editProject && editProject.id !== editProjectId) {
+        console.log("🔄 Project ID changed, resetting");
         editProject = null;
         editLoading = true;
       }
       
       if (!editProject && !editLoading) {
+        console.log("📥 Loading project for edit:", editProjectId);
         editLoading = true;
+        
+        // First try to find in already loaded projects
         const project = projects.find((p) => p.id === editProjectId);
+        
         if (project) {
+          console.log("✅ Found project in list");
+          // Found in list, use it
           editProject = project;
           editFormData = {
             title: project.title || "",
@@ -226,11 +245,97 @@
           }
           editLoading = false;
         } else {
-          editLoading = false;
+          console.log("🔍 Project not in list, querying Zero directly");
+          // Not in list, query directly from Zero using a listener
+          let projectView: any = null;
+          let timeoutId: any = null;
+          let hasReceivedData = false;
+          
+          (async () => {
+            try {
+              // Wait a bit for Zero to be fully ready
+              await new Promise(resolve => setTimeout(resolve, 100));
+              
+              const projectQuery = zero.query.project.where("id", "=", editProjectId);
+              projectView = projectQuery.materialize();
+              
+              // Use listener to get the project data
+              projectView.addListener((data: any) => {
+                hasReceivedData = true;
+                const projectData = Array.from(data || []);
+                console.log("📦 Zero query result:", { count: projectData.length, projectId: editProjectId, data: projectData[0]?.id });
+                
+                if (projectData.length > 0) {
+                  const fetchedProject = projectData[0];
+                  console.log("✅ Found project via Zero:", fetchedProject.id, fetchedProject.title);
+                  
+                  // Check if we still need this project (might have changed)
+                  if (editProjectId === fetchedProject.id && (!editProject || editProject.id !== fetchedProject.id)) {
+                    editProject = fetchedProject;
+                    editFormData = {
+                      title: fetchedProject.title || "",
+                      description: fetchedProject.description || "",
+                      country: fetchedProject.country ? { name: fetchedProject.country } : null,
+                      city: fetchedProject.city || "",
+                      videoUrl: fetchedProject.videoUrl || "",
+                      videoThumbnail: fetchedProject.videoThumbnail || "",
+                      sdgs: fetchedProject.sdgs ? (typeof fetchedProject.sdgs === "string" ? JSON.parse(fetchedProject.sdgs || "[]") : fetchedProject.sdgs) : [],
+                    };
+                    if (fetchedProject.userId) {
+                      getUserProfile(fetchedProject.userId).then((profile) => {
+                        editSelectedOwner = {
+                          id: profile.id,
+                          name: profile.name,
+                          image: profile.image,
+                        };
+                      });
+                    }
+                    editLoading = false;
+                    
+                    // Clean up listener after getting data
+                    if (timeoutId) clearTimeout(timeoutId);
+                    setTimeout(() => {
+                      if (projectView) {
+                        projectView.destroy();
+                      }
+                    }, 100);
+                  }
+                } else if (hasReceivedData && projectData.length === 0) {
+                  console.log("❌ No project found in Zero query - project doesn't exist");
+                  editLoading = false;
+                  if (timeoutId) clearTimeout(timeoutId);
+                  setTimeout(() => {
+                    if (projectView) {
+                      projectView.destroy();
+                    }
+                  }, 100);
+                }
+              });
+              
+              // Set a timeout to stop loading if no data arrives
+              timeoutId = setTimeout(() => {
+                if (editLoading && !editProject && !hasReceivedData) {
+                  console.log("⏱️ Timeout waiting for project data - Zero may not be synced yet");
+                  editLoading = false;
+                  if (projectView) {
+                    projectView.destroy();
+                  }
+                }
+              }, 5000); // Increased timeout to 5 seconds
+            } catch (error) {
+              console.error("❌ Failed to fetch project for editing:", error);
+              editLoading = false;
+              if (timeoutId) clearTimeout(timeoutId);
+              if (projectView) {
+                projectView.destroy();
+              }
+            }
+          })();
         }
       }
     } else if (!showEditModal) {
       // Reset when modal closes
+      console.log("🚪 Modal closed, resetting");
       editProject = null;
       editLoading = false;
     }
@@ -542,7 +647,7 @@
               <div>
                 <label
                   for="project-city"
-                  class="block text-navy/80 font-medium mb-2">City</label
+                  class="block text-navy/80 font-medium mb-2">City *</label
                 >
                 <input
                   id="project-city"

@@ -3,7 +3,7 @@
     "hominio": {
       "title": "You are now Hominio",
       "previewTitle": "Something special just happened...",
-      "message": "May the wisdom be with you. You can now vote in matches.",
+      "message": "May the wisdom be with you. You can now vote in the \"{cupName}\" competition matches.",
       "priority": true,
       "icon": "mdi:account-check",
       "sound": "/purchase-effect.mp3",
@@ -49,7 +49,7 @@
   "vote": {
     "received": {
       "title": "Someone voted on your match",
-      "previewTitle": "New activity on your match...",
+      "previewTitle": "You got a new vote",
       "message": "{message}",
       "priority": false,
       "icon": "mdi:thumb-up",
@@ -64,4 +64,3 @@
     }
   }
 }
-
