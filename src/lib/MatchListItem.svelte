@@ -48,45 +48,45 @@
     <div class="match-list-center">
       <span class="team-list-votes">{votes1}</span>
       <!-- Match State Indicator - centered between scores -->
-      <div class="match-list-indicator">
-        {#if match.winnerId}
-          <svg
-            class="status-icon completed"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-          >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              d="M5 13l4 4L19 7"
-            />
-          </svg>
-        {:else if isActive}
-          <svg
-            class="status-icon pending"
-            viewBox="0 0 24 24"
-            fill="currentColor"
-          >
-            <circle cx="12" cy="12" r="6" />
-          </svg>
-        {:else}
-          <svg
-            class="status-icon waiting"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-          >
-            <rect x="3" y="3" width="18" height="18" rx="2" />
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              d="M8 7h8M8 12h8M8 17h4"
-            />
-          </svg>
-        {/if}
+        <div class="match-list-indicator">
+          {#if match.winnerId}
+            <svg
+              class="status-icon completed"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                d="M5 13l4 4L19 7"
+              />
+            </svg>
+          {:else if isActive}
+            <svg
+              class="status-icon pending"
+              viewBox="0 0 24 24"
+              fill="currentColor"
+            >
+              <circle cx="12" cy="12" r="6" />
+            </svg>
+          {:else}
+            <svg
+              class="status-icon waiting"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <rect x="3" y="3" width="18" height="18" rx="2" />
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                d="M8 7h8M8 12h8M8 17h4"
+              />
+            </svg>
+          {/if}
       </div>
       <span class="team-list-votes">{votes2}</span>
     </div>

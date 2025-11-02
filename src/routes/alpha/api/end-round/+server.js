@@ -35,7 +35,7 @@ export async function POST({ request }) {
       .where("cupId", "=", cupId)
       .where("round", "=", currentRound)
       .execute();
-    
+
     await checkAndCloseExpired(currentMatches, [cup]);
     
     // Re-fetch cup in case it was just closed

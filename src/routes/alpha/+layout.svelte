@@ -111,8 +111,10 @@
               );
               
               // If there's a priority notification, force open it and close all other modals
-              // Only do this if no notification modal is currently open (to avoid interrupting user)
-              if (priorityNotifications.length > 0 && !notificationModal) {
+              // Priority notifications should always open, even if a notification modal is already open
+              if (priorityNotifications.length > 0) {
+                console.log("🔔 Priority notification detected:", priorityNotifications.length, "notifications");
+                
                 // Close any other modals by clearing URL params
                 const url = new URL(window.location.href);
                 if (url.searchParams.has("modal")) {
@@ -123,9 +125,11 @@
                 }
                 
                 // Open the first priority notification directly (skip preview)
+                // Always open priority notifications, even if another notification modal is open
                 const priorityNotification = priorityNotifications.sort((a, b) => 
                   new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
                 )[0];
+                console.log("🔔 Opening priority notification:", priorityNotification.id, priorityNotification.title);
                 notificationModal = priorityNotification;
               }
               // For non-priority notifications, they will show in the preview bell
@@ -375,9 +379,22 @@
   });
   
   // If URL-based modal is opened, close notification modal
+  // BUT: Don't close if it's a priority notification (they should stay open)
   $effect(() => {
     if (modalType && notificationModal) {
-      notificationModal = null;
+      // Check if current notification is priority - if so, don't close it
+      const currentNotification = notifications.find(n => n.id === notificationModal.id);
+      if (currentNotification && currentNotification.priority === "true") {
+        // Priority notification should stay open, close URL modal instead
+        const url = new URL($page.url);
+        url.searchParams.delete("modal");
+        url.searchParams.delete("projectId");
+        url.searchParams.delete("cupId");
+        goto(url.pathname + url.search, { replaceState: true });
+      } else {
+        // Non-priority notification, close it when URL modal opens
+        notificationModal = null;
+      }
     }
   });
   

@@ -290,7 +290,7 @@
                         };
                       });
                     }
-                    editLoading = false;
+          editLoading = false;
                     
                     // Clean up listener after getting data
                     if (timeoutId) clearTimeout(timeoutId);
