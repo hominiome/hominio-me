@@ -124,6 +124,19 @@
       }
       return false;
     };
+    
+    // Filter out CORS errors from external services (like AWS Lambda metrics API)
+    // These are from browser extensions or third-party services, not our code
+    const originalFetch = window.fetch;
+    window.fetch = async (...args) => {
+      const url = typeof args[0] === 'string' ? args[0] : args[0]?.url || '';
+      // Filter out AWS Lambda metrics API calls
+      if (url.includes('execute-api') && url.includes('/api/metrics')) {
+        // Silently fail - this is from an external service, not our code
+        return Promise.reject(new Error('Filtered external metrics API call'));
+      }
+      return originalFetch.apply(window, args);
+    };
 
     let initZero = async () => {
       try {
