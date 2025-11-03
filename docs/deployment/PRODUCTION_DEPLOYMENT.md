@@ -172,10 +172,8 @@ PUBLIC_ZERO_SYNC_DOMAIN=sync.hominio.me
    fly secrets set SECRET_GOOGLE_CLIENT_SECRET="..." --app hominio-me
    fly secrets set SECRET_ZERO_AUTH_SECRET="..." --app hominio-me
    fly secrets set ADMIN="..." --app hominio-me
-   fly secrets set PUBLIC_ZERO_SERVER="wss://sync.hominio.me" --app hominio-me
-   fly secrets set SECRET_ZERO_GET_QUERIES_URL="https://hominio.me/alpha/api/zero/get-queries" --app hominio-me
-   fly secrets set SECRET_ZERO_PUSH_URL="https://hominio.me/alpha/api/zero/push" --app hominio-me
-   fly secrets set PUBLIC_BASE_URL="https://hominio.me" --app hominio-me
+   fly secrets set PUBLIC_DOMAIN="hominio.me" --app hominio-me
+   fly secrets set PUBLIC_ZERO_SYNC_DOMAIN="sync.hominio.me" --app hominio-me
 
    # For sync service
    fly secrets set ZERO_UPSTREAM_DB="..." --app hominio-me-sync
@@ -228,8 +226,8 @@ primary_region = 'fra'
 
 [env]
 PORT = '3000'
-PUBLIC_BASE_URL = 'https://hominio.me'
-PUBLIC_ZERO_SERVER = 'wss://sync.hominio.me'
+PUBLIC_DOMAIN = 'hominio.me'
+PUBLIC_ZERO_SYNC_DOMAIN = 'sync.hominio.me'
 
 [http_service]
 internal_port = 3000
@@ -359,9 +357,10 @@ sync.hominio.me → hominio-me-sync.fly.dev (or use custom domain)
 **Problem**: Client can't connect to `wss://sync.hominio.me`
 
 **Solution**:
-1. Verify `PUBLIC_ZERO_SERVER=wss://sync.hominio.me` is set
+1. Verify `PUBLIC_DOMAIN=hominio.me` and `PUBLIC_ZERO_SYNC_DOMAIN=sync.hominio.me` are set
 2. Check Fly.io DNS configuration for `sync.hominio.me`
 3. Verify zero-cache is running and listening on port 4848
+4. Zero client uses `https://sync.hominio.me` (Zero handles WebSocket upgrade internally)
 4. Check Fly.io firewall/network rules
 
 ## Security Checklist
