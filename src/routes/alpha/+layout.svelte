@@ -9,6 +9,7 @@
   import { browser } from "$app/environment";
   import { env as publicEnv } from "$env/dynamic/public";
   import { page } from "$app/stores";
+  import { getZeroServerUrl, getMainDomainUrl } from "$lib/utils/domain";
   import Navbar from "$lib/Navbar.svelte";
   import ToastContainer from "$lib/ToastContainer.svelte";
   import NotificationModal from "$lib/NotificationModal.svelte";
@@ -36,12 +37,19 @@
   let priorityNotificationQueue = $state<any[]>([]);
   let markingAsReadIds = $state<Set<string>>(new Set()); // Track notifications being marked as read
 
-  // Get Zero server URL from environment
+  // Get Zero server URL using domain utility
+  // Automatically handles both hominio.me and www.hominio.me
   // In production: wss://sync.hominio.me
   // In dev: http://localhost:4848
-  // Must use http/https/wss scheme (not just hostname)
   const zeroServerUrl = browser
-    ? publicEnv.PUBLIC_ZERO_SERVER || (window.location.hostname === 'localhost' ? "http://localhost:4848" : "wss://sync.hominio.me")
+    ? (() => {
+        // Check if we're in dev (localhost)
+        if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+          return "http://localhost:4848";
+        }
+        // Production: use domain utility
+        return getZeroServerUrl();
+      })()
     : "http://localhost:4848";
 
   // Initialize Zero once and make it available via context
@@ -79,6 +87,21 @@
         // New Architecture: Cookie-Based Auth Only (No JWT)
         // zero-cache forwards cookies to our server endpoints
         // Server reads BetterAuth session from cookies
+        
+        // Debug: Log Zero server URL to help diagnose connection issues
+        console.log('[Zero] Initializing with server URL:', zeroServerUrl);
+        console.log('[Zero] PUBLIC_ZERO_SERVER env:', publicEnv.PUBLIC_ZERO_SERVER);
+        console.log('[Zero] Hostname:', window.location.hostname);
+        
+        // Validate server URL has proper scheme
+        if (!zeroServerUrl || (!zeroServerUrl.startsWith('http://') && !zeroServerUrl.startsWith('https://') && !zeroServerUrl.startsWith('ws://') && !zeroServerUrl.startsWith('wss://'))) {
+          const error = `Invalid Zero server URL: "${zeroServerUrl}". Must start with http://, https://, ws://, or wss://`;
+          console.error('[Zero]', error);
+          zeroError = error;
+          zeroReady = false;
+          return;
+        }
+        
         zero = new Zero({
           server: zeroServerUrl,
           schema,
@@ -86,12 +109,14 @@
           // Register custom mutators for writes (create, update, delete)
           mutators: createMutators(undefined), // AuthData passed to mutators at runtime
           // Configure synced queries endpoint (uses cookie-based auth)
+          // Uses domain utility to handle both www and non-www domains
           getQueriesURL: browser
-            ? `${window.location.origin}/alpha/api/zero/get-queries`
+            ? getMainDomainUrl('/alpha/api/zero/get-queries')
             : undefined,
           // Configure custom mutators endpoint (uses cookie-based auth)
+          // Uses domain utility to handle both www and non-www domains
           mutateURL: browser
-            ? `${window.location.origin}/alpha/api/zero/push`
+            ? getMainDomainUrl('/alpha/api/zero/push')
             : undefined,
           // ⚠️ NO AUTH FUNCTION - we use cookie-based auth only
           // Cookies are automatically forwarded by zero-cache:

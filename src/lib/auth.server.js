@@ -2,8 +2,8 @@ import { betterAuth } from "better-auth";
 import { sveltekitCookies } from "better-auth/svelte-kit";
 import { getRequestEvent } from "$app/server";
 import { env } from "$env/dynamic/private";
-import { env as publicEnv } from "$env/dynamic/public";
 import { getAuthDb } from "$lib/db.server.js";
+import { getTrustedOrigins } from "$lib/utils/domain.js";
 
 // Get environment variables at runtime (not build time)
 const SECRET_GOOGLE_CLIENT_ID = env.SECRET_GOOGLE_CLIENT_ID || "";
@@ -18,9 +18,7 @@ const authDb = getAuthDb();
 // BetterAuth configuration with explicit database setup
 // baseURL and trustedOrigins configured for cross-subdomain cookie sharing
 // Cookies will be set for .hominio.me (parent domain) to work across subdomains
-// For production, accept both hominio.me and www.hominio.me
-const baseURL = publicEnv.PUBLIC_BASE_URL || undefined;
-
+// Accepts both hominio.me and www.hominio.me automatically via domain utility
 export const auth = betterAuth({
   database: {
     db: authDb,
@@ -29,16 +27,8 @@ export const auth = betterAuth({
   secret: SECRET_AUTH_SECRET,
   // Don't set baseURL - let BetterAuth auto-detect from request origin
   // This allows both hominio.me and www.hominio.me to work
-  // Trusted origins for CORS and cookie sharing
-  trustedOrigins: baseURL ? [
-    baseURL,
-    baseURL.replace('https://', 'https://www.'), // www subdomain
-    baseURL.replace('https://', 'https://sync.'), // sync subdomain
-  ] : [
-    'https://hominio.me',
-    'https://www.hominio.me',
-    'https://sync.hominio.me',
-  ],
+  // Trusted origins for CORS and cookie sharing (includes www and sync subdomain)
+  trustedOrigins: getTrustedOrigins(),
   // Only configure Google provider if credentials are provided
   // This prevents warnings during build time when env vars aren't available
   ...(SECRET_GOOGLE_CLIENT_ID && SECRET_GOOGLE_CLIENT_SECRET

@@ -6,6 +6,7 @@ import { schema } from '../../../../../zero-schema';
 import { extractAuthData } from '$lib/server/auth-context';
 import { createMutators } from '../../../../../lib/mutators';
 import { createServerMutators } from '../../../../../lib/mutators.server';
+import { isTrustedOrigin } from '$lib/utils/domain';
 import { env } from '$env/dynamic/private';
 import type { RequestHandler } from './$types';
 
@@ -46,11 +47,9 @@ function getProcessor(): PushProcessor {
 // Handle CORS preflight requests
 export const OPTIONS: RequestHandler = async ({ request }) => {
   const origin = request.headers.get('origin');
-  const allowedOrigins = ['https://hominio.me', 'https://www.hominio.me', 'https://sync.hominio.me'];
-  
   const headers: Record<string, string> = {};
   
-  if (origin && allowedOrigins.includes(origin)) {
+  if (origin && isTrustedOrigin(origin)) {
     headers['Access-Control-Allow-Origin'] = origin;
     headers['Access-Control-Allow-Credentials'] = 'true';
     headers['Access-Control-Allow-Methods'] = 'POST, OPTIONS';
@@ -98,14 +97,13 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
     // PushProcessor handles the push protocol, executing mutators in transactions
     const result = await pushProcessor.process(serverMutators, request);
 
-    // Add CORS headers to allow cross-origin requests (for www.hominio.me)
+    // Add CORS headers to allow cross-origin requests (handles both www and non-www)
     const origin = request.headers.get('origin');
-    const allowedOrigins = ['https://hominio.me', 'https://www.hominio.me', 'https://sync.hominio.me'];
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
     };
     
-    if (origin && allowedOrigins.includes(origin)) {
+    if (origin && isTrustedOrigin(origin)) {
       headers['Access-Control-Allow-Origin'] = origin;
       headers['Access-Control-Allow-Credentials'] = 'true';
       headers['Access-Control-Allow-Methods'] = 'POST, OPTIONS';

@@ -105,12 +105,32 @@ export async function startZero(): Promise<void> {
 
     // Get the server URL for get-queries and push endpoints
     // Zero-cache needs these to call our server for synced queries and custom mutators
-    // In dev, default to localhost:5173 (SvelteKit default dev port)
+    // Uses domain utility to handle both www and non-www domains automatically
     // Can be overridden with SECRET_ZERO_GET_QUERIES_URL and SECRET_ZERO_PUSH_URL env vars
-    // In production, set these to your actual domain
     const devPort = process.env.PORT || '5173';
-    const getQueriesUrl = env.SECRET_ZERO_GET_QUERIES_URL || `http://localhost:${devPort}/alpha/api/zero/get-queries`;
-    const pushUrl = env.SECRET_ZERO_PUSH_URL || `http://localhost:${devPort}/alpha/api/zero/push`;
+    const isProduction = process.env.NODE_ENV === 'production';
+    
+    // Import domain utility dynamically (server-side only)
+    let getMainDomainUrl: ((path: string) => string) | null = null;
+    if (isProduction) {
+      try {
+        const domainUtils = await import('$lib/utils/domain');
+        getMainDomainUrl = domainUtils.getMainDomainUrl;
+      } catch (e) {
+        console.warn('[Zero] Could not import domain utils, using env vars:', e);
+      }
+    }
+    
+    const getQueriesUrl = env.SECRET_ZERO_GET_QUERIES_URL || (
+      isProduction && getMainDomainUrl
+        ? getMainDomainUrl('/alpha/api/zero/get-queries')
+        : `http://localhost:${devPort}/alpha/api/zero/get-queries`
+    );
+    const pushUrl = env.SECRET_ZERO_PUSH_URL || (
+      isProduction && getMainDomainUrl
+        ? getMainDomainUrl('/alpha/api/zero/push')
+        : `http://localhost:${devPort}/alpha/api/zero/push`
+    );
 
     // Spawn zero-cache-dev process
     // Filter out deprecated environment variables to avoid warnings

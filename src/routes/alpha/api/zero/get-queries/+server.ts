@@ -3,6 +3,7 @@ import { handleGetQueriesRequest, type ReadonlyJSONValue } from '@rocicorp/zero/
 import { schema } from '../../../../../zero-schema';
 import { builder } from '../../../../../zero-schema';
 import { extractAuthData } from '$lib/server/auth-context';
+import { getTrustedOrigins, isTrustedOrigin } from '$lib/utils/domain';
 import z from 'zod';
 import type { RequestHandler } from './$types';
 
@@ -207,11 +208,9 @@ function getQuery(name: string, args: readonly ReadonlyJSONValue[]) {
 // Handle CORS preflight requests
 export const OPTIONS: RequestHandler = async ({ request }) => {
   const origin = request.headers.get('origin');
-  const allowedOrigins = ['https://hominio.me', 'https://www.hominio.me', 'https://sync.hominio.me'];
-  
   const headers: Record<string, string> = {};
   
-  if (origin && allowedOrigins.includes(origin)) {
+  if (origin && isTrustedOrigin(origin)) {
     headers['Access-Control-Allow-Origin'] = origin;
     headers['Access-Control-Allow-Credentials'] = 'true';
     headers['Access-Control-Allow-Methods'] = 'POST, OPTIONS';
@@ -238,14 +237,13 @@ export const POST: RequestHandler = async ({ request }) => {
     // Zero forwards cookies automatically for get-queries requests (no env var needed)
     const result = await handleGetQueriesRequest(getQuery, schema, request);
     
-    // Add CORS headers to allow cross-origin requests (for www.hominio.me)
+    // Add CORS headers to allow cross-origin requests (handles both www and non-www)
     const origin = request.headers.get('origin');
-    const allowedOrigins = ['https://hominio.me', 'https://www.hominio.me', 'https://sync.hominio.me'];
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
     };
     
-    if (origin && allowedOrigins.includes(origin)) {
+    if (origin && isTrustedOrigin(origin)) {
       headers['Access-Control-Allow-Origin'] = origin;
       headers['Access-Control-Allow-Credentials'] = 'true';
       headers['Access-Control-Allow-Methods'] = 'POST, OPTIONS';
