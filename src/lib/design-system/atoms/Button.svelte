@@ -30,7 +30,7 @@
     disabled?: boolean;
     config?: ButtonConfig;
     class?: string;
-    children?: any;
+    children?: import("svelte").Snippet;
     onclick?: (e: MouseEvent) => void;
     type?: "button" | "submit" | "reset";
   }
@@ -66,16 +66,18 @@
     lg: "px-6 py-3 text-base",
   };
 
-  // Variant classes with glass effects
+  // Variant classes with glass effects - using semantic color classes
+  // Primary = Marine Blue, Secondary = Teal, Accent = Yellow
+  // All solid buttons use super light (100/200) text color matching their background
   const variantClasses: Record<ButtonVariant, string> = {
-    primary: `bg-brand-teal-500 text-white hover:bg-brand-teal-600 focus:ring-brand-teal-500 shadow-lg shadow-brand-teal-500/40 hover:shadow-xl hover:shadow-brand-teal-500/50 hover:-translate-y-0.5 backdrop-blur-sm`,
-    secondary: `bg-brand-yellow-500/90 text-brand-navy-500 hover:bg-brand-yellow-600/90 focus:ring-brand-yellow-500 shadow-lg shadow-brand-yellow-500/30 hover:shadow-xl hover:shadow-brand-yellow-500/40 hover:-translate-y-0.5`,
-    success: `bg-success-500/90 text-white hover:bg-success-600/90 focus:ring-success-500 shadow-lg shadow-success-500/30 hover:shadow-xl hover:shadow-success-500/40 hover:-translate-y-0.5`,
-    info: `bg-info-500/90 text-white hover:bg-info-600/90 focus:ring-info-500 shadow-lg shadow-info-500/30 hover:shadow-xl hover:shadow-info-500/40 hover:-translate-y-0.5`,
-    warning: `bg-warning-500/90 text-white hover:bg-warning-600/90 focus:ring-warning-500 shadow-lg shadow-warning-500/30 hover:shadow-xl hover:shadow-warning-500/40 hover:-translate-y-0.5`,
-    alert: `bg-alert-500/90 text-white hover:bg-alert-600/90 focus:ring-alert-500 shadow-lg shadow-alert-500/30 hover:shadow-xl hover:shadow-alert-500/40 hover:-translate-y-0.5`,
-    outline: `bg-white/80 border-2 border-brand-teal-500/30 text-brand-teal-600 hover:bg-brand-teal-500/10 hover:border-brand-teal-500/50 focus:ring-brand-teal-500 shadow-md hover:shadow-lg hover:-translate-y-0.5`,
-    inverted: `bg-white/70 border border-white/40 text-brand-navy-500 hover:bg-white/90 hover:border-white/60 focus:ring-brand-navy-500 shadow-lg hover:shadow-xl hover:-translate-y-0.5`,
+    primary: `bg-primary-500 text-primary-100 hover:bg-primary-600 hover:text-primary-50 focus:ring-primary-500 shadow-lg shadow-primary-500/40 hover:shadow-xl hover:shadow-primary-500/50 hover:-translate-y-0.5 backdrop-blur-sm`,
+    secondary: `bg-secondary-500 text-secondary-100 hover:bg-secondary-600 hover:text-secondary-50 focus:ring-secondary-500 shadow-lg shadow-secondary-500/40 hover:shadow-xl hover:shadow-secondary-500/50 hover:-translate-y-0.5 backdrop-blur-sm`,
+    success: `bg-success-500 text-success-100 hover:bg-success-600 hover:text-success-50 focus:ring-success-500 shadow-lg shadow-success-500/30 hover:shadow-xl hover:shadow-success-500/40 hover:-translate-y-0.5`,
+    info: `bg-info-500 text-info-100 hover:bg-info-600 hover:text-info-50 focus:ring-info-500 shadow-lg shadow-info-500/30 hover:shadow-xl hover:shadow-info-500/40 hover:-translate-y-0.5`,
+    warning: `bg-warning-500 text-warning-100 hover:bg-warning-600 hover:text-warning-50 focus:ring-warning-500 shadow-lg shadow-warning-500/30 hover:shadow-xl hover:shadow-warning-500/40 hover:-translate-y-0.5`,
+    alert: `bg-alert-500 text-alert-100 hover:bg-alert-600 hover:text-alert-50 focus:ring-alert-500 shadow-lg shadow-alert-500/30 hover:shadow-xl hover:shadow-alert-500/40 hover:-translate-y-0.5`,
+    outline: `bg-secondary-500 text-secondary-100 hover:bg-secondary-600 hover:text-secondary-50 focus:ring-secondary-500 shadow-lg shadow-secondary-500/40 hover:shadow-xl hover:shadow-secondary-500/50 hover:-translate-y-0.5 backdrop-blur-sm`,
+    inverted: `bg-white/70 border border-white/40 text-primary-900 hover:bg-white/90 hover:border-white/60 focus:ring-primary-500 shadow-lg hover:shadow-xl hover:-translate-y-0.5`,
   };
 
   // Glass intensity adjustments (backdrop blur)
@@ -110,7 +112,7 @@
     <Icon name={icon} size="sm" color={iconColor()} class="mr-1.5" />
   {/if}
   {#if children}
-    <span>{children}</span>
+    {@render children()}
   {/if}
   {#if icon && iconPosition === "right"}
     <Icon name={icon} size="sm" color={iconColor()} class="ml-1.5" />

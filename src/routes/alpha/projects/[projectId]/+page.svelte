@@ -7,6 +7,7 @@
   import { getUserProfile } from "$lib/userProfileCache";
   import { getYouTubeEmbedUrl } from "$lib/youtubeUtils";
   import { projectById, allCups, allMatches, allProjects } from "$lib/synced-queries";
+  import { Button } from "$lib/design-system/atoms";
 
   const zeroContext = getContext<{
     getInstance: () => any;
@@ -24,6 +25,24 @@
   let cups = $state<any[]>([]);
   let projects = $state<any[]>([]);
   let showVideoThumbnail = $state(true);
+  let isAdmin = $state(false);
+
+  // Check if user is admin
+  $effect(() => {
+    (async () => {
+      if (!$session.isPending && $session.data?.user) {
+        try {
+          const response = await fetch("/alpha/api/is-admin");
+          if (response.ok) {
+            const data = await response.json();
+            isAdmin = data.isAdmin;
+          }
+        } catch (error) {
+          console.error("Failed to check admin status:", error);
+        }
+      }
+    })();
+  });
 
   onMount(() => {
     let projectView: any;
@@ -179,7 +198,11 @@
   });
 
   const isOwner = $derived(
-    project?.userId === $session.data?.user?.id
+    project?.userId === $session.data?.user?.id || isAdmin
+  );
+  
+  const canEdit = $derived(
+    project && $session.data?.user && (project.userId === $session.data.user.id || isAdmin)
   );
 
   // Computed values for video/thumbnail
@@ -202,59 +225,58 @@
   const hasVideo = $derived(true);
 </script>
 
-<div class="min-h-screen bg-cream p-4 md:p-8">
-  <div class="max-w-4xl mx-auto">
+<div class="min-h-screen py-8">
     {#if loading}
-      <div class="card p-8 text-center">
-        <p class="text-navy/70">Loading project...</p>
+      <div class="bg-white rounded-2xl border-2 border-brand-navy-500/6 shadow-md p-8 text-center">
+        <p class="text-brand-navy-700/70">Loading project...</p>
       </div>
     {:else if !project}
-      <div class="card p-12 text-center">
-        <h1 class="text-3xl font-bold text-navy mb-4">Project Not Found</h1>
-        <p class="text-navy/60 mb-6">
+      <div class="bg-white rounded-2xl border-2 border-brand-navy-500/6 shadow-md p-12 text-center">
+        <h1 class="text-3xl font-bold text-brand-navy-500 mb-4">Project Not Found</h1>
+        <p class="text-brand-navy-700/60 mb-6">
           The project you're looking for doesn't exist or has been removed.
         </p>
-        <a href="/alpha/projects" class="btn-primary">
+        <Button variant="primary" onclick={() => goto("/alpha/projects")}>
           Back to Projects
-        </a>
+        </Button>
       </div>
     {:else}
       <!-- Back Button -->
-      <a href="/alpha/projects" class="text-teal hover:underline mb-6 inline-block">
+      <a href="/alpha/projects" class="text-brand-teal-500 hover:underline mb-6 inline-block">
         ← Back to Projects
       </a>
 
       <!-- Full-Width Video/Thumbnail Header -->
       {#if showVideoThumbnail}
-        <div class="video-header-full-width mb-6">
-          <div class="video-thumbnail-full-width">
+        <div class="w-full mb-6 rounded-2xl overflow-hidden">
+          <div class="relative w-full aspect-video bg-brand-navy-500/10">
             <img
               src={thumbnailUrl}
               alt={project.title}
-              class="video-thumbnail-img-full"
+              class="w-full h-full object-cover"
               onerror={(e) => {
                 e.target.src = `https://picsum.photos/seed/${project.id || 'project'}/400/225`;
               }}
             />
             <button
-              class="video-play-button-full"
+              class="absolute inset-0 flex items-center justify-center bg-black/30 hover:bg-black/40 transition-colors rounded-2xl group"
               title="Play {project.title}"
               onclick={() => {
                 showVideoThumbnail = false;
               }}
             >
-              <svg class="play-icon-full" fill="currentColor" viewBox="0 0 24 24">
+              <svg class="w-20 h-20 text-white group-hover:scale-110 transition-transform" fill="currentColor" viewBox="0 0 24 24">
                 <path d="M8 5v14l11-7z" />
               </svg>
             </button>
           </div>
         </div>
       {:else}
-        <div class="video-header-full-width mb-6">
-          <div class="video-embed-full-width">
+        <div class="w-full mb-6 rounded-2xl overflow-hidden">
+          <div class="relative w-full aspect-video bg-black">
             <iframe
               src={videoEmbedUrl}
-              class="video-iframe-full-width"
+              class="absolute inset-0 w-full h-full"
               title="Project video"
               frameborder="0"
               allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
@@ -265,39 +287,43 @@
       {/if}
 
       <!-- Project Header -->
-      <div class="card p-6 md:p-8 mb-6">
+      <div class="bg-white rounded-2xl border-2 border-brand-navy-500/6 shadow-md p-6 md:p-8 mb-6">
         <div class="flex flex-col md:flex-row md:items-start gap-6">
 
           <div class="flex-1">
             <div class="flex items-start justify-between gap-4 mb-4">
               <div>
-                <h1 class="text-3xl md:text-4xl font-bold text-navy mb-2">
+                <h1 class="text-3xl md:text-4xl font-bold text-brand-navy-500 mb-2">
                   {project.title}
                 </h1>
                 {#if project.description}
-                  <p class="text-navy/70 text-lg leading-relaxed">
+                  <p class="text-brand-navy-700/70 text-lg leading-relaxed">
                     {project.description}
                   </p>
                 {/if}
               </div>
-              {#if isOwner}
-                <a
-                  href="/alpha/projects?modal=edit-project&projectId={projectId}"
-                  class="btn-secondary flex-shrink-0"
+              {#if canEdit}
+                <Button
+                  variant="outline"
+                  icon="mdi:pencil"
+                  iconPosition="left"
+                  onclick={() => {
+                    goto(`/alpha/projects?modal=edit-project&projectId=${project?.id || projectId}`);
+                  }}
                 >
                   Edit
-                </a>
+                </Button>
               {/if}
             </div>
 
             <!-- Project Details -->
-            <div class="project-details-grid">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
               {#if ownerProfile}
-                <div class="detail-item">
-                  <span class="detail-label">Founder</span>
+                <div class="flex flex-col">
+                  <span class="text-xs font-bold text-brand-navy-500 uppercase tracking-wider mb-1">Founder</span>
                   <a
                     href="/alpha/user/{project.userId}"
-                    class="detail-value detail-link"
+                    class="text-brand-teal-500 hover:text-brand-navy-500 font-semibold transition-colors"
                   >
                     {ownerProfile.name || "Unknown"}
                   </a>
@@ -305,16 +331,16 @@
               {/if}
 
               {#if project.country}
-                <div class="detail-item">
-                  <span class="detail-label">Country</span>
-                  <span class="detail-value">{project.country}</span>
+                <div class="flex flex-col">
+                  <span class="text-xs font-bold text-brand-navy-500 uppercase tracking-wider mb-1">Country</span>
+                  <span class="text-brand-navy-700 font-semibold">{project.country}</span>
                 </div>
               {/if}
 
               {#if project.city}
-                <div class="detail-item">
-                  <span class="detail-label">City</span>
-                  <span class="detail-value">{project.city}</span>
+                <div class="flex flex-col">
+                  <span class="text-xs font-bold text-brand-navy-500 uppercase tracking-wider mb-1">City</span>
+                  <span class="text-brand-teal-500 font-semibold">{project.city}</span>
                 </div>
               {/if}
             </div>
@@ -325,15 +351,15 @@
       <!-- SDGs -->
       {@const sdgArray = project.sdgs ? (typeof project.sdgs === "string" ? JSON.parse(project.sdgs || "[]") : project.sdgs) : []}
       {#if sdgArray.length > 0}
-        <div class="card p-6 md:p-8 mb-6">
-          <h2 class="text-xl font-bold text-navy mb-4">Sustainable Development Goals</h2>
-          <div class="sdgs-grid">
+        <div class="bg-white rounded-2xl border-2 border-brand-navy-500/6 shadow-md p-6 md:p-8 mb-6">
+          <h2 class="text-xl font-bold text-brand-navy-500 mb-4">Sustainable Development Goals</h2>
+          <div class="grid grid-cols-[repeat(auto-fill,minmax(80px,1fr))] gap-4">
             {#each sdgArray as sdgId}
-              <div class="sdg-item">
+              <div class="flex items-center justify-center">
                 <img
                   src="/sdgs/{sdgId}.svg"
                   alt={sdgId}
-                  class="sdg-icon"
+                  class="w-20 h-20 rounded-lg object-cover"
                   onerror={(e) => {
                     e.target.style.display = 'none';
                   }}
@@ -346,33 +372,33 @@
 
       <!-- Cups and Matches -->
       {#if matches && matches.length > 0 && Array.from(matchesByCup).length > 0}
-        <div class="card p-6 md:p-8 mb-6">
-          <h2 class="text-xl font-bold text-navy mb-4">Tournament Participation</h2>
+        <div class="bg-white rounded-2xl border-2 border-brand-navy-500/6 shadow-md p-6 md:p-8 mb-6">
+          <h2 class="text-xl font-bold text-brand-navy-500 mb-4">Tournament Participation</h2>
           {#each Array.from(matchesByCup) as [cupId, cupMatches]}
-            <div class="cup-section">
-              <h3 class="cup-section-title">{getCupName(cupId)}</h3>
-              <div class="matches-list">
+            <div class="mb-8 last:mb-0">
+              <h3 class="text-lg font-bold text-brand-navy-500 mb-4 pb-2 border-b-2 border-brand-navy-500/10">{getCupName(cupId)}</h3>
+              <div class="flex flex-col gap-3">
                 {#each cupMatches as match}
                   {@const result = getMatchResult(match)}
                   {@const opponentId = getOpponentProject(match)}
-                  <div class="match-item {result}">
-                    <div class="match-header">
-                      <span class="match-round">{getRoundLabel(match.round)}</span>
+                  <div class="p-4 rounded-lg border-l-4 transition-all hover:translate-x-1 hover:shadow-md {result === 'won' ? 'bg-success-50 border-success-500' : result === 'lost' ? 'bg-brand-cream-50 border-brand-teal-500/30' : 'bg-brand-cream-50 border-brand-navy-500/20'}">
+                    <div class="flex items-center justify-between mb-2">
+                      <span class="text-xs font-semibold text-brand-navy-500 uppercase tracking-wider">{getRoundLabel(match.round)}</span>
                       {#if result === "won"}
-                        <span class="match-result won">Won</span>
+                        <span class="px-3 py-1 rounded-xl text-xs font-bold uppercase tracking-wider bg-success-500 text-white">Won</span>
                       {:else if result === "lost"}
-                        <span class="match-result lost">Lost</span>
+                        <span class="px-3 py-1 rounded-xl text-xs font-bold uppercase tracking-wider bg-brand-teal-500/15 text-brand-navy-700 border border-brand-teal-500/20">Lost</span>
                       {:else if match.status === "voting"}
-                        <span class="match-result voting">Voting</span>
+                        <span class="px-3 py-1 rounded-xl text-xs font-bold uppercase tracking-wider bg-brand-yellow-500 text-brand-navy-500">Voting</span>
                       {:else}
-                        <span class="match-result pending">Pending</span>
+                        <span class="px-3 py-1 rounded-xl text-xs font-bold uppercase tracking-wider bg-gray-400 text-white">Pending</span>
                       {/if}
                     </div>
-                    <div class="match-opponent">
-                      vs <a href="/alpha/projects/{opponentId}" class="opponent-link">{getProjectName(opponentId)}</a>
+                    <div class="text-sm text-brand-navy-700 mb-1">
+                      vs <a href="/alpha/projects/{opponentId}" class="text-brand-teal-500 hover:text-brand-navy-500 font-semibold transition-colors hover:underline">{getProjectName(opponentId)}</a>
                     </div>
                     {#if match.completedAt}
-                      <div class="match-date">
+                      <div class="text-xs text-brand-navy-700/60">
                         Completed: {new Date(match.completedAt).toLocaleDateString()}
                       </div>
                     {/if}
@@ -384,440 +410,5 @@
         </div>
       {/if}
     {/if}
-  </div>
 </div>
-
-<style>
-  .bg-cream {
-    background-color: #fef9f0;
-  }
-
-  .card {
-    background: white;
-    border-radius: 16px;
-    box-shadow: 0 2px 12px rgba(26, 26, 78, 0.06);
-    border: 1px solid rgba(26, 26, 78, 0.08);
-  }
-
-  .btn-primary {
-    padding: 0.75rem 1.5rem;
-    background: linear-gradient(135deg, #4ecdc4 0%, #1a1a4e 100%);
-    color: white;
-    border-radius: 12px;
-    font-weight: 600;
-    text-decoration: none;
-    display: inline-block;
-    transition: all 0.2s;
-  }
-
-  .btn-primary:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 20px rgba(78, 205, 196, 0.3);
-  }
-
-  .btn-secondary {
-    padding: 0.75rem 1.5rem;
-    background: white;
-    color: #1a1a4e;
-    border: 2px solid rgba(26, 26, 78, 0.1);
-    border-radius: 12px;
-    font-weight: 600;
-    text-decoration: none;
-    display: inline-block;
-    transition: all 0.2s;
-  }
-
-  .btn-secondary:hover {
-    border-color: #4ecdc4;
-    color: #4ecdc4;
-    transform: translateY(-2px);
-  }
-
-  .text-navy {
-    color: #1a1a4e;
-  }
-
-  .text-teal {
-    color: #4ecdc4;
-  }
-
-  .project-thumbnail-detail {
-    flex-shrink: 0;
-  }
-
-  .thumbnail-image {
-    width: 100%;
-    max-width: 500px;
-    height: auto;
-    border-radius: 12px;
-    object-fit: cover;
-  }
-
-  .video-thumbnail {
-    width: 100%;
-    max-width: 500px;
-    height: auto;
-    border-radius: 12px;
-    object-fit: cover;
-    display: block;
-  }
-
-  @media (min-width: 768px) {
-    .thumbnail-image,
-    .video-thumbnail {
-      max-width: 400px;
-    }
-  }
-
-  .project-details-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-    gap: 1rem;
-    margin-top: 1.5rem;
-  }
-
-  .detail-item {
-    display: flex;
-    flex-direction: column;
-    gap: 0.25rem;
-  }
-
-  .detail-label {
-    font-size: 0.75rem;
-    font-weight: 600;
-    color: rgba(26, 26, 78, 0.6);
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-  }
-
-  .detail-value {
-    font-size: 0.9375rem;
-    font-weight: 600;
-    color: #1a1a4e;
-  }
-
-  .detail-link {
-    text-decoration: none;
-    transition: color 0.2s;
-  }
-
-  .detail-link:hover {
-    color: #4ecdc4;
-    text-decoration: underline;
-  }
-
-  .sdgs-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
-    gap: 1rem;
-  }
-
-  .sdg-item {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 0.5rem;
-    background: #f9fafb;
-    border-radius: 8px;
-  }
-
-  .sdg-icon {
-    width: 60px;
-    height: 60px;
-    object-fit: contain;
-  }
-
-  .video-container {
-    flex-shrink: 0;
-    width: 100%;
-    max-width: 500px;
-  }
-
-  @media (min-width: 768px) {
-    .video-container {
-      max-width: 400px;
-    }
-  }
-
-  /* Full-width video/thumbnail header */
-  .video-header-full-width {
-    width: 100%;
-    border-radius: 16px;
-    overflow: hidden;
-    box-shadow: 0 8px 32px rgba(26, 26, 78, 0.12);
-  }
-
-  .video-thumbnail-full-width {
-    position: relative;
-    width: 100%;
-    padding-bottom: 56.25%; /* 16:9 aspect ratio */
-    height: 0;
-    overflow: hidden;
-    background: #000;
-  }
-
-  .video-thumbnail-img-full {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-  }
-
-  .video-play-button-full {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    width: 80px;
-    height: 80px;
-    background: rgba(0, 0, 0, 0.7);
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: white;
-    border: none;
-    cursor: pointer;
-    transition: all 0.3s;
-    backdrop-filter: blur(4px);
-  }
-
-  .video-play-button-full:hover {
-    background: rgba(0, 0, 0, 0.9);
-    transform: translate(-50%, -50%) scale(1.1);
-  }
-
-  .play-icon-full {
-    width: 40px;
-    height: 40px;
-    margin-left: 4px; /* Center the triangle */
-  }
-
-  .video-embed-full-width {
-    position: relative;
-    padding-bottom: 56.25%; /* 16:9 aspect ratio */
-    height: 0;
-    overflow: hidden;
-    background: #000;
-  }
-
-  .video-iframe-full-width {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    border: none;
-  }
-
-  .video-wrapper {
-    position: relative;
-    width: 100%;
-    border-radius: 12px;
-    overflow: hidden;
-  }
-
-  .video-thumbnail {
-    width: 100%;
-    height: auto;
-    display: block;
-    border-radius: 12px;
-  }
-
-  .video-play-button {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    width: 64px;
-    height: 64px;
-    background: rgba(0, 0, 0, 0.7);
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: white;
-    text-decoration: none;
-    transition: all 0.3s;
-    backdrop-filter: blur(4px);
-  }
-
-  .video-play-button:hover {
-    background: rgba(0, 0, 0, 0.9);
-    transform: translate(-50%, -50%) scale(1.1);
-  }
-
-  .play-icon {
-    width: 32px;
-    height: 32px;
-    margin-left: 4px; /* Center the triangle */
-  }
-
-  .video-embed {
-    position: relative;
-    padding-bottom: 56.25%; /* 16:9 aspect ratio */
-    height: 0;
-    overflow: hidden;
-    border-radius: 12px;
-  }
-
-  .video-iframe {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    border: none;
-  }
-
-  .video-link-button {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    padding: 1rem 1.5rem;
-    background: linear-gradient(135deg, #4ecdc4 0%, #1a1a4e 100%);
-    color: white;
-    border-radius: 12px;
-    text-decoration: none;
-    font-weight: 600;
-    transition: all 0.3s;
-    box-shadow: 0 4px 12px rgba(78, 205, 196, 0.3);
-  }
-
-  .video-link-button:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 20px rgba(78, 205, 196, 0.4);
-  }
-
-  .video-link-icon {
-    width: 24px;
-    height: 24px;
-  }
-
-  .cup-section {
-    margin-bottom: 2rem;
-  }
-
-  .cup-section:last-child {
-    margin-bottom: 0;
-  }
-
-  .cup-section-title {
-    font-size: 1.125rem;
-    font-weight: 700;
-    color: #1a1a4e;
-    margin-bottom: 1rem;
-    padding-bottom: 0.5rem;
-    border-bottom: 2px solid rgba(26, 26, 78, 0.1);
-  }
-
-  .matches-list {
-    display: flex;
-    flex-direction: column;
-    gap: 0.75rem;
-  }
-
-  .match-item {
-    padding: 1rem;
-    background: #f9fafb;
-    border-radius: 8px;
-    border-left: 4px solid rgba(26, 26, 78, 0.2);
-    transition: all 0.2s;
-  }
-
-  .match-item.won {
-    border-left-color: #10b981;
-    background: #f0fdf4;
-  }
-
-  .match-item.lost {
-    background: linear-gradient(135deg, #f8f9fa 0%, #f5f5f5 100%);
-    border-left: 3px solid rgba(78, 205, 196, 0.3);
-  }
-
-  .match-item:hover {
-    transform: translateX(4px);
-    box-shadow: 0 2px 8px rgba(26, 26, 78, 0.1);
-  }
-
-  .match-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 0.5rem;
-  }
-
-  .match-round {
-    font-size: 0.875rem;
-    font-weight: 600;
-    color: #1a1a4e;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-  }
-
-  .match-result {
-    padding: 0.25rem 0.75rem;
-    border-radius: 12px;
-    font-size: 0.75rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-  }
-
-  .match-result.won {
-    background: #10b981;
-    color: white;
-  }
-
-  .match-result.lost {
-    background: rgba(78, 205, 196, 0.15);
-    color: rgba(26, 26, 78, 0.7);
-    border: 1px solid rgba(78, 205, 196, 0.2);
-  }
-
-  .match-result.voting {
-    background: #f4d03f;
-    color: #1a1a4e;
-  }
-
-  .match-result.pending {
-    background: #9ca3af;
-    color: white;
-  }
-
-  .match-opponent {
-    font-size: 0.9375rem;
-    color: #4b5563;
-    margin-bottom: 0.25rem;
-  }
-
-  .opponent-link {
-    color: #4ecdc4;
-    text-decoration: none;
-    font-weight: 600;
-    transition: color 0.2s;
-  }
-
-  .opponent-link:hover {
-    color: #1a1a4e;
-    text-decoration: underline;
-  }
-
-  .match-date {
-    font-size: 0.75rem;
-    color: #6b7280;
-  }
-
-  @media (max-width: 640px) {
-    .project-details-grid {
-      grid-template-columns: 1fr;
-    }
-
-    .video-container {
-      max-width: 100%;
-    }
-  }
-</style>
 

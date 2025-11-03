@@ -576,8 +576,9 @@
   }
 
   function canEditProject(project) {
-    // Only admins can edit projects
-    return isAdmin;
+    // Owners and admins can edit projects
+    if (!project || !$session.data?.user) return false;
+    return project.userId === $session.data.user.id || isAdmin;
   }
 </script>
 
@@ -1064,7 +1065,7 @@
                         </h3>
                       </a>
                       {#if isMyProject(project)}
-                        <span class="px-3 py-1 bg-brand-yellow-500 rounded-full text-xs text-brand-navy-500 font-bold">Yours</span>
+                        <span class="px-3 py-1 bg-brand-yellow-500 rounded-full text-xs text-brand-yellow-900 font-bold">Yours</span>
                       {/if}
                     </div>
 
