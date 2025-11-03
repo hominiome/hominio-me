@@ -64,7 +64,7 @@ export function createMutators(authData: AuthData | undefined) {
       /**
        * Update a project
        * Client-side: Runs optimistically for instant UI updates
-       * Server-side: Validates permissions (admin OR founder OR owner)
+       * Server-side: Validates permissions (admin OR owner)
        */
       update: async (
         tx: Transaction<Schema>,

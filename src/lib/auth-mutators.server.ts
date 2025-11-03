@@ -29,7 +29,6 @@ export async function hasFounderIdentity(
  * Check if user can update a project
  * Returns true if:
  * - User is admin, OR
- * - User has founder identity AND owns the project, OR
  * - User owns the project
  */
 export async function canUpdateProject(
@@ -43,18 +42,17 @@ export async function canUpdateProject(
   }
 
   // Get project to check ownership
-  const project = await tx.query.project.where('id', projectId).one();
+  // Use .run() to execute the query, then get first result
+  const projects = await tx.query.project.where('id', '=', projectId).run();
+  const project = projects.length > 0 ? projects[0] : null;
 
   if (!project) {
     return false;
   }
 
-  // Check if user owns the project
+  // Check if user owns the project - owners can always update their own projects
   if (project.userId === userId) {
-    // If user owns project, check if they have founder identity
-    const hasFounder = await hasFounderIdentity(tx, userId);
-    // Owner can update if they have founder identity
-    return hasFounder;
+    return true;
   }
 
   return false;

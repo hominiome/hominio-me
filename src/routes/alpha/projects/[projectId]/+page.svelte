@@ -13,6 +13,8 @@
     allProjects,
   } from "$lib/synced-queries";
   import { Button } from "$lib/design-system/atoms";
+import Modal from "$lib/Modal.svelte";
+import EditProjectContent from "$lib/EditProjectContent.svelte";
 
   const zeroContext = getContext<{
     getInstance: () => any;
@@ -34,6 +36,18 @@
   let projects = $state<any[]>([]);
   let showVideoThumbnail = $state(true);
   let isAdmin = $state(false);
+  
+  // Edit modal state
+  const showEditModal = $derived(
+    $page.url.searchParams.get("modal") === "edit-project"
+  );
+  
+  function handleEditModalClose() {
+    const url = new URL($page.url);
+    url.searchParams.delete("modal");
+    url.searchParams.delete("projectId");
+    goto(url.pathname + url.search, { replaceState: true });
+  }
 
   // Check if user is admin
   $effect(() => {
@@ -323,18 +337,36 @@
               {/if}
             </div>
             {#if canEdit}
-              <Button
-                variant="outline"
-                icon="mdi:pencil"
-                iconPosition="left"
-                onclick={() => {
-                  goto(
-                    `/alpha/projects?modal=edit-project&projectId=${projectId}`
-                  );
-                }}
-              >
-                Edit
-              </Button>
+              <div class="flex gap-2">
+                <Button
+                  variant="outline"
+                  icon="mdi:pencil"
+                  iconPosition="left"
+                  onclick={() => {
+                    const url = new URL($page.url);
+                    url.searchParams.set("modal", "edit-project");
+                    url.searchParams.set("projectId", projectId);
+                    goto(url.pathname + url.search, { replaceState: false });
+                  }}
+                >
+                  Edit
+                </Button>
+                {#if isAdmin}
+                  <Button
+                    variant="alert"
+                    icon="mdi:delete"
+                    iconPosition="left"
+                    onclick={() => {
+                      goto(
+                        `/alpha/projects?modal=delete-project&projectId=${projectId}`,
+                        { replaceState: false }
+                      );
+                    }}
+                  >
+                    Delete
+                  </Button>
+                {/if}
+              </div>
             {/if}
           </div>
 
@@ -489,5 +521,12 @@
         {/each}
       </div>
     {/if}
+  {/if}
+  
+  <!-- Edit Project Modal -->
+  {#if showEditModal && $session.data?.user && projectId}
+    <Modal open={showEditModal} onClose={handleEditModalClose}>
+      <EditProjectContent projectId={projectId} onSuccess={handleEditModalClose} />
+    </Modal>
   {/if}
 </div>

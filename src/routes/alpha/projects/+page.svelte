@@ -8,13 +8,14 @@
   import UserAutocomplete from "$lib/UserAutocomplete.svelte";
   import CountryAutocomplete from "$lib/CountryAutocomplete.svelte";
   import { showError } from "$lib/toastStore.js";
-  import Modal from "$lib/Modal.svelte";
-  import { goto } from "$app/navigation";
-  import TigrisImageUpload from "$lib/components/TigrisImageUpload.svelte";
-  import { browser } from "$app/environment";
-  import { projectById, identitiesByUser } from "$lib/synced-queries";
-  import { Button, Icon } from "$lib/design-system/atoms";
-  import { PageHeader, PageHeaderActions } from "$lib/design-system/molecules";
+import Modal from "$lib/Modal.svelte";
+import { goto } from "$app/navigation";
+import TigrisImageUpload from "$lib/components/TigrisImageUpload.svelte";
+import { browser } from "$app/environment";
+import { projectById, identitiesByUser } from "$lib/synced-queries";
+import { Button, Icon } from "$lib/design-system/atoms";
+import { PageHeader, PageHeaderActions } from "$lib/design-system/molecules";
+import EditProjectContent from "$lib/EditProjectContent.svelte";
 
   // Get Zero instance from context (initialized in layout)
   const zeroContext = getContext("zero");
@@ -102,23 +103,6 @@
   );
   const editProjectId = $derived($page.url.searchParams.get("projectId") || "");
 
-  // Edit form state (declare before derived that uses it)
-  let editProject = $state(null);
-  let editLoading = $state(false);
-  let editSaving = $state(false);
-  let creating = $state(false);
-  let editFormData = $state({
-    title: "",
-    description: "",
-    country: null,
-    city: "",
-    videoUrl: "",
-    bannerImage: "",
-    profileImageUrl: "",
-    sdgs: [],
-  });
-  let editSelectedOwner = $state(null);
-
   // Form validation states (after state declarations)
   const canCreateProject = $derived(
     newProject.title.trim() &&
@@ -126,16 +110,6 @@
       newProject.country &&
       newProject.city.trim() &&
       newProject.sdgs.length > 0
-  );
-
-  const canSaveEditProject = $derived(
-    editProject &&
-      editFormData.title.trim() &&
-      editFormData.description.trim() &&
-      editFormData.country &&
-      editFormData.city.trim() &&
-      editFormData.sdgs.length > 0 &&
-      !editSaving
   );
 
   // Submit handlers
@@ -147,8 +121,9 @@
   }
 
   function handleEditSubmit() {
+    // The EditProjectContent component handles this internally
     const form = document.getElementById("edit-project-form");
-    if (form && canSaveEditProject) {
+    if (form) {
       form.requestSubmit();
     }
   }
@@ -159,8 +134,6 @@
   $effect(() => {
     // Access reactive values at effect level to ensure tracking
     const canCreate = canCreateProject;
-    const canEdit = canSaveEditProject;
-    const saving = editSaving;
     const isCreating = creating;
     const showCreate = showCreateModal;
     const showEdit = showEditModal;
@@ -170,12 +143,14 @@
         cancelAnimationFrame(rafId);
       }
       rafId = requestAnimationFrame(() => {
+        // Get edit actions from component if available, otherwise provide defaults
+        const editActions = window.__projectModalActions;
         window.__projectModalActions = {
           handleCreateSubmit,
           handleEditSubmit,
           canCreateProject: canCreate,
-          canEditProject: canEdit,
-          editSaving: saving,
+          canEditProject: editActions?.canEditProject ?? true,
+          editSaving: editActions?.editSaving ?? false,
           creating: isCreating,
           showCreateModal: showCreate,
           showEditModal: showEdit,
@@ -202,237 +177,6 @@
     url.searchParams.delete("modal");
     url.searchParams.delete("projectId");
     goto(url.pathname + url.search, { replaceState: true });
-    // Reset edit state
-    editProject = null;
-    editFormData = {
-      title: "",
-      description: "",
-      country: null,
-      city: "",
-      videoUrl: "",
-      bannerImage: "",
-      sdgs: [],
-    };
-    editSelectedOwner = null;
-  }
-
-  // Load project data when edit modal opens
-  $effect(() => {
-    if (showEditModal && editProjectId && zero) {
-      // Reset state when projectId changes
-      if (editProject && editProject.id !== editProjectId) {
-        editProject = null;
-        editLoading = true;
-      }
-
-      if (!editProject && !editLoading) {
-        editLoading = true;
-
-        // First try to find in already loaded projects
-        const project = projects.find((p) => p.id === editProjectId);
-
-        if (project) {
-          // Found in list, use it
-          editProject = project;
-          editFormData = {
-            title: project.title || "",
-            description: project.description || "",
-            country: project.country ? { name: project.country } : null,
-            city: project.city || "",
-            videoUrl: project.videoUrl || "",
-            bannerImage: project.bannerImage || "",
-            sdgs: project.sdgs
-              ? typeof project.sdgs === "string"
-                ? JSON.parse(project.sdgs || "[]")
-                : project.sdgs
-              : [],
-          };
-          if (project.userId) {
-            getUserProfile(project.userId).then((profile) => {
-              editSelectedOwner = {
-                id: profile.id,
-                name: profile.name,
-                image: profile.image,
-              };
-            });
-          }
-          editLoading = false;
-        } else {
-          // Not in list, query directly from Zero using a listener
-          let projectView = null;
-          let timeoutId = null;
-          let hasReceivedData = false;
-
-          (async () => {
-            try {
-              // Wait a bit for Zero to be fully ready
-              await new Promise((resolve) => setTimeout(resolve, 100));
-
-              const projectQuery = projectById(editProjectId);
-              projectView = zero.materialize(projectQuery);
-
-              // Use listener to get the project data
-              projectView.addListener((data) => {
-                hasReceivedData = true;
-                const projectData = Array.from(data || []);
-                console.log("📦 Zero query result:", {
-                  count: projectData.length,
-                  projectId: editProjectId,
-                  data: projectData[0]?.id,
-                });
-
-                if (projectData.length > 0) {
-                  const fetchedProject = projectData[0];
-                  console.log(
-                    "✅ Found project via Zero:",
-                    fetchedProject.id,
-                    fetchedProject.title
-                  );
-
-                  // Check if we still need this project (might have changed)
-                  if (
-                    editProjectId === fetchedProject.id &&
-                    (!editProject || editProject.id !== fetchedProject.id)
-                  ) {
-                    editProject = fetchedProject;
-                    editFormData = {
-                      title: fetchedProject.title || "",
-                      description: fetchedProject.description || "",
-                      country: fetchedProject.country
-                        ? { name: fetchedProject.country }
-                        : null,
-                      city: fetchedProject.city || "",
-                      videoUrl: fetchedProject.videoUrl || "",
-                      bannerImage: fetchedProject.bannerImage || "",
-                      profileImageUrl: fetchedProject.profileImageUrl || "",
-                      sdgs: fetchedProject.sdgs
-                        ? typeof fetchedProject.sdgs === "string"
-                          ? JSON.parse(fetchedProject.sdgs || "[]")
-                          : fetchedProject.sdgs
-                        : [],
-                    };
-                    if (fetchedProject.userId) {
-                      getUserProfile(fetchedProject.userId).then((profile) => {
-                        editSelectedOwner = {
-                          id: profile.id,
-                          name: profile.name,
-                          image: profile.image,
-                        };
-                      });
-                    }
-                    editLoading = false;
-
-                    // Clean up listener after getting data
-                    if (timeoutId) clearTimeout(timeoutId);
-                    // Use requestAnimationFrame for cleanup to avoid blocking
-                    requestAnimationFrame(() => {
-                      if (projectView) {
-                        projectView.destroy();
-                      }
-                    });
-                  }
-                } else if (hasReceivedData && projectData.length === 0) {
-                  console.log(
-                    "❌ No project found in Zero query - project doesn't exist"
-                  );
-                  editLoading = false;
-                  if (timeoutId) clearTimeout(timeoutId);
-                  // Use requestAnimationFrame for cleanup to avoid blocking
-                  requestAnimationFrame(() => {
-                    if (projectView) {
-                      projectView.destroy();
-                    }
-                  });
-                }
-              });
-
-              // Set a timeout to stop loading if no data arrives
-              timeoutId = setTimeout(() => {
-                if (editLoading && !editProject && !hasReceivedData) {
-                  console.log(
-                    "⏱️ Timeout waiting for project data - Zero may not be synced yet"
-                  );
-                  editLoading = false;
-                  if (projectView) {
-                    projectView.destroy();
-                  }
-                }
-              }, 5000); // Increased timeout to 5 seconds
-            } catch (error) {
-              console.error("❌ Failed to fetch project for editing:", error);
-              editLoading = false;
-              if (timeoutId) clearTimeout(timeoutId);
-              if (projectView) {
-                projectView.destroy();
-              }
-            }
-          })();
-        }
-      }
-    } else if (!showEditModal) {
-      // Reset when modal closes
-      editProject = null;
-      editLoading = false;
-    }
-  });
-
-  function toggleEditSDG(sdgId) {
-    if (editFormData.sdgs.includes(sdgId)) {
-      editFormData.sdgs = editFormData.sdgs.filter((id) => id !== sdgId);
-    } else {
-      if (editFormData.sdgs.length < 3) {
-        editFormData.sdgs = [...editFormData.sdgs, sdgId];
-      }
-    }
-  }
-
-  async function updateProject() {
-    if (
-      !editProject ||
-      editSaving ||
-      !editFormData.title.trim() ||
-      !editFormData.description.trim() ||
-      !editFormData.country ||
-      !editFormData.city.trim() ||
-      editFormData.sdgs.length === 0
-    ) {
-      return;
-    }
-
-    if (!isAdmin) {
-      showError("Only admins can update projects");
-      return;
-    }
-
-    const newUserId = editSelectedOwner
-      ? editSelectedOwner.id
-      : editProject.userId;
-    editSaving = true;
-
-    try {
-      // Use Zero custom mutator for project update
-      // Fire and forget - Zero handles optimistic updates
-      zero.mutate.project.update({
-        id: editProject.id,
-        title: editFormData.title.trim(),
-        description: editFormData.description.trim(),
-        country: editFormData.country?.name || editFormData.country || "",
-        city: editFormData.city.trim(),
-        videoUrl: (editFormData.videoUrl || "").trim(),
-        bannerImage: (editFormData.bannerImage || "").trim(),
-        profileImageUrl: (editFormData.profileImageUrl || "").trim(),
-        sdgs: JSON.stringify(editFormData.sdgs),
-        userId: newUserId,
-      });
-
-      handleEditModalClose();
-    } catch (error) {
-      console.error("Failed to update project:", error);
-      const message = error instanceof Error ? error.message : "Unknown error";
-      showError(`Failed to update project: ${message}`);
-    } finally {
-      editSaving = false;
-    }
   }
 
   onMount(() => {
@@ -957,226 +701,7 @@
       <!-- Edit Project Modal -->
       {#if showEditModal && $session.data?.user && editProjectId}
         <Modal open={showEditModal} onClose={handleEditModalClose}>
-          <div class="w-full overflow-visible">
-            <h2 class="text-3xl font-bold text-brand-navy-500 mb-6">
-              Edit Project
-            </h2>
-            {#if editLoading}
-              <div class="text-center py-8">
-                <p class="text-brand-navy-500/70">Loading project...</p>
-              </div>
-            {:else if !editProject}
-              <div class="text-center py-8">
-                <p class="text-brand-navy-500/70">Project not found</p>
-              </div>
-            {:else}
-              <form
-                id="edit-project-form"
-                onsubmit={(e) => {
-                  e.preventDefault();
-                  updateProject();
-                }}
-                class="space-y-5 overflow-visible max-h-none"
-              >
-                <!-- Title -->
-                <div>
-                  <label
-                    for="edit-project-title"
-                    class="block text-brand-navy-500/80 font-medium mb-2"
-                    >Title *</label
-                  >
-                  <input
-                    id="edit-project-title"
-                    type="text"
-                    bind:value={editFormData.title}
-                    placeholder="My Amazing Project"
-                    class="w-full px-4 py-3.5 bg-white border-2 border-brand-navy-100 rounded-[10px] text-brand-navy-500 transition-all duration-200 text-[0.9375rem] focus:outline-none focus:border-brand-teal-500 focus:shadow-[0_0_0_3px_rgba(78,205,196,0.1)] placeholder:text-brand-navy-500/40"
-                    required
-                  />
-                </div>
-
-                <!-- Description -->
-                <div>
-                  <label
-                    for="edit-project-description"
-                    class="block text-brand-navy-500/80 font-medium mb-2"
-                    >Description *</label
-                  >
-                  <textarea
-                    id="edit-project-description"
-                    bind:value={editFormData.description}
-                    placeholder="Tell us about your project..."
-                    rows="4"
-                    class="w-full px-4 py-3.5 bg-white border-2 border-brand-navy-100 rounded-[10px] text-brand-navy-500 transition-all duration-200 text-[0.9375rem] focus:outline-none focus:border-brand-teal-500 focus:shadow-[0_0_0_3px_rgba(78,205,196,0.1)] placeholder:text-brand-navy-500/40"
-                    required
-                  ></textarea>
-                </div>
-
-                <!-- Country -->
-                <div>
-                  <CountryAutocomplete
-                    bind:value={editFormData.country}
-                    label="Country"
-                    placeholder="Select a country..."
-                    required
-                  />
-                </div>
-
-                <!-- City -->
-                <div>
-                  <label
-                    for="edit-project-city"
-                    class="block text-brand-navy-500/80 font-medium mb-2"
-                    >City *</label
-                  >
-                  <input
-                    id="edit-project-city"
-                    type="text"
-                    bind:value={editFormData.city}
-                    placeholder="Berlin"
-                    class="w-full px-4 py-3.5 bg-white border-2 border-brand-navy-100 rounded-[10px] text-brand-navy-500 transition-all duration-200 text-[0.9375rem] focus:outline-none focus:border-brand-teal-500 focus:shadow-[0_0_0_3px_rgba(78,205,196,0.1)] placeholder:text-brand-navy-500/40"
-                    required
-                  />
-                </div>
-
-                <!-- Profile Image (Optional) -->
-                <div>
-                  <div class="block text-brand-navy-500/80 font-medium mb-2">
-                    Profile Image (Optional)
-                  </div>
-                  <TigrisImageUpload
-                    uploadButtonLabel="Upload Profile Image"
-                    showPreview={false}
-                    existingImageUrl={editFormData.profileImageUrl || null}
-                    onUploadSuccess={(image) => {
-                      editFormData.profileImageUrl = image.original.url;
-                    }}
-                    onUploadError={(error) => {
-                      showError(`Failed to upload profile image: ${error}`);
-                    }}
-                    onChange={() => {
-                      // Allow changing the image
-                    }}
-                    onClear={() => {
-                      editFormData.profileImageUrl = "";
-                    }}
-                  />
-                  <p class="text-xs text-brand-navy-500/50 mt-1">
-                    Falls back to project owner's profile image if not set
-                  </p>
-                </div>
-
-                <!-- Video URL (Optional) -->
-                <div>
-                  <label
-                    for="edit-project-videoUrl"
-                    class="block text-brand-navy-500/80 font-medium mb-2"
-                  >
-                    YouTube Video URL (Optional)
-                  </label>
-                  <input
-                    id="edit-project-videoUrl"
-                    type="url"
-                    bind:value={editFormData.videoUrl}
-                    placeholder="https://www.youtube.com/watch?v=..."
-                    class="w-full px-4 py-3.5 bg-white border-2 border-brand-navy-100 rounded-[10px] text-brand-navy-500 transition-all duration-200 text-[0.9375rem] focus:outline-none focus:border-brand-teal-500 focus:shadow-[0_0_0_3px_rgba(78,205,196,0.1)] placeholder:text-brand-navy-500/40"
-                  />
-                  <p class="text-sm text-brand-navy-500/60 mt-1">
-                    Add a YouTube link for your project pitch video
-                  </p>
-                </div>
-
-                <!-- Banner Image (Optional) -->
-                <div>
-                  <div class="block text-brand-navy-500/80 font-medium mb-2">
-                    Banner Image (Optional)
-                  </div>
-                  <TigrisImageUpload
-                    uploadButtonLabel="Upload Banner"
-                    showPreview={false}
-                    existingImageUrl={editFormData.bannerImage || null}
-                    onUploadSuccess={(image) => {
-                      editFormData.bannerImage = image.original.url;
-                    }}
-                    onUploadError={(error) => {
-                      showError(`Failed to upload banner: ${error}`);
-                    }}
-                    onChange={() => {
-                      // Allow changing the banner
-                    }}
-                    onClear={() => {
-                      editFormData.bannerImage = "";
-                    }}
-                  />
-                  <p class="text-sm text-brand-navy-500/60 mt-1">
-                    Custom banner image (falls back to Unsplash if not provided)
-                  </p>
-                </div>
-
-                <!-- Project Owner -->
-                {#if isAdmin}
-                  <div>
-                    <UserAutocomplete
-                      bind:value={editSelectedOwner}
-                      label="Project Owner"
-                      placeholder="Search for a user..."
-                    />
-                    <p class="text-sm text-brand-navy-500/60 mt-1">
-                      Change the project owner (admin only)
-                    </p>
-                  </div>
-                {/if}
-
-                <!-- SDG Selection -->
-                <div>
-                  <label
-                    for="edit-project-sdgs"
-                    class="block text-brand-navy-500/80 font-medium mb-2"
-                  >
-                    Sustainable Development Goals (Select 1-3) *
-                  </label>
-                  <p class="text-sm text-brand-navy-500/60 mb-3">
-                    Selected: {editFormData.sdgs.length}/3
-                  </p>
-                  <div
-                    class="grid grid-cols-[repeat(auto-fill,minmax(80px,1fr))] gap-3 p-2 bg-brand-teal-500/3 rounded-xl overflow-visible max-h-none"
-                  >
-                    {#each availableSDGs as sdg}
-                      <button
-                        type="button"
-                        onclick={() => toggleEditSDG(sdg.id)}
-                        class="relative aspect-square border-[3px] border-transparent rounded-lg cursor-pointer transition-all duration-200 p-0 bg-white overflow-hidden {editFormData.sdgs.includes(
-                          sdg.id
-                        )
-                          ? 'border-brand-yellow-500 shadow-[0_4px_16px_rgba(244,208,63,0.3)]'
-                          : 'hover:scale-105 hover:border-brand-teal-500 hover:shadow-[0_4px_12px_rgba(78,205,196,0.2)]'} {!editFormData.sdgs.includes(
-                          sdg.id
-                        ) && editFormData.sdgs.length >= 3
-                          ? 'opacity-40 cursor-not-allowed'
-                          : ''}"
-                        disabled={!editFormData.sdgs.includes(sdg.id) &&
-                          editFormData.sdgs.length >= 3}
-                        title={sdg.name}
-                      >
-                        <img
-                          src="/sdgs/{sdg.id}.svg"
-                          alt={sdg.name}
-                          class="w-full h-full object-cover block"
-                        />
-                        {#if editFormData.sdgs.includes(sdg.id)}
-                          <div
-                            class="absolute top-1 right-1 w-6 h-6 bg-brand-yellow-500 text-brand-navy-500 rounded-full flex items-center justify-center font-black text-sm shadow-[0_2px_8px_rgba(0,0,0,0.2)]"
-                          >
-                            ✓
-                          </div>
-                        {/if}
-                      </button>
-                    {/each}
-                  </div>
-                </div>
-              </form>
-            {/if}
-          </div>
+          <EditProjectContent projectId={editProjectId} onSuccess={handleEditModalClose} />
         </Modal>
       {/if}
 
@@ -1329,44 +854,6 @@
                       {/if}
                     {/if}
 
-                    <!-- Edit/Delete Buttons - Small, Vertical, Right Edge -->
-                    {#if canEditProject(project)}
-                      <div
-                        class="absolute bottom-4 right-4 @md:top-4 @md:right-6 flex flex-col gap-2 items-end"
-                      >
-                        <Button
-                          variant="outline"
-                          icon="mdi:pencil"
-                          iconPosition="left"
-                          onclick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            goto(
-                              `?modal=edit-project&projectId=${project.id}`,
-                              {
-                                replaceState: false,
-                              }
-                            );
-                          }}
-                          class="aspect-square p-1.5 w-8 h-8 !px-1.5"
-                          size="sm"
-                        ></Button>
-                        {#if isAdmin}
-                          <Button
-                            variant="alert"
-                            icon="mdi:delete"
-                            iconPosition="left"
-                            onclick={(e) => {
-                              e.preventDefault();
-                              e.stopPropagation();
-                              requestDeleteProject(project.id);
-                            }}
-                            class="aspect-square p-1.5 w-8 h-8 !px-1.5"
-                            size="sm"
-                          ></Button>
-                        {/if}
-                      </div>
-                    {/if}
                   </div>
                 </div>
               </div>

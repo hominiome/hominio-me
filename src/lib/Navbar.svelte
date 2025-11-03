@@ -142,115 +142,115 @@
     <!-- Mobile Bottom Navigation -->
     {#if session?.data?.user}
       <!-- Signed in: Show full navigation bar -->
-      <div class="mobile-bottom-nav" class:modal-mode={isModalOpen}>
-        {#if isModalOpen}
-          <!-- Modal Mode: Container constrained to modal max-width -->
-          <div class="modal-nav-container">
-            {#if modalLeftButtons.length > 0}
-              <div class="modal-left-buttons">
-                {#each modalLeftButtons as button}
-                  <Button
-                    variant={button.variant || "secondary"}
-                    onclick={button.onClick}
-                    aria-label={button.ariaLabel || button.label}
-                    disabled={button.disabled}
-                    size="sm"
+    <div class="mobile-bottom-nav" class:modal-mode={isModalOpen}>
+      {#if isModalOpen}
+        <!-- Modal Mode: Container constrained to modal max-width -->
+        <div class="modal-nav-container">
+          {#if modalLeftButtons.length > 0}
+            <div class="modal-left-buttons">
+              {#each modalLeftButtons as button}
+                <Button
+                  variant={button.variant || "secondary"}
+                  onclick={button.onClick}
+                  aria-label={button.ariaLabel || button.label}
+                  disabled={button.disabled}
+                  size="sm"
                     fullWidth={true}
                     class="!rounded-full {button.variant === 'primary' ? 'outline-primary-muted' : ''}"
-                  >
-                    {button.label}
-                  </Button>
-                {/each}
-              </div>
-            {/if}
-
-            <button
-              class="modal-close-button"
-              onclick={() => onModalClose?.()}
-              aria-label="Close"
-            >
-              <svg
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                class="modal-close-icon"
-              >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M6 18L18 6M6 6l12 12"
-                />
-              </svg>
-            </button>
-
-            {#if modalRightButtons.length > 0}
-              <div class="modal-right-buttons">
-                {#each modalRightButtons as button}
-                  <Button
-                    variant={button.variant || "primary"}
-                    onclick={button.onClick}
-                    aria-label={button.ariaLabel || button.label}
-                    disabled={button.disabled}
-                    size="sm"
-                    fullWidth={true}
-                    class="!rounded-full"
-                  >
-                    {button.label}
-                  </Button>
-                {/each}
-              </div>
-            {/if}
-          </div>
-        {:else}
-          <!-- Default Mode: Normal navigation -->
-          <div class="footer-nav-container">
-            <!-- Left-aligned items -->
-            <div class="footer-nav-left">
-              <a href="/alpha" class="footer-nav-link footer-nav-logo-link">
-                <img src="/logo.png" alt="Hominio" class="footer-nav-logo" />
-              </a>
-
-              <a
-                href="/alpha"
-                class="footer-nav-link"
-                class:active={$page.url.pathname === "/alpha"}
-              >
-                <Icon name="mdi:check-circle" size={20} />
-                <span class="footer-nav-label">Live</span>
-              </a>
-
-              <a
-                href="/alpha/cups"
-                class="footer-nav-link"
-                class:active={$page.url.pathname.startsWith("/alpha/cups")}
-              >
-                <Icon name="mdi:star" size={20} />
-                <span class="footer-nav-label">Cups</span>
-              </a>
-
-              <a
-                href="/alpha/projects"
-                class="footer-nav-link"
-                class:active={$page.url.pathname === "/alpha/projects"}
-              >
-                <Icon name="mdi:view-grid" size={20} />
-                <span class="footer-nav-label">Projects</span>
-              </a>
-            </div>
-
-            <!-- Right-aligned items -->
-            <div class="footer-nav-right">
-              {#if isAdmin}
-                <a
-                  href="/alpha/scan"
-                  class="footer-nav-link"
-                  class:active={$page.url.pathname === "/alpha/scan"}
                 >
-                  <Icon name="mdi:qrcode-scan" size={20} />
-                  <span class="footer-nav-label">Scan</span>
-                </a>
-              {/if}
+                  {button.label}
+                </Button>
+              {/each}
+            </div>
+          {/if}
+
+          <button
+            class="modal-close-button"
+            onclick={() => onModalClose?.()}
+            aria-label="Close"
+          >
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              class="modal-close-icon"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M6 18L18 6M6 6l12 12"
+              />
+            </svg>
+          </button>
+
+          {#if modalRightButtons.length > 0}
+            <div class="modal-right-buttons">
+              {#each modalRightButtons as button}
+                <Button
+                  variant={button.variant || "primary"}
+                  onclick={button.onClick}
+                  aria-label={button.ariaLabel || button.label}
+                  disabled={button.disabled}
+                  size="sm"
+                    fullWidth={true}
+                  class="!rounded-full"
+                >
+                  {button.label}
+                </Button>
+              {/each}
+            </div>
+          {/if}
+        </div>
+      {:else}
+        <!-- Default Mode: Normal navigation -->
+        <div class="footer-nav-container">
+          <!-- Left-aligned items -->
+          <div class="footer-nav-left">
+            <a href="/alpha" class="footer-nav-link footer-nav-logo-link">
+              <img src="/logo.png" alt="Hominio" class="footer-nav-logo" />
+            </a>
+
+            <a
+              href="/alpha"
+              class="footer-nav-link"
+              class:active={$page.url.pathname === "/alpha"}
+            >
+              <Icon name="mdi:check-circle" size={20} />
+              <span class="footer-nav-label">Live</span>
+            </a>
+
+            <a
+              href="/alpha/cups"
+              class="footer-nav-link"
+              class:active={$page.url.pathname.startsWith("/alpha/cups")}
+            >
+              <Icon name="mdi:star" size={20} />
+              <span class="footer-nav-label">Cups</span>
+            </a>
+
+            <a
+              href="/alpha/projects"
+              class="footer-nav-link"
+              class:active={$page.url.pathname === "/alpha/projects"}
+            >
+              <Icon name="mdi:view-grid" size={20} />
+              <span class="footer-nav-label">Projects</span>
+            </a>
+          </div>
+
+          <!-- Right-aligned items -->
+          <div class="footer-nav-right">
+            {#if isAdmin}
+              <a
+                href="/alpha/scan"
+                class="footer-nav-link"
+                class:active={$page.url.pathname === "/alpha/scan"}
+              >
+                <Icon name="mdi:qrcode-scan" size={20} />
+                <span class="footer-nav-label">Scan</span>
+              </a>
+            {/if}
 
               <a href="/alpha/me" class="footer-nav-link footer-nav-user">
                 {#if session.data.user?.image && !userImageFailed}
@@ -270,12 +270,12 @@
           </div>
         {/if}
       </div>
-    {:else}
+            {:else}
       <!-- Not signed in: Show only Google sign-in button directly in navbar -->
-      <button
-        onclick={signInWithGoogle}
+              <button
+                onclick={signInWithGoogle}
         class="mobile-bottom-nav google-signin-button"
-      >
+              >
         <svg class="google-icon" viewBox="0 0 24 24">
           <path
             fill="#4285F4"
@@ -295,8 +295,8 @@
           />
         </svg>
         <span class="google-signin-text">Sign in with Google</span>
-      </button>
-    {/if}
+              </button>
+            {/if}
   </div>
 </nav>
 

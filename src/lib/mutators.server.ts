@@ -81,7 +81,7 @@ export function createServerMutators(
 
       /**
        * Update a project (server-side)
-       * Enforces permissions: admin OR (founder AND owner)
+       * Enforces permissions: admin OR owner
        */
       update: async (
         tx: AnyTransaction,
@@ -110,16 +110,25 @@ export function createServerMutators(
 
         if (!canUpdate) {
           throw new Error(
-            'Forbidden: Only admins and founders who own the project can update it'
+            'Forbidden: Only admins and project owners can update projects'
           );
         }
 
         // If trying to change userId (project owner), only admins can do this
+        // But allow if the userId is the same (not actually changing owner)
         if (newUserId !== undefined && newUserId !== null) {
-          const userIsAdmin = isAdmin(authData.sub);
-          if (!userIsAdmin) {
-            throw new Error('Forbidden: Only admins can change project owner');
+          // Get current project to check current owner
+          const projects = await tx.query.project.where('id', '=', id).run();
+          const currentProject = projects.length > 0 ? projects[0] : null;
+          
+          if (currentProject && newUserId !== currentProject.userId) {
+            // userId is being changed to a different user - only admins allowed
+            const userIsAdmin = isAdmin(authData.sub);
+            if (!userIsAdmin) {
+              throw new Error('Forbidden: Only admins can change project owner');
+            }
           }
+          // If userId is the same or not provided, allow the update (already checked permissions above)
         }
 
         // Delegate to client mutator (runs same logic but against server database)

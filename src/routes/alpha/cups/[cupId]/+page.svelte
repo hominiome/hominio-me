@@ -12,6 +12,7 @@
   import { formatEndDate, getMatchEndDate } from "$lib/dateUtils.js";
   import CountdownTimer from "$lib/CountdownTimer.svelte";
   import { calculatePrizePool, formatPrizePool } from "$lib/prizePoolUtils.js";
+  import CupHeader from "$lib/CupHeader.svelte";
   import {
     allProjects,
     purchasesByCup,
@@ -225,19 +226,6 @@
       .reduce((sum, v) => sum + (v.votingWeight || 0), 0);
   }
 
-  function getStatusLabel(status) {
-    switch (status) {
-      case "draft":
-        return "Application Open";
-      case "active":
-        return "Active";
-      case "completed":
-        return "Completed";
-      default:
-        return status;
-    }
-  }
-
   function getRoundLabel(round) {
     switch (round) {
       case "round_4":
@@ -412,146 +400,37 @@
         {/snippet}
       </Card>
     {:else if cup}
-      <!-- Header -->
-      <div class="mb-4 md:mb-8">
-        <div
-          class="flex flex-col md:flex-row md:items-center md:justify-between gap-4"
-        >
-          <div class="flex items-start gap-3 md:gap-4">
-            {#if cup.logoImageUrl}
-              <img
-                src={cup.logoImageUrl}
-                alt="{cup.name} logo"
-                class="cup-logo-detail"
-              />
-            {/if}
-            <div>
-              <h1 class="text-3xl md:text-5xl font-bold text-primary-500 mb-2">
-                {cup.name}
-              </h1>
-              {#if cup.description}
-                <p class="text-primary-700/60 text-base md:text-lg">
-                  {cup.description}
-                </p>
-              {/if}
-            </div>
-          </div>
-          <div class="flex flex-col sm:flex-row gap-2 md:gap-3">
-            {#if isCreator}
-              <Button
-                variant="primary"
-                onclick={() => goto(`/alpha/cups/${cupId}/admin`)}
-                class="!w-full sm:!w-auto"
-              >
-                Admin Panel
-              </Button>
-            {/if}
-            {#if isCreator || isAdmin}
-              <Button
-                variant="secondary"
-                onclick={() => {
-                  const url = new URL($page.url);
-                  url.searchParams.set("modal", "edit-cup");
-                  url.searchParams.set("cupId", cupId);
-                  goto(`/alpha/cups?${url.searchParams.toString()}`);
-                }}
-                class="!w-full sm:!w-auto"
-              >
-                Edit
-              </Button>
-            {/if}
-          </div>
+      <!-- Action Buttons -->
+      <div class="mb-4 md:mb-6 flex justify-end">
+        <div class="flex flex-col sm:flex-row gap-2 md:gap-3">
+          {#if isCreator}
+            <Button
+              variant="primary"
+              onclick={() => goto(`/alpha/cups/${cupId}/admin`)}
+              class="!w-full sm:!w-auto"
+            >
+              Admin Panel
+            </Button>
+          {/if}
+          {#if isCreator || isAdmin}
+            <Button
+              variant="secondary"
+              onclick={() => {
+                const url = new URL($page.url);
+                url.searchParams.set("modal", "edit-cup");
+                url.searchParams.set("cupId", cupId);
+                goto(`/alpha/cups?${url.searchParams.toString()}`);
+              }}
+              class="!w-full sm:!w-auto"
+            >
+              Edit
+            </Button>
+          {/if}
         </div>
       </div>
 
-      <!-- Cup Info -->
-      <Card class="p-4 md:p-6 mb-6 md:mb-8">
-        {#snippet children()}
-          <div class="flex flex-row items-center gap-3 md:gap-8">
-            <div
-              class="flex flex-row items-center gap-3 md:gap-8 flex-wrap flex-1"
-            >
-              <div class="flex-shrink-0">
-                <p class="text-primary-700/60 text-xs md:text-sm mb-1">
-                  Status
-                </p>
-                <span class="cup-info-badge cup-status-badge">
-                  {getStatusLabel(cup.status)}
-                </span>
-              </div>
-              {#if cup.currentRound}
-                <div class="flex-shrink-0">
-                  <p class="text-primary-700/60 text-xs md:text-sm mb-1">
-                    Current Round
-                  </p>
-                  <span class="cup-info-badge cup-round-badge">
-                    <Icon
-                      name="mdi:tournament"
-                      size="xs"
-                      color="var(--color-secondary-600)"
-                    />
-                    {getRoundLabel(cup.currentRound)}
-                  </span>
-                </div>
-              {/if}
-              {#if cup.status === "active" && cup.currentRound}
-                {@const currentRoundMatches = matches.filter(
-                  (m) => m.round === cup.currentRound
-                )}
-                {@const roundEndDate =
-                  currentRoundMatches.length > 0
-                    ? getMatchEndDate(
-                        currentRoundMatches[0],
-                        currentRoundMatches
-                      )
-                    : ""}
-                {#if roundEndDate}
-                  <div class="flex-shrink-0">
-                    <p class="text-primary-700/60 text-xs md:text-sm mb-1">
-                      Round Ends In
-                    </p>
-                    <span class="cup-info-badge cup-countdown-badge">
-                      <Icon
-                        name="mdi:clock-outline"
-                        size="xs"
-                        color="var(--color-secondary-600)"
-                      />
-                      <CountdownTimer
-                        endDate={roundEndDate}
-                        displayFormat="full"
-                      />
-                    </span>
-                  </div>
-                {/if}
-              {/if}
-            </div>
-            <div class="flex-shrink-0 flex flex-col items-end">
-              <p class="text-primary-700/60 text-xs md:text-sm mb-1">
-                Prize Pool
-              </p>
-              <span class="cup-info-badge cup-prize-badge">
-                {formatPrizePool(calculatePrizePool(purchases))}
-              </span>
-            </div>
-            {#if cup.winnerId}
-              {@const winner = getProjectById(cup.winnerId)}
-              <div class="flex items-center gap-2 flex-shrink-0 ml-auto">
-                <Icon
-                  name="mdi:trophy"
-                  size="md"
-                  color="var(--color-warning-500)"
-                />
-                <div>
-                  <p class="text-primary-700/60 text-xs md:text-sm">Winner</p>
-                  <span class="cup-info-badge cup-winner-badge">
-                    {winner?.title || "Unknown"}
-                  </span>
-                </div>
-              </div>
-            {/if}
-          </div>
-        {/snippet}
-      </Card>
+      <!-- Cup Header - Reusing component from live page -->
+      <CupHeader {cup} purchases={purchases} {matches} />
 
       <!-- Matches by Round -->
       {#if matches.length === 0}
@@ -596,10 +475,11 @@
               {@const roundMatches = matches.filter((m) => m.round === round)}
               {#if roundMatches.length > 0}
                 <div class="round-section">
-                  <Card class="round-header-card">
+                  <Card class="pt-5 pb-6 px-6 md:pt-6 md:pb-7 md:px-12 mb-4 md:mb-6">
                     {#snippet children()}
-                      <h2 class="round-header">
+                      <h2 class="text-base md:text-lg font-extrabold text-primary-500 m-0 pt-1 md:pt-2 pb-3 md:pb-4 border-b-[3px] border-primary-500/8 tracking-tight relative">
                         {getRoundLabel(round)}
+                        <span class="absolute bottom-[-3px] left-0 w-[60px] md:w-[80px] h-[3px] bg-gradient-to-r from-secondary-500 to-transparent rounded-sm"></span>
                       </h2>
                     {/snippet}
                   </Card>
@@ -670,58 +550,6 @@
     }
   }
 
-  /* Round header card - only the header has card background */
-  .round-header-card {
-    padding: 1.5rem 2rem;
-    margin-bottom: 0.75rem;
-  }
-
-  @media (min-width: 768px) {
-    .round-header-card {
-      padding: 2rem 3rem;
-      margin-bottom: 1rem;
-    }
-  }
-
-  @media (max-width: 768px) {
-    .round-header-card {
-      padding: 1.25rem 1.75rem;
-      margin-bottom: 0.5rem;
-    }
-  }
-
-  .round-header {
-    font-size: 1.25rem;
-    font-weight: 800;
-    color: var(--color-primary-500);
-    margin: 0;
-    padding-bottom: 0.875rem;
-    border-bottom: 3px solid rgba(26, 26, 78, 0.08);
-    letter-spacing: -0.01em;
-    position: relative;
-  }
-
-  .round-header::after {
-    content: "";
-    position: absolute;
-    bottom: -3px;
-    left: 0;
-    width: 60px;
-    height: 3px;
-    background: linear-gradient(90deg, var(--color-secondary-500), transparent);
-    border-radius: 2px;
-  }
-
-  @media (min-width: 768px) {
-    .round-header {
-      font-size: 1.5rem;
-      padding-bottom: 1rem;
-    }
-
-    .round-header::after {
-      width: 80px;
-    }
-  }
 
   /* Round matches - standalone, no card wrapper */
   .round-matches {
@@ -736,64 +564,6 @@
     }
   }
 
-  /* Cup info badges - matching CupHeader badge style */
-  .cup-info-badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.375rem;
-    padding: 0.375rem 0.75rem;
-    font-size: 0.875rem;
-    font-weight: 600;
-    white-space: nowrap;
-    border-radius: 9999px;
-    background: rgba(45, 166, 180, 0.1);
-    border: 1px solid rgba(45, 166, 180, 0.3);
-    color: var(--color-secondary-600);
-  }
-
-  .cup-status-badge {
-    background: rgba(78, 205, 196, 0.1);
-    border-color: rgba(78, 205, 196, 0.3);
-    color: var(--color-secondary-600);
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-  }
-
-  .cup-round-badge {
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-  }
-
-  .cup-prize-badge {
-    background: rgba(244, 208, 63, 0.1);
-    border-color: rgba(244, 208, 63, 0.3);
-    color: var(--color-warning-600);
-  }
-
-  .cup-winner-badge {
-    background: rgba(244, 208, 63, 0.1);
-    border-color: rgba(244, 208, 63, 0.3);
-    color: var(--color-warning-600);
-  }
-
-  .cup-countdown-badge :global(*) {
-    color: var(--color-secondary-600);
-    font-size: 0.875rem;
-    font-weight: 600;
-  }
-
-  @media (min-width: 768px) {
-    .cup-info-badge {
-      font-size: 1rem;
-      padding: 0.5rem 1rem;
-    }
-  }
-
-  @media (min-width: 1024px) {
-    .cup-info-badge {
-      font-size: 1.125rem;
-    }
-  }
 
   .cup-logo-detail {
     width: 60px;
@@ -810,3 +580,7 @@
     }
   }
 </style>
+
+
+
+

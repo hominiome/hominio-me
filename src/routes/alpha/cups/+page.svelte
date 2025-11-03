@@ -287,24 +287,24 @@
             <div class="flex flex-col @md:flex-row @md:min-h-[280px]">
               <!-- Left Square Section - Full Height with Champion/Prize Pool -->
               <div
-                class="w-full @md:w-[280px] @md:min-w-[280px] @md:self-stretch h-[140px] @md:h-auto @md:aspect-auto flex flex-col items-center justify-center p-3 @md:p-8 border-r-0 @md:border-r-2 border-b-2 @md:border-b-0
+                class="w-full @md:w-[280px] @md:min-w-[280px] @md:self-stretch h-[140px] @md:h-auto @md:aspect-auto flex flex-col items-center justify-center p-3 @md:p-8
                   {cup.status === 'completed' && winnerProject
-                  ? 'bg-gradient-to-br from-[#ffd700] to-[#ffed4e] border-accent-200/50'
+                  ? 'bg-gradient-to-br from-[#ffd700] to-[#ffed4e]'
                   : cup.status === 'active'
-                    ? 'bg-gradient-to-br from-secondary-500/20 via-secondary-400/15 to-secondary-500/20 border-secondary-300/40'
-                    : 'bg-gradient-to-br from-accent-50 to-accent-100/50 border-accent-200/50'}"
+                    ? 'bg-gradient-to-br from-secondary-500/20 via-secondary-400/15 to-secondary-500/20'
+                    : 'bg-gradient-to-br from-accent-50 to-accent-100/50'}"
               >
                 {#if cup.status === "completed" && winnerProject}
                   <!-- Winner Display -->
                   <div
-                    class="flex flex-col items-center gap-1.5 @md:gap-4 text-center"
+                    class="flex flex-col items-center gap-2 @md:gap-5 text-center"
                   >
                     <div
-                      class="w-10 h-10 @md:w-20 @md:h-20 rounded-full bg-gradient-to-br from-accent-400 to-accent-500 flex items-center justify-center shadow-lg shrink-0"
+                      class="w-12 h-12 @md:w-24 @md:h-24 rounded-full bg-gradient-to-br from-accent-400 to-accent-500 flex items-center justify-center shadow-xl shrink-0 ring-2 @md:ring-4 ring-accent-200/50"
                     >
                       <Icon
                         name="mdi:trophy"
-                        size={20}
+                        size={18}
                         class="@md:hidden"
                         color="white"
                       />
@@ -315,14 +315,14 @@
                         color="white"
                       />
                     </div>
-                    <div>
+                    <div class="space-y-0.5 @md:space-y-1">
                       <div
-                        class="text-[10px] @md:text-xs font-bold text-accent-900 uppercase tracking-wider mb-0.5 @md:mb-1"
+                        class="text-[10px] @md:text-xs font-bold text-accent-900 uppercase tracking-wider"
                       >
                         Champion
                       </div>
                       <div
-                        class="text-xs @md:text-xl font-bold text-accent-800 line-clamp-2"
+                        class="text-sm @md:text-3xl font-black text-accent-800 leading-none"
                       >
                         {winnerProject.title}
                       </div>
@@ -356,7 +356,7 @@
                         Prize Pool
                       </div>
                       <div
-                        class="text-base @md:text-4xl font-black text-secondary-700 leading-none"
+                        class="text-sm @md:text-3xl font-black text-secondary-700 leading-none"
                       >
                         {prizePool}
                       </div>
@@ -365,10 +365,10 @@
                 {:else}
                   <!-- Draft Cup - Prize Pool Display -->
                   <div
-                    class="flex flex-col items-center gap-1.5 @md:gap-4 text-center"
+                    class="flex flex-col items-center gap-2 @md:gap-5 text-center"
                   >
                     <div
-                      class="w-10 h-10 @md:w-20 @md:h-20 rounded-full bg-gradient-to-br from-accent-400 to-accent-500 flex items-center justify-center shadow-lg shrink-0"
+                      class="w-12 h-12 @md:w-24 @md:h-24 rounded-full bg-gradient-to-br from-accent-400 to-accent-500 flex items-center justify-center shadow-xl shrink-0 ring-2 @md:ring-4 ring-accent-200/50"
                     >
                       <Icon
                         name="mdi:currency-usd"
@@ -383,14 +383,14 @@
                         color="white"
                       />
                     </div>
-                    <div>
+                    <div class="space-y-0.5 @md:space-y-1">
                       <div
-                        class="text-[10px] @md:text-xs font-semibold text-accent-900 uppercase tracking-wider mb-0.5 @md:mb-1"
+                        class="text-[10px] @md:text-xs font-bold text-accent-900 uppercase tracking-wider"
                       >
                         Prize Pool
                       </div>
                       <div
-                        class="text-sm @md:text-3xl font-bold text-accent-800"
+                        class="text-sm @md:text-3xl font-black text-accent-800 leading-none"
                       >
                         {prizePool}
                       </div>
@@ -410,25 +410,6 @@
                   >
                     {cup.name}
                   </h3>
-                  {#if canEdit}
-                    <Button
-                      variant="outline"
-                      icon="mdi:pencil"
-                      iconPosition="left"
-                      onclick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        const url = new URL($page.url);
-                        url.searchParams.set("modal", "edit-cup");
-                        url.searchParams.set("cupId", cup.id);
-                        goto(url.pathname + url.search, {
-                          replaceState: false,
-                        });
-                      }}
-                      class="aspect-square p-1.5 w-8 h-8 @md:w-10 @md:h-10 !px-1.5 @md:!px-2 ml-2 @md:ml-3 shrink-0"
-                      aria-label="Edit cup"
-                    ></Button>
-                  {/if}
                 </div>
 
                 <!-- Description -->
@@ -444,15 +425,11 @@
                 <div class="flex flex-wrap items-center gap-2 mb-4">
                   <!-- Status Badge -->
                   <span
-                    class="px-3 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider
-                      {cup.status === 'active'
-                      ? 'bg-success-100 text-success-700 border border-success-300'
-                      : ''}
-                      {cup.status === 'draft'
-                      ? 'bg-warning-100 text-warning-700 border border-warning-300'
-                      : ''}
+                    class="cup-badge cup-status-badge
+                      {cup.status === 'active' ? 'cup-status-active' : ''}
+                      {cup.status === 'draft' ? 'cup-status-draft' : ''}
                       {cup.status === 'completed'
-                      ? 'bg-info-100 text-info-700 border border-info-300'
+                      ? 'cup-status-completed'
                       : ''}"
                   >
                     {getStatusLabel(cup.status)}
@@ -460,33 +437,25 @@
 
                   <!-- Round Badge -->
                   {#if cup.currentRound}
-                    <span
-                      class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-secondary-500/10 rounded-full border border-secondary-300/30"
-                    >
+                    <span class="cup-badge cup-round-badge">
                       <Icon
                         name="mdi:tournament"
                         size="xs"
                         color="var(--color-secondary-600)"
                       />
-                      <span
-                        class="text-xs font-semibold text-secondary-700 uppercase tracking-wider"
-                      >
-                        {getRoundLabel(cup.currentRound)}
-                      </span>
+                      <span>{getRoundLabel(cup.currentRound)}</span>
                     </span>
                   {/if}
 
                   <!-- Time Remaining Badge -->
                   {#if cup.status === "active" && roundEndDate}
-                    <span
-                      class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-secondary-500/10 rounded-full border border-secondary-300/30"
-                    >
+                    <span class="cup-badge cup-countdown-badge">
                       <Icon
                         name="mdi:clock-outline"
                         size="xs"
                         color="var(--color-secondary-600)"
                       />
-                      <span class="text-xs font-semibold text-secondary-700">
+                      <span>
                         <CountdownTimer
                           endDate={roundEndDate}
                           displayFormat="compact"
@@ -563,3 +532,66 @@
     <EditCupContent cupId={editCupId} onSuccess={handleEditSuccess} />
   </Modal>
 {/if}
+
+<style>
+  /* Standardized cup badges - matching CupHeader component */
+  .cup-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0.375rem 0.75rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    white-space: nowrap;
+    border-radius: 9999px;
+    background: rgba(45, 166, 180, 0.1);
+    border: 1px solid rgba(45, 166, 180, 0.3);
+  }
+
+  /* Status badge variants */
+  .cup-status-badge {
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #2da6b4;
+  }
+
+  .cup-status-active,
+  .cup-status-draft,
+  .cup-status-completed {
+    background: rgba(45, 166, 180, 0.1);
+    border-color: rgba(45, 166, 180, 0.3);
+    color: #2da6b4;
+  }
+
+  /* Round badge */
+  .cup-round-badge {
+    color: #2da6b4;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  /* Countdown badge */
+  .cup-countdown-badge {
+    color: #2da6b4;
+  }
+
+  .cup-countdown-badge :global(*) {
+    color: #2da6b4;
+    font-size: 0.75rem;
+    font-weight: 600;
+  }
+
+  @media (max-width: 768px) {
+    .cup-badge {
+      padding: 0.3125rem 0.625rem;
+      font-size: 0.6875rem;
+    }
+  }
+
+  @media (max-width: 640px) {
+    .cup-badge {
+      padding: 0.25rem 0.5rem;
+      font-size: 0.625rem;
+    }
+  }
+</style>

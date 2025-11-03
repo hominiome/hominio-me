@@ -70,7 +70,21 @@
   <div class="cup-header-wrapper">
     <div class="cup-header">
       <div class="cup-header-top-row">
+        <div class="cup-header-content">
+          {#if cup.logoImageUrl}
+            <img
+              src={cup.logoImageUrl}
+              alt="{cup.name} logo"
+              class="cup-header-icon"
+            />
+          {/if}
+          <div class="cup-header-text">
         <h3 class="cup-header-title">{cup.name}</h3>
+            {#if cup.description}
+              <p class="cup-header-description">{cup.description}</p>
+            {/if}
+          </div>
+        </div>
         <div class="prize-pool-value">{getPrizePoolForCup(cup.id)}</div>
       </div>
       <div class="cup-header-badges">
@@ -123,7 +137,7 @@
     display: flex;
     flex-direction: column;
     gap: 1rem;
-    padding: 1.5rem 2rem;
+    padding: 1.25rem 2rem;
     background: rgba(45, 166, 180, 0.12);
     border-radius: 16px 16px 0 0;
     border: 2px solid rgba(45, 166, 180, 0.2);
@@ -137,19 +151,47 @@
 
   .cup-header-top-row {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     justify-content: space-between;
     gap: 1rem;
     width: 100%;
+  }
+
+  .cup-header-content {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    flex: 1;
+    min-width: 0;
+  }
+
+  .cup-header-icon {
+    width: 60px;
+    height: 60px;
+    object-fit: contain;
+    border-radius: 12px;
+    flex-shrink: 0;
+  }
+
+  .cup-header-text {
+    flex: 1;
+    min-width: 0;
   }
 
   .cup-header-title {
     font-size: 1.5rem;
     font-weight: 800;
     color: #081b47;
-    margin: 0;
+    margin: 0 0 0.5rem 0;
     letter-spacing: -0.02em;
     text-align: left;
+  }
+
+  .cup-header-description {
+    font-size: 0.9375rem;
+    color: rgba(8, 27, 71, 0.6);
+    margin: 0;
+    line-height: 1.5;
   }
 
   .prize-pool-value {
@@ -215,12 +257,21 @@
 
   @media (max-width: 768px) {
     .cup-header {
-      padding: 1.25rem 1.5rem;
+      padding: 1rem 1.5rem;
       gap: 0.875rem;
+    }
+
+    .cup-header-icon {
+      width: 50px;
+      height: 50px;
     }
 
     .cup-header-title {
       font-size: 1.25rem;
+    }
+
+    .cup-header-description {
+      font-size: 0.875rem;
     }
 
     .prize-pool-value {
@@ -244,12 +295,25 @@
 
   @media (max-width: 640px) {
     .cup-header {
-      padding: 1rem 1.25rem;
+      padding: 0.875rem 1.25rem;
       gap: 0.75rem;
+    }
+
+    .cup-header-content {
+      gap: 0.75rem;
+    }
+
+    .cup-header-icon {
+      width: 45px;
+      height: 45px;
     }
 
     .cup-header-title {
       font-size: 1.125rem;
+    }
+
+    .cup-header-description {
+      font-size: 0.8125rem;
     }
 
     .prize-pool-value {

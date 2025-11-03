@@ -73,10 +73,10 @@
 
 {#if open}
   <div
-    class="fixed inset-0 bottom-0 pb-[72px] bg-gradient-to-br from-white/10 to-white/5 backdrop-blur-[30px] backdrop-saturate-[200%] flex items-end justify-center z-[1000] overflow-visible transition-opacity duration-200 px-1.5 @md:px-0"
+    class="fixed inset-0 bottom-0 pb-[72px] bg-gradient-to-br from-white/10 to-white/5 backdrop-blur-[30px] backdrop-saturate-[200%] flex items-end justify-center z-[1000] overflow-visible transition-opacity duration-200 left-0 right-0"
     class:opacity-0={!open}
     class:opacity-100={open}
-    style="-webkit-backdrop-filter: blur(30px) saturate(200%);"
+    style="-webkit-backdrop-filter: blur(30px) saturate(200%); width: 100vw; left: 0; right: 0;"
     onclick={handleBackdropClick}
     onkeydown={handleKeydown}
     role="dialog"
@@ -85,13 +85,13 @@
     tabindex="-1"
   >
     <div
-      class="rounded-3xl pt-10 px-8 @md:px-12 pb-0 @xs:px-6 @xs:pt-7 w-full max-w-[700px] @md:max-w-[800px] relative shadow-[0_-4px_24px_rgba(0,0,0,0.15)] flex flex-col items-center mb-0 overflow-y-auto overflow-x-hidden transition-transform duration-300 ease-out"
+      class="rounded-3xl pt-10 px-8 @md:px-12 pb-0 @xs:px-6 @xs:pt-7 w-full max-w-[700px] @md:max-w-[800px] relative shadow-[0_-4px_24px_rgba(0,0,0,0.15)] flex flex-col items-center mb-0 overflow-y-auto overflow-x-hidden transition-transform duration-300 ease-out mx-[6px] @md:mx-auto"
       class:translate-y-full={!open}
       class:translate-y-0={open}
       style="max-height: calc(95vh - 72px); margin-top: 5vh; margin-bottom: 0; background-color: {modalBgColor};"
     >
       <!-- Content (Svelte 5: using snippet prop instead of slot) -->
-      <div class="w-full flex-1 pb-6 @xs:pb-5">
+      <div class="w-full flex-1 pb-6 @xs:pb-5 min-h-0">
         {#if children}
           {@render children()}
         {/if}

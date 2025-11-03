@@ -20,33 +20,33 @@
 {#if hasUnread}
   <div class="notification-bell-container">
     <!-- Main notification preview -->
-    <button
-      class="notification-preview"
-      onclick={handleClick}
-      aria-label={`${unreadCount} unread notification${unreadCount === 1 ? "" : "s"}`}
-    >
-      <div class="preview-content">
-        <div class="icon-badge-group">
+      <button
+        class="notification-preview"
+        onclick={handleClick}
+        aria-label={`${unreadCount} unread notification${unreadCount === 1 ? "" : "s"}`}
+      >
+        <div class="preview-content">
+          <div class="icon-badge-group">
           <Icon icon="mdi:bell" color="var(--color-accent-500)" class="preview-icon bell-icon" />
-          <div class="preview-text">
-            {#if latestTitle && typeof latestTitle === "string" && latestTitle.trim() !== ""}
-              <div class="preview-title">{latestTitle}</div>
-            {:else}
-              <!-- Only show fallback if we truly have no title (shouldn't happen normally) -->
-              <div class="preview-title">New notification</div>
+            <div class="preview-text">
+              {#if latestTitle && typeof latestTitle === "string" && latestTitle.trim() !== ""}
+                <div class="preview-title">{latestTitle}</div>
+              {:else}
+                <!-- Only show fallback if we truly have no title (shouldn't happen normally) -->
+                <div class="preview-title">New notification</div>
+              {/if}
+            </div>
+            {#if unreadCount > 0}
+              <span class="notification-badge"
+                >{unreadCount > 99 ? "99+" : unreadCount}</span
+              >
             {/if}
           </div>
-          {#if unreadCount > 0}
-            <span class="notification-badge"
-              >{unreadCount > 99 ? "99+" : unreadCount}</span
-            >
-          {/if}
+          <div class="chevron-icon">
+            <Icon icon="mdi:chevron-up" />
+          </div>
         </div>
-        <div class="chevron-icon">
-          <Icon icon="mdi:chevron-up" />
-        </div>
-      </div>
-    </button>
+      </button>
   </div>
 {/if}
 

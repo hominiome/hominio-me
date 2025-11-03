@@ -168,83 +168,106 @@
   @media (max-width: 768px) {
     .match-list-item {
       grid-template-columns: 1fr auto 1fr;
-      gap: 0.5rem 0.5rem;
-      padding: 0.625rem 0.75rem;
+      gap: 0.5rem 0.75rem;
+      padding: 0.75rem 1rem;
+      align-items: center;
       /* Prevent grid from collapsing - keep side-by-side layout */
       min-width: 0; /* Allow grid to shrink but maintain structure */
     }
 
     /* Keep opponents side-by-side on mobile */
     .match-list-project-left {
-      max-width: 120px; /* Limit width but allow ellipsis */
+      max-width: 140px; /* Increased width for better readability */
+      text-align: left;
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
     }
 
     .match-list-project-right {
-      max-width: 120px; /* Limit width but allow ellipsis */
-      text-align: right; /* Keep right alignment */
+      max-width: 140px; /* Increased width for better readability */
+      text-align: right;
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
     }
 
     .match-list-center {
       justify-self: center;
-      gap: 0.2rem; /* Reduce gap on mobile */
-    }
-
-    .team-list-name {
-      font-size: 0.75rem;
-      max-width: 100%;
-    }
-
-    .team-list-votes {
-      padding: 0.25rem 0.5rem;
-      font-size: 0.75rem;
-      min-width: 28px;
-    }
-
-    .match-list-indicator {
-      width: 12px;
-      height: 12px;
+      display: flex;
+      align-items: center;
+      gap: 0.375rem; /* Better gap between scores and indicator */
       flex-shrink: 0;
     }
 
+    .team-list-name {
+      font-size: 0.8125rem; /* Slightly larger for better readability */
+      font-weight: 600;
+      max-width: 100%;
+      line-height: 1.3;
+      display: block;
+    }
+
+    .team-list-votes {
+      padding: 0.375rem 0.625rem; /* Better padding for touch targets */
+      font-size: 0.8125rem; /* Slightly larger for better readability */
+      font-weight: 700;
+      min-width: 32px; /* Better minimum width */
+      text-align: center;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .match-list-indicator {
+      width: 14px;
+      height: 14px;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
     .status-icon {
-      width: 10px;
-      height: 10px;
+      width: 12px;
+      height: 12px;
     }
   }
 
   @media (max-width: 480px) {
     .match-list-item {
-      gap: 0.375rem 0.375rem;
-      padding: 0.5rem 0.625rem;
+      gap: 0.5rem 0.5rem;
+      padding: 0.625rem 0.75rem;
     }
 
     .match-list-project-left,
     .match-list-project-right {
-      max-width: 90px; /* Even smaller on very small screens */
+      max-width: 110px; /* Better width for very small screens */
     }
 
     .team-list-name {
-      font-size: 0.6875rem;
+      font-size: 0.75rem; /* Readable size */
+      line-height: 1.3;
     }
 
     .team-list-votes {
-      padding: 0.25rem 0.375rem;
-      font-size: 0.7rem;
-      min-width: 24px;
+      padding: 0.3125rem 0.5rem; /* Adequate padding */
+      font-size: 0.75rem; /* Readable size */
+      min-width: 28px; /* Adequate minimum width */
     }
 
     .match-list-center {
-      gap: 0.15rem;
+      gap: 0.25rem; /* Better spacing */
     }
 
     .match-list-indicator {
-      width: 10px;
-      height: 10px;
+      width: 12px;
+      height: 12px;
     }
 
     .status-icon {
-      width: 8px;
-      height: 8px;
+      width: 10px;
+      height: 10px;
     }
   }
 
