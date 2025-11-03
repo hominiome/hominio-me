@@ -6,6 +6,7 @@
   import { page } from "$app/stores";
   import { calculatePrizePool, formatPrizePool } from "$lib/prizePoolUtils.js";
   import CupHeader from "$lib/CupHeader.svelte";
+  import Loading from "$lib/components/Loading.svelte";
   import { identityByUserAndCup, allCups, allMatches, allPurchases } from "$lib/synced-queries";
 
   const zeroContext = useZero();
@@ -364,7 +365,7 @@
   {#if $session.isPending || loading}
     <div class="flex items-center justify-center min-h-screen">
       <div class="card p-8">
-        <p class="text-navy/70">Loading...</p>
+        <Loading />
       </div>
     </div>
   {:else if $session.data}

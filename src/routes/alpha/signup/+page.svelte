@@ -2,6 +2,7 @@
   import { authClient } from "$lib/auth.client.js";
   import { onMount } from "svelte";
   import { goto } from "$app/navigation";
+  import Loading from "$lib/components/Loading.svelte";
 
   let loading = $state(true);
   let signingIn = $state(false);
@@ -42,8 +43,7 @@
 
     {#if loading}
       <div class="loading-state">
-        <div class="spinner"></div>
-        <p>Loading...</p>
+        <Loading />
       </div>
     {:else}
       <div class="signin-state">
@@ -137,22 +137,6 @@
   .loading-state {
     text-align: center;
     padding: 3rem 0;
-  }
-
-  .spinner {
-    width: 48px;
-    height: 48px;
-    border: 4px solid #e5e7eb;
-    border-top-color: #4fc3c3;
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
-    margin: 0 auto 1rem;
-  }
-
-  @keyframes spin {
-    to {
-      transform: rotate(360deg);
-    }
   }
 
   /* Sign In State */

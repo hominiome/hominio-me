@@ -8,12 +8,21 @@
   // Wallet service no longer needed - votes tracked in vote table
   import fakeProjectsData from "$lib/fake-projects.json";
   import { showSuccess, showError } from "$lib/toastStore.js";
-  import ConfirmDialog from "$lib/ConfirmDialog.svelte";
   import DatePicker from "$lib/DatePicker.svelte";
   import TimePicker from "$lib/TimePicker.svelte";
   import CountdownTimer from "$lib/CountdownTimer.svelte";
   import { combineDateAndTime, formatEndDate } from "$lib/dateUtils.js";
-  import { allProjects, allVotes, cupById, matchesByCup } from "$lib/synced-queries";
+  import {
+    allProjects,
+    allVotes,
+    cupById,
+    matchesByCup,
+  } from "$lib/synced-queries";
+  import { Button } from "$lib/design-system/atoms";
+  import { Card, PageHeader } from "$lib/design-system/molecules";
+  import Loading from "$lib/components/Loading.svelte";
+  import Modal from "$lib/Modal.svelte";
+  import MatchListItem from "$lib/MatchListItem.svelte";
 
   const zeroContext = useZero();
   const session = authClient.useSession();
@@ -28,17 +37,96 @@
   let creatingFakeProjects = $state(false);
   let ending = $state(false);
   let startingNextRound = $state(false);
-  let determiningWinner = $state(null); // matchId being processed
-  let selectedMatch = $state(null); // Match detail modal
+  let expandedMatch = $state(null); // Track which match is expanded
+  let expandedVideo = $state(null); // Track which video is expanded
   let isAdmin = $state(false);
   let checkingAdmin = $state(true);
-  let showEndRoundConfirm = $state(false);
+  let showEndRoundModal = $state(false);
   let showStartCupModal = $state(false);
   let showStartNextRoundModal = $state(false);
   let startCupDate = $state("");
   let startCupTime = $state("");
   let startNextRoundDate = $state("");
   let startNextRoundTime = $state("");
+
+  // Function to set end date/time from duration preset with rounding
+  function setEndDateFromDuration(duration) {
+    const now = new Date();
+    let targetDate = new Date(now);
+
+    // Parse duration
+    const durationMatch = duration.match(/^(\d+)([mhdwM])$/);
+    if (!durationMatch) return;
+
+    const amount = parseInt(durationMatch[1]);
+    const unit = durationMatch[2];
+
+    // Add the base duration
+    switch (unit) {
+      case "m": // minutes
+        targetDate.setMinutes(targetDate.getMinutes() + amount);
+        // Round up to next interval based on amount
+        const minutes = targetDate.getMinutes();
+        let roundedMinutes;
+        if (amount === 15) {
+          // Round up to next 15-minute interval (0, 15, 30, 45)
+          roundedMinutes = Math.ceil(minutes / 15) * 15;
+        } else if (amount === 30) {
+          // Round up to next 30-minute interval (0, 30)
+          roundedMinutes = Math.ceil(minutes / 30) * 30;
+        } else {
+          // For other minute amounts, round up to next interval
+          roundedMinutes = Math.ceil(minutes / amount) * amount;
+        }
+        // Handle hour overflow
+        if (roundedMinutes >= 60) {
+          targetDate.setHours(targetDate.getHours() + 1);
+          roundedMinutes = roundedMinutes % 60;
+        }
+        targetDate.setMinutes(roundedMinutes);
+        targetDate.setSeconds(0);
+        targetDate.setMilliseconds(0);
+        break;
+      case "h": // hours
+        targetDate.setHours(targetDate.getHours() + amount);
+        // Round up to next hour
+        targetDate.setMinutes(0);
+        targetDate.setSeconds(0);
+        targetDate.setMilliseconds(0);
+        break;
+      case "d": // days
+        targetDate.setDate(targetDate.getDate() + amount);
+        targetDate.setHours(0);
+        targetDate.setMinutes(0);
+        targetDate.setSeconds(0);
+        targetDate.setMilliseconds(0);
+        break;
+      case "w": // weeks
+        targetDate.setDate(targetDate.getDate() + amount * 7);
+        targetDate.setHours(0);
+        targetDate.setMinutes(0);
+        targetDate.setSeconds(0);
+        targetDate.setMilliseconds(0);
+        break;
+      case "M": // months
+        targetDate.setMonth(targetDate.getMonth() + amount);
+        targetDate.setHours(0);
+        targetDate.setMinutes(0);
+        targetDate.setSeconds(0);
+        targetDate.setMilliseconds(0);
+        break;
+    }
+
+    // Format date and time
+    const year = targetDate.getFullYear();
+    const month = String(targetDate.getMonth() + 1).padStart(2, "0");
+    const day = String(targetDate.getDate()).padStart(2, "0");
+    const hours = String(targetDate.getHours()).padStart(2, "0");
+    const minutes = String(targetDate.getMinutes()).padStart(2, "0");
+
+    startNextRoundDate = `${year}-${month}-${day}`;
+    startNextRoundTime = `${hours}:${minutes}`;
+  }
 
   onMount(() => {
     let cupView;
@@ -210,13 +298,13 @@
   // Add a project to the cup (Zero mutation - synced)
   function addProjectToCup(projectId) {
     if (!cup || !canAddMoreProjects() || !zero) return;
-    
+
     // Only allow adding during draft phase
     if (cup.status !== "draft") {
       showError("Cannot modify projects in active or completed cups");
       return;
     }
-    
+
     // Fire and forget - Zero handles optimistic updates and conflicts automatically
     zero.mutate.cup.addProject({
       cupId,
@@ -227,13 +315,13 @@
   // Remove a project from the cup (Zero mutation - synced)
   function removeProjectFromCup(projectId) {
     if (!cup || !zero) return;
-    
+
     // Only allow removing during draft phase
     if (cup.status !== "draft") {
       showError("Cannot modify projects in active or completed cups");
       return;
     }
-    
+
     // Fire and forget - Zero handles optimistic updates and conflicts automatically
     zero.mutate.cup.removeProject({
       cupId,
@@ -303,7 +391,7 @@
 
       await Promise.all(fakeProjectPromises);
 
-      showSuccess(`🎉 Created ${fakesToCreate.length} fake projects!`);
+      showSuccess(`Created ${fakesToCreate.length} fake projects!`);
 
       // Wait a bit for Zero to sync
       await new Promise((resolve) => setTimeout(resolve, 500));
@@ -349,7 +437,7 @@
       return;
     }
 
-    console.log("🚀 Starting cup:", {
+    console.log("Starting cup:", {
       cupId,
       endDate,
       selectedProjects: selectedProjects().length,
@@ -362,8 +450,8 @@
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ 
-          cupId: cupId, 
+        body: JSON.stringify({
+          cupId: cupId,
           endDate,
           // No need to send selectedProjectIds - server reads from Zero-synced cup
         }),
@@ -379,7 +467,7 @@
 
       const result = await response.json();
       console.log("✅ Cup started:", result);
-      showSuccess("🎉 Cup started! Voting is now enabled.");
+      showSuccess("Cup started! Voting is now enabled.");
       showStartCupModal = false;
 
       // Zero will automatically sync the updated cup status and matches
@@ -478,7 +566,7 @@
 
   function requestEndRound() {
     if (!cup || ending) return;
-    showEndRoundConfirm = true;
+    showEndRoundModal = true;
   }
 
   async function endCurrentRound() {
@@ -560,328 +648,388 @@
       .reduce((sum, v) => sum + (v.votingWeight || 0), 0);
   }
 
-  async function determineMatchWinner(matchId) {
-    if (determiningWinner) return;
+  // Helper functions for MatchListItem component
+  function isMatchActive(match) {
+    if (match.status === "voting") return true;
+    if (
+      match.status === "pending" &&
+      cup?.status === "active" &&
+      cup?.currentRound === match.round
+    ) {
+      return true;
+    }
+    return false;
+  }
 
-    const match = matches.find((m) => m.id === matchId);
-    if (!match) return;
-
-    determiningWinner = matchId;
-
-    try {
-      const response = await fetch("/alpha/api/determine-match-winner", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ matchId }),
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || "Failed to determine winner");
-      }
-
-      const result = await response.json();
-      console.log("✅ Winner determined:", result);
-      showSuccess("Winner determined successfully!");
-    } catch (error) {
-      console.error("Determine winner error:", error);
-      const message = error instanceof Error ? error.message : "Unknown error";
-      showError(`Failed to determine winner: ${message}`);
-    } finally {
-      determiningWinner = null;
+  function toggleVideo(videoKey) {
+    if (expandedVideo === videoKey) {
+      expandedVideo = null;
+    } else {
+      expandedVideo = videoKey;
     }
   }
+
+  // Admin view doesn't allow voting, so these return false/empty
+  function hasUserVotedOnMatch() {
+    return false;
+  }
+
+  function getUserVotedSide() {
+    return null;
+  }
+
+  function getUserVotingWeight() {
+    return 0;
+  }
+
+  function canUserVoteOnMatch() {
+    return false; // Admin view - no voting
+  }
+
+  function voteOnMatch() {
+    // No-op for admin view
+  }
+
+  // Unified close handlers - single source of truth for closing modals
+  function closeEndRoundModal() {
+    showEndRoundModal = false;
+  }
+
+  function closeStartCupModal() {
+    showStartCupModal = false;
+  }
+
+  function closeStartNextRoundModal() {
+    showStartNextRoundModal = false;
+  }
+
+  // Expose modal actions to layout for navbar integration
+  let rafId = null;
+  $effect(() => {
+    const isEndRoundOpen = showEndRoundModal;
+    const isStartCupOpen = showStartCupModal;
+    const isStartNextRoundOpen = showStartNextRoundModal;
+    const isEnding = ending;
+    const isStartingNextRound = startingNextRound;
+
+    if (typeof window !== "undefined") {
+      if (rafId !== null) {
+        cancelAnimationFrame(rafId);
+      }
+      rafId = requestAnimationFrame(() => {
+        window.__adminModalActions = {
+          showEndRoundModal: isEndRoundOpen,
+          showStartCupModal: isStartCupOpen,
+          showStartNextRoundModal: isStartNextRoundOpen,
+          ending: isEnding,
+          startingNextRound: isStartingNextRound,
+          handleEndRound: () => {
+            endCurrentRound();
+            closeEndRoundModal();
+          },
+          handleStartCup: () => {
+            startCup();
+          },
+          handleStartNextRound: () => {
+            startNextRound();
+          },
+          handleCancelEndRound: closeEndRoundModal,
+          handleCancelStartCup: closeStartCupModal,
+          handleCancelStartNextRound: closeStartNextRoundModal,
+        };
+        rafId = null;
+      });
+    }
+    return () => {
+      if (rafId !== null) {
+        cancelAnimationFrame(rafId);
+        rafId = null;
+      }
+    };
+  });
 </script>
 
-<div class="min-h-screen bg-cream p-8">
+<div class="min-h-screen bg-brand-cream-50 p-4 md:p-8">
   <div class="max-w-7xl mx-auto">
     {#if loading}
-      <div class="card p-8 text-center">
-        <p class="text-navy/70">Loading cup...</p>
-      </div>
+      <Card class="p-8 text-center">
+        {#snippet children()}
+          <Loading message="Loading cup..." />
+        {/snippet}
+      </Card>
     {:else if cup}
       <!-- Header -->
-      <div class="mb-8">
-        <a
-          href="/alpha/cups/{cupId}"
-          class="text-teal hover:underline mb-4 inline-block"
-        >
-          ← Back to Cup
-        </a>
-        <div class="flex items-center justify-between">
-          <div>
-            <h1 class="text-5xl font-bold text-navy mb-2">{cup.name}</h1>
-            <p class="text-navy/60 text-lg">Cup Admin Panel</p>
-          </div>
-          <a href="/alpha/cups" class="btn-secondary">All Cups</a>
+      <div class="mb-6 md:mb-8">
+        <div>
+          <h1
+            class="text-3xl md:text-4xl lg:text-5xl font-bold text-primary-500 mb-2"
+          >
+            {cup.name}
+          </h1>
+          <p class="text-primary-700/60 text-base md:text-lg">
+            Cup Admin Panel
+          </p>
         </div>
       </div>
 
       <!-- Cup Status -->
-      <div class="card p-6 mb-8">
-        <div class="flex items-center justify-between flex-wrap gap-4">
-          <div>
-            <p class="text-navy/60 text-sm mb-1">Status</p>
-            <p class="text-2xl font-bold text-navy">
-              {getStatusLabel(cup.status)}
-            </p>
-          </div>
-          {#if cup.currentRound}
+      <Card class="p-4 md:p-6 mb-6 md:mb-8">
+        {#snippet children()}
+          <div class="flex items-center justify-between flex-wrap gap-4">
             <div>
-              <p class="text-navy/60 text-sm mb-1">Current Round</p>
-              <p class="text-xl font-bold text-teal">
-                {getRoundLabel(cup.currentRound)}
+              <p class="text-primary-700/60 text-sm mb-1">Status</p>
+              <p class="text-2xl font-bold text-primary-500">
+                {getStatusLabel(cup.status)}
               </p>
             </div>
-          {/if}
-          <div>
-            <p class="text-navy/60 text-sm mb-1">Matches</p>
-            <p class="text-2xl font-bold text-navy">{matches.length}</p>
-          </div>
-          {#if cup.endDate}
+            {#if cup.currentRound}
+              <div>
+                <p class="text-primary-700/60 text-sm mb-1">Current Round</p>
+                <p class="text-xl font-bold text-secondary-500">
+                  {getRoundLabel(cup.currentRound)}
+                </p>
+              </div>
+            {/if}
             <div>
-              <p class="text-navy/60 text-sm mb-1">Time Remaining</p>
-              <p class="text-lg font-semibold text-navy">
-                <CountdownTimer endDate={cup.endDate} displayFormat="compact" />
+              <p class="text-primary-700/60 text-sm mb-1">Matches</p>
+              <p class="text-2xl font-bold text-primary-500">
+                {matches.length}
               </p>
             </div>
-          {/if}
-        </div>
-      </div>
+            {#if cup.endDate}
+              <div>
+                <p class="text-primary-700/60 text-sm mb-1">Time Remaining</p>
+                <p class="text-lg font-semibold text-primary-500">
+                  <CountdownTimer
+                    endDate={cup.endDate}
+                    displayFormat="compact"
+                  />
+                </p>
+              </div>
+            {/if}
+          </div>
+        {/snippet}
+      </Card>
 
       <!-- Actions -->
       {#if cup.status === "draft"}
-        <div class="card p-6 mb-8">
-          <h2 class="text-2xl font-bold text-navy mb-4">Setup Tournament</h2>
-          <p class="text-navy/60 mb-6">
-            Select exactly {cup.size || 16} projects for your tournament bracket.
-            Click projects to move them between available and selected pools.
-          </p>
+        <Card class="p-4 md:p-6 mb-6 md:mb-8">
+          {#snippet children()}
+            <h2 class="text-2xl font-bold text-primary-500 mb-4">
+              Setup Tournament
+            </h2>
+            <p class="text-primary-700/60 mb-6">
+              Select exactly {cup.size || 16} projects for your tournament bracket.
+              Click projects to move them between available and selected pools.
+            </p>
 
-          <!-- Project Count -->
-          <div class="project-count mb-6">
-            <div class="project-count-item">
-              <span class="project-count-label">Selected:</span>
-              <span
-                class="project-count-value"
-                class:count-complete={isCupReadyToStart()}
-              >
-                {selectedProjects().length} / {cup.size || 16}
-              </span>
-            </div>
-          </div>
-
-          <!-- Two Column Layout -->
-          <div class="project-selection-grid">
-            <!-- Left Column: Available Projects -->
-            <div class="project-column">
-              <div class="project-column-header">
-                <h3 class="project-column-title">Available Projects</h3>
-                <div class="fake-project-buttons">
-                  <button
-                    onclick={() => createFakeProjects(4)}
-                    disabled={creatingFakeProjects}
-                    class="btn-fake"
-                    title="Create 4 random fake projects"
-                  >
-                    +4
-                  </button>
-                  <button
-                    onclick={() => createFakeProjects(8)}
-                    disabled={creatingFakeProjects}
-                    class="btn-fake"
-                    title="Create 8 random fake projects"
-                  >
-                    +8
-                  </button>
-                  <button
-                    onclick={() => createFakeProjects(16)}
-                    disabled={creatingFakeProjects}
-                    class="btn-fake"
-                    title="Create 16 random fake projects"
-                  >
-                    +16
-                  </button>
-                </div>
-              </div>
-              <div class="project-list">
-                {#if availableProjects().length === 0}
-                  <p class="text-navy/50 text-sm p-4 text-center">
-                    No available projects. Create some fake projects to get
-                    started!
-                  </p>
-                {:else}
-                  {#each availableProjects() as project}
-                    <button
-                      onclick={() => addProjectToCup(project.id)}
-                      disabled={!canAddMoreProjects()}
-                      class="project-card"
-                      class:disabled={!canAddMoreProjects()}
-                    >
-                      <div class="project-card-content">
-                        <h4 class="project-card-title">{project.title}</h4>
-                        {#if project.description}
-                          <p class="project-card-desc">{project.description}</p>
-                        {/if}
-                        {#if project.city}
-                          <p class="project-card-location">
-                            📍 {project.city}{project.country
-                              ? `, ${project.country}`
-                              : ""}
-                          </p>
-                        {/if}
-                      </div>
-                      <div class="project-card-action">
-                        <svg
-                          class="w-5 h-5"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            stroke-width="2"
-                            d="M12 4v16m8-8H4"
-                          />
-                        </svg>
-                      </div>
-                    </button>
-                  {/each}
-                {/if}
-              </div>
-            </div>
-
-            <!-- Right Column: Selected Projects -->
-            <div class="project-column">
-              <div class="project-column-header">
-                <h3 class="project-column-title">Selected Projects</h3>
-                <span class="project-column-count">
+            <!-- Project Count -->
+            <div class="project-count mb-6">
+              <div class="project-count-item">
+                <span class="project-count-label">Selected:</span>
+                <span
+                  class="project-count-value"
+                  class:count-complete={isCupReadyToStart()}
+                >
                   {selectedProjects().length} / {cup.size || 16}
                 </span>
               </div>
-              <div class="project-list">
-                {#if selectedProjects().length === 0}
-                  <p class="text-navy/50 text-sm p-4 text-center">
-                    No projects selected yet. Click projects on the left to add
-                    them.
-                  </p>
-                {:else}
-                  {#each selectedProjects() as project}
-                    <button
-                      onclick={() => removeProjectFromCup(project.id)}
-                      class="project-card project-card-selected"
+            </div>
+
+            <!-- Two Column Layout -->
+            <div class="project-selection-grid">
+              <!-- Left Column: Available Projects -->
+              <div class="project-column">
+                <div class="project-column-header">
+                  <h3 class="project-column-title">Available Projects</h3>
+                  <div class="fake-project-buttons">
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      onclick={() => createFakeProjects(4)}
+                      disabled={creatingFakeProjects}
+                      title="Create 4 random fake projects"
                     >
-                      <div class="project-card-content">
-                        <h4 class="project-card-title">{project.title}</h4>
-                        {#if project.description}
-                          <p class="project-card-desc">{project.description}</p>
-                        {/if}
-                        {#if project.city}
-                          <p class="project-card-location">
-                            📍 {project.city}{project.country
-                              ? `, ${project.country}`
-                              : ""}
-                          </p>
-                        {/if}
-                      </div>
-                      <div class="project-card-action">
-                        <svg
-                          class="w-5 h-5"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            stroke-width="2"
-                            d="M6 18L18 6M6 6l12 12"
-                          />
-                        </svg>
-                      </div>
-                    </button>
-                  {/each}
-                {/if}
+                      +4
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      onclick={() => createFakeProjects(8)}
+                      disabled={creatingFakeProjects}
+                      title="Create 8 random fake projects"
+                    >
+                      +8
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      onclick={() => createFakeProjects(16)}
+                      disabled={creatingFakeProjects}
+                      title="Create 16 random fake projects"
+                    >
+                      +16
+                    </Button>
+                  </div>
+                </div>
+                <div class="project-list">
+                  {#if availableProjects().length === 0}
+                    <p class="text-primary-700/50 text-sm p-4 text-center">
+                      No available projects. Create some fake projects to get
+                      started!
+                    </p>
+                  {:else}
+                    {#each availableProjects() as project}
+                      <button
+                        onclick={() => addProjectToCup(project.id)}
+                        disabled={!canAddMoreProjects()}
+                        class="project-card"
+                        class:disabled={!canAddMoreProjects()}
+                      >
+                        <div class="project-card-content">
+                          <h4 class="project-card-title">{project.title}</h4>
+                          {#if project.description}
+                            <p class="project-card-desc">
+                              {project.description}
+                            </p>
+                          {/if}
+                          {#if project.city}
+                            <p class="project-card-location">
+                              {project.city}{project.country
+                                ? `, ${project.country}`
+                                : ""}
+                            </p>
+                          {/if}
+                        </div>
+                        <div class="project-card-action">
+                          <svg
+                            class="w-5 h-5"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              stroke-linecap="round"
+                              stroke-linejoin="round"
+                              stroke-width="2"
+                              d="M12 4v16m8-8H4"
+                            />
+                          </svg>
+                        </div>
+                      </button>
+                    {/each}
+                  {/if}
+                </div>
+              </div>
+
+              <!-- Right Column: Selected Projects -->
+              <div class="project-column">
+                <div class="project-column-header">
+                  <h3 class="project-column-title">Selected Projects</h3>
+                  <span class="project-column-count">
+                    {selectedProjects().length} / {cup.size || 16}
+                  </span>
+                </div>
+                <div class="project-list">
+                  {#if selectedProjects().length === 0}
+                    <p class="text-primary-700/50 text-sm p-4 text-center">
+                      No projects selected yet. Click projects on the left to
+                      add them.
+                    </p>
+                  {:else}
+                    {#each selectedProjects() as project}
+                      <button
+                        onclick={() => removeProjectFromCup(project.id)}
+                        class="project-card project-card-selected"
+                      >
+                        <div class="project-card-content">
+                          <h4 class="project-card-title">{project.title}</h4>
+                          {#if project.description}
+                            <p class="project-card-desc">
+                              {project.description}
+                            </p>
+                          {/if}
+                          {#if project.city}
+                            <p class="project-card-location">
+                              {project.city}{project.country
+                                ? `, ${project.country}`
+                                : ""}
+                            </p>
+                          {/if}
+                        </div>
+                        <div class="project-card-action">
+                          <svg
+                            class="w-5 h-5"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              stroke-linecap="round"
+                              stroke-linejoin="round"
+                              stroke-width="2"
+                              d="M6 18L18 6M6 6l12 12"
+                            />
+                          </svg>
+                        </div>
+                      </button>
+                    {/each}
+                  {/if}
+                </div>
               </div>
             </div>
-          </div>
-        </div>
+          {/snippet}
+        </Card>
       {/if}
 
       {#if cup.status === "draft" && isCupReadyToStart()}
-        <div
-          class="card p-6 mb-8 border-2 border-teal/30 bg-gradient-to-br from-teal/5 to-yellow/5"
+        <Card
+          class="p-4 md:p-6 mb-6 md:mb-8 border-2 border-secondary-500/30 bg-gradient-to-br from-secondary-500/5 to-accent-500/5"
         >
-          <h2 class="text-2xl font-bold text-navy mb-4">🚀 Ready to Start?</h2>
-          <p class="text-navy/60 mb-6">
-            Your tournament is set up with {selectedProjects().length} projects.
-            Start the cup to enable voting!
-          </p>
-          <button onclick={requestStartCup} class="btn-start">
-            <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
-              <path d="M8 5v14l11-7z" />
-            </svg>
-            Start Cup & Enable Voting
-          </button>
-        </div>
+          {#snippet children()}
+            <h2 class="text-2xl font-bold text-primary-500 mb-4">
+              Ready to Start?
+            </h2>
+            <p class="text-primary-700/60 mb-6">
+              Your tournament is set up with {selectedProjects().length} projects.
+              Start the cup to enable voting!
+            </p>
+            <Button
+              variant="warning"
+              size="lg"
+              onclick={requestStartCup}
+              icon="play"
+              iconPosition="left"
+            >
+              Start Cup & Enable Voting
+            </Button>
+          {/snippet}
+        </Card>
       {:else if cup.status === "draft"}
-        <div
-          class="card p-6 mb-8 border-2 border-yellow/30 bg-gradient-to-br from-yellow/5 to-teal/5"
+        <Card
+          class="p-4 md:p-6 mb-6 md:mb-8 border-2 border-accent-500/30 bg-gradient-to-br from-accent-500/5 to-secondary-500/5"
         >
-          <h2 class="text-2xl font-bold text-navy mb-4">⏳ Not Ready Yet</h2>
-          <p class="text-navy/60 mb-6">
-            Please select exactly {cup.size || 16} projects before starting the cup.
-            Currently selected: {selectedProjects().length} / {cup.size || 16}
-          </p>
-        </div>
-      {/if}
-
-      {#if cup.status === "active" && cup.currentRound}
-        <div
-          class="card p-6 mb-8 border-2 border-yellow/30 bg-gradient-to-br from-yellow/5 to-teal/5"
-        >
-          <h2 class="text-2xl font-bold text-navy mb-4">
-            🏆 Current Round: {getRoundLabel(cup.currentRound)}
-          </h2>
-          <p class="text-navy/60 mb-6">
-            End this round to determine winners for all matches. Use "Start Next
-            Round" to advance winners after ending.
-          </p>
-          <button
-            onclick={requestEndRound}
-            class="btn-primary"
-            disabled={ending}
-          >
-            {#if ending}
-              <svg class="animate-spin h-5 w-5 mr-2" viewBox="0 0 24 24">
-                <circle
-                  class="opacity-25"
-                  cx="12"
-                  cy="12"
-                  r="10"
-                  stroke="currentColor"
-                  stroke-width="4"
-                  fill="none"
-                ></circle>
-                <path
-                  class="opacity-75"
-                  fill="currentColor"
-                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                ></path>
-              </svg>
-              Ending Round...
-            {:else}
-              End Round & Determine Winners
-            {/if}
-          </button>
-        </div>
+          {#snippet children()}
+            <h2 class="text-2xl font-bold text-primary-500 mb-4">
+              Not Ready Yet
+            </h2>
+            <p class="text-primary-700/60 mb-6">
+              Please select exactly {cup.size || 16} projects before starting the
+              cup. Currently selected: {selectedProjects().length} / {cup.size ||
+                16}
+            </p>
+          {/snippet}
+        </Card>
       {/if}
 
       {#if cup.status === "active" && cup.currentRound}
         {@const currentRound = cup.currentRound}
+        {@const currentRoundMatches = matches.filter(
+          (m) => m.round === currentRound
+        )}
+        {@const allHaveWinners =
+          currentRoundMatches.length > 0 &&
+          currentRoundMatches.every((m) => m.winnerId)}
         {@const nextRound =
           currentRound === "round_128"
             ? "round_64"
@@ -901,799 +1049,322 @@
                           ? "final"
                           : null}
         {@const nextRoundMatches = matches.filter((m) => m.round === nextRound)}
-        {#if nextRound && nextRoundMatches.length === 0}
-          {@const currentRoundMatches = matches.filter(
-            (m) => m.round === currentRound
-          )}
-          {@const allHaveWinners =
-            currentRoundMatches.length > 0 &&
-            currentRoundMatches.every((m) => m.winnerId)}
-          {#if allHaveWinners}
-            <div
-              class="card p-6 mb-8 border-2 border-teal/30 bg-gradient-to-br from-teal/5 to-yellow/5"
-            >
-              <h2 class="text-2xl font-bold text-navy mb-4">
-                🚀 Start Next Round: {getRoundLabel(nextRound)}
+
+        {#if !allHaveWinners}
+          <!-- Show Current Round card only when not all winners are determined -->
+          <Card
+            class="p-4 md:p-6 mb-6 md:mb-8 border-2 border-accent-500/30 bg-gradient-to-br from-accent-500/5 to-secondary-500/5"
+          >
+            {#snippet children()}
+              <h2 class="text-2xl font-bold text-primary-500 mb-4">
+                Current Round: {getRoundLabel(cup.currentRound)}
               </h2>
-              <p class="text-navy/60 mb-6">
+              <p class="text-primary-700/60 mb-6">
+                End this round to determine winners for all matches. Use "Start
+                Next Round" to advance winners after ending.
+              </p>
+              <Button
+                variant="primary"
+                size="lg"
+                onclick={() => (showEndRoundModal = true)}
+              >
+                End Round & Determine Winners
+              </Button>
+            {/snippet}
+          </Card>
+        {:else if nextRound && nextRoundMatches.length === 0}
+          <!-- Show Start Next Round card only when all winners are determined and next round doesn't exist yet -->
+          <Card
+            class="p-4 md:p-6 mb-6 md:mb-8 border-2 border-accent-500/30 bg-gradient-to-br from-accent-500/5 to-secondary-500/5"
+          >
+            {#snippet children()}
+              <h2 class="text-2xl font-bold text-primary-500 mb-4">
+                Start Next Round: {getRoundLabel(nextRound)}
+              </h2>
+              <p class="text-primary-700/60 mb-6">
                 All winners have been determined. Start the next round to create
                 matches and enable voting.
               </p>
-              <button
-                onclick={requestStartNextRound}
-                class="btn-start"
+              <Button
+                variant="primary"
+                size="lg"
+                onclick={() => (showStartNextRoundModal = true)}
                 disabled={startingNextRound}
               >
-                {#if startingNextRound}
-                  <svg class="animate-spin h-5 w-5 mr-2" viewBox="0 0 24 24">
-                    <circle
-                      class="opacity-25"
-                      cx="12"
-                      cy="12"
-                      r="10"
-                      stroke="currentColor"
-                      stroke-width="4"
-                      fill="none"
-                    ></circle>
-                    <path
-                      class="opacity-75"
-                      fill="currentColor"
-                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                    ></path>
-                  </svg>
-                  Starting...
-                {:else}
-                  <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M8 5v14l11-7z" />
-                  </svg>
-                  Start Next Round
-                {/if}
-              </button>
-            </div>
-          {/if}
+                {startingNextRound ? "Starting..." : "Start Next Round"}
+              </Button>
+            {/snippet}
+          </Card>
         {/if}
       {/if}
 
       <!-- Matches (only show if cup is active/completed, not during draft selection) -->
       {#if cup.status !== "draft" && matches.length > 0}
-        <div class="card p-6">
-          <h2 class="text-2xl font-bold text-navy mb-6">Tournament Matches</h2>
+        <Card class="p-4 md:p-6">
+          {#snippet children()}
+            <h2 class="text-2xl font-bold text-primary-500 mb-6">
+              Tournament Matches
+            </h2>
 
-          <div class="space-y-6">
-            {#if cup}
-              {@const roundsToShow = (() => {
-                // Dynamically determine which rounds to show based on cup size
-                const cupSize = cup.size || 16;
-                const rounds = [];
+            <div class="space-y-6">
+              {#if cup}
+                {@const roundsToShow = (() => {
+                  // Dynamically determine which rounds to show based on cup size
+                  const cupSize = cup.size || 16;
+                  const rounds = [];
 
-                // Add first round based on size
-                rounds.push(`round_${cupSize}`);
+                  // Add first round based on size
+                  rounds.push(`round_${cupSize}`);
 
-                // Add intermediate rounds if needed
-                if (cupSize >= 32) rounds.push("round_16");
-                if (cupSize >= 64) rounds.push("round_32");
-                if (cupSize >= 128) rounds.push("round_64");
+                  // Add intermediate rounds if needed
+                  if (cupSize >= 32) rounds.push("round_16");
+                  if (cupSize >= 64) rounds.push("round_32");
+                  if (cupSize >= 128) rounds.push("round_64");
 
-                // Add standard rounds
-                if (cupSize >= 16) rounds.push("quarter");
-                if (cupSize >= 8) rounds.push("semi");
-                rounds.push("final");
+                  // Add standard rounds
+                  if (cupSize >= 16) rounds.push("quarter");
+                  if (cupSize >= 8) rounds.push("semi");
+                  rounds.push("final");
 
-                return rounds;
-              })()}
-              {#each roundsToShow as round}
-                {@const roundMatches = matches.filter((m) => m.round === round)}
-                {#if roundMatches.length > 0}
-                  <div>
-                    <h3 class="text-xl font-bold text-navy mb-4">
-                      {getRoundLabel(round)}
-                    </h3>
-                    <div class="space-y-3">
-                      {#each roundMatches as match}
-                        {@const project1 = getProjectById(match.project1Id)}
-                        {@const project2 = getProjectById(match.project2Id)}
-                        {@const votes1 = getMatchVotes(match.id, "project1")}
-                        {@const votes2 = getMatchVotes(match.id, "project2")}
-                        <button
-                          onclick={() => (selectedMatch = match)}
-                          class="match-list-item"
-                        >
-                          <div class="match-list-teams">
-                            <span
-                              class="team-list-name"
-                              class:winner-text={match.winnerId ===
-                                match.project1Id}
-                            >
-                              {project1?.title || "TBD"}
-                            </span>
-                            <span class="team-list-votes">{votes1}</span>
-                          </div>
-                          <div class="match-list-vs">VS</div>
-                          <div class="match-list-teams">
-                            <span
-                              class="team-list-name"
-                              class:winner-text={match.winnerId ===
-                                match.project2Id}
-                            >
-                              {project2?.title || "TBD"}
-                            </span>
-                            <span class="team-list-votes">{votes2}</span>
-                          </div>
-                          <div class="match-list-action">
-                            {#if match.winnerId}
-                              <span class="status-icon completed">✓</span>
-                            {:else if cup.status === "active"}
-                              <span class="status-icon pending">●</span>
-                            {:else}
-                              <span class="status-icon waiting">⏳</span>
-                            {/if}
-                          </div>
-                        </button>
-                      {/each}
+                  return rounds;
+                })()}
+                {#each roundsToShow as round}
+                  {@const roundMatches = matches.filter(
+                    (m) => m.round === round
+                  )}
+                  {#if roundMatches.length > 0}
+                    <div>
+                      <h3 class="text-xl font-bold text-primary-500 mb-4">
+                        {getRoundLabel(round)}
+                      </h3>
+                      <div class="round-matches">
+                        {#each roundMatches as match}
+                          {@const project1 = getProjectById(match.project1Id)}
+                          {@const project2 = getProjectById(match.project2Id)}
+                          {@const votes1 = getMatchVotes(match.id, "project1")}
+                          {@const votes2 = getMatchVotes(match.id, "project2")}
+                          {@const totalVotes = votes1 + votes2}
+                          {@const percent1 =
+                            totalVotes > 0 ? (votes1 / totalVotes) * 100 : 50}
+                          {@const percent2 =
+                            totalVotes > 0 ? (votes2 / totalVotes) * 100 : 50}
+                          {@const isActive = isMatchActive(match)}
+                          <MatchListItem
+                            {match}
+                            {project1}
+                            {project2}
+                            {votes1}
+                            {votes2}
+                            {percent1}
+                            {percent2}
+                            {isActive}
+                            {expandedMatch}
+                            {expandedVideo}
+                            votingAnimation={null}
+                            {votes}
+                            session={$session}
+                            {getRoundLabel}
+                            hasVoted={false}
+                            userVotingWeight={0}
+                            userVotedSide={null}
+                            canVote={false}
+                            {roundMatches}
+                            onToggleExpand={() =>
+                              (expandedMatch =
+                                expandedMatch === match.id ? null : match.id)}
+                            {toggleVideo}
+                            {voteOnMatch}
+                          />
+                        {/each}
+                      </div>
                     </div>
-                  </div>
-                {/if}
-              {/each}
-            {/if}
-          </div>
-        </div>
+                  {/if}
+                {/each}
+              {/if}
+            </div>
+          {/snippet}
+        </Card>
       {/if}
     {/if}
   </div>
 </div>
 
-<!-- Match Detail Modal -->
-{#if selectedMatch}
-  {@const project1 = getProjectById(selectedMatch.project1Id)}
-  {@const project2 = getProjectById(selectedMatch.project2Id)}
-  {@const votes1 = getMatchVotes(selectedMatch.id, "project1")}
-  {@const votes2 = getMatchVotes(selectedMatch.id, "project2")}
-  <div
-    class="modal-overlay"
-    onclick={() => (selectedMatch = null)}
-    onkeydown={(e) => e.key === "Escape" && (selectedMatch = null)}
-    role="dialog"
-    aria-modal="true"
-    aria-label="Match details"
-    tabindex="-1"
-  >
-    <div
-      class="modal-content"
-      onclick={(e) => e.stopPropagation()}
-      onkeydown={(e) => e.stopPropagation()}
-      role="dialog"
-      aria-modal="true"
-      tabindex="-1"
-    >
-      <button
-        class="modal-close"
-        onclick={() => (selectedMatch = null)}
-        aria-label="Close"
-      >
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-          <path
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            stroke-width="2"
-            d="M6 18L18 6M6 6l12 12"
-          />
-        </svg>
-      </button>
-
-      <h2 class="modal-title">
-        {getRoundLabel(selectedMatch.round)} - Match Details
-      </h2>
-
-      <div class="modal-match">
-        <div
-          class="modal-team"
-          class:modal-winner={selectedMatch.winnerId ===
-            selectedMatch.project1Id}
-        >
-          <div class="modal-team-header">
-            <h3 class="modal-team-name">{project1?.title || "TBD"}</h3>
-            {#if selectedMatch.winnerId === selectedMatch.project1Id}
-              <span class="winner-badge">Winner</span>
-            {/if}
-          </div>
-          {#if project1?.description}
-            <p class="modal-team-desc">{project1.description}</p>
-          {/if}
-          {#if project1?.city}
-            <p class="modal-team-city">
-              📍 {project1.city}{project1?.country
-                ? `, ${project1.country}`
-                : ""}
-            </p>
-          {/if}
-          <div class="modal-votes">{votes1} votes</div>
-        </div>
-
-        <div class="modal-vs">VS</div>
-
-        <div
-          class="modal-team"
-          class:modal-winner={selectedMatch.winnerId ===
-            selectedMatch.project2Id}
-        >
-          <div class="modal-team-header">
-            <h3 class="modal-team-name">{project2?.title || "TBD"}</h3>
-            {#if selectedMatch.winnerId === selectedMatch.project2Id}
-              <span class="winner-badge">Winner</span>
-            {/if}
-          </div>
-          {#if project2?.description}
-            <p class="modal-team-desc">{project2.description}</p>
-          {/if}
-          {#if project2?.city}
-            <p class="modal-team-city">
-              📍 {project2.city}{project2?.country
-                ? `, ${project2.country}`
-                : ""}
-            </p>
-          {/if}
-          <div class="modal-votes">{votes2} votes</div>
-        </div>
-      </div>
-
-      {#if !selectedMatch.winnerId && cup.status === "active"}
-        <button
-          onclick={() => {
-            determineMatchWinner(selectedMatch.id);
-            selectedMatch = null;
-          }}
-          class="btn-determine-modal"
-          disabled={determiningWinner === selectedMatch.id}
-        >
-          {#if determiningWinner === selectedMatch.id}
-            <svg class="animate-spin h-5 w-5 mr-2" viewBox="0 0 24 24">
-              <circle
-                class="opacity-25"
-                cx="12"
-                cy="12"
-                r="10"
-                stroke="currentColor"
-                stroke-width="4"
-                fill="none"
-              ></circle>
-              <path
-                class="opacity-75"
-                fill="currentColor"
-                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-              ></path>
-            </svg>
-            Determining...
-          {:else}
-            🏆 Determine Winner
-          {/if}
-        </button>
-      {/if}
-    </div>
-  </div>
-{/if}
-
-<!-- End Round Confirmation Dialog -->
-<ConfirmDialog
-  bind:open={showEndRoundConfirm}
-  title="End Current Round"
-  message="Are you sure you want to end the current round?
-
-This will:
-- Determine winners for all matches
-- Cannot be undone!"
-  confirmText="End Round"
-  cancelText="Cancel"
-  variant="danger"
-  onConfirm={endCurrentRound}
-/>
+<!-- End Round Modal -->
+<Modal bind:open={showEndRoundModal} onClose={closeEndRoundModal}>
+  {#snippet children()}
+    <h2 class="text-2xl font-bold text-primary-500 mb-4">End Current Round</h2>
+    <p class="text-primary-700/60 mb-6">
+      Are you sure you want to end the current round? This will determine
+      winners for all matches and cannot be undone.
+    </p>
+  {/snippet}
+</Modal>
 
 <!-- Start Cup Date/Time Modal -->
-{#if showStartCupModal}
-  <div
-    class="modal-overlay"
-    role="button"
-    tabindex="0"
-    onclick={() => (showStartCupModal = false)}
-    onkeydown={(e) => e.key === "Escape" && (showStartCupModal = false)}
-  >
-    <div
-      class="modal-content"
-      onclick={(e) => e.stopPropagation()}
-      onkeydown={(e) => e.stopPropagation()}
-      role="dialog"
-      aria-modal="true"
-      tabindex="-1"
-    >
-      <button
-        class="modal-close"
-        onclick={() => (showStartCupModal = false)}
-        aria-label="Close"
-      >
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-          <path
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            stroke-width="2"
-            d="M6 18L18 6M6 6l12 12"
-          />
-        </svg>
-      </button>
+<Modal bind:open={showStartCupModal} onClose={closeStartCupModal}>
+  {#snippet children()}
+    <h2 class="text-2xl font-bold text-primary-500 mb-4">Start Cup</h2>
+    <p class="text-primary-700/60 mb-6">
+      Set the end date and time for this cup. All matches in the first round
+      will use this end date.
+    </p>
 
-      <h2 class="modal-title">Start Cup</h2>
-      <p class="text-navy/60 mb-6">
-        Set the end date and time for this cup. All matches in the first round
-        will use this end date.
-      </p>
-
-      <div class="space-y-4">
-        <div>
-          <label
-            for="start-cup-date"
-            class="block text-sm font-semibold text-navy mb-2">End Date</label
-          >
-          <DatePicker
-            id="start-cup-date"
-            value={startCupDate}
-            onChange={(value) => (startCupDate = value)}
-            minDate={new Date().toISOString().split("T")[0]}
-          />
-        </div>
-
-        <div>
-          <label
-            for="start-cup-time"
-            class="block text-sm font-semibold text-navy mb-2">End Time</label
-          >
-          <TimePicker
-            id="start-cup-time"
-            value={startCupTime}
-            onChange={(value) => (startCupTime = value)}
-          />
-        </div>
+    <div class="space-y-4">
+      <div>
+        <label
+          for="start-cup-date"
+          class="block text-sm font-semibold text-primary-500 mb-2"
+          >End Date</label
+        >
+        <DatePicker
+          id="start-cup-date"
+          value={startCupDate}
+          onChange={(value) => (startCupDate = value)}
+          minDate={new Date().toISOString().split("T")[0]}
+        />
       </div>
 
-      <div class="flex gap-4 mt-6">
-        <button
-          onclick={() => (showStartCupModal = false)}
-          class="btn-secondary flex-1"
+      <div>
+        <label
+          for="start-cup-time"
+          class="block text-sm font-semibold text-primary-500 mb-2"
+          >End Time</label
         >
-          Cancel
-        </button>
-        <button onclick={startCup} class="btn-primary flex-1">
-          Start Cup
-        </button>
+        <TimePicker
+          id="start-cup-time"
+          value={startCupTime}
+          onChange={(value) => (startCupTime = value)}
+        />
       </div>
     </div>
-  </div>
-{/if}
+  {/snippet}
+</Modal>
 
 <!-- Start Next Round Date/Time Modal -->
-{#if showStartNextRoundModal}
-  <div
-    class="modal-overlay"
-    role="button"
-    tabindex="0"
-    onclick={() => (showStartNextRoundModal = false)}
-    onkeydown={(e) => e.key === "Escape" && (showStartNextRoundModal = false)}
-  >
-    <div
-      class="modal-content"
-      onclick={(e) => e.stopPropagation()}
-      onkeydown={(e) => e.stopPropagation()}
-      role="dialog"
-      aria-modal="true"
-      tabindex="-1"
-    >
-      <button
-        class="modal-close"
-        onclick={() => (showStartNextRoundModal = false)}
-        aria-label="Close"
-      >
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-          <path
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            stroke-width="2"
-            d="M6 18L18 6M6 6l12 12"
-          />
-        </svg>
-      </button>
+<Modal bind:open={showStartNextRoundModal} onClose={closeStartNextRoundModal}>
+  {#snippet children()}
+    <h2 class="text-2xl font-bold text-primary-500 mb-4">Start Next Round</h2>
+    <p class="text-primary-700/60 mb-6">
+      Set the end date and time for the next round. All matches in this round
+      will use this end date.
+    </p>
 
-      <h2 class="modal-title">Start Next Round</h2>
-      <p class="text-navy/60 mb-6">
-        Set the end date and time for the next round. All matches in this round
-        will use this end date.
-      </p>
-
-      <div class="space-y-4">
-        <div>
-          <label
-            for="start-next-round-date"
-            class="block text-sm font-semibold text-navy mb-2">End Date</label
-          >
-          <DatePicker
-            id="start-next-round-date"
-            value={startNextRoundDate}
-            onChange={(value) => (startNextRoundDate = value)}
-            minDate={new Date().toISOString().split("T")[0]}
-          />
-        </div>
-
-        <div>
-          <label
-            for="start-next-round-time"
-            class="block text-sm font-semibold text-navy mb-2">End Time</label
-          >
-          <TimePicker
-            id="start-next-round-time"
-            value={startNextRoundTime}
-            onChange={(value) => (startNextRoundTime = value)}
-          />
-        </div>
-      </div>
-
-      <div class="flex gap-4 mt-6">
-        <button
-          onclick={() => (showStartNextRoundModal = false)}
-          class="btn-secondary flex-1"
+    <!-- Quick Select Buttons -->
+    <div class="mb-6">
+      <p class="text-sm font-semibold text-primary-500 mb-3">Quick Select:</p>
+      <div class="flex flex-wrap gap-2">
+        <Button
+          size="sm"
+          variant="secondary"
+          onclick={() => setEndDateFromDuration("15m")}
         >
-          Cancel
-        </button>
-        <button
-          onclick={startNextRound}
-          class="btn-primary flex-1"
-          disabled={startingNextRound}
+          15m
+        </Button>
+        <Button
+          size="sm"
+          variant="secondary"
+          onclick={() => setEndDateFromDuration("30m")}
         >
-          {startingNextRound ? "Starting..." : "Start Next Round"}
-        </button>
+          30m
+        </Button>
+        <Button
+          size="sm"
+          variant="secondary"
+          onclick={() => setEndDateFromDuration("1h")}
+        >
+          1h
+        </Button>
+        <Button
+          size="sm"
+          variant="secondary"
+          onclick={() => setEndDateFromDuration("2h")}
+        >
+          2h
+        </Button>
+        <Button
+          size="sm"
+          variant="secondary"
+          onclick={() => setEndDateFromDuration("4h")}
+        >
+          4h
+        </Button>
+        <Button
+          size="sm"
+          variant="secondary"
+          onclick={() => setEndDateFromDuration("12h")}
+        >
+          12h
+        </Button>
+        <Button
+          size="sm"
+          variant="secondary"
+          onclick={() => setEndDateFromDuration("1d")}
+        >
+          1d
+        </Button>
+        <Button
+          size="sm"
+          variant="secondary"
+          onclick={() => setEndDateFromDuration("2d")}
+        >
+          2d
+        </Button>
+        <Button
+          size="sm"
+          variant="secondary"
+          onclick={() => setEndDateFromDuration("4d")}
+        >
+          4d
+        </Button>
+        <Button
+          size="sm"
+          variant="secondary"
+          onclick={() => setEndDateFromDuration("1w")}
+        >
+          1w
+        </Button>
+        <Button
+          size="sm"
+          variant="secondary"
+          onclick={() => setEndDateFromDuration("1M")}
+        >
+          1m
+        </Button>
       </div>
     </div>
-  </div>
-{/if}
+
+    <div class="space-y-4">
+      <div>
+        <label
+          for="start-next-round-date"
+          class="block text-sm font-semibold text-primary-500 mb-2"
+          >End Date</label
+        >
+        <DatePicker
+          id="start-next-round-date"
+          value={startNextRoundDate}
+          onChange={(value) => (startNextRoundDate = value)}
+          minDate={new Date().toISOString().split("T")[0]}
+        />
+      </div>
+
+      <div>
+        <label
+          for="start-next-round-time"
+          class="block text-sm font-semibold text-primary-500 mb-2"
+          >End Time</label
+        >
+        <TimePicker
+          id="start-next-round-time"
+          value={startNextRoundTime}
+          onChange={(value) => (startNextRoundTime = value)}
+        />
+      </div>
+    </div>
+  {/snippet}
+</Modal>
 
 <style>
-  .bg-cream {
-    background-color: #fef9f0;
-  }
-
-  .card {
-    background: white;
-    border-radius: 16px;
-    box-shadow: 0 2px 12px rgba(26, 26, 78, 0.06);
-    border: 1px solid rgba(26, 26, 78, 0.08);
-  }
-
-  .btn-primary {
-    padding: 0.875rem 2rem;
-    background: linear-gradient(135deg, #4ecdc4 0%, #1a1a4e 100%);
-    color: white;
-    border-radius: 12px;
-    font-weight: 600;
-    font-size: 1rem;
-    border: none;
-    cursor: pointer;
-    transition: all 0.2s;
-  }
-
-  .btn-primary:hover:not(:disabled) {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 20px rgba(78, 205, 196, 0.3);
-  }
-
-  .btn-primary:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-  }
-
-  .btn-start {
-    padding: 1rem 2.5rem;
-    background: linear-gradient(135deg, #f4d03f 0%, #4ecdc4 100%);
-    color: #1a1a4e;
-    border-radius: 16px;
-    font-weight: 700;
-    font-size: 1.125rem;
-    border: none;
-    cursor: pointer;
-    transition: all 0.3s;
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    justify-content: center;
-    box-shadow: 0 8px 24px rgba(244, 208, 63, 0.4);
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-  }
-
-  .btn-start:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 12px 32px rgba(244, 208, 63, 0.5);
-  }
-
-  .btn-start:active {
-    transform: translateY(-1px);
-  }
-
-  .btn-secondary {
-    padding: 0.75rem 1.5rem;
-    background: white;
-    color: #1a1a4e;
-    border: 2px solid rgba(26, 26, 78, 0.2);
-    border-radius: 12px;
-    font-weight: 600;
-    text-decoration: none;
-    display: inline-block;
-    transition: all 0.2s;
-  }
-
-  .btn-secondary:hover {
-    background: rgba(26, 26, 78, 0.05);
-  }
-
-  .animate-spin {
-    animation: spin 1s linear infinite;
-  }
-
-  @keyframes spin {
-    from {
-      transform: rotate(0deg);
-    }
-    to {
-      transform: rotate(360deg);
-    }
-  }
-
-  /* Compact Match List */
-  .match-list-item {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-    padding: 1rem 1.5rem;
-    background: white;
-    border: 2px solid rgba(26, 26, 78, 0.08);
-    border-radius: 12px;
-    cursor: pointer;
-    transition: all 0.2s;
-    width: 100%;
-    text-align: left;
-  }
-
-  .match-list-item:hover {
-    border-color: rgba(78, 205, 196, 0.3);
-    box-shadow: 0 4px 16px rgba(78, 205, 196, 0.15);
-    transform: translateY(-2px);
-  }
-
-  .match-list-teams {
-    flex: 1;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 0.75rem;
-  }
-
-  .team-list-name {
-    font-weight: 600;
-    color: #1a1a4e;
-    font-size: 1rem;
-  }
-
-  .winner-text {
-    color: #f4d03f;
-    font-weight: 700;
-  }
-
-  .team-list-votes {
-    font-size: 0.875rem;
-    font-weight: 600;
-    color: rgba(26, 26, 78, 0.6);
-    padding: 0.25rem 0.75rem;
-    background: rgba(26, 26, 78, 0.05);
-    border-radius: 6px;
-  }
-
-  .match-list-vs {
-    font-weight: 800;
-    color: rgba(26, 26, 78, 0.4);
-    font-size: 0.75rem;
-  }
-
-  .match-list-action {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-
-  .status-icon {
-    font-size: 1.25rem;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-
-  .status-icon.completed {
-    color: #4ecdc4;
-  }
-
-  .status-icon.pending {
-    color: #f4d03f;
-  }
-
-  .status-icon.waiting {
-    color: rgba(26, 26, 78, 0.3);
-  }
-
-  /* Modal */
-  .modal-overlay {
-    position: fixed;
-    inset: 0;
-    background: rgba(0, 0, 0, 0.6);
-    backdrop-filter: blur(4px);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 50;
-    padding: 2rem;
-  }
-
-  .modal-content {
-    background: white;
-    border-radius: 24px;
-    max-width: 900px;
-    width: 100%;
-    max-height: 90vh;
-    overflow-y: auto;
-    padding: 2.5rem;
-    position: relative;
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-  }
-
-  .modal-close {
-    position: absolute;
-    top: 1.5rem;
-    right: 1.5rem;
-    width: 2.5rem;
-    height: 2.5rem;
-    border-radius: 50%;
-    border: none;
-    background: rgba(26, 26, 78, 0.1);
-    color: #1a1a4e;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: all 0.2s;
-  }
-
-  .modal-close:hover {
-    background: rgba(26, 26, 78, 0.2);
-    transform: rotate(90deg);
-  }
-
-  .modal-close svg {
-    width: 1.25rem;
-    height: 1.25rem;
-  }
-
-  .modal-title {
-    font-size: 2rem;
-    font-weight: 800;
-    color: #1a1a4e;
-    margin-bottom: 2rem;
-  }
-
-  .modal-match {
-    display: grid;
-    grid-template-columns: 1fr auto 1fr;
-    gap: 2rem;
-    margin-bottom: 2rem;
-  }
-
-  .modal-team {
-    padding: 1.5rem;
-    background: rgba(26, 26, 78, 0.02);
-    border: 2px solid rgba(26, 26, 78, 0.08);
-    border-radius: 16px;
-    transition: all 0.3s;
-  }
-
-  .modal-winner {
-    background: rgba(244, 208, 63, 0.08);
-    border-color: #f4d03f;
-  }
-
-  .modal-team-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 1rem;
-    margin-bottom: 1rem;
-  }
-
-  .modal-team-name {
-    font-size: 1.5rem;
-    font-weight: 700;
-    color: #1a1a4e;
-  }
-
-  .winner-badge {
-    padding: 0.375rem 0.875rem;
-    background: linear-gradient(135deg, #f4d03f 0%, #4ecdc4 100%);
-    color: #1a1a4e;
-    border-radius: 8px;
-    font-size: 0.75rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-  }
-
-  .modal-team-desc {
-    color: rgba(26, 26, 78, 0.7);
-    font-size: 0.9375rem;
-    line-height: 1.6;
-    margin-bottom: 0.75rem;
-  }
-
-  .modal-team-city {
-    color: rgba(26, 26, 78, 0.5);
-    font-size: 0.875rem;
-    margin-bottom: 1rem;
-  }
-
-  .modal-votes {
-    font-size: 1.875rem;
-    font-weight: 800;
-    color: #4ecdc4;
-    text-align: center;
-    padding: 0.75rem;
-    background: rgba(78, 205, 196, 0.1);
-    border-radius: 12px;
-  }
-
-  .modal-vs {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 2rem;
-    font-weight: 900;
-    color: rgba(26, 26, 78, 0.3);
-  }
-
-  .btn-determine-modal {
-    width: 100%;
-    padding: 1.25rem 2rem;
-    background: linear-gradient(135deg, #f4d03f 0%, #4ecdc4 100%);
-    color: #1a1a4e;
-    border: none;
-    border-radius: 16px;
-    font-weight: 700;
-    font-size: 1.125rem;
-    cursor: pointer;
-    transition: all 0.3s;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.75rem;
-    box-shadow: 0 8px 24px rgba(244, 208, 63, 0.3);
-  }
-
-  .btn-determine-modal:hover:not(:disabled) {
-    transform: translateY(-3px);
-    box-shadow: 0 12px 32px rgba(244, 208, 63, 0.4);
-  }
-
-  .btn-determine-modal:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-  }
-
-  .text-navy {
-    color: #1a1a4e;
-  }
-
-  .text-teal {
-    color: #4ecdc4;
-  }
-
   /* Project Selection Styles */
   .project-count {
     display: flex;
@@ -1713,17 +1384,17 @@ This will:
 
   .project-count-label {
     font-weight: 600;
-    color: #1a1a4e;
+    color: var(--color-primary-500);
   }
 
   .project-count-value {
     font-size: 1.25rem;
     font-weight: 700;
-    color: rgba(26, 26, 78, 0.6);
+    color: var(--color-primary-700/60);
   }
 
   .project-count-value.count-complete {
-    color: #4ecdc4;
+    color: var(--color-secondary-500);
   }
 
   .project-selection-grid {
@@ -1736,8 +1407,8 @@ This will:
   .project-column {
     display: flex;
     flex-direction: column;
-    background: rgba(26, 26, 78, 0.02);
-    border: 2px solid rgba(26, 26, 78, 0.08);
+    background: rgba(8, 27, 71, 0.02);
+    border: 2px solid var(--color-brand-navy-500/8);
     border-radius: 16px;
     overflow: hidden;
   }
@@ -1747,51 +1418,28 @@ This will:
     align-items: center;
     justify-content: space-between;
     padding: 1rem 1.5rem;
-    background: rgba(26, 26, 78, 0.05);
-    border-bottom: 2px solid rgba(26, 26, 78, 0.08);
+    background: rgba(8, 27, 71, 0.05);
+    border-bottom: 2px solid var(--color-brand-navy-500/8);
   }
 
   .project-column-title {
     font-size: 1.25rem;
     font-weight: 700;
-    color: #1a1a4e;
+    color: var(--color-primary-500);
   }
 
   .project-column-count {
     font-size: 0.875rem;
     font-weight: 600;
-    color: rgba(26, 26, 78, 0.6);
+    color: var(--color-primary-700/60);
     padding: 0.375rem 0.75rem;
-    background: rgba(26, 26, 78, 0.1);
+    background: rgba(8, 27, 71, 0.1);
     border-radius: 8px;
   }
 
   .fake-project-buttons {
     display: flex;
     gap: 0.5rem;
-  }
-
-  .btn-fake {
-    padding: 0.5rem 0.75rem;
-    background: rgba(78, 205, 196, 0.1);
-    color: #1a1a4e;
-    border: 1px solid rgba(78, 205, 196, 0.3);
-    border-radius: 8px;
-    font-weight: 600;
-    font-size: 0.875rem;
-    cursor: pointer;
-    transition: all 0.2s;
-  }
-
-  .btn-fake:hover:not(:disabled) {
-    background: rgba(78, 205, 196, 0.2);
-    border-color: #4ecdc4;
-    transform: translateY(-1px);
-  }
-
-  .btn-fake:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
   }
 
   .project-list {
@@ -1810,7 +1458,7 @@ This will:
     justify-content: space-between;
     padding: 1rem;
     background: white;
-    border: 2px solid rgba(26, 26, 78, 0.1);
+    border: 2px solid var(--color-brand-navy-500/10);
     border-radius: 12px;
     cursor: pointer;
     transition: all 0.2s;
@@ -1819,7 +1467,7 @@ This will:
   }
 
   .project-card:hover:not(:disabled) {
-    border-color: #4ecdc4;
+    border-color: var(--color-secondary-500);
     box-shadow: 0 4px 12px rgba(78, 205, 196, 0.15);
     transform: translateY(-2px);
   }
@@ -1836,12 +1484,12 @@ This will:
 
   .project-card-selected {
     background: rgba(78, 205, 196, 0.05);
-    border-color: #4ecdc4;
+    border-color: var(--color-secondary-500);
   }
 
   .project-card-selected:hover:not(:disabled) {
     background: rgba(78, 205, 196, 0.1);
-    border-color: #4ecdc4;
+    border-color: var(--color-secondary-500);
   }
 
   .project-card-content {
@@ -1852,13 +1500,13 @@ This will:
   .project-card-title {
     font-size: 1rem;
     font-weight: 600;
-    color: #1a1a4e;
+    color: var(--color-primary-500);
     margin-bottom: 0.25rem;
   }
 
   .project-card-desc {
     font-size: 0.875rem;
-    color: rgba(26, 26, 78, 0.7);
+    color: var(--color-primary-700/70);
     margin-bottom: 0.5rem;
     display: -webkit-box;
     -webkit-line-clamp: 2;
@@ -1868,7 +1516,7 @@ This will:
 
   .project-card-location {
     font-size: 0.75rem;
-    color: rgba(26, 26, 78, 0.5);
+    color: var(--color-primary-700/50);
   }
 
   .project-card-action {
@@ -1877,12 +1525,25 @@ This will:
     justify-content: center;
     width: 2rem;
     height: 2rem;
-    color: #4ecdc4;
+    color: var(--color-secondary-500);
     flex-shrink: 0;
   }
 
   .project-card-selected .project-card-action {
-    color: #1a1a4e;
+    color: var(--color-primary-500);
+  }
+
+  /* Round matches - standalone, no card wrapper */
+  .round-matches {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  @media (min-width: 768px) {
+    .round-matches {
+      gap: 0.875rem;
+    }
   }
 
   @media (max-width: 1024px) {

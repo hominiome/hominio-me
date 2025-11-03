@@ -664,6 +664,43 @@
   // Reactive state to track cup modal actions
   let cupActions = $state<any>(null);
 
+  // Reactive state to track admin modal actions
+  let adminActions = $state<any>(null);
+
+  // Watch for admin modal actions updates
+  $effect(() => {
+    if (browser) {
+      // Check immediately and then periodically for updates
+      const checkActions = () => {
+        const actions = (window as any).__adminModalActions;
+        if (actions) {
+          adminActions = {
+            showEndRoundModal: actions.showEndRoundModal,
+            showStartCupModal: actions.showStartCupModal,
+            showStartNextRoundModal: actions.showStartNextRoundModal,
+            ending: actions.ending,
+            startingNextRound: actions.startingNextRound,
+            handleEndRound: actions.handleEndRound,
+            handleStartCup: actions.handleStartCup,
+            handleStartNextRound: actions.handleStartNextRound,
+            handleCancelEndRound: actions.handleCancelEndRound,
+            handleCancelStartCup: actions.handleCancelStartCup,
+            handleCancelStartNextRound: actions.handleCancelStartNextRound,
+          };
+        } else {
+          adminActions = null;
+        }
+      };
+
+      checkActions(); // Check immediately
+      const interval = setInterval(checkActions, 100);
+
+      return () => clearInterval(interval);
+    } else {
+      adminActions = null;
+    }
+  });
+
   // Watch for project modal actions updates
   $effect(() => {
     if (browser && (showCreateProjectModal || showEditProjectModal)) {
@@ -742,6 +779,37 @@
           onClick: deleteActions.handleCancel,
           ariaLabel: "Cancel delete",
           variant: "secondary" as const,
+        },
+      ];
+    }
+    // Admin modal cancel buttons - match "mark all as read" style (primary)
+    if (adminActions?.showEndRoundModal) {
+      return [
+        {
+          label: "Cancel",
+          onClick: adminActions.handleCancelEndRound,
+          ariaLabel: "Cancel end round",
+          variant: "primary" as const,
+        },
+      ];
+    }
+    if (adminActions?.showStartCupModal) {
+      return [
+        {
+          label: "Cancel",
+          onClick: adminActions.handleCancelStartCup,
+          ariaLabel: "Cancel start cup",
+          variant: "primary" as const,
+        },
+      ];
+    }
+    if (adminActions?.showStartNextRoundModal) {
+      return [
+        {
+          label: "Cancel",
+          onClick: adminActions.handleCancelStartNextRound,
+          ariaLabel: "Cancel start next round",
+          variant: "primary" as const,
         },
       ];
     }
@@ -863,21 +931,66 @@
       ];
     }
 
+    // Check for admin modal buttons
+    if (adminActions?.showEndRoundModal) {
+      return [
+        {
+          label: adminActions.ending ? "Ending Round..." : "End Round",
+          onClick: adminActions.handleEndRound,
+          ariaLabel: "End current round",
+          disabled: adminActions.ending,
+          variant: "alert" as const,
+        },
+      ];
+    }
+    if (adminActions?.showStartCupModal) {
+      return [
+        {
+          label: "Start Cup",
+          onClick: adminActions.handleStartCup,
+          ariaLabel: "Start cup",
+          variant: "primary" as const,
+        },
+      ];
+    }
+    if (adminActions?.showStartNextRoundModal) {
+      return [
+        {
+          label: adminActions.startingNextRound ? "Starting..." : "Start",
+          onClick: adminActions.handleStartNextRound,
+          ariaLabel: "Start next round",
+          disabled: adminActions.startingNextRound,
+          variant: "secondary" as const,
+        },
+      ];
+    }
+
     return [];
   });
 
   // Derived modal open state for navbar - ensure reactivity
   const isModalOpenState = $derived(
-    !!notificationModal || !!modalType || showDeleteProjectModal
+    !!notificationModal ||
+      !!modalType ||
+      showDeleteProjectModal ||
+      adminActions?.showEndRoundModal ||
+      adminActions?.showStartCupModal ||
+      adminActions?.showStartNextRoundModal
   );
 
-  // Detect detail pages for back navigation
+  // Detect detail pages for back navigation (including admin pages)
   const isDetailPage = $derived(
-    $page.url.pathname.match(/^\/alpha\/(cups|projects)\/[^/]+$/) !== null
+    $page.url.pathname.match(/^\/alpha\/(cups|projects)\/[^/]+(\/admin)?$/) !==
+      null
   );
 
   const backUrl = $derived(() => {
     if ($page.url.pathname.startsWith("/alpha/cups/")) {
+      // If on admin page, go back to cup detail page
+      if ($page.url.pathname.includes("/admin")) {
+        const cupId = $page.url.pathname.split("/")[3];
+        return `/alpha/cups/${cupId}`;
+      }
       return "/alpha/cups";
     }
     if ($page.url.pathname.startsWith("/alpha/projects/")) {
@@ -887,9 +1000,28 @@
   });
 
   const showBackState = $derived(isDetailPage && !isModalOpenState);
-  const showBackAboveNotification = $derived(isDetailPage && !isModalOpenState && unreadCount > 0);
+  const showBackAboveNotification = $derived(
+    isDetailPage && !isModalOpenState && unreadCount > 0
+  );
 
   function handleModalClose() {
+    // Handle admin modals first - check window directly for latest state
+    const adminActions = (window as any).__adminModalActions;
+    if (adminActions) {
+      if (adminActions.showEndRoundModal) {
+        adminActions.handleCancelEndRound();
+        return;
+      }
+      if (adminActions.showStartCupModal) {
+        adminActions.handleCancelStartCup();
+        return;
+      }
+      if (adminActions.showStartNextRoundModal) {
+        adminActions.handleCancelStartNextRound();
+        return;
+      }
+    }
+
     // Stay on the same route, just remove the modal param
     const url = new URL($page.url);
     url.searchParams.delete("modal");
@@ -947,9 +1079,23 @@
   {signInWithGoogle}
   isModalOpen={isModalOpenState}
   showBack={showBackState}
-  showBackAboveNotification={showBackAboveNotification}
   backUrl={backUrl()}
-  onModalClose={modalType ? handleModalClose : handleNotificationClose}
+  onModalClose={() => {
+    // Check for admin modals first (they're not URL-based)
+    const adminActions = (window as any).__adminModalActions;
+    if (
+      adminActions &&
+      (adminActions.showEndRoundModal ||
+        adminActions.showStartCupModal ||
+        adminActions.showStartNextRoundModal)
+    ) {
+      handleModalClose();
+    } else if (modalType) {
+      handleModalClose();
+    } else {
+      handleNotificationClose();
+    }
+  }}
   modalLeftButtons={modalLeftButtons()}
   modalRightButtons={modalRightButtons()}
 />

@@ -15,6 +15,7 @@
   import WinnerCard from "$lib/components/WinnerCard.svelte";
   import { PageHeader } from "$lib/design-system/molecules";
   import Icon from "$lib/design-system/atoms/Icon.svelte";
+  import Loading from "$lib/components/Loading.svelte";
   import {
     allProjects,
     allPurchases,
@@ -519,7 +520,7 @@
       <div
         class="bg-white rounded-2xl border-2 border-brand-navy-500/6 shadow-md p-8"
       >
-        <p class="text-brand-navy-700">Loading matches...</p>
+        <Loading message="Loading matches..." />
       </div>
     </div>
   {:else if groupedMatches.length === 0 && completedCupsWithWinners.length === 0}

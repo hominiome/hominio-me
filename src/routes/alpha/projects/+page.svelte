@@ -1,4 +1,4 @@
-<script>
+<script lang="ts">
   import { nanoid } from "nanoid";
   import { getContext } from "svelte";
   import { onMount } from "svelte";
@@ -11,8 +11,7 @@
 import Modal from "$lib/Modal.svelte";
 import { goto } from "$app/navigation";
 import TigrisImageUpload from "$lib/components/TigrisImageUpload.svelte";
-import { browser } from "$app/environment";
-import { projectById, identitiesByUser } from "$lib/synced-queries";
+import { projectById, identitiesByUser, allProjects } from "$lib/synced-queries";
 import { Button, Icon } from "$lib/design-system/atoms";
 import { PageHeader, PageHeaderActions } from "$lib/design-system/molecules";
 import EditProjectContent from "$lib/EditProjectContent.svelte";
@@ -23,6 +22,7 @@ import EditProjectContent from "$lib/EditProjectContent.svelte";
   let zero = null;
   let projects = $state([]);
   let loading = $state(true);
+  let creating = $state(false);
   let showCreateForm = $state(false);
   let isAdmin = $state(false);
   let userProfiles = $state(new Map());
@@ -194,68 +194,71 @@ import EditProjectContent from "$lib/EditProjectContent.svelte";
       return;
     }
 
-    let projectsView = null;
+    let projectsView: any;
+    let userIdentitiesView: any;
 
-    // Wait for Zero to be ready
-    const checkZero = setInterval(() => {
-      if (zeroContext.isReady() && zeroContext.getInstance()) {
-        clearInterval(checkZero);
-        zero = zeroContext.getInstance();
+    (async () => {
+      // Wait for Zero to be ready
+      while (!zeroContext.isReady() || !zeroContext.getInstance()) {
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      }
+      zero = zeroContext.getInstance();
 
-        // Use synced query (client-side only, SSR doesn't need this)
-        if (browser) {
-          import("$lib/synced-queries")
-            .then(({ allProjects }) => {
-              // Query ALL projects using synced query (server-controlled)
-              // Use zero.materialize() instead of query.materialize() for synced queries
-              const projectsQuery = allProjects();
-              projectsView = zero.materialize(projectsQuery);
+      if (!zero) {
+        loading = false;
+        return;
+      }
 
-              projectsView.addListener(async (data) => {
-                const newProjects = Array.from(data);
-                projects = newProjects;
-                loading = false;
+      // Query ALL projects using synced query - data is already cached locally!
+      const projectsQuery = allProjects();
+      projectsView = zero.materialize(projectsQuery);
 
-                // Fetch user profiles for all projects
-                const userIds = [
-                  ...new Set(newProjects.map((p) => p.userId).filter(Boolean)),
-                ];
-                if (userIds.length > 0) {
-                  await prefetchUserProfiles(userIds);
-                  // Update userProfiles map
-                  const newUserProfiles = new Map(userProfiles);
-                  for (const userId of userIds) {
-                    const profile = await getUserProfile(userId);
-                    newUserProfiles.set(userId, {
-                      name: profile.name,
-                      image: profile.image,
-                    });
-                  }
-                  userProfiles = newUserProfiles; // Trigger reactivity
-                }
-              });
-            })
-            .catch((error) => {
-              console.error("Failed to load synced queries:", error);
-              loading = false;
+      projectsView.addListener(async (data) => {
+        const newProjects = Array.from(data);
+        projects = newProjects;
+        // Set loading to false IMMEDIATELY - ZeroDB data is already available locally
+        loading = false;
+
+        // Fetch user profiles in the background (non-blocking)
+        const userIds = [
+          ...new Set(newProjects.map((p) => p.userId).filter(Boolean)),
+        ];
+        if (userIds.length > 0) {
+          // Don't await - let this run in background without blocking UI
+          prefetchUserProfiles(userIds).then(() => {
+            // Update userProfiles map after prefetch completes
+            const newUserProfiles = new Map(userProfiles);
+            Promise.all(
+              userIds.map(async (userId) => {
+                const profile = await getUserProfile(userId);
+                return { userId, profile };
+              })
+            ).then((profiles) => {
+              for (const { userId, profile } of profiles) {
+                newUserProfiles.set(userId, {
+                  name: profile.name,
+                  image: profile.image,
+                });
+              }
+              userProfiles = newUserProfiles; // Trigger reactivity
             });
-        }
-
-        // Query user identities to check for founder status
-        if ($session.data?.user) {
-          const userId = $session.data.user.id;
-          const identitiesQuery = identitiesByUser(userId);
-          userIdentitiesView = zero.materialize(identitiesQuery);
-
-          userIdentitiesView.addListener((data) => {
-            userIdentities = Array.from(data || []);
           });
         }
+      });
+
+      // Query user identities to check for founder status
+      if ($session.data?.user) {
+        const userId = $session.data.user.id;
+        const identitiesQuery = identitiesByUser(userId);
+        userIdentitiesView = zero.materialize(identitiesQuery);
+
+        userIdentitiesView.addListener((data) => {
+          userIdentities = Array.from(data || []);
+        });
       }
-    }, 100);
+    })();
 
     return () => {
-      clearInterval(checkZero);
       if (projectsView) projectsView.destroy();
       if (userIdentitiesView) userIdentitiesView.destroy();
     };
