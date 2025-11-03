@@ -409,7 +409,7 @@
     <!-- Show existing image with Change button -->
     <div class="existing-image-container">
       <div class="existing-image-preview">
-        <img src={existingImageUrl} alt="Current image" class="existing-image" />
+        <img src={existingImageUrl} alt="" class="existing-image" />
         <div class="existing-image-actions">
           <button
             type="button"

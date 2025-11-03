@@ -56,16 +56,11 @@ function getProcessor(): PushProcessor {
  */
 export const POST: RequestHandler = async ({ request, cookies }) => {
   try {
-    // Debug: Log all headers and cookies to see what's being forwarded
-    console.log('[push] Request headers:', Object.fromEntries(request.headers.entries()));
-    console.log('[push] Cookie header:', request.headers.get('cookie'));
-    console.log('[push] Available cookies from SvelteKit:', cookies.getAll());
-    
     // Extract auth data from cookies using centralized auth context
     // This automatically reads BetterAuth session and checks admin status
     const authData = await extractAuthData(request);
 
-    // Log for debugging
+    // Log for debugging (without sensitive cookie data)
     if (authData) {
       console.log('[push] ✅ Authenticated user:', authData.sub, 'isAdmin:', authData.isAdmin);
     } else {

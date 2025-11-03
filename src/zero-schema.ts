@@ -144,65 +144,43 @@ type DummyAuthData = { sub: string };
 
 export const permissions = definePermissions<DummyAuthData, typeof schema>(
   schema,
-  () => ({
-    // Public read, no writes (custom mutators handle all writes)
-    project: {
-      row: {
-        select: ANYONE_CAN,
-        insert: [],
-        update: { preMutation: [], postMutation: [] },
-        delete: [],
-      },
-    },
-    cup: {
-      row: {
-        select: ANYONE_CAN,
-        insert: [],
-        update: { preMutation: [], postMutation: [] },
-        delete: [],
-      },
-    },
-    cupMatch: {
-      row: {
-        select: ANYONE_CAN,
-        insert: [],
-        update: { preMutation: [], postMutation: [] },
-        delete: [],
-      },
-    },
-    userIdentities: {
-      row: {
-        select: ANYONE_CAN,
-        insert: [],
-        update: { preMutation: [], postMutation: [] },
-        delete: [],
-      },
-    },
-    identityPurchase: {
-      row: {
-        select: ANYONE_CAN,
-        insert: [],
-        update: { preMutation: [], postMutation: [] },
-        delete: [],
-      },
-    },
-    vote: {
-      row: {
-        select: ANYONE_CAN,
-        insert: [],
-        update: { preMutation: [], postMutation: [] },
-        delete: [],
-      },
-    },
-    notification: {
-      row: {
-        select: ANYONE_CAN,
-        insert: [],
-        update: { preMutation: [], postMutation: [] },
-        delete: [],
-      },
-    },
-  })
+  () => (
+    {
+      //   // Public read, no writes (custom mutators handle all writes)
+      //   project: {
+      //     row: {
+      //       select: ANYONE_CAN,
+      //       insert: [],
+      //       update: { preMutation: [], postMutation: [] },
+      //       delete: [],
+      //     },
+      //   },
+      //   cup: {
+      //     row: {
+      //       select: ANYONE_CAN,
+      //       insert: [],
+      //       update: { preMutation: [], postMutation: [] },
+      //       delete: [],
+      //     },
+      //   },
+      //   cupMatch: {
+      //     row: {
+      //       select: ANYONE_CAN,
+      //       insert: [],
+      //       update: { preMutation: [], postMutation: [] },
+      //       delete: [],
+      //     },
+      //   },
+      //   vote: {
+      //     row: {
+      //       select: ANYONE_CAN,
+      //       insert: [],
+      //       update: { preMutation: [], postMutation: [] },
+      //       delete: [],
+      //     },
+      //   }
+    }
+  )
 );
 
 export type Schema = typeof schema;

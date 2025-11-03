@@ -1,49 +1,67 @@
 <script lang="ts">
   import { authClient } from "$lib/auth.client.js";
   import { showSuccess, showError } from "$lib/toastStore.js";
+  import { useZero } from "$lib/zero-utils";
+  import { nanoid } from "nanoid";
+  import { onMount } from "svelte";
   
   let { onSuccess } = $props<{
     onSuccess?: (cupId: string) => void;
   }>();
   
+  const zeroContext = useZero();
   const session = authClient.useSession();
   
+  let zero: any = null;
   let name = $state("");
   let description = $state("");
   let logoImageUrl = $state("");
   let size = $state(16); // Default to 16
   let creating = $state(false);
+
+  onMount(() => {
+    (async () => {
+      // Wait for Zero to be ready
+      while (!zeroContext.isReady() || !zeroContext.getInstance()) {
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      }
+      zero = zeroContext.getInstance();
+    })();
+  });
   
   async function createCup() {
-    if (!$session.data?.user || creating || !name.trim()) {
+    if (!$session.data?.user || creating || !name.trim() || !zero) {
       return;
     }
 
     creating = true;
 
     try {
-      const response = await fetch("/alpha/api/create-cup", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          name: name.trim(),
-          description: description.trim() || "",
-          logoImageUrl: logoImageUrl.trim() || "",
-          size: size,
-          creatorId: $session.data.user.id,
-        }),
+      const now = new Date().toISOString();
+      const cupId = nanoid();
+
+      // Use Zero custom mutator for cup creation (admin-only)
+      // Fire and forget - Zero handles optimistic updates
+      zero.mutate.cup.create({
+        id: cupId,
+        name: name.trim(),
+        description: description.trim() || "",
+        logoImageUrl: logoImageUrl.trim() || "",
+        size: size,
+        creatorId: $session.data.user.id,
+        selectedProjectIds: "[]",
+        status: "draft",
+        currentRound: "",
+        winnerId: "",
+        createdAt: now,
+        startedAt: "",
+        completedAt: "",
+        updatedAt: now,
+        endDate: "",
       });
 
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || "Failed to create cup");
-      }
-
-      const result = await response.json();
       showSuccess("Cup created successfully!");
-      onSuccess?.(result.cupId);
+      onSuccess?.(cupId);
     } catch (error) {
       console.error("Failed to create cup:", error);
       const message = error instanceof Error ? error.message : "Unknown error";
@@ -118,7 +136,7 @@
 
       <!-- Cup Size -->
       <div>
-        <label class="block text-navy/80 font-medium mb-2">Cup Size *</label>
+        <div class="block text-navy/80 font-medium mb-2">Cup Size *</div>
         <div class="size-selector">
           {#each [4, 8, 16, 32, 64, 128] as optionSize}
             <label class="size-option">

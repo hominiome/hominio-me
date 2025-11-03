@@ -128,7 +128,7 @@ export function createServerMutators(
 
       /**
        * Delete a project (server-side)
-       * Enforces permissions: admin OR (founder AND owner)
+       * Admin-only operation
        */
       delete: async (
         tx: AnyTransaction,
@@ -141,13 +141,16 @@ export function createServerMutators(
           throw new Error('Unauthorized: Must be logged in to delete projects');
         }
 
-        // Check permissions (same as update - admin OR (founder AND owner))
-        const canDelete = await canUpdateProject(tx, args.id, authData.sub);
+        // Only admins can delete projects
+        const userIsAdmin = isAdmin(authData.sub);
+        if (!userIsAdmin) {
+          throw new Error('Forbidden: Only admins can delete projects');
+        }
 
-        if (!canDelete) {
-          throw new Error(
-            'Forbidden: Only admins and founders who own the project can delete it'
-          );
+        // Verify project exists
+        const project = await tx.query.project.where('id', args.id).one();
+        if (!project) {
+          throw new Error('Project not found');
         }
 
         // Delegate to client mutator
@@ -359,6 +362,137 @@ export function createServerMutators(
 
         // Delegate to client mutator
         await clientMutators.identityPurchase.delete(tx, args);
+      },
+    },
+
+    // ========================================
+    // CUP MUTATORS
+    // ========================================
+
+    cup: {
+      /**
+       * Create a cup (server-side)
+       * Admin-only operation
+       */
+      create: async (
+        tx: AnyTransaction,
+        args: {
+          id: string;
+          name: string;
+          description: string;
+          logoImageUrl: string;
+          size: number;
+          creatorId: string;
+          selectedProjectIds: string;
+          status: string;
+          currentRound: string;
+          winnerId: string;
+          createdAt: string;
+          startedAt: string;
+          completedAt: string;
+          updatedAt: string;
+          endDate: string;
+        }
+      ) => {
+        // Check authentication
+        if (!authData?.sub) {
+          throw new Error('Unauthorized: Must be logged in to create cups');
+        }
+
+        // Only admins can create cups
+        const userIsAdmin = isAdmin(authData.sub);
+        if (!userIsAdmin) {
+          throw new Error('Forbidden: Only admins can create cups');
+        }
+
+        // Delegate to client mutator
+        await clientMutators.cup.create(tx, args);
+      },
+
+      /**
+       * Update a cup (server-side)
+       * Admin-only operation
+       */
+      update: async (
+        tx: AnyTransaction,
+        args: {
+          id: string;
+          name?: string;
+          description?: string;
+          logoImageUrl?: string;
+        }
+      ) => {
+        // Check authentication
+        if (!authData?.sub) {
+          throw new Error('Unauthorized: Must be logged in to update cups');
+        }
+
+        // Only admins can update cups
+        const userIsAdmin = isAdmin(authData.sub);
+        if (!userIsAdmin) {
+          throw new Error('Forbidden: Only admins can update cups');
+        }
+
+        // Verify cup exists
+        const cup = await tx.query.cup.where('id', args.id).one();
+        if (!cup) {
+          throw new Error('Cup not found');
+        }
+
+        // Delegate to client mutator
+        await clientMutators.cup.update(tx, args);
+      },
+
+      /**
+       * Add a project to a cup (server-side)
+       * Admin-only operation
+       */
+      addProject: async (
+        tx: AnyTransaction,
+        args: {
+          cupId: string;
+          projectId: string;
+        }
+      ) => {
+        // Check authentication
+        if (!authData?.sub) {
+          throw new Error('Unauthorized: Must be logged in to add projects to cups');
+        }
+
+        // Only admins can add projects to cups
+        const userIsAdmin = isAdmin(authData.sub);
+        if (!userIsAdmin) {
+          throw new Error('Forbidden: Only admins can add projects to cups');
+        }
+
+        // Delegate to client mutator
+        await clientMutators.cup.addProject(tx, args);
+      },
+
+      /**
+       * Remove a project from a cup (server-side)
+       * Admin-only operation
+       */
+      removeProject: async (
+        tx: AnyTransaction,
+        args: {
+          cupId: string;
+          projectId: string;
+        }
+      ) => {
+        // Check authentication
+        if (!authData?.sub) {
+          throw new Error('Unauthorized: Must be logged in to remove projects from cups');
+        }
+
+        // Only admins can remove projects from cups
+        const userIsAdmin = isAdmin(authData.sub);
+        if (!userIsAdmin) {
+          throw new Error('Forbidden: Only admins can remove projects from cups');
+        }
+
+        // Delegate to client mutator
+        await clientMutators.cup.removeProject(tx, args);
       },
     },
   } as const;

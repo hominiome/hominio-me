@@ -134,7 +134,7 @@
       "title": "Never give up - go all in next time",
       "previewTitle": "Match ended",
       "message": "{message}",
-      "priority": false,
+      "priority": true,
       "icon": "mdi:heart",
       "sound": "/runner-up.mp3",
       "displayComponent": null,

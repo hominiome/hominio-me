@@ -330,6 +330,219 @@ export function createMutators(authData: AuthData | undefined) {
         await tx.mutate.identityPurchase.delete({ id });
       },
     },
+
+    // ========================================
+    // CUP MUTATORS
+    // ========================================
+
+    cup: {
+      /**
+       * Create a new cup
+       * Client-side: Runs optimistically for instant UI updates
+       * Server-side: Only admins can create cups
+       */
+      create: async (
+        tx: Transaction<Schema>,
+        args: {
+          id: string;
+          name: string;
+          description: string;
+          logoImageUrl: string;
+          size: number;
+          creatorId: string;
+          selectedProjectIds: string; // JSON string array
+          status: string;
+          currentRound: string;
+          winnerId: string;
+          createdAt: string;
+          startedAt: string;
+          completedAt: string;
+          updatedAt: string;
+          endDate: string;
+        }
+      ) => {
+        // Client-side validation
+        if (!args.name || args.name.trim().length === 0) {
+          throw new Error('Cup name is required');
+        }
+
+        if (!args.creatorId || args.creatorId.trim().length === 0) {
+          throw new Error('Creator ID is required');
+        }
+
+        // Validate size
+        const validSizes = [4, 8, 16, 32, 64, 128];
+        if (!validSizes.includes(args.size)) {
+          throw new Error(`Invalid cup size. Must be one of: ${validSizes.join(', ')}`);
+        }
+
+        await tx.mutate.cup.insert({
+          id: args.id,
+          name: args.name.trim(),
+          description: (args.description || '').trim(),
+          logoImageUrl: (args.logoImageUrl || '').trim(),
+          size: args.size,
+          selectedProjectIds: args.selectedProjectIds || '[]',
+          creatorId: args.creatorId,
+          status: args.status || 'draft',
+          currentRound: args.currentRound || '',
+          winnerId: args.winnerId || '',
+          createdAt: args.createdAt,
+          startedAt: args.startedAt || '',
+          completedAt: args.completedAt || '',
+          updatedAt: args.updatedAt,
+          endDate: args.endDate || '',
+        });
+      },
+
+      /**
+       * Update a cup
+       * Client-side: Runs optimistically for instant UI updates
+       * Server-side: Only admins can update cups
+       */
+      update: async (
+        tx: Transaction<Schema>,
+        args: {
+          id: string;
+          name?: string;
+          description?: string;
+          logoImageUrl?: string;
+        }
+      ) => {
+        const { id, ...updates } = args;
+
+        // Client-side validation
+        if (updates.name && updates.name.trim().length === 0) {
+          throw new Error('Cup name cannot be empty');
+        }
+
+        // Read existing cup
+        const cup = await tx.query.cup.where('id', id).one();
+
+        if (!cup) {
+          throw new Error('Cup not found');
+        }
+
+        // Prepare update data
+        const updateData: Partial<typeof cup> = {
+          updatedAt: new Date().toISOString(),
+        };
+
+        if (updates.name !== undefined) {
+          updateData.name = updates.name.trim();
+        }
+        if (updates.description !== undefined) {
+          updateData.description = (updates.description || '').trim();
+        }
+        if (updates.logoImageUrl !== undefined) {
+          updateData.logoImageUrl = (updates.logoImageUrl || '').trim();
+        }
+
+        await tx.mutate.cup.update({ id, ...updateData });
+      },
+
+      /**
+       * Add a project to a cup's selectedProjectIds array
+       * Client-side: Runs optimistically for instant UI updates
+       * Server-side: Only admins can add projects to cups
+       */
+      addProject: async (
+        tx: Transaction<Schema>,
+        args: {
+          cupId: string;
+          projectId: string;
+        }
+      ) => {
+        const { cupId, projectId } = args;
+
+        // Read existing cup
+        const cup = await tx.query.cup.where('id', cupId).one();
+
+        if (!cup) {
+          throw new Error('Cup not found');
+        }
+
+        if (cup.status !== 'draft') {
+          throw new Error('Cannot modify projects in active or completed cups');
+        }
+
+        // Parse current selected project IDs
+        let selectedProjectIds: string[] = [];
+        try {
+          selectedProjectIds = cup.selectedProjectIds
+            ? JSON.parse(cup.selectedProjectIds)
+            : [];
+        } catch (e) {
+          selectedProjectIds = [];
+        }
+
+        // Check if we're at the limit
+        if (selectedProjectIds.length >= cup.size) {
+          throw new Error(`Cannot add more than ${cup.size} projects`);
+        }
+
+        // Check if project is already in cup
+        if (selectedProjectIds.includes(projectId)) {
+          throw new Error('Project is already in the cup');
+        }
+
+        // Add project to selected list
+        selectedProjectIds.push(projectId);
+
+        // Update cup
+        await tx.mutate.cup.update({
+          id: cupId,
+          selectedProjectIds: JSON.stringify(selectedProjectIds),
+          updatedAt: new Date().toISOString(),
+        });
+      },
+
+      /**
+       * Remove a project from a cup's selectedProjectIds array
+       * Client-side: Runs optimistically for instant UI updates
+       * Server-side: Only admins can remove projects from cups
+       */
+      removeProject: async (
+        tx: Transaction<Schema>,
+        args: {
+          cupId: string;
+          projectId: string;
+        }
+      ) => {
+        const { cupId, projectId } = args;
+
+        // Read existing cup
+        const cup = await tx.query.cup.where('id', cupId).one();
+
+        if (!cup) {
+          throw new Error('Cup not found');
+        }
+
+        if (cup.status !== 'draft') {
+          throw new Error('Cannot modify projects in active or completed cups');
+        }
+
+        // Parse current selected project IDs
+        let selectedProjectIds: string[] = [];
+        try {
+          selectedProjectIds = cup.selectedProjectIds
+            ? JSON.parse(cup.selectedProjectIds)
+            : [];
+        } catch (e) {
+          selectedProjectIds = [];
+        }
+
+        // Remove project from selected list
+        selectedProjectIds = selectedProjectIds.filter((id) => id !== projectId);
+
+        // Update cup
+        await tx.mutate.cup.update({
+          id: cupId,
+          selectedProjectIds: JSON.stringify(selectedProjectIds),
+          updatedAt: new Date().toISOString(),
+        });
+      },
+    },
   } as const;
 }
 

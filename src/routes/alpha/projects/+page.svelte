@@ -533,24 +533,12 @@
   }
 
   async function confirmDeleteProject() {
-    if (!projectToDelete) return;
+    if (!projectToDelete || !zero) return;
 
     try {
-      // Use API endpoint to delete project (handles admin-only permission properly)
-      const response = await fetch("/alpha/api/delete-project", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          projectId: projectToDelete,
-        }),
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || "Failed to delete project");
-      }
+      // Use Zero custom mutator for project delete (admin-only)
+      // Fire and forget - Zero handles optimistic updates
+      zero.mutate.project.delete({ id: projectToDelete });
 
       projectToDelete = null;
       showDeleteConfirm = false;
@@ -673,7 +661,7 @@
 
               <!-- Profile Image (Optional) -->
               <div>
-                <label class="block text-navy/80 font-medium mb-2">Profile Image (Optional)</label>
+                <div class="block text-navy/80 font-medium mb-2">Profile Image (Optional)</div>
                 <TigrisImageUpload
                   uploadButtonLabel="Upload Profile Image"
                   showPreview={false}
@@ -718,7 +706,7 @@
 
               <!-- Banner Image (Optional) -->
               <div>
-                <label class="block text-navy/80 font-medium mb-2">Banner Image (Optional)</label>
+                <div class="block text-navy/80 font-medium mb-2">Banner Image (Optional)</div>
                 <TigrisImageUpload
                   uploadButtonLabel="Upload Banner"
                   showPreview={false}
@@ -880,7 +868,7 @@
 
                 <!-- Profile Image (Optional) -->
                 <div>
-                  <label class="block text-navy/80 font-medium mb-2">Profile Image (Optional)</label>
+                  <div class="block text-navy/80 font-medium mb-2">Profile Image (Optional)</div>
                   <TigrisImageUpload
                     uploadButtonLabel="Upload Profile Image"
                     showPreview={false}
@@ -925,7 +913,7 @@
 
                 <!-- Banner Image (Optional) -->
                 <div>
-                  <label class="block text-navy/80 font-medium mb-2">Banner Image (Optional)</label>
+                  <div class="block text-navy/80 font-medium mb-2">Banner Image (Optional)</div>
                   <TigrisImageUpload
                     uploadButtonLabel="Upload Banner"
                     showPreview={false}

@@ -51,6 +51,13 @@
     onMarkRead?.(notification.id);
   }
 
+  function handleKeydown(e: KeyboardEvent) {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      handleMarkRead();
+    }
+  }
+
   function handleActionClick(url: string, event: MouseEvent) {
     event.stopPropagation();
     goto(url);
@@ -66,7 +73,16 @@
   });
 </script>
 
-<div class="notification-item" class:read={isRead} class:modal-mode={!showActions} onclick={handleMarkRead}>
+<div 
+  class="notification-item" 
+  class:read={isRead} 
+  class:modal-mode={!showActions} 
+  onclick={handleMarkRead}
+  onkeydown={handleKeydown}
+  role="button"
+  tabindex="0"
+  aria-label={isRead ? "Notification (read)" : "Notification (unread)"}
+>
   <div class="notification-content">
     {#if notification.icon && !showActions}
       <div class="notification-icon-above" class:thumb-down={notification.icon === "mdi:thumb-down"}>

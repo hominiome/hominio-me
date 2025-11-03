@@ -474,26 +474,49 @@
   function goToNextNotification() {
     if (!notificationModal) return;
 
-    const unreadNotifications = notifications
-      .filter((n) => n.read === "false")
-      .sort(
-        (a, b) =>
-          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-      );
-
-    const currentIndex = unreadNotifications.findIndex(
+    // Check if current notification is a priority notification
+    const currentNotification = notifications.find(
       (n) => n.id === notificationModal.id
     );
+    const isPriority = currentNotification?.priority === "true";
 
-    if (currentIndex >= 0 && currentIndex < unreadNotifications.length - 1) {
-      // Mark current as read
-      handleNotificationMarkRead(notificationModal.id);
-      // Open next notification
-      notificationModal = unreadNotifications[currentIndex + 1];
+    // Mark current notification as read FIRST (before moving to next)
+    handleNotificationMarkRead(notificationModal.id);
+
+    if (isPriority) {
+      // For priority notifications, use the priority queue
+      // Filter out the current notification and those being marked as read
+      const availablePriorityNotifications = priorityNotificationQueue.filter(
+        (n) => n.id !== notificationModal.id && !markingAsReadIds.has(n.id)
+      );
+
+      if (availablePriorityNotifications.length > 0) {
+        // Show next priority notification from queue
+        notificationModal = availablePriorityNotifications[0];
+      } else {
+        // No more priority notifications, close modal
+        notificationModal = null;
+      }
     } else {
-      // No more notifications, close modal
-      handleNotificationMarkRead(notificationModal.id);
-      notificationModal = null;
+      // For non-priority notifications, use general unread list
+      const unreadNotifications = notifications
+        .filter((n) => n.read === "false" && n.priority !== "true")
+        .sort(
+          (a, b) =>
+            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        );
+
+      const currentIndex = unreadNotifications.findIndex(
+        (n) => n.id === notificationModal.id
+      );
+
+      if (currentIndex >= 0 && currentIndex < unreadNotifications.length - 1) {
+        // Open next non-priority notification
+        notificationModal = unreadNotifications[currentIndex + 1];
+      } else {
+        // No more notifications, close modal
+        notificationModal = null;
+      }
     }
   }
 

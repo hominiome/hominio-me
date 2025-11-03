@@ -3,12 +3,29 @@
   import { goto } from "$app/navigation";
   import { showSuccess, showError } from "$lib/toastStore.js";
   import TigrisImageUpload from "$lib/components/TigrisImageUpload.svelte";
+  import { useZero } from "$lib/zero-utils";
+  import { nanoid } from "nanoid";
+  import { onMount } from "svelte";
+  
+  const zeroContext = useZero();
   const session = authClient.useSession();
+  
+  let zero: any = null;
   let name = $state("");
   let description = $state("");
   let logoImageUrl = $state("");
   let size = $state(16); // Default to 16
   let creating = $state(false);
+
+  onMount(() => {
+    (async () => {
+      // Wait for Zero to be ready
+      while (!zeroContext.isReady() || !zeroContext.getInstance()) {
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      }
+      zero = zeroContext.getInstance();
+    })();
+  });
 
   // Redirect to cups page with modal param
   $effect(() => {
@@ -16,40 +33,41 @@
   });
 
   async function createCup() {
-    if (!$session.data?.user || creating || !name.trim()) {
+    if (!$session.data?.user || creating || !name.trim() || !zero) {
       return;
     }
 
     creating = true;
 
     try {
-      // Use server-side API to create cup directly in database
-      const response = await fetch("/alpha/api/create-cup", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          name: name.trim(),
-          description: description.trim() || "",
-          logoImageUrl: logoImageUrl.trim() || "",
-          size: size,
-          creatorId: $session.data.user.id,
-        }),
+      const now = new Date().toISOString();
+      const cupId = nanoid();
+
+      // Use Zero custom mutator for cup creation (admin-only)
+      // Fire and forget - Zero handles optimistic updates
+      zero.mutate.cup.create({
+        id: cupId,
+        name: name.trim(),
+        description: description.trim() || "",
+        logoImageUrl: logoImageUrl.trim() || "",
+        size: size,
+        creatorId: $session.data.user.id,
+        selectedProjectIds: "[]",
+        status: "draft",
+        currentRound: "",
+        winnerId: "",
+        createdAt: now,
+        startedAt: "",
+        completedAt: "",
+        updatedAt: now,
+        endDate: "",
       });
 
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || "Failed to create cup");
-      }
-
-      const result = await response.json();
-      console.log("✅ Cup created:", result.cupId);
-
+      console.log("✅ Cup created:", cupId);
       showSuccess("Cup created successfully!");
 
       // Redirect to cup admin page
-      goto(`/alpha/cups/${result.cupId}/admin`);
+      goto(`/alpha/cups/${cupId}/admin`);
     } catch (error) {
       console.error("Failed to create cup:", error);
       const message = error instanceof Error ? error.message : "Unknown error";

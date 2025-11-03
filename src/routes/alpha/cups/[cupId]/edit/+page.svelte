@@ -47,7 +47,7 @@
   });
 
   async function updateCup() {
-    if (!cup || saving || !name.trim()) {
+    if (!cup || saving || !name.trim() || !zero) {
       return;
     }
 
@@ -59,23 +59,14 @@
     saving = true;
 
     try {
-      const response = await fetch("/alpha/api/update-cup", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          cupId: cup.id,
-          name: name.trim(),
-          description: description.trim() || "",
-          logoImageUrl: logoImageUrl.trim() || "",
-        }),
+      // Use Zero custom mutator for cup update (admin-only)
+      // Fire and forget - Zero handles optimistic updates
+      zero.mutate.cup.update({
+        id: cup.id,
+        name: name.trim(),
+        description: description.trim() || "",
+        logoImageUrl: logoImageUrl.trim() || "",
       });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || "Failed to update cup");
-      }
 
       // Redirect back to cup page
       goto(`/alpha/cups/${cupId}`);

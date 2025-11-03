@@ -208,28 +208,19 @@
 
   // Add a project to the cup
   async function addProjectToCup(projectId) {
-    if (!cup || addingProjects || !canAddMoreProjects()) return;
+    if (!cup || addingProjects || !canAddMoreProjects() || !zero) return;
 
     addingProjects = true;
 
     try {
-      const response = await fetch("/alpha/api/add-project-to-cup", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ cupId, projectId }),
+      // Use Zero custom mutator for adding project to cup (admin-only)
+      // Fire and forget - Zero handles optimistic updates
+      zero.mutate.cup.addProject({
+        cupId,
+        projectId,
       });
 
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || "Failed to add project");
-      }
-
       showSuccess("Project added to cup!");
-
-      // Wait a bit for Zero to sync
-      await new Promise((resolve) => setTimeout(resolve, 300));
     } catch (error) {
       console.error("Failed to add project:", error);
       const message =
@@ -244,28 +235,19 @@
 
   // Remove a project from the cup
   async function removeProjectFromCup(projectId) {
-    if (!cup || addingProjects) return;
+    if (!cup || addingProjects || !zero) return;
 
     addingProjects = true;
 
     try {
-      const response = await fetch("/alpha/api/remove-project-from-cup", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ cupId, projectId }),
+      // Use Zero custom mutator for removing project from cup (admin-only)
+      // Fire and forget - Zero handles optimistic updates
+      zero.mutate.cup.removeProject({
+        cupId,
+        projectId,
       });
 
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || "Failed to remove project");
-      }
-
       showSuccess("Project removed from cup!");
-
-      // Wait a bit for Zero to sync
-      await new Promise((resolve) => setTimeout(resolve, 300));
     } catch (error) {
       console.error("Failed to remove project:", error);
       const message =

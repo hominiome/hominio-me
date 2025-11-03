@@ -4,6 +4,7 @@
   import { useZero } from "$lib/zero-utils";
   import { showError } from "$lib/toastStore.js";
   import TigrisImageUpload from "$lib/components/TigrisImageUpload.svelte";
+  import { cupById } from "$lib/synced-queries";
   
   let { cupId, onSuccess } = $props<{
     cupId: string;
@@ -54,9 +55,9 @@
       }
       zero = zeroContext.getInstance();
 
-      // Query cup
-      const cupQuery = zero.query.cup.where("id", "=", cupId);
-      cupView = cupQuery.materialize();
+      // Query cup using synced query
+      const cupQuery = cupById(cupId);
+      cupView = zero.materialize(cupQuery);
 
       cupView.addListener((data: any) => {
         const cups = Array.from(data);
@@ -83,7 +84,7 @@
   });
   
   async function updateCup() {
-    if (!cup || saving || !name.trim()) {
+    if (!cup || saving || !name.trim() || !zero) {
       return;
     }
 
@@ -95,23 +96,14 @@
     saving = true;
 
     try {
-      const response = await fetch("/alpha/api/update-cup", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          cupId: cup.id,
-          name: name.trim(),
-          description: description.trim() || "",
-          logoImageUrl: logoImageUrl.trim() || "",
-        }),
+      // Use Zero custom mutator for cup update (admin-only)
+      // Fire and forget - Zero handles optimistic updates
+      zero.mutate.cup.update({
+        id: cup.id,
+        name: name.trim(),
+        description: description.trim() || "",
+        logoImageUrl: logoImageUrl.trim() || "",
       });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || "Failed to update cup");
-      }
 
       onSuccess?.();
     } catch (error) {
@@ -192,7 +184,7 @@
 
       <!-- Logo Image -->
       <div>
-        <label class="block text-navy/80 font-medium mb-2">Logo Image (Optional)</label>
+        <div class="block text-navy/80 font-medium mb-2">Logo Image (Optional)</div>
         <TigrisImageUpload
           uploadButtonLabel="Upload Logo"
           showPreview={false}

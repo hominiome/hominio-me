@@ -34,6 +34,8 @@
   let inputElement;
   let originalValue = $state(null); // Store original value when focusing
   let hasSelectedNewItem = $state(false); // Track if user selected a new item
+  const inputId = `autocomplete-${Math.random().toString(36).substr(2, 9)}`;
+  const dropdownId = `autocomplete-dropdown-${Math.random().toString(36).substr(2, 9)}`;
 
   // Debounce search
   let searchTimeout = null;
@@ -198,7 +200,7 @@
 
 <div class="autocomplete-wrapper">
   {#if label}
-    <label class="autocomplete-label">
+    <label for={inputId} class="autocomplete-label">
       {label}
       {#if required}
         <span class="required">*</span>
@@ -208,6 +210,7 @@
 
   <div class="autocomplete-input-wrapper">
     <input
+      id={inputId}
       bind:this={inputElement}
       type="text"
       value={displayValue()}
@@ -223,6 +226,7 @@
       role="combobox"
       aria-expanded={isOpen}
       aria-haspopup="listbox"
+      aria-controls={isOpen ? dropdownId : undefined}
     />
 
     {#if value}
@@ -245,7 +249,7 @@
   </div>
 
   {#if isOpen && (filteredItems().length > 0 || loading)}
-    <div class="autocomplete-dropdown" role="listbox">
+    <div id={dropdownId} class="autocomplete-dropdown" role="listbox">
       {#if loading}
         <div class="autocomplete-loading">Searching...</div>
       {:else}

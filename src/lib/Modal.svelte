@@ -1,9 +1,15 @@
 <script lang="ts">
   import { browser } from "$app/environment";
+  import type { Snippet } from "svelte";
 
-  let { open = $bindable(true), onClose } = $props<{
+  let { 
+    open = $bindable(true), 
+    onClose,
+    children 
+  } = $props<{
     open?: boolean;
     onClose: () => void;
+    children?: Snippet;
   }>();
 
   function handleBackdropClick(event: MouseEvent) {
@@ -19,6 +25,12 @@
   function handleKeydown(e: KeyboardEvent) {
     if (e.key === "Escape") {
       onClose();
+    } else if (e.key === "Enter" || e.key === " ") {
+      // Handle Enter/Space for backdrop click accessibility
+      if (e.target === e.currentTarget) {
+        e.preventDefault();
+        onClose();
+      }
     }
   }
 
@@ -53,12 +65,17 @@
     onkeydown={handleKeydown}
     role="dialog"
     aria-modal="true"
+    aria-label="Modal dialog"
     tabindex="-1"
   >
-    <div class="modal-content" onclick={(e) => e.stopPropagation()}>
-      <!-- Content Slot -->
+    <div 
+      class="modal-content"
+    >
+      <!-- Content (Svelte 5: using snippet prop instead of slot) -->
       <div class="modal-body">
-        <slot />
+        {#if children}
+          {@render children()}
+        {/if}
       </div>
     </div>
   </div>
