@@ -43,19 +43,22 @@ export const auth = betterAuth({
   plugins: [sveltekitCookies(getRequestEvent)],
   advanced: {
     // Enable cross-subdomain cookies for Zero sync (REQUIRED by Zero docs)
+    // BetterAuth automatically sets cookies for .hominio.me with SameSite=Lax
+    // This makes cookies accessible from hominio.me and sync.hominio.me (but NOT other domains)
     // Zero requires cookies to be accessible from both hominio.me and sync.hominio.me
-    // Cookies are set for .hominio.me (parent domain) so they work on both subdomains
     crossSubDomainCookies: {
       enabled: true,
-      domain: 'hominio.me', // Root domain (BetterAuth sets cookies for .hominio.me)
+      domain: 'hominio.me', // Root domain (BetterAuth automatically adds dot prefix: .hominio.me)
     },
     // Force secure cookies (HTTPS only) - REQUIRED for production
+    // Ensures cookies are only sent over HTTPS connections
     useSecureCookies: true,
-    // Default cookie attributes for all BetterAuth cookies
+    // Default cookie attributes - httpOnly prevents JavaScript access (XSS protection)
+    // secure is handled by useSecureCookies above, but explicit here for clarity
+    // sameSite is automatically set to 'lax' by crossSubDomainCookies
     defaultCookieAttributes: {
       httpOnly: true, // Prevent JavaScript access (XSS protection)
-      secure: true,   // HTTPS only (required for cross-subdomain)
-      sameSite: 'lax', // Lax allows cookies in same-site context (subdomains are same-site)
+      secure: true,   // HTTPS only (redundant with useSecureCookies but explicit)
     },
   },
 });
