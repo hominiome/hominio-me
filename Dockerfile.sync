@@ -5,16 +5,15 @@ FROM rocicorp/zero:0.24.3000000000
 
 WORKDIR /app
 
-# Copy schema file (needed for zero-cache)
-COPY src/zero-schema.ts ./src/zero-schema.ts
-
 # Override ENTRYPOINT to allow CMD override
 # The Zero image likely has an ENTRYPOINT that we need to clear
 ENTRYPOINT []
 
 # Start zero-cache with required flags
-# Zero requires --admin-password in production mode
-# Cookie forwarding flags are set via environment variables (ZERO_GET_QUERIES_FORWARD_COOKIES, ZERO_MUTATE_FORWARD_COOKIES)
-# Schema path and other config come from environment variables
-CMD ["sh", "-c", "zero-cache --schema-path=./src/zero-schema.ts --admin-password=\"${ZERO_AUTH_SECRET}\" --get-queries-forward-cookies --push-forward-cookies"]
+# Required: --upstream-db (or ZERO_UPSTREAM_DB env var)
+# Required: --replica-file (or ZERO_REPLICA_FILE env var) - stored in /data mount
+# Cookie forwarding: Use --get-queries-forward-cookies and --mutate-forward-cookies flags
+# Note: Schema is deployed separately via zero-deploy-permissions (not passed to zero-cache)
+# Note: Auth uses ZERO_AUTH_SECRET env var (no --admin-password flag exists)
+CMD ["sh", "-c", "zero-cache --upstream-db=\"${ZERO_UPSTREAM_DB}\" --replica-file=/data/zero-replica.db --get-queries-forward-cookies --mutate-forward-cookies"]
 
