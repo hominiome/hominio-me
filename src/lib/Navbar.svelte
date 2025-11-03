@@ -1,17 +1,18 @@
 <script lang="ts">
   import { page } from "$app/stores";
+  import { Button, Icon } from "$lib/design-system/atoms";
 
-    interface ModalButton {
-      label: string;
-      onClick: () => void;
-      ariaLabel?: string;
-      disabled?: boolean;
-      variant?: "primary" | "secondary";
-    }
+  interface ModalButton {
+    label: string;
+    onClick: () => void;
+    ariaLabel?: string;
+    disabled?: boolean;
+    variant?: "primary" | "secondary";
+  }
 
   // Receive session and signIn function from parent layout
-  let { 
-    session, 
+  let {
+    session,
     signInWithGoogle,
     isModalOpen = false,
     onModalClose,
@@ -135,7 +136,11 @@
             </div>
           {/if}
 
-          <button class="modal-close-button" onclick={() => onModalClose?.()} aria-label="Close">
+          <button
+            class="modal-close-button"
+            onclick={() => onModalClose?.()}
+            aria-label="Close"
+          >
             <svg
               viewBox="0 0 24 24"
               fill="none"
@@ -169,128 +174,80 @@
         </div>
       {:else}
         <!-- Default Mode: Normal navigation -->
-      <a
-        href="/alpha"
-        class="mobile-nav-item mobile-nav-home"
-        class:active={$page.url.pathname === "/alpha"}
-      >
-        <img src="/logo.png" alt="Hominio" class="mobile-nav-logo" />
-      </a>
+        <div class="footer-nav-container">
+          <!-- Left-aligned items -->
+          <div class="footer-nav-left">
+            <a href="/alpha" class="footer-nav-link footer-nav-logo-link">
+              <img src="/logo.png" alt="Hominio" class="footer-nav-logo" />
+            </a>
 
-      <a
-        href="/alpha"
-        class="mobile-nav-item"
-        class:active={$page.url.pathname === "/alpha"}
-      >
-        <svg
-          class="mobile-nav-icon"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            stroke-width="2"
-            d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-          />
-        </svg>
-        <span class="mobile-nav-label">Live</span>
-      </a>
+            <a
+              href="/alpha"
+              class="footer-nav-link"
+              class:active={$page.url.pathname === "/alpha"}
+            >
+              <Icon name="mdi:check-circle" size={20} />
+              <span class="footer-nav-label">Live</span>
+            </a>
 
-      <a
-        href="/alpha/cups"
-        class="mobile-nav-item"
-        class:active={$page.url.pathname.startsWith("/alpha/cups")}
-      >
-        <svg class="mobile-nav-icon" fill="currentColor" viewBox="0 0 24 24">
-          <path
-            d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"
-          />
-        </svg>
-        <span class="mobile-nav-label">Cups</span>
-      </a>
+            <a
+              href="/alpha/cups"
+              class="footer-nav-link"
+              class:active={$page.url.pathname.startsWith("/alpha/cups")}
+            >
+              <Icon name="mdi:star" size={20} />
+              <span class="footer-nav-label">Cups</span>
+            </a>
 
-      <a
-        href="/alpha/projects"
-        class="mobile-nav-item"
-        class:active={$page.url.pathname === "/alpha/projects"}
-      >
-        <svg
-          class="mobile-nav-icon"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            stroke-width="2"
-            d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
-          />
-        </svg>
-        <span class="mobile-nav-label">Projects</span>
-      </a>
+            <a
+              href="/alpha/projects"
+              class="footer-nav-link"
+              class:active={$page.url.pathname === "/alpha/projects"}
+            >
+              <Icon name="mdi:view-grid" size={20} />
+              <span class="footer-nav-label">Projects</span>
+            </a>
+          </div>
 
-      {#if isAdmin}
-        <a
-          href="/alpha/scan"
-          class="mobile-nav-item"
-          class:active={$page.url.pathname === "/alpha/scan"}
-        >
-          <svg
-            class="mobile-nav-icon"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
-              d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"
-            />
-          </svg>
-          <span class="mobile-nav-label">Scan</span>
-        </a>
-      {/if}
+          <!-- Right-aligned items -->
+          <div class="footer-nav-right">
+            {#if isAdmin}
+              <a
+                href="/alpha/scan"
+                class="footer-nav-link"
+                class:active={$page.url.pathname === "/alpha/scan"}
+              >
+                <Icon name="mdi:qrcode-scan" size={20} />
+                <span class="footer-nav-label">Scan</span>
+              </a>
+            {/if}
 
-      {#if session?.data?.user}
-        <a href="/alpha/me" class="mobile-nav-item mobile-nav-user">
-          {#if session.data.user?.image && !userImageFailed}
-            <img
-              src={session.data.user.image}
-              alt={session.data.user.name}
-              class="mobile-user-avatar"
-              onerror={() => (userImageFailed = true)}
-            />
-          {:else if session.data.user?.name}
-            <div class="mobile-user-avatar-placeholder">
-              {session.data.user.name[0]?.toUpperCase() || "U"}
-            </div>
-          {/if}
-        </a>
-      {:else}
-        <button
-          onclick={signInWithGoogle}
-          class="mobile-nav-item mobile-nav-signin"
-        >
-          <svg
-            class="mobile-nav-icon"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
-              d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-            />
-          </svg>
-          <span class="mobile-nav-label">Sign In</span>
-        </button>
-      {/if}
+            {#if session?.data?.user}
+              <a href="/alpha/me" class="footer-nav-link footer-nav-user">
+                {#if session.data.user?.image && !userImageFailed}
+                  <img
+                    src={session.data.user.image}
+                    alt={session.data.user.name}
+                    class="footer-user-avatar"
+                    onerror={() => (userImageFailed = true)}
+                  />
+                {:else if session.data.user?.name}
+                  <div class="footer-user-avatar-placeholder">
+                    {session.data.user.name[0]?.toUpperCase() || "U"}
+                  </div>
+                {/if}
+              </a>
+            {:else}
+              <button
+                onclick={signInWithGoogle}
+                class="footer-nav-link footer-nav-signin"
+              >
+                <Icon name="mdi:account" size={20} />
+                <span class="footer-nav-label">Sign In</span>
+              </button>
+            {/if}
+          </div>
+        </div>
       {/if}
     </div>
   </div>
@@ -309,7 +266,8 @@
     padding: 0;
     border-bottom: none;
     border-top: none;
-    box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.2);
+    box-shadow: none; /* Removed ugly top shadow */
+    background: transparent; /* No white background around footer */
   }
 
   .nav-container {
@@ -522,16 +480,178 @@
   .mobile-bottom-nav {
     display: flex;
     align-items: center;
-    justify-content: space-around;
+    justify-content: center; /* Center the bar */
     width: 100%;
-    padding: 0.375rem 0.5rem;
-    padding-bottom: calc(0.375rem + env(safe-area-inset-bottom));
-    margin: 0;
-    background: #1a1a4e; /* Dark marine blue brand color */
+    padding: 0;
+    margin: 0 auto;
+    max-width: 72rem; /* max-w-6xl - 1 less than layout (max-w-7xl = 80rem) */
+    background: var(--color-primary-500); /* Dark marine blue brand color */
     backdrop-filter: blur(12px);
     gap: 0;
-    min-height: 60px;
-    height: 60px;
+    min-height: 56px; /* Thinner than before (was 60px) */
+    height: 56px;
+    border-top-left-radius: 1rem; /* rounded-2xl */
+    border-top-right-radius: 1rem; /* rounded-2xl */
+  }
+
+  /* Footer nav container - left aligned icons */
+  .footer-nav-container {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    padding: 0.5rem 0.5rem; /* Standard padding */
+    padding-bottom: calc(0.5rem + env(safe-area-inset-bottom));
+    gap: 0.25rem; /* Smaller gap between items */
+  }
+
+  /* Left and right sections */
+  .footer-nav-left {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    flex: 1;
+    min-width: 0; /* Allow flex shrinking */
+  }
+
+  .footer-nav-right {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    flex: 0 0 auto;
+  }
+
+  /* Footer nav link - refined, beautiful design */
+  .footer-nav-link {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.125rem;
+    padding: 0.5rem 0.75rem; /* More padding for better spacing */
+    text-decoration: none;
+    color: var(--color-primary-300); /* Lighter navy for inactive */
+    transition: all 0.2s ease-out;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    font-family: inherit;
+    border-radius: 0.75rem;
+    flex: 0 0 auto; /* Don't fill space */
+    max-width: 60px; /* Max width constraint */
+    width: 60px; /* Fixed width */
+    position: relative;
+    overflow: visible;
+  }
+
+  /* Subtle hover effect - same as active color */
+  .footer-nav-link:hover {
+    color: var(--color-secondary-300); /* Same as active - lighter teal */
+    background: rgba(45, 166, 180, 0.2); /* Same as active - teal background */
+  }
+
+  /* Active state - brand secondary (teal) - lighter for better contrast */
+  .footer-nav-link.active {
+    color: var(--color-secondary-300); /* Lighter teal for better contrast */
+    background: rgba(45, 166, 180, 0.2); /* Teal background */
+  }
+
+  .footer-nav-link.active::after {
+    content: "";
+    position: absolute;
+    inset: -2px;
+    background: rgba(45, 166, 180, 0.15);
+    border-radius: 0.75rem;
+    z-index: -1;
+    filter: blur(4px);
+  }
+
+  .footer-nav-link.active:hover {
+    color: var(--color-secondary-300); /* Same as active */
+    background: rgba(45, 166, 180, 0.2); /* Same as active */
+  }
+
+  /* Logo link - no active styling, maintains aspect ratio */
+  .footer-nav-logo-link {
+    flex: 0 0 auto; /* Don't stretch logo */
+    padding: 0.5rem;
+    width: auto; /* Natural width */
+    max-width: none; /* No max-width constraint */
+  }
+
+  .footer-nav-logo-link:hover {
+    background: rgba(8, 27, 71, 0.15); /* Subtle navy background on hover */
+  }
+
+  /* Logo styling - larger */
+  .footer-nav-logo {
+    width: 36px; /* Larger logo */
+    height: 36px;
+    border-radius: 50%;
+    transition: transform 0.2s ease-out;
+    display: block; /* Maintain aspect ratio */
+  }
+
+  .footer-nav-link:hover .footer-nav-logo {
+    transform: scale(1.05);
+  }
+
+  /* Label styling - smaller and refined */
+  .footer-nav-label {
+    font-size: 0.625rem; /* Smaller font */
+    font-weight: 500; /* Medium weight instead of semibold */
+    letter-spacing: 0.01em;
+    line-height: 1;
+  }
+
+  /* User avatar - same size and style as logo */
+  .footer-user-avatar {
+    width: 36px; /* Same as logo */
+    height: 36px;
+    border-radius: 50%;
+    border: none; /* No border like logo */
+    transition: transform 0.2s ease-out;
+  }
+
+  .footer-nav-link:hover .footer-user-avatar {
+    transform: scale(1.05);
+  }
+
+  .footer-user-avatar-placeholder {
+    width: 36px; /* Same as logo */
+    height: 36px;
+    border-radius: 50%;
+    border: none; /* No border like logo */
+    background: linear-gradient(
+      135deg,
+      var(--color-secondary-500),
+      var(--color-accent-500)
+    );
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: 600;
+    font-size: 1rem; /* Larger font to match logo size */
+    transition: transform 0.2s ease-out;
+  }
+
+  .footer-nav-link:hover .footer-user-avatar-placeholder {
+    transform: scale(1.05);
+  }
+
+  .footer-nav-user {
+    flex: 0 0 auto; /* Don't fill space, same as logo */
+    padding: 0.5rem; /* Same padding as logo */
+    width: auto; /* Natural width */
+    max-width: none; /* No max-width constraint */
+  }
+
+  .footer-nav-signin {
+    flex: 0 0 auto; /* Don't fill space */
+    padding: 0.5rem 0.75rem; /* Consistent padding */
+    max-width: 40px; /* Same max-width constraint */
+    width: 40px; /* Same fixed width */
   }
 
   /* Modal Mode Styles */
@@ -558,11 +678,6 @@
     position: relative;
     min-height: 60px;
     height: 60px;
-  }
-
-  /* Hide normal nav items when in modal mode */
-  .mobile-bottom-nav.modal-mode .mobile-nav-item {
-    display: none;
   }
 
   .modal-close-button {
@@ -614,7 +729,7 @@
   .modal-action-button {
     background: rgba(255, 255, 255, 0.1);
     border: 2px solid rgba(255, 255, 255, 0.2);
-    border-radius: 999px;
+    border-radius: 0.75rem; /* rounded-xl */
     padding: 0.375rem 0.875rem;
     cursor: pointer;
     transition: all 0.2s;
@@ -622,26 +737,27 @@
     font-size: 0.8rem;
     white-space: nowrap;
     flex-shrink: 0;
-    color: rgba(255, 255, 255, 0.9);
+    color: var(--color-secondary-100); /* Light teal text */
   }
 
   .modal-action-button.primary {
-    background: #f4d03f; /* Yellow brand color */
-    border: 2px solid #f4d03f;
-    color: #1a1a4e; /* Dark blue text */
-    border-radius: 999px; /* Fully rounded */
+    background: var(--color-accent-500); /* Yellow brand color */
+    border: 2px solid var(--color-accent-500);
+    color: var(--color-accent-900); /* Dark yellow text */
+    border-radius: 0.75rem; /* rounded-xl */
   }
 
   .modal-action-button.primary:hover:not(:disabled) {
-    background: #fcd34d; /* Lighter yellow on hover */
-    border-color: #fcd34d;
+    background: var(--color-accent-400); /* Lighter yellow on hover */
+    border-color: var(--color-accent-400);
+    color: var(--color-accent-950); /* Darker text */
     transform: scale(1.02);
   }
 
   .modal-action-button.primary:disabled {
     background: rgba(244, 208, 63, 0.5);
     border-color: rgba(244, 208, 63, 0.5);
-    color: rgba(26, 26, 78, 0.5);
+    color: var(--color-accent-700);
     cursor: not-allowed;
     opacity: 0.6;
   }
@@ -649,6 +765,7 @@
   .modal-action-button:hover:not(:disabled):not(.primary) {
     background: rgba(255, 255, 255, 0.15);
     border-color: rgba(255, 255, 255, 0.3);
+    color: var(--color-secondary-50); /* Lighter teal on hover */
     transform: scale(1.02);
   }
 
@@ -668,78 +785,6 @@
     }
   }
 
-  .mobile-nav-item {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 0.25rem;
-    padding: 0.5rem 1rem;
-    text-decoration: none;
-    color: rgba(255, 255, 255, 0.7);
-    transition: all 0.2s;
-    background: none;
-    border: none;
-    cursor: pointer;
-    font-family: inherit;
-  }
-
-  .mobile-nav-item:hover {
-    color: #4ecdc4;
-  }
-
-  .mobile-nav-item.active {
-    color: #f4d03f; /* Yellow for active state on dark background */
-  }
-
-  .mobile-nav-icon {
-    width: 24px;
-    height: 24px;
-  }
-
-  .mobile-nav-label {
-    font-size: 0.7rem;
-    font-weight: 600;
-  }
-
-  .mobile-nav-logo {
-    width: 32px;
-    height: 32px;
-    border-radius: 50%;
-  }
-
-  .mobile-nav-home {
-    flex: 0 0 auto;
-    padding: 0.25rem;
-  }
-
-  .mobile-nav-user {
-    margin-left: auto;
-    flex: 0 0 auto;
-    padding: 0.25rem;
-  }
-
-  .mobile-user-avatar {
-    width: 37px;
-    height: 37px;
-    border-radius: 50%;
-    border: 2px solid rgba(255, 255, 255, 0.3);
-  }
-
-  .mobile-user-avatar-placeholder {
-    width: 37px;
-    height: 37px;
-    border-radius: 50%;
-    border: 2px solid rgba(255, 255, 255, 0.3);
-    background: linear-gradient(135deg, #4ecdc4, #f4d03f);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: white;
-    font-weight: 700;
-    font-size: 1rem;
-  }
-
   /* Hide desktop nav links and logo on all screen sizes */
   .desktop-nav-links {
     display: none;
@@ -751,41 +796,16 @@
 
   /* Responsive */
   @media (max-width: 768px) {
-    .logo-link {
-      display: none; /* Hide logo on mobile */
-    }
-
-    .mobile-nav-item {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
+    .footer-nav-container {
       padding: 0.375rem 0.25rem;
-      min-width: 0;
+      padding-bottom: calc(0.375rem + env(safe-area-inset-bottom));
     }
 
-    .mobile-nav-home {
-      flex: 1;
+    .footer-nav-link {
       padding: 0.375rem 0.25rem;
     }
 
-    .mobile-nav-user {
-      flex: 1;
-      padding: 0.375rem 0.25rem;
-    }
-
-    .mobile-nav-signin {
-      flex: 1;
-      padding: 0.375rem 0.25rem;
-    }
-
-    .mobile-nav-icon {
-      width: 20px;
-      height: 20px;
-    }
-
-    .mobile-nav-label {
+    .footer-nav-label {
       font-size: 0.65rem;
     }
   }
