@@ -2,17 +2,17 @@
 
 ## Overview
 
-This document lists all environment variables needed for production deployment. The codebase now uses a **domain-based approach** that automatically handles both `hominio.me` and `www.hominio.me` domains.
+This document lists all environment variables needed for production deployment. The codebase uses a **domain-based approach** that always uses the non-www domain (`hominio.me`).
 
 ## Domain Utility
 
 The codebase uses `src/lib/utils/domain.ts` to automatically:
 - Add `https://` protocol
-- Handle both `www` and non-`www` variants
+- Always use non-www domain (`hominio.me`)
 - Generate full URLs from domain names
 - Manage trusted origins for CORS
 
-**Important:** All `www.hominio.me` requests are automatically redirected to `hominio.me` (301 permanent redirect) for SEO consistency. This happens at the application level in `src/hooks.server.js`.
+**Important:** DNS-level redirect handles `www.hominio.me` → `hominio.me` (301 permanent redirect). See `docs/deployment/DNS_REDIRECT_SETUP.md` for DNS configuration.
 
 ## Environment Variables
 
@@ -22,7 +22,7 @@ The codebase uses `src/lib/utils/domain.ts` to automatically:
 
 ```bash
 # Main domain (without www, without protocol)
-# Code automatically handles www.hominio.me and hominio.me
+# DNS-level redirect handles www → non-www
 PUBLIC_DOMAIN=hominio.me
 
 # Zero sync service domain (without protocol)
@@ -94,14 +94,13 @@ NODE_ENV=production
 
 1. **Client-side (`src/routes/alpha/+layout.svelte`)**:
    - Reads `PUBLIC_DOMAIN` and `PUBLIC_ZERO_SYNC_DOMAIN`
-   - Detects if user is on `www.hominio.me` or `hominio.me`
-   - Automatically uses the correct domain variant
+   - Always uses non-www domain (`hominio.me`)
    - Generates URLs with `https://` protocol
 
 2. **Server-side (`src/lib/auth.server.js`, API endpoints)**:
-   - Uses `getTrustedOrigins()` to allow both domains
-   - CORS headers accept both `www` and non-`www` origins
-   - BetterAuth cookies work across both domains
+   - Uses `getTrustedOrigins()` for CORS
+   - CORS headers accept non-www domain
+   - BetterAuth cookies work across subdomains (e.g., sync.hominio.me)
 
 3. **Zero Manager (`src/lib/zero-manager.server.ts`)**:
    - Generates callback URLs from `PUBLIC_DOMAIN` in production
@@ -112,7 +111,7 @@ NODE_ENV=production
 From `PUBLIC_DOMAIN=hominio.me`:
 - `https://hominio.me/alpha/api/zero/get-queries`
 - `https://hominio.me/alpha/api/zero/push`
-- If user is on `www.hominio.me`, URLs use `www.hominio.me` automatically
+- Always uses non-www domain (DNS handles redirect)
 
 From `PUBLIC_ZERO_SYNC_DOMAIN=sync.hominio.me`:
 - `wss://sync.hominio.me` (WebSocket connection)
@@ -152,7 +151,7 @@ If you have old environment variables, here's the mapping:
 ## Benefits
 
 1. **Single Source of Truth**: Only set domain once, code handles the rest
-2. **WWW Support**: Automatically handles both `www` and non-`www` domains
+2. **DNS-Level Redirect**: SEO-friendly redirect handled at DNS level
 3. **Cleaner Config**: No need to repeat full URLs everywhere
 4. **Easier Updates**: Change domain in one place, everything updates
 

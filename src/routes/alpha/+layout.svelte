@@ -38,7 +38,7 @@
   let markingAsReadIds = $state<Set<string>>(new Set()); // Track notifications being marked as read
 
   // Get Zero server URL using domain utility
-  // Automatically handles both hominio.me and www.hominio.me
+  // Uses hominio.me (DNS-level redirect handles www → non-www)
   // In production: wss://sync.hominio.me
   // In dev: http://localhost:4848
   const zeroServerUrl = browser

@@ -37,27 +37,5 @@ if (!building && isDevelopment) {
 }
 
 export async function handle({ event, resolve }) {
-  // Redirect www to non-www in production (SEO best practice)
-  // Skip redirect in development (localhost)
-  if (!building && isProduction) {
-    const hostname = event.url.hostname;
-    
-    // Check if request is coming from www subdomain
-    if (hostname.startsWith('www.')) {
-      const baseDomain = hostname.replace(/^www\./, '');
-      const url = new URL(event.url);
-      url.hostname = baseDomain;
-      
-      // Return 301 (permanent redirect) to non-www domain
-      // Preserves path and query string
-      return new Response(null, {
-        status: 301,
-        headers: {
-          'Location': url.toString(),
-        },
-      });
-    }
-  }
-  
   return svelteKitHandler({ event, resolve, auth, building });
 }

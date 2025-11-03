@@ -1,6 +1,7 @@
 /**
  * Domain normalization utilities
- * Handles both hominio.me and www.hominio.me domains
+ * Always uses non-www domain (hominio.me)
+ * DNS-level redirect handles www → non-www
  */
 
 import { browser } from '$app/environment';
@@ -22,7 +23,7 @@ export function getBaseDomain(): string {
     normalized = normalized.replace(/^https?:\/\//, '');
     normalized = normalized.replace(/^wss?:\/\//, '');
     
-    // Remove www. prefix (we'll handle www separately)
+    // Remove www. prefix (DNS handles redirect)
     normalized = normalized.replace(/^www\./, '');
     
     // Remove port if present
@@ -77,43 +78,26 @@ export function getZeroSyncDomain(): string {
 
 /**
  * Get full HTTPS URL for the main domain
- * Returns both hominio.me and www.hominio.me variants based on current request
- * Handles localhost for development (uses http:// with current port)
+ * Always uses non-www domain (hominio.me)
+ * DNS-level redirect handles www → non-www
  * @param path - Optional path to append (e.g., "/alpha/api/zero/get-queries")
- * @param preferWww - If True, prefer www. variant (default: detect from current location)
  */
-export function getMainDomainUrl(path: string = '', preferWww?: boolean): string {
+export function getMainDomainUrl(path: string = ''): string {
   const baseDomain = getBaseDomain();
   
-  // In browser, detect if we're on www or non-www
+  // Handle localhost for development
   if (browser) {
-    // Handle localhost for development
     if (baseDomain === 'localhost' || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-      // Use current origin (http://localhost:5173) for localhost
       return `${window.location.origin}${path}`;
     }
-    
-    // For Zero callbacks, always use non-www domain to match Zero sync service configuration
-    // Zero sync service is configured to accept hominio.me (not wildcard)
-    const isZeroCallback = path.includes('/alpha/api/zero/');
-    if (isZeroCallback) {
-      return `https://${baseDomain}${path}`;
-    }
-    
-    const isWww = window.location.hostname.startsWith('www.');
-    const useWww = preferWww ?? isWww;
-    const domain = useWww ? `www.${baseDomain}` : baseDomain;
-    return `https://${domain}${path}`;
   }
   
   // Server-side: handle localhost
   if (baseDomain === 'localhost') {
-    // For server-side in dev, use localhost with default port
     return `http://localhost:5173${path}`;
   }
   
-  // Server-side: default to non-www, but accept both
-  // When building URLs for callbacks, use non-www as default
+  // Always use non-www domain
   return `https://${baseDomain}${path}`;
 }
 
@@ -130,7 +114,7 @@ export function getZeroServerUrl(): string {
 
 /**
  * Get all trusted origins (for CORS, BetterAuth, etc.)
- * Includes both www and non-www variants
+ * DNS-level redirect handles www → non-www, so we only need non-www
  */
 export function getTrustedOrigins(): string[] {
   const baseDomain = getBaseDomain();
@@ -138,7 +122,6 @@ export function getTrustedOrigins(): string[] {
   
   return [
     `https://${baseDomain}`,
-    `https://www.${baseDomain}`,
     `https://${syncDomain}`,
   ];
 }

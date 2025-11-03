@@ -18,7 +18,7 @@ const authDb = getAuthDb();
 // BetterAuth configuration with explicit database setup
 // baseURL and trustedOrigins configured for cross-subdomain cookie sharing
 // Cookies will be set for .hominio.me (parent domain) to work across subdomains
-// Accepts both hominio.me and www.hominio.me automatically via domain utility
+// DNS-level redirect handles www → non-www
 export const auth = betterAuth({
   database: {
     db: authDb,
@@ -26,8 +26,7 @@ export const auth = betterAuth({
   },
   secret: SECRET_AUTH_SECRET,
   // Don't set baseURL - let BetterAuth auto-detect from request origin
-  // This allows both hominio.me and www.hominio.me to work
-  // Trusted origins for CORS and cookie sharing (includes www and sync subdomain)
+  // Trusted origins for CORS and cookie sharing (includes sync subdomain)
   trustedOrigins: getTrustedOrigins(),
   // Only configure Google provider if credentials are provided
   // This prevents warnings during build time when env vars aren't available
@@ -43,9 +42,8 @@ export const auth = betterAuth({
     : {}),
   plugins: [sveltekitCookies(getRequestEvent)],
   advanced: {
-    // Set cookie domain to parent domain to enable cookie sharing
-    // This allows cookies to work across both www.hominio.me and hominio.me
-    // Cookies set for .hominio.me are accessible from both domains
+    // Set cookie domain to parent domain to enable cookie sharing across subdomains
+    // Cookies set for .hominio.me are accessible from sync.hominio.me
     cookieDomain: '.hominio.me',
   },
 });

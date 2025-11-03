@@ -37,7 +37,7 @@ ADMIN=your-admin-user-id
 
 #### Zero Sync Service Configuration
 ```bash
-# Domain-based configuration (automatically handles www and non-www)
+# Domain-based configuration (always uses non-www, DNS handles redirect)
 PUBLIC_DOMAIN=hominio.me
 PUBLIC_ZERO_SYNC_DOMAIN=sync.hominio.me
 
@@ -118,7 +118,7 @@ export const auth = betterAuth({
   },
   secret: SECRET_AUTH_SECRET,
   // Don't set baseURL - let BetterAuth auto-detect from request origin
-  // This allows both hominio.me and www.hominio.me to work
+  // DNS-level redirect handles www → non-www
   trustedOrigins: getTrustedOrigins(), // Automatically includes www and sync subdomain
   socialProviders: {
     google: {
