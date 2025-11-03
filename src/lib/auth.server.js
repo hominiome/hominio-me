@@ -39,11 +39,17 @@ export const auth = betterAuth({
     'https://www.hominio.me',
     'https://sync.hominio.me',
   ],
-  socialProviders: {
-    google: {
-      clientId: SECRET_GOOGLE_CLIENT_ID,
-      clientSecret: SECRET_GOOGLE_CLIENT_SECRET,
-    },
-  },
+  // Only configure Google provider if credentials are provided
+  // This prevents warnings during build time when env vars aren't available
+  ...(SECRET_GOOGLE_CLIENT_ID && SECRET_GOOGLE_CLIENT_SECRET
+    ? {
+        socialProviders: {
+          google: {
+            clientId: SECRET_GOOGLE_CLIENT_ID,
+            clientSecret: SECRET_GOOGLE_CLIENT_SECRET,
+          },
+        },
+      }
+    : {}),
   plugins: [sveltekitCookies(getRequestEvent)],
 });

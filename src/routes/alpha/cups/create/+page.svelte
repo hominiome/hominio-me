@@ -156,7 +156,7 @@
 
         <!-- Logo Image -->
         <div class="form-group">
-          <label class="form-label">Logo Image (Optional)</label>
+          <div class="form-label">Logo Image (Optional)</div>
           <TigrisImageUpload
             uploadButtonLabel="Upload Logo"
             showPreview={false}
