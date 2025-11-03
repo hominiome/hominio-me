@@ -109,47 +109,47 @@ export async function startZero(): Promise<void> {
     // Can be overridden with SECRET_ZERO_GET_QUERIES_URL and SECRET_ZERO_PUSH_URL env vars
     const devPort = process.env.PORT || '5173';
     const isProduction = process.env.NODE_ENV === 'production';
-    
+
     // Import domain utility dynamically (server-side only)
     let getMainDomainUrl: ((path: string) => string) | null = null;
     if (isProduction) {
-      try {
-        const domainUtils = await import('$lib/utils/domain');
-        getMainDomainUrl = domainUtils.getMainDomainUrl;
-      } catch (e) {
-        console.warn('[Zero] Could not import domain utils, using env vars:', e);
-      }
+        try {
+            const domainUtils = await import('$lib/utils/domain');
+            getMainDomainUrl = domainUtils.getMainDomainUrl;
+        } catch (e) {
+            console.warn('[Zero] Could not import domain utils, using env vars:', e);
+        }
     }
-    
+
     const getQueriesUrl = env.SECRET_ZERO_GET_QUERIES_URL || (
-      isProduction && getMainDomainUrl
-        ? getMainDomainUrl('/alpha/api/zero/get-queries')
-        : `http://localhost:${devPort}/alpha/api/zero/get-queries`
+        isProduction && getMainDomainUrl
+            ? getMainDomainUrl('/alpha/api/zero/get-queries')
+            : `http://localhost:${devPort}/alpha/api/zero/get-queries`
     );
     const pushUrl = env.SECRET_ZERO_PUSH_URL || (
-      isProduction && getMainDomainUrl
-        ? getMainDomainUrl('/alpha/api/zero/push')
-        : `http://localhost:${devPort}/alpha/api/zero/push`
+        isProduction && getMainDomainUrl
+            ? getMainDomainUrl('/alpha/api/zero/push')
+            : `http://localhost:${devPort}/alpha/api/zero/push`
     );
 
     // Spawn zero-cache-dev process
     // Filter out deprecated environment variables to avoid warnings
     const { ZERO_CHANGE_STREAMER_PROTOCOL, ZERO_TARGET_CLIENT_ROW_COUNT, ...restEnv } = process.env;
-    
+
     // Build environment object for child process
     const childEnv: Record<string, string | undefined> = {
         ...restEnv, // Include all env vars except deprecated ones
-                ZERO_UPSTREAM_DB: enhancedDbUrl,
-                ZERO_REPLICA_FILE: './zero-replica.db',
-                ZERO_AUTH_SECRET: ZERO_AUTH_SECRET,
-                // Also set these for compatibility
-                SECRET_ZERO_DEV_PG: enhancedDbUrl,
-                SECRET_ZERO_AUTH_SECRET: ZERO_AUTH_SECRET,
-                // Configure synced queries endpoint for zero-cache
-                ZERO_GET_QUERIES_URL: getQueriesUrl,
-                // Forward cookies to server for synced queries (cookie-based auth)
-                ZERO_GET_QUERIES_FORWARD_COOKIES: 'true',
-        
+        ZERO_UPSTREAM_DB: enhancedDbUrl,
+        ZERO_REPLICA_FILE: './zero-replica.db',
+        ZERO_AUTH_SECRET: ZERO_AUTH_SECRET,
+        // Also set these for compatibility
+        SECRET_ZERO_DEV_PG: enhancedDbUrl,
+        SECRET_ZERO_AUTH_SECRET: ZERO_AUTH_SECRET,
+        // Configure synced queries endpoint for zero-cache
+        ZERO_GET_QUERIES_URL: getQueriesUrl,
+        // Forward cookies to server for synced queries (cookie-based auth)
+        ZERO_GET_QUERIES_FORWARD_COOKIES: 'true',
+
         // Configure custom mutators endpoint for zero-cache
         // Use ZERO_PUSH_URL (canonical) - ZERO_MUTATE_URL is just an alias
         ZERO_PUSH_URL: pushUrl,
@@ -157,28 +157,29 @@ export async function startZero(): Promise<void> {
         // Per Zero docs: ZERO_MUTATE_FORWARD_COOKIES is the current preferred env var
         // (ZERO_PUSH_FORWARD_COOKIES is deprecated)
         ZERO_MUTATE_FORWARD_COOKIES: 'true',
-                // Add connection timeout and retry settings
-                ZERO_DB_CONNECT_TIMEOUT: '10', // 10 seconds
-                NODE_ENV: process.env.NODE_ENV || 'development',
+        // Add connection timeout and retry settings
+        ZERO_DB_CONNECT_TIMEOUT: '10', // 10 seconds
+        NODE_ENV: process.env.NODE_ENV || 'development',
         // Explicitly unset deprecated environment variables
         ZERO_CHANGE_STREAMER_PROTOCOL: undefined,
         ZERO_TARGET_CLIENT_ROW_COUNT: undefined,
     };
-    
+
     // Remove undefined values (some tools don't like undefined env vars)
     Object.keys(childEnv).forEach(key => {
         if (childEnv[key] === undefined) {
             delete childEnv[key];
         }
     });
-    
-    zeroProcess = spawn(
-        'zero-cache-dev',
-        [
-            '--schema-path=./src/zero-schema.ts',
-            '--push-forward-cookies', // Explicitly enable cookie forwarding for mutators
-            '--get-queries-forward-cookies', // Explicitly enable cookie forwarding for queries
-        ],
+
+        zeroProcess = spawn(
+            'zero-cache-dev',
+            [
+                '--schema-path=./src/zero-schema.ts',
+                '--admin-password', ZERO_AUTH_SECRET, // zero-cache-dev requires this
+                '--mutate-forward-cookies', // Explicitly enable cookie forwarding for mutators (current preferred)
+                '--get-queries-forward-cookies', // Explicitly enable cookie forwarding for queries
+            ],
         {
             env: childEnv,
             stdio: ['ignore', 'pipe', 'pipe'], // Capture stdout and stderr
