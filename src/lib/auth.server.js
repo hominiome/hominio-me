@@ -42,4 +42,7 @@ export const auth = betterAuth({
       }
     : {}),
   plugins: [sveltekitCookies(getRequestEvent)],
+  // Note: BetterAuth automatically handles cookie domain based on request origin
+  // Cookies will work for both www.hominio.me and hominio.me when properly configured
+  // The trustedOrigins configuration above ensures CORS works for both domains
 });
