@@ -179,7 +179,7 @@
 <div class="@container min-h-screen py-8">
   <!-- Sticky Header -->
   <div
-    class="sticky top-0 z-50 py-2 mb-5 px-4 sm:px-6 lg:px-8 relative"
+    class="sticky top-0 z-50 py-1 @md:py-2 mb-5 px-2 sm:px-4 lg:px-8 relative"
     style="margin-left: calc(-50vw + 50%); margin-right: calc(-50vw + 50%); width: 100vw;"
   >
     <div

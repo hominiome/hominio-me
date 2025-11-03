@@ -867,6 +867,23 @@
     !!notificationModal || !!modalType || showDeleteProjectModal
   );
 
+  // Detect detail pages for back navigation
+  const isDetailPage = $derived(
+    $page.url.pathname.match(/^\/alpha\/(cups|projects)\/[^/]+$/) !== null
+  );
+
+  const backUrl = $derived(() => {
+    if ($page.url.pathname.startsWith("/alpha/cups/")) {
+      return "/alpha/cups";
+    }
+    if ($page.url.pathname.startsWith("/alpha/projects/")) {
+      return "/alpha/projects";
+    }
+    return "/alpha";
+  });
+
+  const showBackState = $derived(isDetailPage && !isModalOpenState);
+
   function handleModalClose() {
     // Stay on the same route, just remove the modal param
     const url = new URL($page.url);
@@ -924,6 +941,8 @@
   session={$session}
   {signInWithGoogle}
   isModalOpen={isModalOpenState}
+  showBack={showBackState}
+  backUrl={backUrl()}
   onModalClose={modalType ? handleModalClose : handleNotificationClose}
   modalLeftButtons={modalLeftButtons()}
   modalRightButtons={modalRightButtons()}

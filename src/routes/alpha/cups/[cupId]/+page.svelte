@@ -12,7 +12,18 @@
   import { formatEndDate, getMatchEndDate } from "$lib/dateUtils.js";
   import CountdownTimer from "$lib/CountdownTimer.svelte";
   import { calculatePrizePool, formatPrizePool } from "$lib/prizePoolUtils.js";
-  import { allProjects, purchasesByCup, identityByUserAndCup, allVotes, votesByUser, cupById, matchesByCup } from "$lib/synced-queries";
+  import {
+    allProjects,
+    purchasesByCup,
+    identityByUserAndCup,
+    allVotes,
+    votesByUser,
+    cupById,
+    matchesByCup,
+  } from "$lib/synced-queries";
+  import { Card } from "$lib/design-system/molecules";
+  import Button from "$lib/design-system/atoms/Button.svelte";
+  import Icon from "$lib/design-system/atoms/Icon.svelte";
 
   const zeroContext = useZero();
   const session = authClient.useSession();
@@ -135,7 +146,7 @@
 
       matchesView.addListener(async (data) => {
         matches = Array.from(data);
-        
+
         // Check if any matches have expired and close them
         try {
           await fetch(`/alpha/api/check-expiry?cupId=${cupId}`, {
@@ -392,21 +403,17 @@
   const isCreator = $derived(cup?.creatorId === $session.data?.user?.id);
 </script>
 
-<div class="min-h-screen bg-cream p-4 md:p-8">
+<div class="min-h-screen p-2 sm:p-4 md:p-8">
   <div class="max-w-7xl mx-auto">
     {#if loading}
-      <div class="card p-8 text-center">
-        <p class="text-navy/70">Loading cup...</p>
-      </div>
+      <Card class="p-8 text-center">
+        {#snippet children()}
+          <p class="text-primary-700/70">Loading cup...</p>
+        {/snippet}
+      </Card>
     {:else if cup}
       <!-- Header -->
-      <div class="mb-8">
-        <a
-          href="/alpha/cups"
-          class="text-teal hover:underline mb-4 inline-block"
-        >
-          ← Back to Cups
-        </a>
+      <div class="mb-4 md:mb-8">
         <div
           class="flex flex-col md:flex-row md:items-center md:justify-between gap-4"
         >
@@ -419,11 +426,11 @@
               />
             {/if}
             <div>
-              <h1 class="text-3xl md:text-5xl font-bold text-navy mb-2">
+              <h1 class="text-3xl md:text-5xl font-bold text-primary-500 mb-2">
                 {cup.name}
               </h1>
               {#if cup.description}
-                <p class="text-navy/60 text-base md:text-lg">
+                <p class="text-primary-700/60 text-base md:text-lg">
                   {cup.description}
                 </p>
               {/if}
@@ -431,104 +438,139 @@
           </div>
           <div class="flex flex-col sm:flex-row gap-2 md:gap-3">
             {#if isCreator}
-              <a
-                href="/alpha/cups/{cupId}/admin"
-                class="btn-primary text-center"
+              <Button
+                variant="primary"
+                onclick={() => goto(`/alpha/cups/${cupId}/admin`)}
+                class="!w-full sm:!w-auto"
               >
                 Admin Panel
-              </a>
+              </Button>
             {/if}
             {#if isCreator || isAdmin}
-              <a
-                href="/alpha/cups?modal=edit-cup&cupId={cupId}"
-                class="btn-secondary text-center"
+              <Button
+                variant="secondary"
+                onclick={() => {
+                  const url = new URL($page.url);
+                  url.searchParams.set("modal", "edit-cup");
+                  url.searchParams.set("cupId", cupId);
+                  goto(`/alpha/cups?${url.searchParams.toString()}`);
+                }}
+                class="!w-full sm:!w-auto"
               >
                 Edit
-              </a>
+              </Button>
             {/if}
           </div>
         </div>
       </div>
 
       <!-- Cup Info -->
-      <div class="card p-4 md:p-6 mb-6 md:mb-8">
-        <div class="flex flex-row items-center gap-3 md:gap-8 flex-wrap">
-          <div class="flex-shrink-0">
-            <p class="text-navy/60 text-xs md:text-sm mb-1">Status</p>
-            <p class="text-sm md:text-lg lg:text-xl font-bold text-navy">
-              {getStatusLabel(cup.status)}
-            </p>
-          </div>
-          {#if cup.currentRound}
-            <div class="flex-shrink-0">
-              <p class="text-navy/60 text-xs md:text-sm mb-1">Current Round</p>
-              <p class="text-sm md:text-lg lg:text-xl font-bold text-teal">
-                {getRoundLabel(cup.currentRound)}
-              </p>
-            </div>
-          {/if}
-          <div class="flex-shrink-0">
-            <p class="text-navy/60 text-xs md:text-sm mb-1">Prize Pool</p>
-            <p class="text-sm md:text-lg lg:text-xl font-bold text-yellow">
-              {formatPrizePool(calculatePrizePool(purchases))}
-            </p>
-          </div>
-          {#if cup.status === "active" && cup.currentRound}
-            {@const currentRoundMatches = matches.filter(
-              (m) => m.round === cup.currentRound
-            )}
-            {@const roundEndDate =
-              currentRoundMatches.length > 0
-                ? getMatchEndDate(currentRoundMatches[0], currentRoundMatches)
-                : ""}
-            {#if roundEndDate}
+      <Card class="p-4 md:p-6 mb-6 md:mb-8">
+        {#snippet children()}
+          <div class="flex flex-row items-center gap-3 md:gap-8">
+            <div
+              class="flex flex-row items-center gap-3 md:gap-8 flex-wrap flex-1"
+            >
               <div class="flex-shrink-0">
-                <p class="text-navy/60 text-xs md:text-sm mb-1">
-                  Round Ends In
+                <p class="text-primary-700/60 text-xs md:text-sm mb-1">
+                  Status
                 </p>
-                <p class="text-sm md:text-lg lg:text-xl font-bold text-teal">
-                  <CountdownTimer endDate={roundEndDate} displayFormat="full" />
-                </p>
+                <span class="cup-info-badge cup-status-badge">
+                  {getStatusLabel(cup.status)}
+                </span>
+              </div>
+              {#if cup.currentRound}
+                <div class="flex-shrink-0">
+                  <p class="text-primary-700/60 text-xs md:text-sm mb-1">
+                    Current Round
+                  </p>
+                  <span class="cup-info-badge cup-round-badge">
+                    <Icon
+                      name="mdi:tournament"
+                      size="xs"
+                      color="var(--color-secondary-600)"
+                    />
+                    {getRoundLabel(cup.currentRound)}
+                  </span>
+                </div>
+              {/if}
+              {#if cup.status === "active" && cup.currentRound}
+                {@const currentRoundMatches = matches.filter(
+                  (m) => m.round === cup.currentRound
+                )}
+                {@const roundEndDate =
+                  currentRoundMatches.length > 0
+                    ? getMatchEndDate(
+                        currentRoundMatches[0],
+                        currentRoundMatches
+                      )
+                    : ""}
+                {#if roundEndDate}
+                  <div class="flex-shrink-0">
+                    <p class="text-primary-700/60 text-xs md:text-sm mb-1">
+                      Round Ends In
+                    </p>
+                    <span class="cup-info-badge cup-countdown-badge">
+                      <Icon
+                        name="mdi:clock-outline"
+                        size="xs"
+                        color="var(--color-secondary-600)"
+                      />
+                      <CountdownTimer
+                        endDate={roundEndDate}
+                        displayFormat="full"
+                      />
+                    </span>
+                  </div>
+                {/if}
+              {/if}
+            </div>
+            <div class="flex-shrink-0 flex flex-col items-end">
+              <p class="text-primary-700/60 text-xs md:text-sm mb-1">
+                Prize Pool
+              </p>
+              <span class="cup-info-badge cup-prize-badge">
+                {formatPrizePool(calculatePrizePool(purchases))}
+              </span>
+            </div>
+            {#if cup.winnerId}
+              {@const winner = getProjectById(cup.winnerId)}
+              <div class="flex items-center gap-2 flex-shrink-0 ml-auto">
+                <Icon
+                  name="mdi:trophy"
+                  size="md"
+                  color="var(--color-warning-500)"
+                />
+                <div>
+                  <p class="text-primary-700/60 text-xs md:text-sm">Winner</p>
+                  <span class="cup-info-badge cup-winner-badge">
+                    {winner?.title || "Unknown"}
+                  </span>
+                </div>
               </div>
             {/if}
-          {/if}
-          {#if cup.winnerId}
-            {@const winner = getProjectById(cup.winnerId)}
-            <div class="flex items-center gap-2 flex-shrink-0 ml-auto">
-              <svg
-                class="w-4 h-4 md:w-5 md:h-5 lg:w-6 lg:h-6 text-yellow"
-                fill="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"
-                />
-              </svg>
-              <div>
-                <p class="text-navy/60 text-xs md:text-sm">Winner</p>
-                <p class="text-sm md:text-lg lg:text-xl font-bold text-yellow">
-                  {winner?.title || "Unknown"}
-                </p>
-              </div>
-            </div>
-          {/if}
-        </div>
-      </div>
+          </div>
+        {/snippet}
+      </Card>
 
       <!-- Matches by Round -->
       {#if matches.length === 0}
-        <div class="card p-12 text-center">
-          <h2 class="text-3xl font-bold text-navy mb-4">No Matches Yet</h2>
-          <p class="text-navy/60">
-            {#if isCreator}
-              Go to the admin panel to set up the tournament.
-            {:else}
-              The cup creator hasn't set up matches yet.
-            {/if}
-          </p>
-        </div>
+        <Card class="p-12 text-center">
+          {#snippet children()}
+            <h2 class="text-3xl font-bold text-primary-500 mb-4">
+              No Matches Yet
+            </h2>
+            <p class="text-primary-700/60">
+              {#if isCreator}
+                Go to the admin panel to set up the tournament.
+              {:else}
+                The cup creator hasn't set up matches yet.
+              {/if}
+            </p>
+          {/snippet}
+        </Card>
       {:else}
-        <div class="space-y-8">
+        <div class="space-y-6 @md:space-y-8">
           {#if cup}
             {@const roundsToShow = (() => {
               // Dynamically determine which rounds to show based on cup size
@@ -553,10 +595,14 @@
             {#each roundsToShow as round}
               {@const roundMatches = matches.filter((m) => m.round === round)}
               {#if roundMatches.length > 0}
-                <div class="round-container">
-                  <h2 class="round-header">
-                    {getRoundLabel(round)}
-                  </h2>
+                <div class="round-section">
+                  <Card class="round-header-card">
+                    {#snippet children()}
+                      <h2 class="round-header">
+                        {getRoundLabel(round)}
+                      </h2>
+                    {/snippet}
+                  </Card>
                   <div class="round-matches">
                     {#each roundMatches as match}
                       {@const project1 = getProjectById(match.project1Id)}
@@ -613,53 +659,71 @@
 </div>
 
 <style>
-  .bg-cream {
-    background-color: #fef9f0;
+  /* Round section - wrapper for header card and matches */
+  .round-section {
+    margin-bottom: 1.5rem;
   }
 
-  .card {
-    background: white;
-    border-radius: 16px;
-    box-shadow: 0 2px 12px rgba(26, 26, 78, 0.06);
-    border: 1px solid rgba(26, 26, 78, 0.08);
+  @media (min-width: 768px) {
+    .round-section {
+      margin-bottom: 2rem;
+    }
   }
 
-  /* Round container - card on desktop, no card on mobile */
-  .round-container {
-    background: white;
-    border-radius: 16px;
-    box-shadow: 0 2px 12px rgba(26, 26, 78, 0.06);
-    border: 1px solid rgba(26, 26, 78, 0.08);
-    padding: 1rem 1.5rem;
+  /* Round header card - only the header has card background */
+  .round-header-card {
+    padding: 1.5rem 2rem;
+    margin-bottom: 0.75rem;
+  }
+
+  @media (min-width: 768px) {
+    .round-header-card {
+      padding: 2rem 3rem;
+      margin-bottom: 1rem;
+    }
   }
 
   @media (max-width: 768px) {
-    .round-container {
-      background: transparent;
-      box-shadow: none;
-      border: none;
-      padding: 0;
-      margin-bottom: 1.5rem;
+    .round-header-card {
+      padding: 1.25rem 1.75rem;
+      margin-bottom: 0.5rem;
     }
   }
 
   .round-header {
     font-size: 1.25rem;
-    font-weight: 700;
-    color: #1a1a4e;
-    margin-bottom: 1rem;
-    padding-bottom: 0.75rem;
-    border-bottom: 2px solid rgba(26, 26, 78, 0.1);
+    font-weight: 800;
+    color: var(--color-primary-500);
+    margin: 0;
+    padding-bottom: 0.875rem;
+    border-bottom: 3px solid rgba(26, 26, 78, 0.08);
+    letter-spacing: -0.01em;
+    position: relative;
+  }
+
+  .round-header::after {
+    content: "";
+    position: absolute;
+    bottom: -3px;
+    left: 0;
+    width: 60px;
+    height: 3px;
+    background: linear-gradient(90deg, var(--color-secondary-500), transparent);
+    border-radius: 2px;
   }
 
   @media (min-width: 768px) {
     .round-header {
       font-size: 1.5rem;
-      margin-bottom: 1.5rem;
       padding-bottom: 1rem;
+    }
+
+    .round-header::after {
+      width: 80px;
     }
   }
 
+  /* Round matches - standalone, no card wrapper */
   .round-matches {
     display: flex;
     flex-direction: column;
@@ -668,54 +732,67 @@
 
   @media (min-width: 768px) {
     .round-matches {
-      gap: 0.75rem;
+      gap: 0.875rem;
     }
   }
 
-  .btn-primary {
-    padding: 0.75rem 1.5rem;
-    background: linear-gradient(135deg, #4ecdc4 0%, #1a1a4e 100%);
-    color: white;
-    border-radius: 12px;
+  /* Cup info badges - matching CupHeader badge style */
+  .cup-info-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0.375rem 0.75rem;
+    font-size: 0.875rem;
     font-weight: 600;
-    text-decoration: none;
-    display: inline-block;
-    transition: all 0.2s;
+    white-space: nowrap;
+    border-radius: 9999px;
+    background: rgba(45, 166, 180, 0.1);
+    border: 1px solid rgba(45, 166, 180, 0.3);
+    color: var(--color-secondary-600);
   }
 
-  .btn-primary:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 20px rgba(78, 205, 196, 0.3);
+  .cup-status-badge {
+    background: rgba(78, 205, 196, 0.1);
+    border-color: rgba(78, 205, 196, 0.3);
+    color: var(--color-secondary-600);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
   }
 
-  .btn-secondary {
-    padding: 0.75rem 1.5rem;
-    background: white;
-    color: #1a1a4e;
-    border: 2px solid rgba(26, 26, 78, 0.1);
-    border-radius: 12px;
+  .cup-round-badge {
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .cup-prize-badge {
+    background: rgba(244, 208, 63, 0.1);
+    border-color: rgba(244, 208, 63, 0.3);
+    color: var(--color-warning-600);
+  }
+
+  .cup-winner-badge {
+    background: rgba(244, 208, 63, 0.1);
+    border-color: rgba(244, 208, 63, 0.3);
+    color: var(--color-warning-600);
+  }
+
+  .cup-countdown-badge :global(*) {
+    color: var(--color-secondary-600);
+    font-size: 0.875rem;
     font-weight: 600;
-    text-decoration: none;
-    display: inline-block;
-    transition: all 0.2s;
   }
 
-  .btn-secondary:hover {
-    border-color: #4ecdc4;
-    color: #4ecdc4;
-    transform: translateY(-2px);
+  @media (min-width: 768px) {
+    .cup-info-badge {
+      font-size: 1rem;
+      padding: 0.5rem 1rem;
+    }
   }
 
-  .text-navy {
-    color: #1a1a4e;
-  }
-
-  .text-teal {
-    color: #4ecdc4;
-  }
-
-  .text-yellow {
-    color: #f4d03f;
+  @media (min-width: 1024px) {
+    .cup-info-badge {
+      font-size: 1.125rem;
+    }
   }
 
   .cup-logo-detail {
@@ -730,28 +807,6 @@
     .cup-logo-detail {
       width: 80px;
       height: 80px;
-    }
-  }
-
-  /* Mobile responsive adjustments */
-  @media (max-width: 640px) {
-    .btn-primary,
-    .btn-secondary {
-      padding: 0.625rem 1.25rem;
-      font-size: 0.875rem;
-      width: 100%;
-    }
-
-    .card {
-      border-radius: 12px;
-    }
-
-    .text-3xl {
-      font-size: 1.75rem;
-    }
-
-    .text-base {
-      font-size: 0.875rem;
     }
   }
 </style>

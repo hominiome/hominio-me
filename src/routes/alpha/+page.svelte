@@ -545,7 +545,7 @@
       <!-- Active Matches Section -->
       {#if groupedMatches.length > 0}
         <div
-          class="sticky top-0 z-50 py-2 mb-3 px-4 sm:px-6 lg:px-8 relative"
+          class="sticky top-0 z-50 py-1 @md:py-2 mb-1 px-2 sm:px-4 lg:px-8 relative"
           style="margin-left: calc(-50vw + 50%); margin-right: calc(-50vw + 50%); width: 100vw;"
         >
           <div
@@ -563,14 +563,14 @@
       {/if}
 
       {#each groupedMatches as group (group.cupName + group.round)}
-        <div class="flex flex-col gap-4 mt-2">
+        <div class="flex flex-col gap-3 @md:gap-4 mt-0">
           {#if group.matches.length > 0}
             {@const cup = getCupById(group.cupId)}
             {#if cup}
               <CupHeader {cup} {purchases} {matches} />
             {/if}
           {/if}
-          <div class="flex flex-col gap-4">
+          <div class="flex flex-col gap-3 @md:gap-4">
             {#each group.matches as match (match.id)}
               {@const cup = getCupById(match.cupId)}
               {@const project1 = getProjectById(match.project1Id)}

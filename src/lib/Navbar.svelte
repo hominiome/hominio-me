@@ -1,5 +1,6 @@
 <script lang="ts">
   import { page } from "$app/stores";
+  import { goto } from "$app/navigation";
   import { Button, Icon } from "$lib/design-system/atoms";
 
   interface ModalButton {
@@ -15,6 +16,8 @@
     session,
     signInWithGoogle,
     isModalOpen = false,
+    showBack = false,
+    backUrl = "/alpha",
     onModalClose,
     modalLeftButtons = [],
     modalRightButtons = [],
@@ -22,6 +25,8 @@
     session: any;
     signInWithGoogle: () => Promise<void>;
     isModalOpen?: boolean;
+    showBack?: boolean;
+    backUrl?: string;
     onModalClose?: () => void;
     modalLeftButtons?: ModalButton[];
     modalRightButtons?: ModalButton[];
@@ -116,6 +121,23 @@
         <button onclick={signInWithGoogle} class="btn-signin"> Sign In </button>
       {/if}
     </div>
+
+    <!-- Back Button - Above Navbar -->
+    {#if showBack}
+      <div class="back-button-above-navbar">
+        <Button
+          variant="secondary"
+          icon="mdi:arrow-left"
+          iconPosition="left"
+          onclick={() => {
+            goto(backUrl);
+          }}
+          class="!rounded-full"
+        >
+          Back
+        </Button>
+      </div>
+    {/if}
 
     <!-- Mobile Bottom Navigation -->
     <div class="mobile-bottom-nav" class:modal-mode={isModalOpen}>
@@ -666,6 +688,32 @@
     height: 60px;
     backdrop-filter: none; /* No blur in modal mode */
   }
+
+  .back-button-above-navbar {
+    position: fixed;
+    bottom: calc(56px + 0.375rem + 0.5rem); /* Navbar height (56px) + margin-bottom (0.375rem) + gap (0.5rem) */
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 10001; /* Above navbar */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    max-width: 800px;
+    padding: 0 1rem;
+    pointer-events: none; /* Allow clicks to pass through container */
+  }
+
+  .back-button-above-navbar :global(button) {
+    pointer-events: auto; /* Re-enable clicks on button */
+  }
+
+  @media (min-width: 768px) {
+    .back-button-above-navbar {
+      padding: 0 1.5rem;
+    }
+  }
+
 
   /* Container for modal mode buttons - matches modal content max-width */
   .modal-nav-container {

@@ -257,14 +257,6 @@
       </Button>
     </div>
   {:else}
-    <!-- Back Button -->
-    <a
-      href="/alpha/projects"
-      class="text-brand-teal-500 hover:underline mb-6 inline-block"
-    >
-      ← Back to Projects
-    </a>
-
     <!-- Full-Width Video/Thumbnail Header -->
     {#if showVideoThumbnail}
       <div class="w-full mb-6 rounded-2xl overflow-hidden">

@@ -71,15 +71,7 @@
     <div class="cup-header">
       <div class="cup-header-top-row">
         <h3 class="cup-header-title">{cup.name}</h3>
-        <div class="prize-pool-display">
-          <div class="prize-pool-icon-circle">
-            <Icon name="mdi:currency-usd" size="xl" color="white" />
-          </div>
-          <div class="prize-pool-text">
-            <div class="prize-pool-value">{getPrizePoolForCup(cup.id)}</div>
-            <div class="prize-pool-label">Prize Pool</div>
-          </div>
-        </div>
+        <div class="prize-pool-value">{getPrizePoolForCup(cup.id)}</div>
       </div>
       <div class="cup-header-badges">
         {#if cup.currentRound}
@@ -104,6 +96,9 @@
             </span>
           </span>
         {/if}
+        <div class="prize-pool-icon-circle">
+          <Icon name="mdi:currency-usd" size="sm" color="white" />
+        </div>
       </div>
     </div>
   </div>
@@ -114,8 +109,14 @@
     display: flex;
     justify-content: center;
     width: 100%;
-    margin-bottom: 1rem;
+    margin-bottom: 0.5rem;
     max-width: 100%;
+  }
+
+  @media (min-width: 768px) {
+    .cup-header-wrapper {
+      margin-bottom: 1rem;
+    }
   }
 
   .cup-header {
@@ -151,15 +152,26 @@
     text-align: left;
   }
 
-  .prize-pool-display {
+  .prize-pool-value {
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: #081b47;
+    letter-spacing: -0.02em;
+    text-align: right;
+    margin: 0;
+  }
+
+  .cup-header-badges {
     display: flex;
     align-items: center;
-    gap: 0.75rem;
+    justify-content: flex-start;
+    gap: 0.5rem;
+    flex-wrap: wrap;
   }
 
   .prize-pool-icon-circle {
-    width: 3rem;
-    height: 3rem;
+    width: 2rem;
+    height: 2rem;
     border-radius: 50%;
     background: linear-gradient(135deg, #2da6b4 0%, #2399a8 100%);
     display: flex;
@@ -169,36 +181,7 @@
       0 4px 12px rgba(45, 166, 180, 0.3),
       0 0 0 2px rgba(45, 166, 180, 0.2);
     flex-shrink: 0;
-  }
-
-  .prize-pool-text {
-    display: flex;
-    flex-direction: column;
-    gap: 0.125rem;
-  }
-
-  .prize-pool-label {
-    font-size: 0.625rem;
-    font-weight: 700;
-    color: #2da6b4;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    line-height: 1;
-  }
-
-  .prize-pool-value {
-    font-size: 1.5rem;
-    font-weight: 900;
-    color: #1a5478;
-    line-height: 1;
-  }
-
-  .cup-header-badges {
-    display: flex;
-    align-items: center;
-    justify-content: flex-start;
-    gap: 0.5rem;
-    flex-wrap: wrap;
+    margin-left: auto;
   }
 
   .cup-badge {
@@ -240,17 +223,13 @@
       font-size: 1.25rem;
     }
 
-    .prize-pool-icon-circle {
-      width: 2.5rem;
-      height: 2.5rem;
-    }
-
-    .prize-pool-label {
-      font-size: 0.5625rem;
-    }
-
     .prize-pool-value {
       font-size: 1.25rem;
+    }
+
+    .prize-pool-icon-circle {
+      width: 1.75rem;
+      height: 1.75rem;
     }
 
     .cup-header-badges {
@@ -273,17 +252,13 @@
       font-size: 1.125rem;
     }
 
-    .prize-pool-icon-circle {
-      width: 2rem;
-      height: 2rem;
-    }
-
-    .prize-pool-label {
-      font-size: 0.5rem;
-    }
-
     .prize-pool-value {
-      font-size: 1rem;
+      font-size: 1.125rem;
+    }
+
+    .prize-pool-icon-circle {
+      width: 1.5rem;
+      height: 1.5rem;
     }
 
     .cup-header-badges {
