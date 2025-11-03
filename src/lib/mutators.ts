@@ -506,15 +506,6 @@ export function createMutators(authData: AuthData | undefined) {
           selectedProjectIds = [];
         }
 
-        console.log('[addProject] Current state:', {
-          cupId,
-          projectId,
-          currentSelectedIds: selectedProjectIds,
-          currentLength: selectedProjectIds.length,
-          cupSize: cupSize,
-          rawSelectedIds: cup.selectedProjectIds
-        });
-
         // Validate using the latest state
         if (selectedProjectIds.length >= cupSize) {
           throw new Error(`Cannot add more than ${cupSize} projects`);
@@ -526,14 +517,6 @@ export function createMutators(authData: AuthData | undefined) {
 
         // Add project to selected list (append, don't overwrite)
         selectedProjectIds.push(projectId);
-
-        console.log('[addProject] After append:', {
-          cupId,
-          projectId,
-          newSelectedIds: selectedProjectIds,
-          newLength: selectedProjectIds.length,
-          willUpdateWith: JSON.stringify(selectedProjectIds)
-        });
 
         // Update cup with the new array - Zero transaction ensures atomicity
         // CRITICAL: Only update selectedProjectIds and updatedAt - Zero's update merges with existing fields

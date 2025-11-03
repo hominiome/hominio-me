@@ -303,7 +303,6 @@
 
       await Promise.all(fakeProjectPromises);
 
-      console.log(`✅ Created ${fakesToCreate.length} fake projects`);
       showSuccess(`🎉 Created ${fakesToCreate.length} fake projects!`);
 
       // Wait a bit for Zero to sync
