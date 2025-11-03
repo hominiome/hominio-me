@@ -44,7 +44,10 @@
   const zeroServerUrl = browser
     ? (() => {
         // Check if we're in dev (localhost)
-        if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+        if (
+          window.location.hostname === "localhost" ||
+          window.location.hostname === "127.0.0.1"
+        ) {
           return "http://localhost:4848";
         }
         // Production: use domain utility
@@ -87,19 +90,25 @@
         // New Architecture: Cookie-Based Auth Only (No JWT)
         // zero-cache forwards cookies to our server endpoints
         // Server reads BetterAuth session from cookies
-        
+
         // Debug: Log Zero server URL to help diagnose connection issues (only if URL is invalid)
         // Note: PUBLIC_ZERO_SYNC_DOMAIN may be undefined in dev - domain utility handles this gracefully
-        
+
         // Validate server URL has proper scheme
-        if (!zeroServerUrl || (!zeroServerUrl.startsWith('http://') && !zeroServerUrl.startsWith('https://') && !zeroServerUrl.startsWith('ws://') && !zeroServerUrl.startsWith('wss://'))) {
+        if (
+          !zeroServerUrl ||
+          (!zeroServerUrl.startsWith("http://") &&
+            !zeroServerUrl.startsWith("https://") &&
+            !zeroServerUrl.startsWith("ws://") &&
+            !zeroServerUrl.startsWith("wss://"))
+        ) {
           const error = `Invalid Zero server URL: "${zeroServerUrl}". Must start with http://, https://, ws://, or wss://`;
-          console.error('[Zero]', error);
+          console.error("[Zero]", error);
           zeroError = error;
           zeroReady = false;
           return;
         }
-        
+
         zero = new Zero({
           server: zeroServerUrl,
           schema,
@@ -109,12 +118,12 @@
           // Configure synced queries endpoint (uses cookie-based auth)
           // Uses domain utility to handle both www and non-www domains
           getQueriesURL: browser
-            ? getMainDomainUrl('/alpha/api/zero/get-queries')
+            ? getMainDomainUrl("/alpha/api/zero/get-queries")
             : undefined,
           // Configure custom mutators endpoint (uses cookie-based auth)
           // Uses domain utility to handle both www and non-www domains
           mutateURL: browser
-            ? getMainDomainUrl('/alpha/api/zero/push')
+            ? getMainDomainUrl("/alpha/api/zero/push")
             : undefined,
           // ⚠️ NO AUTH FUNCTION - we use cookie-based auth only
           // Cookies are automatically forwarded by zero-cache:

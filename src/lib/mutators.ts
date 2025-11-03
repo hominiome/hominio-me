@@ -239,9 +239,9 @@ export function createMutators(authData: AuthData | undefined) {
         }
 
         // Update notification to mark as read
-        await tx.mutate.notification.update({ 
-          id, 
-          read: 'true' 
+        await tx.mutate.notification.update({
+          id,
+          read: 'true'
         });
       },
 
@@ -267,9 +267,9 @@ export function createMutators(authData: AuthData | undefined) {
 
         // Mark each one as read
         for (const notification of notifications) {
-          await tx.mutate.notification.update({ 
-            id: notification.id, 
-            read: 'true' 
+          await tx.mutate.notification.update({
+            id: notification.id,
+            read: 'true'
           });
         }
       },
@@ -318,14 +318,14 @@ export function createMutators(authData: AuthData | undefined) {
         }
       ) => {
         const { id } = args;
-        
+
         // Read existing purchase to check it exists
         const purchase = await tx.query.identityPurchase.where('id', id).one();
-        
+
         if (!purchase) {
           throw new Error('Purchase not found');
         }
-        
+
         // Delete purchase
         await tx.mutate.identityPurchase.delete({ id });
       },
@@ -478,7 +478,7 @@ export function createMutators(authData: AuthData | undefined) {
         // Normalize status: handle null, undefined, empty string, or whitespace-only strings
         const rawStatus = cup.status;
         const cupStatus = rawStatus ? String(rawStatus).trim().toLowerCase() : '';
-        
+
         // Only block if status is explicitly set to something other than 'draft'
         if (cupStatus && cupStatus !== 'draft') {
           throw new Error(`Cannot modify projects in active or completed cups. Current status: "${rawStatus || '(empty)'}"`);
@@ -541,22 +541,22 @@ export function createMutators(authData: AuthData | undefined) {
       ) => {
         const { cupId, projectId } = args;
 
-            // Read cup ONCE right before updating to get the absolute latest state
-            // This ensures we don't overwrite concurrent changes during rebase
-            // In Zero transactions, this read sees all committed changes up to this point
-            // CRITICAL: Must call .run() to execute the query
-            const cup = await tx.query.cup.where('id', cupId).one().run();
+        // Read cup ONCE right before updating to get the absolute latest state
+        // This ensures we don't overwrite concurrent changes during rebase
+        // In Zero transactions, this read sees all committed changes up to this point
+        // CRITICAL: Must call .run() to execute the query
+        const cup = await tx.query.cup.where('id', cupId).one().run();
 
-            if (!cup) {
-              throw new Error('Cup not found');
-            }
+        if (!cup) {
+          throw new Error('Cup not found');
+        }
 
         // Allow removing projects if status is 'draft', empty, null, or undefined
         // (treat empty/null/undefined as draft for new cups)
         // Normalize status: handle null, undefined, empty string, or whitespace-only strings
         const rawStatus = cup.status;
         const cupStatus = rawStatus ? String(rawStatus).trim().toLowerCase() : '';
-        
+
         // Only block if status is explicitly set to something other than 'draft'
         if (cupStatus && cupStatus !== 'draft') {
           throw new Error(`Cannot modify projects in active or completed cups. Current status: "${rawStatus || '(empty)'}"`);
