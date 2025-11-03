@@ -1,56 +1,30 @@
-# fly.toml for sync service (Zero cache server)
-# This is a separate Fly.io app that runs the Zero cache server
+# fly.toml for Zero Sync Service (sync.hominio.me)
+# This is a separate Fly.io app for the zero-cache service
 
 app = 'hominio-me-sync'
 primary_region = 'fra'
 
 [build]
-# Use official Zero Docker image - latest version (pushed most recently)
-image = "registry.hub.docker.com/rocicorp/zero:0.24"
-
-[http_service]
-internal_port = 4848
-force_https = true
-# Prevent auto-shutdown - Zero cache needs to stay running to maintain replication
-auto_stop_machines = "off"
-# Keep exactly one machine running - multiple instances cause replication slot conflicts
-# IMPORTANT: Max 1 machine, no auto-scaling allowed
-min_machines_running = 1
-# Explicitly disable auto-scaling by not setting concurrency limits
-# The scale count is enforced via 'fly scale count 1' command
-
-[[http_service.checks]]
-# Increased grace period to allow Zero to fully initialize and avoid premature health check failures
-grace_period = "60s"
-interval = "30s"
-method = "GET"
-timeout = "10s"
-path = "/"
-
-[[vm]]
-memory = "2gb"
-cpu_kind = "shared"
-cpus = 2
-
-[mounts]
-source = "sync_sqlite_db"
-destination = "/data"
+  # Build from same repo
+  # You may need a separate Dockerfile or build command for zero-cache
 
 [env]
-ZERO_REPLICA_FILE = "/data/sync-replica.db"
-ZERO_PORT = "4848"
-# ZERO_UPSTREAM_DB will be set via Fly.io secrets
-# IMPORTANT: Must use DIRECT connection (not pooler) for replication slots!
-# Pooler connections don't support logical replication and will cause:
-# "terminating connection due to administrator command" errors
-# Use: bun scripts/convert-to-direct-connection.js <your-pooler-url>
-# ZERO_AUTH_SECRET will be set via Fly.io secrets
-# ZERO_ADMIN_PASSWORD will be set via Fly.io secrets (reusing ZERO_AUTH_SECRET value)
-LOG_LEVEL = "info"
-# Change streamer mode: dedicated mode shuts down when another takes over (single instance)
-ZERO_CHANGE_STREAMER_MODE = "dedicated"
-# Increase connection timeout to handle high-latency database connections
-ZERO_DB_CONNECT_TIMEOUT = "15"
-# Prevent Postgres from terminating idle replication connections
-# This helps avoid "terminating connection due to administrator command" errors
-PGCONNECT_TIMEOUT = "15"
+  PORT = '4848'
+  NODE_ENV = 'production'
+
+[http_service]
+  internal_port = 4848
+  force_https = true
+  auto_stop_machines = 'stop'
+  auto_start_machines = true
+  min_machines_running = 1  # Keep sync service always running
+  processes = ['sync']
+
+[[vm]]
+  memory = '512mb'
+  cpu_kind = 'shared'
+  cpus = 1
+
+[[mounts]]
+  source = "zero_replica"
+  destination = "/data"

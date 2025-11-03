@@ -517,10 +517,44 @@
     height: 20px;
   }
 
+  /* Tablet Responsive */
+  @media (min-width: 769px) and (max-width: 1024px) {
+    .winner-card {
+      max-width: 750px; /* Wider on tablets */
+      margin: 0 auto;
+    }
+
+    .cup-header-section {
+      padding: 1.75rem;
+    }
+
+    .cup-name {
+      font-size: 1.75rem;
+    }
+
+    .trophy-icon-large {
+      font-size: 3.5rem;
+    }
+
+    .project-card-winner {
+      margin: 1.25rem;
+    }
+
+    .project-info-section {
+      padding: 1.75rem;
+    }
+
+    .project-title {
+      font-size: 1.75rem;
+    }
+  }
+
   /* Mobile Responsive */
   @media (max-width: 768px) {
     .winner-card {
       border-radius: 16px;
+      max-width: 100%; /* Use full width on mobile */
+      margin: 0 0.5rem; /* Reduce side margins */
     }
 
     .cup-header-section {
@@ -536,7 +570,7 @@
     }
 
     .project-card-winner {
-      margin: 0.75rem;
+      margin: 0.5rem; /* Reduce inner margins for more width */
     }
 
     .project-info-section {
@@ -550,6 +584,17 @@
     .project-more-button {
       padding: 0.25rem 0.5rem;
       font-size: 0.6875rem;
+    }
+  }
+
+  /* Very small mobile devices */
+  @media (max-width: 480px) {
+    .winner-card {
+      margin: 0 0.25rem; /* Even smaller margins on very small screens */
+    }
+
+    .project-card-winner {
+      margin: 0.375rem; /* Smaller inner margins */
     }
   }
 </style>

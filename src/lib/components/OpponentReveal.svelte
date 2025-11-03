@@ -1,17 +1,24 @@
-<script>
+<script lang="ts">
   import { onMount } from "svelte";
   import { getUserProfile } from "$lib/userProfileCache";
+  import { useZero } from "$lib/zero-utils";
+  import { projectById } from "$lib/synced-queries";
 
   let { matchId = "", opponentProjectId = "" } = $props();
 
-  let opponentProject = $state(null);
+  let opponentProject = $state<any>(null);
   let opponentProfile = $state({
     name: null,
     image: null,
   });
   let spinning = $state(true);
   let revealed = $state(false);
-  let startTime = $state(null);
+  let startTime = $state<number | null>(null);
+
+  // Get Zero context
+  const zeroContext = useZero();
+  let zero: any = null;
+  let projectView: any = null;
 
   onMount(async () => {
     // Start spinning immediately
@@ -26,22 +33,42 @@
     }, 5500);
 
     try {
-      // Fetch project details in parallel
-      const projectResponse = await fetch(
-        `/alpha/api/project/${opponentProjectId}`
-      );
-      if (projectResponse.ok) {
-        opponentProject = await projectResponse.json();
+      // Fetch project details using Zero synced query
+      if (opponentProjectId && zeroContext) {
+        // Wait for Zero to be ready
+        while (!zeroContext.isReady() || !zeroContext.getInstance()) {
+          await new Promise((resolve) => setTimeout(resolve, 100));
+        }
+        zero = zeroContext.getInstance();
+
+        // Use synced query to fetch project
+        const projectQuery = projectById(opponentProjectId);
+        projectView = zero.materialize(projectQuery);
+        
+        projectView.addListener((data: any) => {
+          const projects = Array.from(data);
+          if (projects.length > 0 && projects[0]) {
+            opponentProject = projects[0];
 
         // Fetch founder profile
         if (opponentProject?.userId) {
-          const profile = await getUserProfile(opponentProject.userId);
+              getUserProfile(opponentProject.userId).then((profile) => {
           opponentProfile = { name: profile.name, image: profile.image };
+              });
+            }
         }
+        });
       }
     } catch (error) {
       console.error("Failed to load opponent:", error);
     }
+
+    // Cleanup
+    return () => {
+      if (projectView) {
+        projectView.destroy();
+      }
+    };
   });
 </script>
 

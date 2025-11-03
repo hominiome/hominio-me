@@ -44,11 +44,11 @@
       // Fire and forget - Zero handles optimistic updates
       zero.mutate.cup.create({
         id: cupId,
-        name: name.trim(),
-        description: description.trim() || "",
-        logoImageUrl: logoImageUrl.trim() || "",
-        size: size,
-        creatorId: $session.data.user.id,
+          name: name.trim(),
+          description: description.trim() || "",
+          logoImageUrl: logoImageUrl.trim() || "",
+          size: size,
+          creatorId: $session.data.user.id,
         selectedProjectIds: "[]",
         status: "draft",
         currentRound: "",

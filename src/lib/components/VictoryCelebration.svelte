@@ -1,6 +1,8 @@
-<script>
+<script lang="ts">
   import { onMount } from "svelte";
   import Icon from "@iconify/svelte";
+  import { useZero } from "$lib/zero-utils";
+  import { cupById } from "$lib/synced-queries";
 
   let {
     cupId = "",
@@ -10,6 +12,11 @@
   let cupName = $state(initialCupName);
   let animationPhase = $state("confetti"); // confetti -> trophy -> celebrate
   let confettiParticles = $state([]);
+
+  // Get Zero context
+  const zeroContext = useZero();
+  let zero: any = null;
+  let cupView: any = null;
 
   onMount(async () => {
     // Create confetti particles
@@ -25,16 +32,25 @@
       });
     }
 
-    // Fetch cup name if cupId is provided and we don't have it yet
-    if (cupId && !cupName) {
+    // Fetch cup name using Zero synced query if cupId is provided and we don't have it yet
+    if (cupId && !cupName && zeroContext) {
       try {
-        // Use ZeroDB query to fetch cup name
-        // Note: This requires Zero context, so we'll use an API call instead
-        const response = await fetch(`/alpha/api/cup/${cupId}`);
-        if (response.ok) {
-          const cup = await response.json();
-          cupName = cup?.name || "";
+        // Wait for Zero to be ready
+        while (!zeroContext.isReady() || !zeroContext.getInstance()) {
+          await new Promise((resolve) => setTimeout(resolve, 100));
         }
+        zero = zeroContext.getInstance();
+
+        // Use synced query to fetch cup
+        const cupQuery = cupById(cupId);
+        cupView = zero.materialize(cupQuery);
+        
+        cupView.addListener((data: any) => {
+          const cups = Array.from(data);
+          if (cups.length > 0 && cups[0]) {
+            cupName = cups[0].name || "";
+        }
+        });
       } catch (error) {
         console.error("Failed to fetch cup name:", error);
       }
@@ -49,6 +65,13 @@
     setTimeout(() => {
       animationPhase = "celebrate";
     }, 3000);
+
+    // Cleanup
+    return () => {
+      if (cupView) {
+        cupView.destroy();
+      }
+    };
   });
 </script>
 

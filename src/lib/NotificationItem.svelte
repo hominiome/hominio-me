@@ -48,8 +48,8 @@
   function handleMarkRead() {
     if (isRead) return;
     // Just call the callback - parent handles Zero mutation
-    onMarkRead?.(notification.id);
-  }
+        onMarkRead?.(notification.id);
+      }
 
   function handleKeydown(e: KeyboardEvent) {
     if (e.key === "Enter" || e.key === " ") {

@@ -63,9 +63,9 @@
       // Fire and forget - Zero handles optimistic updates
       zero.mutate.cup.update({
         id: cup.id,
-        name: name.trim(),
-        description: description.trim() || "",
-        logoImageUrl: logoImageUrl.trim() || "",
+          name: name.trim(),
+          description: description.trim() || "",
+          logoImageUrl: logoImageUrl.trim() || "",
       });
 
       // Redirect back to cup page

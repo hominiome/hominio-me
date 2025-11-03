@@ -762,6 +762,14 @@
     padding: 0;
   }
 
+  /* Tablet Responsive */
+  @media (min-width: 769px) and (max-width: 1024px) {
+    .winners-grid {
+      grid-template-columns: repeat(auto-fit, minmax(700px, 1fr));
+      gap: 2.5rem;
+    }
+  }
+
   /* Active Matches Section */
   .active-matches-section {
     margin-bottom: 0.5rem;

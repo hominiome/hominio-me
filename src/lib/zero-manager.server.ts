@@ -117,37 +117,45 @@ export async function startZero(): Promise<void> {
     const { ZERO_CHANGE_STREAMER_PROTOCOL, ZERO_TARGET_CLIENT_ROW_COUNT, ...restEnv } = process.env;
     
     // Build environment object for child process
-    const childEnv: Record<string, string> = {
+    const childEnv: Record<string, string | undefined> = {
         ...restEnv, // Include all env vars except deprecated ones
-        ZERO_UPSTREAM_DB: enhancedDbUrl,
-        ZERO_REPLICA_FILE: './zero-replica.db',
-        ZERO_AUTH_SECRET: ZERO_AUTH_SECRET,
-        // Also set these for compatibility
-        SECRET_ZERO_DEV_PG: enhancedDbUrl,
-        SECRET_ZERO_AUTH_SECRET: ZERO_AUTH_SECRET,
-        // Configure synced queries endpoint for zero-cache
-        ZERO_GET_QUERIES_URL: getQueriesUrl,
-        // Forward cookies to server for synced queries (cookie-based auth)
-        // This allows BetterAuth cookies to be forwarded to our get-queries endpoint
-        ZERO_GET_QUERIES_FORWARD_COOKIES: 'true',
+                ZERO_UPSTREAM_DB: enhancedDbUrl,
+                ZERO_REPLICA_FILE: './zero-replica.db',
+                ZERO_AUTH_SECRET: ZERO_AUTH_SECRET,
+                // Also set these for compatibility
+                SECRET_ZERO_DEV_PG: enhancedDbUrl,
+                SECRET_ZERO_AUTH_SECRET: ZERO_AUTH_SECRET,
+                // Configure synced queries endpoint for zero-cache
+                ZERO_GET_QUERIES_URL: getQueriesUrl,
+                // Forward cookies to server for synced queries (cookie-based auth)
+                ZERO_GET_QUERIES_FORWARD_COOKIES: 'true',
+        
         // Configure custom mutators endpoint for zero-cache
         ZERO_PUSH_URL: pushUrl,
         // Forward cookies to server for custom mutators (cookie-based auth)
-        // ⚠️ Correct env var name: ZERO_MUTATE_FORWARD_COOKIES (not ZERO_PUSH_FORWARD_COOKIES)
+        // Per Zero docs: ZERO_MUTATE_FORWARD_COOKIES (not ZERO_PUSH_FORWARD_COOKIES)
         ZERO_MUTATE_FORWARD_COOKIES: 'true',
-        // Add connection timeout and retry settings
-        ZERO_DB_CONNECT_TIMEOUT: '10', // 10 seconds
-        NODE_ENV: process.env.NODE_ENV || 'development',
+                // Add connection timeout and retry settings
+                ZERO_DB_CONNECT_TIMEOUT: '10', // 10 seconds
+                NODE_ENV: process.env.NODE_ENV || 'development',
+        // Explicitly unset deprecated environment variables
+        ZERO_CHANGE_STREAMER_PROTOCOL: undefined,
+        ZERO_TARGET_CLIENT_ROW_COUNT: undefined,
     };
     
-    // Explicitly delete deprecated environment variables if they somehow got through
-    delete childEnv.ZERO_CHANGE_STREAMER_PROTOCOL;
-    delete childEnv.ZERO_TARGET_CLIENT_ROW_COUNT;
+    // Remove undefined values (some tools don't like undefined env vars)
+    Object.keys(childEnv).forEach(key => {
+        if (childEnv[key] === undefined) {
+            delete childEnv[key];
+        }
+    });
     
     zeroProcess = spawn(
         'zero-cache-dev',
         [
             '--schema-path=./src/zero-schema.ts',
+            '--push-forward-cookies', // Explicitly enable cookie forwarding for mutators
+            '--get-queries-forward-cookies', // Explicitly enable cookie forwarding for queries
         ],
         {
             env: childEnv,

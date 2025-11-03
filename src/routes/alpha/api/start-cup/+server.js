@@ -16,7 +16,7 @@ export async function POST({ request }) {
   const now = new Date().toISOString();
 
   try {
-    // Get cup
+    // Get cup (reads Zero-synced selectedProjectIds)
     const cup = await zeroDb
       .selectFrom("cup")
       .selectAll()
@@ -31,7 +31,7 @@ export async function POST({ request }) {
       return json({ error: "Cup already started" }, { status: 400 });
     }
 
-    // Check if cup has selected projects (no need to check matches - they don't exist yet)
+    // Read selectedProjectIds from Zero-synced cup data
     let selectedProjectIds = [];
     try {
       if (cup.selectedProjectIds && cup.selectedProjectIds.trim()) {
@@ -45,8 +45,9 @@ export async function POST({ request }) {
     }
 
     const cupSize = cup.size || 16;
+    
     console.log(
-      `Cup ${cupId}: size=${cupSize}, selected=${selectedProjectIds.length}, selectedProjectIds=${cup.selectedProjectIds}`
+      `Cup ${cupId}: size=${cupSize}, selected=${selectedProjectIds.length}, selectedProjectIds=${JSON.stringify(selectedProjectIds)}`
     );
 
     if (selectedProjectIds.length !== cupSize) {

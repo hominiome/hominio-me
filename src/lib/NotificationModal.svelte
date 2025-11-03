@@ -156,7 +156,7 @@
   function markAsRead() {
     if (notification.read === "true") return;
     // Just call the callback - parent handles Zero mutation
-    onMarkRead?.(notification.id);
+        onMarkRead?.(notification.id);
   }
 
   function handleBackdropClick(event: MouseEvent) {

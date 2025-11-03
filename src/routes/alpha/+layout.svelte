@@ -91,9 +91,9 @@
             ? `${window.location.origin}/alpha/api/zero/push`
             : undefined,
           // ⚠️ NO AUTH FUNCTION - we use cookie-based auth only
-          // Cookies are automatically forwarded by zero-cache when:
-          // - ZERO_GET_QUERIES_FORWARD_COOKIES=true
-          // - ZERO_MUTATE_FORWARD_COOKIES=true
+          // Cookies are automatically forwarded by zero-cache:
+          // - Get-queries: cookies forwarded automatically (no env var needed)
+          // - Push/mutators: ZERO_PUSH_FORWARD_COOKIES=true
           // Our server endpoints (get-queries, push) read BetterAuth session from cookies
         });
 

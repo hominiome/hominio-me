@@ -217,7 +217,7 @@ export const POST: RequestHandler = async ({ request }) => {
     }
 
     // SvelteKit request is compatible with standard Request interface
-    // Zero will forward cookies automatically if ZERO_GET_QUERIES_FORWARD_COOKIES=true
+    // Zero forwards cookies automatically for get-queries requests (no env var needed)
     const result = await handleGetQueriesRequest(getQuery, schema, request);
     return json(result);
   } catch (error) {

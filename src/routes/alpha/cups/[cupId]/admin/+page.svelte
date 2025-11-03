@@ -25,7 +25,6 @@
   let matches = $state([]);
   let votes = $state([]); // All vote records
   let loading = $state(true);
-  let addingProjects = $state(false);
   let creatingFakeProjects = $state(false);
   let ending = $state(false);
   let startingNextRound = $state(false);
@@ -151,11 +150,13 @@
     return `round_${size}`;
   }
 
-  // Get selected project IDs from cup.selectedProjectIds (not from matches during selection)
+  // Get selected project IDs from Zero-synced cup.selectedProjectIds
+  // - For draft cups: read from cup.selectedProjectIds (synced via Zero)
+  // - For active/completed cups: read from matches
   const selectedProjectIds = $derived(() => {
     if (!cup) return new Set();
 
-    // If cup is draft, read from selectedProjectIds field
+    // If cup is draft, read from Zero-synced selectedProjectIds field
     if (cup.status === "draft") {
       try {
         const ids = cup.selectedProjectIds
@@ -206,58 +207,38 @@
     return selectedProjects().length === (cup.size || 16);
   });
 
-  // Add a project to the cup
-  async function addProjectToCup(projectId) {
-    if (!cup || addingProjects || !canAddMoreProjects() || !zero) return;
-
-    addingProjects = true;
-
-    try {
-      // Use Zero custom mutator for adding project to cup (admin-only)
-      // Fire and forget - Zero handles optimistic updates
-      zero.mutate.cup.addProject({
-        cupId,
-        projectId,
-      });
-
-      showSuccess("Project added to cup!");
-    } catch (error) {
-      console.error("Failed to add project:", error);
-      const message =
-        error instanceof Error
-          ? error.message
-          : "Failed to add project. Please try again.";
-      showError(message);
-    } finally {
-      addingProjects = false;
+  // Add a project to the cup (Zero mutation - synced)
+  function addProjectToCup(projectId) {
+    if (!cup || !canAddMoreProjects() || !zero) return;
+    
+    // Only allow adding during draft phase
+    if (cup.status !== "draft") {
+      showError("Cannot modify projects in active or completed cups");
+      return;
     }
+    
+    // Fire and forget - Zero handles optimistic updates and conflicts automatically
+    zero.mutate.cup.addProject({
+      cupId,
+      projectId,
+    });
   }
 
-  // Remove a project from the cup
-  async function removeProjectFromCup(projectId) {
-    if (!cup || addingProjects || !zero) return;
-
-    addingProjects = true;
-
-    try {
-      // Use Zero custom mutator for removing project from cup (admin-only)
-      // Fire and forget - Zero handles optimistic updates
-      zero.mutate.cup.removeProject({
-        cupId,
-        projectId,
-      });
-
-      showSuccess("Project removed from cup!");
-    } catch (error) {
-      console.error("Failed to remove project:", error);
-      const message =
-        error instanceof Error
-          ? error.message
-          : "Failed to remove project. Please try again.";
-      showError(message);
-    } finally {
-      addingProjects = false;
+  // Remove a project from the cup (Zero mutation - synced)
+  function removeProjectFromCup(projectId) {
+    if (!cup || !zero) return;
+    
+    // Only allow removing during draft phase
+    if (cup.status !== "draft") {
+      showError("Cannot modify projects in active or completed cups");
+      return;
     }
+    
+    // Fire and forget - Zero handles optimistic updates and conflicts automatically
+    zero.mutate.cup.removeProject({
+      cupId,
+      projectId,
+    });
   }
 
   // Create fake projects
@@ -376,13 +357,17 @@
     });
 
     try {
-      // Use server-side API to ensure persistence
+      // Use server-side API - reads selectedProjectIds from Zero-synced cup data
       const response = await fetch("/alpha/api/start-cup", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ cupId: cupId, endDate }), // Use cupId from URL params
+        body: JSON.stringify({ 
+          cupId: cupId, 
+          endDate,
+          // No need to send selectedProjectIds - server reads from Zero-synced cup
+        }),
       });
 
       if (!response.ok) {
@@ -732,7 +717,7 @@
                   {#each availableProjects() as project}
                     <button
                       onclick={() => addProjectToCup(project.id)}
-                      disabled={!canAddMoreProjects() || addingProjects}
+                      disabled={!canAddMoreProjects()}
                       class="project-card"
                       class:disabled={!canAddMoreProjects()}
                     >
@@ -788,7 +773,6 @@
                   {#each selectedProjects() as project}
                     <button
                       onclick={() => removeProjectFromCup(project.id)}
-                      disabled={addingProjects}
                       class="project-card project-card-selected"
                     >
                       <div class="project-card-content">
