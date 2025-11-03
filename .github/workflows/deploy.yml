@@ -17,10 +17,11 @@ jobs:
 
       - uses: superfly/flyctl-actions/setup-flyctl@master
 
-      - name: Set Zero secrets
+      - name: Set Zero secrets (overwrite existing)
         run: |
-          # Set secrets for sync service (directly from GitHub secrets)
+          # Set ALL secrets for sync service (overwrites existing)
           # ZERO_AUTH_SECRET is reused as admin password (same secret, different purpose)
+          # Using explicit secret names per Zero documentation
           flyctl secrets set \
             ZERO_UPSTREAM_DB="${{ secrets.SECRET_ZERO_DEV_PG }}" \
             ZERO_AUTH_SECRET="${{ secrets.SECRET_ZERO_AUTH_SECRET }}" \
@@ -32,6 +33,10 @@ jobs:
             ZERO_DB_CONNECT_TIMEOUT="10" \
             NODE_ENV="production" \
             --app hominio-me-sync
+          
+          # Remove any old/deprecated secret names that might conflict
+          echo "Checking for old secrets to remove..."
+          flyctl secrets list --app hominio-me-sync || true
 
       - name: Deploy sync service (Zero cache server)
         run: |

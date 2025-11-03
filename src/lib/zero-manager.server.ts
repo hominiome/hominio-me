@@ -172,14 +172,14 @@ export async function startZero(): Promise<void> {
         }
     });
 
-        zeroProcess = spawn(
-            'zero-cache-dev',
-            [
-                '--schema-path=./src/zero-schema.ts',
-                '--admin-password', ZERO_AUTH_SECRET, // zero-cache-dev requires this
-                '--mutate-forward-cookies', // Explicitly enable cookie forwarding for mutators (current preferred)
-                '--get-queries-forward-cookies', // Explicitly enable cookie forwarding for queries
-            ],
+    zeroProcess = spawn(
+        'zero-cache-dev',
+        [
+            '--schema-path=./src/zero-schema.ts',
+            '--admin-password', ZERO_AUTH_SECRET, // zero-cache-dev requires this
+            '--mutate-forward-cookies', // Explicitly enable cookie forwarding for mutators (current preferred)
+            '--get-queries-forward-cookies', // Explicitly enable cookie forwarding for queries
+        ],
         {
             env: childEnv,
             stdio: ['ignore', 'pipe', 'pipe'], // Capture stdout and stderr
