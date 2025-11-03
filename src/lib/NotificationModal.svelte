@@ -153,24 +153,10 @@
     }
   });
 
-  async function markAsRead() {
+  function markAsRead() {
     if (notification.read === "true") return;
-
-    try {
-      const response = await fetch("/alpha/api/notifications/mark-read", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ notificationId: notification.id }),
-      });
-
-      if (response.ok) {
-        onMarkRead?.(notification.id);
-      }
-    } catch (error) {
-      console.error("Failed to mark notification as read:", error);
-    }
+    // Just call the callback - parent handles Zero mutation
+    onMarkRead?.(notification.id);
   }
 
   function handleBackdropClick(event: MouseEvent) {

@@ -45,24 +45,10 @@
 
   const relativeTime = $derived(formatRelativeTime(createdAt));
 
-  async function handleMarkRead() {
+  function handleMarkRead() {
     if (isRead) return;
-
-    try {
-      const response = await fetch("/alpha/api/notifications/mark-read", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ notificationId: notification.id }),
-      });
-
-      if (response.ok) {
-        onMarkRead?.(notification.id);
-      }
-    } catch (error) {
-      console.error("Failed to mark notification as read:", error);
-    }
+    // Just call the callback - parent handles Zero mutation
+    onMarkRead?.(notification.id);
   }
 
   function handleActionClick(url: string, event: MouseEvent) {
