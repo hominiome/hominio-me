@@ -42,13 +42,20 @@ export const auth = betterAuth({
     : {}),
   plugins: [sveltekitCookies(getRequestEvent)],
   advanced: {
-    // Enable cross-subdomain cookies for Zero sync (hominio.me ↔ sync.hominio.me)
-    // This is the proper BetterAuth way to enable cookie sharing across subdomains
+    // Enable cross-subdomain cookies for Zero sync (REQUIRED by Zero docs)
+    // Zero requires cookies to be accessible from both hominio.me and sync.hominio.me
+    // Cookies are set for .hominio.me (parent domain) so they work on both subdomains
     crossSubDomainCookies: {
       enabled: true,
-      domain: 'hominio.me', // Root domain (BetterAuth will add the dot automatically)
+      domain: 'hominio.me', // Root domain (BetterAuth sets cookies for .hominio.me)
     },
-    // Use secure cookies in production (HTTPS only)
+    // Force secure cookies (HTTPS only) - REQUIRED for production
     useSecureCookies: true,
+    // Default cookie attributes for all BetterAuth cookies
+    defaultCookieAttributes: {
+      httpOnly: true, // Prevent JavaScript access (XSS protection)
+      secure: true,   // HTTPS only (required for cross-subdomain)
+      sameSite: 'lax', // Lax allows cookies in same-site context (subdomains are same-site)
+    },
   },
 });
