@@ -78,18 +78,31 @@ export function getZeroSyncDomain(): string {
 /**
  * Get full HTTPS URL for the main domain
  * Returns both hominio.me and www.hominio.me variants based on current request
+ * Handles localhost for development (uses http:// with current port)
  * @param path - Optional path to append (e.g., "/alpha/api/zero/get-queries")
- * @param preferWww - If true, prefer www. variant (default: detect from current location)
+ * @param preferWww - If True, prefer www. variant (default: detect from current location)
  */
 export function getMainDomainUrl(path: string = '', preferWww?: boolean): string {
   const baseDomain = getBaseDomain();
   
   // In browser, detect if we're on www or non-www
   if (browser) {
+    // Handle localhost for development
+    if (baseDomain === 'localhost' || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+      // Use current origin (http://localhost:5173) for localhost
+      return `${window.location.origin}${path}`;
+    }
+    
     const isWww = window.location.hostname.startsWith('www.');
     const useWww = preferWww ?? isWww;
     const domain = useWww ? `www.${baseDomain}` : baseDomain;
     return `https://${domain}${path}`;
+  }
+  
+  // Server-side: handle localhost
+  if (baseDomain === 'localhost') {
+    // For server-side in dev, use localhost with default port
+    return `http://localhost:5173${path}`;
   }
   
   // Server-side: default to non-www, but accept both
