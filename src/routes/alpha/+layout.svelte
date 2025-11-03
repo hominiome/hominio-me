@@ -876,8 +876,13 @@
   modalRightButtons={modalRightButtons()}
 />
 
-<div class="content-wrapper">
-  {@render children()}
+<!-- Background -->
+<div class="fixed inset-0 w-full h-full -z-10 bg-brand-cream-50"></div>
+
+<div class="content-wrapper relative min-h-screen">
+  <div class="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
+    {@render children()}
+  </div>
 </div>
 
 <ToastContainer />

@@ -1,2 +1,207 @@
 @import 'tailwindcss';
 @plugin '@tailwindcss/typography';
+@plugin '@tailwindcss/container-queries';
+
+/* Font Face Declarations */
+@font-face {
+  font-family: 'Yeseva One';
+  src: url('/fonts/Yeseva_One/YesevaOne-Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Montserrat';
+  src: url('/fonts/Montserrat/Montserrat-VariableFont_wght.ttf') format('truetype-variations');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Montserrat';
+  src: url('/fonts/Montserrat/Montserrat-Italic-VariableFont_wght.ttf') format('truetype-variations');
+  font-weight: 100 900;
+  font-style: italic;
+  font-display: swap;
+}
+
+@theme {
+  /* Brand Colors - Light Mode (Dark Mode Ready) */
+  /* Navy - Primary Dark (Darker Marine Blue, No Purple Tint) */
+  --color-brand-navy-50: #f0f2f5;
+  --color-brand-navy-100: #e0e5eb;
+  --color-brand-navy-200: #c1cad7;
+  --color-brand-navy-300: #a2b0c3;
+  --color-brand-navy-400: #8395af;
+  --color-brand-navy-500: #081b47;
+  --color-brand-navy-600: #061836;
+  --color-brand-navy-700: #051529;
+  --color-brand-navy-800: #040f1c;
+  --color-brand-navy-900: #030a14;
+  --color-brand-navy-950: #02050a;
+
+  /* Teal/Turquoise - Primary Accent */
+  --color-brand-teal-50: #e6f7f9;
+  --color-brand-teal-100: #cceff3;
+  --color-brand-teal-200: #99dfe7;
+  --color-brand-teal-300: #66cfdb;
+  --color-brand-teal-400: #45b8c8;
+  --color-brand-teal-500: #2da6b4;
+  --color-brand-teal-600: #258590;
+  --color-brand-teal-700: #1c646c;
+  --color-brand-teal-800: #134348;
+  --color-brand-teal-900: #0a2224;
+  --color-brand-teal-950: #051112;
+
+  /* Yellow - Secondary Accent */
+  --color-brand-yellow-50: #fefce8;
+  --color-brand-yellow-100: #fef9c3;
+  --color-brand-yellow-200: #fef39e;
+  --color-brand-yellow-300: #fdee79;
+  --color-brand-yellow-400: #fde954;
+  --color-brand-yellow-500: #f4d03f;
+  --color-brand-yellow-600: #d4b035;
+  --color-brand-yellow-700: #b4902b;
+  --color-brand-yellow-800: #947022;
+  --color-brand-yellow-900: #745018;
+  --color-brand-yellow-950: #54380f;
+
+  /* Cream - Background */
+  --color-brand-cream-50: #faf9f6;
+  --color-brand-cream-100: #f5f4ed;
+  --color-brand-cream-200: #ebe9db;
+  --color-brand-cream-300: #e1dec9;
+  --color-brand-cream-400: #d7d3b7;
+  --color-brand-cream-500: #cdc8a5;
+  --color-brand-cream-600: #a3a084;
+  --color-brand-cream-700: #797863;
+  --color-brand-cream-800: #4f5042;
+  --color-brand-cream-900: #252821;
+  --color-brand-cream-950: #121310;
+
+  /* Success - Green */
+  --color-success-50: #f0fdf4;
+  --color-success-100: #dcfce7;
+  --color-success-200: #bbf7d0;
+  --color-success-300: #86efac;
+  --color-success-400: #4ade80;
+  --color-success-500: #22c55e;
+  --color-success-600: #16a34a;
+  --color-success-700: #15803d;
+  --color-success-800: #166534;
+  --color-success-900: #14532d;
+  --color-success-950: #052e16;
+
+  /* Info - Blue */
+  --color-info-50: #eff6ff;
+  --color-info-100: #dbeafe;
+  --color-info-200: #bfdbfe;
+  --color-info-300: #93c5fd;
+  --color-info-400: #60a5fa;
+  --color-info-500: #3b82f6;
+  --color-info-600: #2563eb;
+  --color-info-700: #1d4ed8;
+  --color-info-800: #1e40af;
+  --color-info-900: #1e3a8a;
+  --color-info-950: #172554;
+
+  /* Warning - Orange */
+  --color-warning-50: #fff7ed;
+  --color-warning-100: #ffedd5;
+  --color-warning-200: #fed7aa;
+  --color-warning-300: #fdba74;
+  --color-warning-400: #fb923c;
+  --color-warning-500: #f97316;
+  --color-warning-600: #ea580c;
+  --color-warning-700: #c2410c;
+  --color-warning-800: #9a3412;
+  --color-warning-900: #7c2d12;
+  --color-warning-950: #431407;
+
+  /* Alert - Red */
+  --color-alert-50: #fef2f2;
+  --color-alert-100: #fee2e2;
+  --color-alert-200: #fecaca;
+  --color-alert-300: #fca5a5;
+  --color-alert-400: #f87171;
+  --color-alert-500: #ef4444;
+  --color-alert-600: #dc2626;
+  --color-alert-700: #b91c1c;
+  --color-alert-800: #991b1b;
+  --color-alert-900: #7f1d1d;
+  --color-alert-950: #450a0a;
+
+  /* Semantic Colors - Light Mode */
+  --color-primary: var(--color-brand-teal-500);
+  --color-secondary: var(--color-brand-yellow-500);
+  --color-accent: var(--color-brand-navy-500);
+  --color-background: var(--color-brand-cream-50);
+  --color-surface: white;
+
+  /* Glass Effect Tokens */
+  --glass-blur-sm: 8px;
+  --glass-blur-md: 16px;
+  --glass-blur-lg: 24px;
+  --glass-blur-xl: 32px;
+  
+  --glass-opacity-light: 0.7;
+  --glass-opacity-medium: 0.8;
+  --glass-opacity-heavy: 0.9;
+  
+  --glass-saturate-light: 120%;
+  --glass-saturate-medium: 150%;
+  --glass-saturate-heavy: 180%;
+  
+  --glass-border-opacity-light: 0.2;
+  --glass-border-opacity-medium: 0.3;
+  --glass-border-opacity-heavy: 0.4;
+
+      /* Font Families */
+      --font-family-title: 'Yeseva One', serif;
+      --font-family-body: 'Montserrat', sans-serif;
+      
+      --font-title: var(--font-family-title);
+      --font-body: var(--font-family-body);
+
+  /* Container Query Breakpoints */
+  --container-3xs: 20rem; /* 320px */
+  --container-2xs: 24rem; /* 384px */
+  --container-xs: 32rem; /* 512px */
+  --container-sm: 40rem; /* 640px */
+  --container-md: 48rem; /* 768px */
+  --container-lg: 64rem; /* 1024px */
+  --container-xl: 80rem; /* 1280px */
+}
+
+/* Apply fonts globally */
+body {
+  font-family: var(--font-family-body);
+  line-height: 1.5;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-family-title);
+  line-height: 1.2;
+}
+
+/* Montserrat has better baseline metrics - no special alignment hacks needed */
+/* Base font settings */
+p, span, div, button, a, label, input, textarea, select {
+  font-family: var(--font-family-body);
+  line-height: 1.5;
+}
+
+/* Line-height utilities */
+.leading-tight {
+  line-height: 1.25;
+}
+
+.leading-snug {
+  line-height: 1.375;
+}
+
+.leading-none {
+  line-height: 1;
+}

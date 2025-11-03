@@ -14,6 +14,7 @@
   import TigrisImageUpload from "$lib/components/TigrisImageUpload.svelte";
   import { browser } from "$app/environment";
   import { projectById, identitiesByUser } from "$lib/synced-queries";
+  import { Button, Icon } from "$lib/design-system/atoms";
 
   // Get Zero instance from context (initialized in layout)
   const zeroContext = getContext("zero");
@@ -580,36 +581,37 @@
   }
 </script>
 
-<div class="min-h-screen bg-cream p-8">
+<div class="@container min-h-screen p-8">
   {#if $session.isPending || loading}
     <div class="flex items-center justify-center min-h-screen">
-      <div class="card p-8">
-        <p class="text-navy/70">Loading projects...</p>
+      <div class="bg-white rounded-2xl border border-brand-navy-100 shadow-md p-8 transition-all duration-300 hover:shadow-lg">
+        <p class="text-brand-navy-700">Loading projects...</p>
       </div>
     </div>
   {:else}
-    <div class="max-w-7xl mx-auto">
+    <div>
       <!-- Header -->
-      <div class="mb-6">
-        <div class="flex justify-between items-center">
+      <div class="sticky top-0 z-50 bg-brand-cream-50/95 backdrop-blur-sm py-6 mb-6 -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 border-b border-brand-navy-500/10">
+        <div class="flex flex-col @md:flex-row justify-between items-start @md:items-center gap-4">
           <div>
-            <h1 class="text-4xl font-bold text-navy mb-1">Projects</h1>
-            <p class="text-navy/60 text-sm">
+            <h1 class="text-4xl font-bold text-brand-navy-500 mb-1">Projects</h1>
+            <p class="text-brand-navy-700/80 text-sm">
               Explore amazing projects from around the world
             </p>
           </div>
           {#if $session.data?.user && (hasFounderIdentity() || isAdmin)}
-            <button
+            <Button
+              variant="primary"
+              icon="mdi:plus"
+              iconPosition="left"
               onclick={() => {
                 const url = new URL($page.url);
                 url.searchParams.set("modal", "create-project");
                 goto(url.pathname + url.search, { replaceState: false });
               }}
-              class="btn-primary px-5 py-2 text-sm"
             >
-              <span class="text-lg mr-1">+</span>
               New Project
-            </button>
+            </Button>
           {/if}
         </div>
       </div>
@@ -617,8 +619,8 @@
       <!-- Create Form Modal -->
       {#if showCreateModal && $session.data?.user}
         <Modal open={showCreateModal} onClose={handleCreateModalClose}>
-          <div class="create-project-content">
-            <h2 class="text-3xl font-bold text-navy mb-6">
+          <div class="w-full overflow-visible">
+            <h2 class="text-3xl font-bold text-brand-navy-500 mb-6">
               Create New Project
             </h2>
             <form
@@ -627,33 +629,33 @@
                 e.preventDefault();
                 createProject();
               }}
-              class="space-y-5"
+              class="space-y-5 overflow-visible max-h-none"
             >
               <div>
                 <label
                   for="project-title"
-                  class="block text-navy/80 font-medium mb-2">Title</label
+                  class="block text-brand-navy-500/80 font-medium mb-2">Title</label
                 >
                 <input
                   id="project-title"
                   type="text"
                   bind:value={newProject.title}
                   placeholder="My Amazing Project"
-                  class="input w-full"
+                  class="w-full px-4 py-3.5 bg-white border-2 border-brand-navy-100 rounded-[10px] text-brand-navy-500 transition-all duration-200 text-[0.9375rem] focus:outline-none focus:border-brand-teal-500 focus:shadow-[0_0_0_3px_rgba(78,205,196,0.1)] placeholder:text-brand-navy-500/40"
                   required
                 />
               </div>
               <div>
                 <label
                   for="project-description"
-                  class="block text-navy/80 font-medium mb-2">Description</label
+                  class="block text-brand-navy-500/80 font-medium mb-2">Description</label
                 >
                 <textarea
                   id="project-description"
                   bind:value={newProject.description}
                   placeholder="Tell us about your project..."
                   rows="4"
-                  class="input w-full"
+                  class="w-full px-4 py-3.5 bg-white border-2 border-brand-navy-100 rounded-[10px] text-brand-navy-500 transition-all duration-200 text-[0.9375rem] focus:outline-none focus:border-brand-teal-500 focus:shadow-[0_0_0_3px_rgba(78,205,196,0.1)] placeholder:text-brand-navy-500/40"
                   required
                 ></textarea>
               </div>
@@ -668,21 +670,21 @@
               <div>
                 <label
                   for="project-city"
-                  class="block text-navy/80 font-medium mb-2">City *</label
+                  class="block text-brand-navy-500/80 font-medium mb-2">City *</label
                 >
                 <input
                   id="project-city"
                   type="text"
                   bind:value={newProject.city}
                   placeholder="Berlin"
-                  class="input w-full"
+                  class="w-full px-4 py-3.5 bg-white border-2 border-brand-navy-100 rounded-[10px] text-brand-navy-500 transition-all duration-200 text-[0.9375rem] focus:outline-none focus:border-brand-teal-500 focus:shadow-[0_0_0_3px_rgba(78,205,196,0.1)] placeholder:text-brand-navy-500/40"
                   required
                 />
               </div>
 
               <!-- Profile Image (Optional) -->
               <div>
-                <div class="block text-navy/80 font-medium mb-2">Profile Image (Optional)</div>
+                <div class="block text-brand-navy-500/80 font-medium mb-2">Profile Image (Optional)</div>
                 <TigrisImageUpload
                   uploadButtonLabel="Upload Profile Image"
                   showPreview={false}
@@ -700,7 +702,7 @@
                     newProject.profileImageUrl = "";
                   }}
                 />
-                <p class="text-xs text-navy/50 mt-1">
+                <p class="text-xs text-brand-navy-500/50 mt-1">
                   Falls back to project owner's profile image if not set
                 </p>
               </div>
@@ -709,7 +711,7 @@
               <div>
                 <label
                   for="project-videoUrl"
-                  class="block text-navy/80 font-medium mb-2"
+                  class="block text-brand-navy-500/80 font-medium mb-2"
                 >
                   YouTube Video URL (Optional)
                 </label>
@@ -718,16 +720,16 @@
                   type="url"
                   bind:value={newProject.videoUrl}
                   placeholder="https://www.youtube.com/watch?v=..."
-                  class="input w-full"
+                  class="w-full px-4 py-3.5 bg-white border-2 border-brand-navy-100 rounded-[10px] text-brand-navy-500 transition-all duration-200 text-[0.9375rem] focus:outline-none focus:border-brand-teal-500 focus:shadow-[0_0_0_3px_rgba(78,205,196,0.1)] placeholder:text-brand-navy-500/40"
                 />
-                <p class="text-sm text-navy/60 mt-1">
+                <p class="text-sm text-brand-navy-500/60 mt-1">
                   Add a YouTube link for your project pitch video
                 </p>
               </div>
 
               <!-- Banner Image (Optional) -->
               <div>
-                <div class="block text-navy/80 font-medium mb-2">Banner Image (Optional)</div>
+                <div class="block text-brand-navy-500/80 font-medium mb-2">Banner Image (Optional)</div>
                 <TigrisImageUpload
                   uploadButtonLabel="Upload Banner"
                   showPreview={false}
@@ -745,7 +747,7 @@
                     newProject.bannerImage = "";
                   }}
                 />
-                <p class="text-sm text-navy/60 mt-1">
+                <p class="text-sm text-brand-navy-500/60 mt-1">
                   Custom banner image (falls back to Unsplash if not provided)
                 </p>
               </div>
@@ -758,7 +760,7 @@
                     label="Project Owner"
                     placeholder="Search for a user..."
                   />
-                  <p class="text-sm text-navy/60 mt-1">
+                  <p class="text-sm text-brand-navy-500/60 mt-1">
                     Select project owner (optional, defaults to you)
                   </p>
                 </div>
@@ -768,21 +770,21 @@
               <div>
                 <label
                   for="project-sdgs"
-                  class="block text-navy/80 font-medium mb-2"
+                  class="block text-brand-navy-500/80 font-medium mb-2"
                 >
                   Sustainable Development Goals (Select 1-3) *
                 </label>
-                <p class="text-sm text-navy/60 mb-3">
+                <p class="text-sm text-brand-navy-500/60 mb-3">
                   Selected: {newProject.sdgs.length}/3
                 </p>
-                <div class="sdg-grid">
+                <div class="grid grid-cols-[repeat(auto-fill,minmax(80px,1fr))] gap-3 p-2 bg-brand-teal-500/3 rounded-xl overflow-visible max-h-none">
                   {#each availableSDGs as sdg}
                     <button
                       type="button"
                       onclick={() => toggleSDG(sdg.id)}
-                      class="sdg-selector {newProject.sdgs.includes(sdg.id)
-                        ? 'selected'
-                        : ''}"
+                      class="relative aspect-square border-[3px] border-transparent rounded-lg cursor-pointer transition-all duration-200 p-0 bg-white overflow-hidden {newProject.sdgs.includes(sdg.id)
+                        ? 'border-brand-yellow-500 shadow-[0_4px_16px_rgba(244,208,63,0.3)]'
+                        : 'hover:scale-105 hover:border-brand-teal-500 hover:shadow-[0_4px_12px_rgba(78,205,196,0.2)]'} {!newProject.sdgs.includes(sdg.id) && newProject.sdgs.length >= 3 ? 'opacity-40 cursor-not-allowed' : ''}"
                       disabled={!newProject.sdgs.includes(sdg.id) &&
                         newProject.sdgs.length >= 3}
                       title={sdg.name}
@@ -790,10 +792,10 @@
                       <img
                         src="/sdgs/{sdg.id}.svg"
                         alt={sdg.name}
-                        class="sdg-image"
+                        class="w-full h-full object-cover block"
                       />
                       {#if newProject.sdgs.includes(sdg.id)}
-                        <div class="sdg-checkmark">✓</div>
+                        <div class="absolute top-1 right-1 w-6 h-6 bg-brand-yellow-500 text-brand-navy-500 rounded-full flex items-center justify-center font-black text-sm shadow-[0_2px_8px_rgba(0,0,0,0.2)]">✓</div>
                       {/if}
                     </button>
                   {/each}
@@ -808,17 +810,17 @@
       <!-- Edit Project Modal -->
       {#if showEditModal && $session.data?.user && editProjectId}
         <Modal open={showEditModal} onClose={handleEditModalClose}>
-          <div class="edit-project-content">
-            <h2 class="text-3xl font-bold text-navy mb-6">
+          <div class="w-full overflow-visible">
+            <h2 class="text-3xl font-bold text-brand-navy-500 mb-6">
               Edit Project
             </h2>
             {#if editLoading}
               <div class="text-center py-8">
-                <p class="text-navy/70">Loading project...</p>
+                <p class="text-brand-navy-500/70">Loading project...</p>
               </div>
             {:else if !editProject}
               <div class="text-center py-8">
-                <p class="text-navy/70">Project not found</p>
+                <p class="text-brand-navy-500/70">Project not found</p>
               </div>
             {:else}
               <form
@@ -827,20 +829,20 @@
                   e.preventDefault();
                   updateProject();
                 }}
-                class="space-y-5"
+                class="space-y-5 overflow-visible max-h-none"
               >
                 <!-- Title -->
                 <div>
                   <label
                     for="edit-project-title"
-                    class="block text-navy/80 font-medium mb-2">Title *</label
+                    class="block text-brand-navy-500/80 font-medium mb-2">Title *</label
                   >
                   <input
                     id="edit-project-title"
                     type="text"
                     bind:value={editFormData.title}
                     placeholder="My Amazing Project"
-                    class="input w-full"
+                    class="w-full px-4 py-3.5 bg-white border-2 border-brand-navy-100 rounded-[10px] text-brand-navy-500 transition-all duration-200 text-[0.9375rem] focus:outline-none focus:border-brand-teal-500 focus:shadow-[0_0_0_3px_rgba(78,205,196,0.1)] placeholder:text-brand-navy-500/40"
                     required
                   />
                 </div>
@@ -849,14 +851,14 @@
                 <div>
                   <label
                     for="edit-project-description"
-                    class="block text-navy/80 font-medium mb-2">Description *</label
+                    class="block text-brand-navy-500/80 font-medium mb-2">Description *</label
                   >
                   <textarea
                     id="edit-project-description"
                     bind:value={editFormData.description}
                     placeholder="Tell us about your project..."
                     rows="4"
-                    class="input w-full"
+                    class="w-full px-4 py-3.5 bg-white border-2 border-brand-navy-100 rounded-[10px] text-brand-navy-500 transition-all duration-200 text-[0.9375rem] focus:outline-none focus:border-brand-teal-500 focus:shadow-[0_0_0_3px_rgba(78,205,196,0.1)] placeholder:text-brand-navy-500/40"
                     required
                   ></textarea>
                 </div>
@@ -875,21 +877,21 @@
                 <div>
                   <label
                     for="edit-project-city"
-                    class="block text-navy/80 font-medium mb-2">City *</label
+                    class="block text-brand-navy-500/80 font-medium mb-2">City *</label
                   >
                   <input
                     id="edit-project-city"
                     type="text"
                     bind:value={editFormData.city}
                     placeholder="Berlin"
-                    class="input w-full"
+                    class="w-full px-4 py-3.5 bg-white border-2 border-brand-navy-100 rounded-[10px] text-brand-navy-500 transition-all duration-200 text-[0.9375rem] focus:outline-none focus:border-brand-teal-500 focus:shadow-[0_0_0_3px_rgba(78,205,196,0.1)] placeholder:text-brand-navy-500/40"
                     required
                   />
                 </div>
 
                 <!-- Profile Image (Optional) -->
                 <div>
-                  <div class="block text-navy/80 font-medium mb-2">Profile Image (Optional)</div>
+                  <div class="block text-brand-navy-500/80 font-medium mb-2">Profile Image (Optional)</div>
                   <TigrisImageUpload
                     uploadButtonLabel="Upload Profile Image"
                     showPreview={false}
@@ -907,7 +909,7 @@
                       editFormData.profileImageUrl = "";
                     }}
                   />
-                  <p class="text-xs text-navy/50 mt-1">
+                  <p class="text-xs text-brand-navy-500/50 mt-1">
                     Falls back to project owner's profile image if not set
                   </p>
                 </div>
@@ -916,7 +918,7 @@
                 <div>
                   <label
                     for="edit-project-videoUrl"
-                    class="block text-navy/80 font-medium mb-2"
+                    class="block text-brand-navy-500/80 font-medium mb-2"
                   >
                     YouTube Video URL (Optional)
                   </label>
@@ -925,16 +927,16 @@
                     type="url"
                     bind:value={editFormData.videoUrl}
                     placeholder="https://www.youtube.com/watch?v=..."
-                    class="input w-full"
+                    class="w-full px-4 py-3.5 bg-white border-2 border-brand-navy-100 rounded-[10px] text-brand-navy-500 transition-all duration-200 text-[0.9375rem] focus:outline-none focus:border-brand-teal-500 focus:shadow-[0_0_0_3px_rgba(78,205,196,0.1)] placeholder:text-brand-navy-500/40"
                   />
-                  <p class="text-sm text-navy/60 mt-1">
+                  <p class="text-sm text-brand-navy-500/60 mt-1">
                     Add a YouTube link for your project pitch video
                   </p>
                 </div>
 
                 <!-- Banner Image (Optional) -->
                 <div>
-                  <div class="block text-navy/80 font-medium mb-2">Banner Image (Optional)</div>
+                  <div class="block text-brand-navy-500/80 font-medium mb-2">Banner Image (Optional)</div>
                   <TigrisImageUpload
                     uploadButtonLabel="Upload Banner"
                     showPreview={false}
@@ -952,7 +954,7 @@
                       editFormData.bannerImage = "";
                     }}
                   />
-                  <p class="text-sm text-navy/60 mt-1">
+                  <p class="text-sm text-brand-navy-500/60 mt-1">
                     Custom banner image (falls back to Unsplash if not provided)
                   </p>
                 </div>
@@ -965,7 +967,7 @@
                       label="Project Owner"
                       placeholder="Search for a user..."
                     />
-                    <p class="text-sm text-navy/60 mt-1">
+                    <p class="text-sm text-brand-navy-500/60 mt-1">
                       Change the project owner (admin only)
                     </p>
                   </div>
@@ -975,21 +977,21 @@
                 <div>
                   <label
                     for="edit-project-sdgs"
-                    class="block text-navy/80 font-medium mb-2"
+                    class="block text-brand-navy-500/80 font-medium mb-2"
                   >
                     Sustainable Development Goals (Select 1-3) *
                   </label>
-                  <p class="text-sm text-navy/60 mb-3">
+                  <p class="text-sm text-brand-navy-500/60 mb-3">
                     Selected: {editFormData.sdgs.length}/3
                   </p>
-                  <div class="sdg-grid">
+                  <div class="grid grid-cols-[repeat(auto-fill,minmax(80px,1fr))] gap-3 p-2 bg-brand-teal-500/3 rounded-xl overflow-visible max-h-none">
                     {#each availableSDGs as sdg}
                       <button
                         type="button"
                         onclick={() => toggleEditSDG(sdg.id)}
-                        class="sdg-selector {editFormData.sdgs.includes(sdg.id)
-                          ? 'selected'
-                          : ''}"
+                        class="relative aspect-square border-[3px] border-transparent rounded-lg cursor-pointer transition-all duration-200 p-0 bg-white overflow-hidden {editFormData.sdgs.includes(sdg.id)
+                          ? 'border-brand-yellow-500 shadow-[0_4px_16px_rgba(244,208,63,0.3)]'
+                          : 'hover:scale-105 hover:border-brand-teal-500 hover:shadow-[0_4px_12px_rgba(78,205,196,0.2)]'} {!editFormData.sdgs.includes(sdg.id) && editFormData.sdgs.length >= 3 ? 'opacity-40 cursor-not-allowed' : ''}"
                         disabled={!editFormData.sdgs.includes(sdg.id) &&
                           editFormData.sdgs.length >= 3}
                         title={sdg.name}
@@ -997,10 +999,10 @@
                         <img
                           src="/sdgs/{sdg.id}.svg"
                           alt={sdg.name}
-                          class="sdg-image"
+                          class="w-full h-full object-cover block"
                         />
                         {#if editFormData.sdgs.includes(sdg.id)}
-                          <div class="sdg-checkmark">✓</div>
+                          <div class="absolute top-1 right-1 w-6 h-6 bg-brand-yellow-500 text-brand-navy-500 rounded-full flex items-center justify-center font-black text-sm shadow-[0_2px_8px_rgba(0,0,0,0.2)]">✓</div>
                         {/if}
                       </button>
                     {/each}
@@ -1015,15 +1017,15 @@
 
       <!-- Grid View Layout -->
       {#if projects.length === 0}
-        <div class="card p-16">
+        <div class="bg-white rounded-2xl border border-brand-navy-100 shadow-md p-16 transition-all duration-300 hover:shadow-lg">
           <div class="text-center">
-            <p class="text-navy/50 text-lg">
+            <p class="text-brand-navy-700 text-lg">
               No projects yet. Create the first one!
             </p>
           </div>
         </div>
       {:else}
-        <div class="projects-list">
+        <div class="flex flex-col gap-6 w-full">
           {#each projects as project (project.id)}
             {@const userProfile = userProfiles.get(project.userId)}
             {@const thumbnailUrl =
@@ -1032,15 +1034,15 @@
               project.bannerImage.trim().length > 0
                 ? project.bannerImage.trim()
                 : `https://picsum.photos/seed/${project.id || "project"}/400/225`}
-            <div class="project-list-card">
+            <div class="bg-white rounded-2xl border-2 border-brand-navy-500/6 p-0 transition-all duration-300 flex flex-col overflow-hidden w-full min-h-[240px] hover:border-brand-teal-500/40 hover:-translate-y-0.5 hover:shadow-[0_8px_24px_rgba(78,205,196,0.15)] @3xs:min-h-auto">
               <!-- Top Section: Thumbnail and Content Side by Side -->
-              <div class="project-list-card-top-section">
+              <div class="flex flex-col @md:flex-row flex-1 @3xs:min-h-auto min-h-[240px]">
                 <!-- Thumbnail on Left -->
-                <div class="project-thumbnail-container">
+                <div class="flex-shrink-0 w-full @md:w-[280px] @md:min-w-[280px] overflow-hidden bg-brand-navy-500/5 relative flex items-stretch @3xs:h-[200px] @md:h-auto">
                   <img
                     src={thumbnailUrl}
                     alt={project.title}
-                    class="project-thumbnail"
+                    class="w-full h-full @md:min-h-[240px] object-cover block @3xs:min-h-[200px]"
                     onerror={(e) => {
                       e.target.src = `https://picsum.photos/seed/${project.id || "project"}/400/225`;
                     }}
@@ -1048,32 +1050,32 @@
                 </div>
 
                 <!-- Main Content Area -->
-                <div class="project-main-content">
+                <div class="flex flex-col @md:flex-row flex-1 @3xs:min-h-auto min-h-[240px]">
                   <!-- Content Section -->
-                  <div class="project-content">
+                  <div class="flex-1 p-6 @3xs:p-6 flex flex-col">
                     <!-- Card Header -->
                     <div class="flex justify-between items-start mb-3">
                       <a
                         href="/alpha/projects/{project.id}"
-                        class="project-title-link"
+                        class="no-underline text-inherit transition-colors duration-200 block hover:text-brand-teal-500"
                       >
-                        <h3 class="text-2xl font-bold text-navy leading-tight">
+                        <h3 class="text-2xl font-bold text-brand-navy-500 leading-tight transition-colors duration-200">
                           {project.title}
                         </h3>
                       </a>
                       {#if isMyProject(project)}
-                        <span class="badge">Yours</span>
+                        <span class="px-3 py-1 bg-brand-yellow-500 rounded-full text-xs text-brand-navy-500 font-bold">Yours</span>
                       {/if}
                     </div>
 
                     <!-- Founder Info -->
-                    <a href="/alpha/user/{project.userId}" class="founder-link">
+                    <a href="/alpha/user/{project.userId}" class="no-underline inline-block transition-all duration-200 hover:translate-x-1 hover:[&_.founder-name]:text-brand-teal-500 hover:[&_.founder-avatar]:border-brand-yellow-500 hover:[&_.founder-avatar-placeholder]:border-brand-yellow-500">
                       <div class="flex items-center gap-2.5 mb-3">
                         {#if userProfile?.image && !failedImages.has(project.userId)}
                           <img
                             src={userProfile.image}
                             alt={userProfile.name || "User"}
-                            class="founder-avatar"
+                            class="w-10 h-10 rounded-full border-2 border-brand-teal-500 object-cover transition-colors duration-200"
                             onerror={() => {
                               failedImages = new Set(failedImages).add(
                                 project.userId
@@ -1081,13 +1083,13 @@
                             }}
                           />
                         {:else}
-                          <div class="founder-avatar-placeholder">
+                          <div class="w-10 h-10 rounded-full border-2 border-brand-teal-500 bg-gradient-to-br from-brand-teal-500 to-brand-yellow-500 flex items-center justify-center text-white font-bold text-lg uppercase transition-colors duration-200 leading-none">
                             {userProfile?.name?.[0] ||
                               project.userId?.[0] ||
                               "?"}
                           </div>
                         {/if}
-                        <span class="founder-name"
+                        <span class="text-brand-navy-700 font-semibold text-sm transition-colors duration-200 leading-tight"
                           >{userProfile?.name || "Anonymous"}</span
                         >
                       </div>
@@ -1095,10 +1097,10 @@
 
                     <!-- Location -->
                     <div
-                      class="flex items-center gap-2 text-teal text-sm font-medium mb-4"
+                      class="flex items-center gap-2 text-brand-teal-500 text-sm font-medium mb-4"
                     >
                       <svg
-                        class="w-4 h-4"
+                        class="w-4 h-4 flex-shrink-0"
                         fill="currentColor"
                         viewBox="0 0 20 20"
                       >
@@ -1108,14 +1110,14 @@
                           clip-rule="evenodd"
                         />
                       </svg>
-                      {project.city}{project.country
+                      <span>{project.city}{project.country
                         ? `, ${project.country}`
-                        : ""}
+                        : ""}</span>
                     </div>
 
                     <!-- Description -->
                     <p
-                      class="text-navy/70 text-sm leading-relaxed mb-4 line-clamp-3 project-description"
+                      class="text-brand-navy-700/70 text-sm leading-relaxed mb-4 @3xs:mb-3 line-clamp-3"
                     >
                       {project.description}
                     </p>
@@ -1128,13 +1130,13 @@
                         ? JSON.parse(project.sdgs || "[]")
                         : project.sdgs}
                     {#if sdgArray.length > 0}
-                      <div class="project-sdgs-sidebar">
-                        <div class="sdg-display-vertical">
+                      <div class="flex-shrink-0 w-full @md:w-20 p-6 @md:p-8 @md:pr-4 @md:pl-0 flex flex-col items-start @md:items-end justify-start @3xs:p-4 @3xs:-mt-1">
+                        <div class="flex flex-row @md:flex-col gap-3 items-start @md:items-end">
                           {#each sdgArray as sdgId}
                             <img
                               src="/sdgs/{sdgId}.svg"
                               alt={sdgId}
-                              class="sdg-badge-vertical"
+                              class="w-[60px] h-[60px] min-w-[60px] min-h-[60px] aspect-square rounded-lg object-cover block"
                               title={availableSDGs.find((s) => s.id === sdgId)
                                 ?.name || sdgId}
                             />
@@ -1148,35 +1150,28 @@
 
               <!-- Footer with Actions - Below Full Width Line -->
               {#if canEditProject(project)}
-                <div class="project-footer">
-                  <div class="project-footer-line"></div>
-                  <div class="project-footer-actions">
-                    <a
-                      href="?modal=edit-project&projectId={project.id}"
-                      class="btn-edit-small"
+                <div class="w-full px-8 @3xs:px-6 pb-6">
+                  <div class="w-full h-px bg-brand-navy-500/10 mb-4"></div>
+                  <div class="flex justify-end gap-3">
+                    <Button
+                      variant="outline"
+                      icon="mdi:pencil"
+                      iconPosition="left"
+                      onclick={() => {
+                        goto(`?modal=edit-project&projectId=${project.id}`, { replaceState: false });
+                      }}
                     >
-                      <svg
-                        class="w-4 h-4"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          stroke-linecap="round"
-                          stroke-linejoin="round"
-                          stroke-width="2"
-                          d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-                        />
-                      </svg>
                       Edit
-                    </a>
+                    </Button>
                     {#if isAdmin}
-                      <button
+                      <Button
+                        variant="alert"
+                        icon="mdi:delete"
+                        iconPosition="left"
                         onclick={() => requestDeleteProject(project.id)}
-                        class="btn-danger-small"
                       >
                         Delete
-                      </button>
+                      </Button>
                     {/if}
                   </div>
                 </div>
@@ -1199,474 +1194,3 @@
     onConfirm={confirmDeleteProject}
   />
 </div>
-
-<style>
-  /* Color Palette from Logo */
-  :global(.bg-cream) {
-    background-color: #faf9f6;
-  }
-
-  :global(.text-navy) {
-    color: #1a1a4e;
-  }
-
-  :global(.text-teal) {
-    color: #4ecdc4;
-  }
-
-  :global(.text-yellow) {
-    color: #f4d03f;
-  }
-
-  :global(.bg-yellow) {
-    background-color: #f4d03f;
-  }
-
-  :global(.border-yellow) {
-    border-color: #f4d03f;
-  }
-
-  :global(.from-yellow-50) {
-    --tw-gradient-from: #fffbeb;
-  }
-
-  :global(.to-amber-50) {
-    --tw-gradient-to: #fffbeb;
-  }
-
-  /* Projects List Container */
-  .projects-list {
-    display: flex;
-    flex-direction: column;
-    gap: 1.5rem;
-    width: 100%;
-  }
-
-  /* Project List Card - Full Width with Thumbnail on Left */
-  .project-list-card {
-    background: white;
-    border-radius: 16px;
-    border: 2px solid rgba(26, 26, 78, 0.06);
-    padding: 0;
-    transition: all 0.3s ease;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-    width: 100%;
-    min-height: 240px;
-  }
-
-  /* Top Section - Thumbnail and Main Content Side by Side */
-  .project-list-card-top-section {
-    display: flex;
-    flex: 1;
-    min-height: 240px;
-  }
-
-  .project-list-card:hover {
-    border-color: rgba(78, 205, 196, 0.4);
-    transform: translateY(-2px);
-    box-shadow: 0 8px 24px rgba(78, 205, 196, 0.15);
-  }
-
-  /* Thumbnail Container */
-  .project-thumbnail-container {
-    flex-shrink: 0;
-    width: 280px;
-    min-width: 280px;
-    overflow: hidden;
-    background: rgba(26, 26, 78, 0.05);
-    position: relative;
-    display: flex;
-    align-items: stretch;
-  }
-
-  .project-thumbnail {
-    width: 100%;
-    height: 100%;
-    min-height: 240px;
-    object-fit: cover;
-    display: block;
-  }
-
-  /* Main Content Area - Contains content and SDGs */
-  .project-main-content {
-    display: flex;
-    flex: 1;
-    min-height: 240px;
-  }
-
-  /* Content Container */
-  .project-content {
-    flex: 1;
-    padding: 2rem;
-    display: flex;
-    flex-direction: column;
-  }
-
-  /* SDGs Sidebar - Vertical on Right */
-  .project-sdgs-sidebar {
-    flex-shrink: 0;
-    width: 80px;
-    padding: 2rem 2rem 2rem 1rem;
-    display: flex;
-    flex-direction: column;
-    align-items: flex-end;
-    justify-content: flex-start;
-  }
-
-  .sdg-display-vertical {
-    display: flex;
-    flex-direction: column;
-    gap: 0.75rem;
-    align-items: flex-end;
-  }
-
-  .sdg-badge-vertical {
-    width: 60px;
-    height: 60px;
-    min-width: 60px;
-    min-height: 60px;
-    aspect-ratio: 1 / 1;
-    border-radius: 8px;
-    object-fit: cover;
-    display: block;
-  }
-
-  /* Footer Section */
-  .project-footer {
-    width: 100%;
-    padding: 0 2rem 1.5rem 2rem;
-  }
-
-  .project-footer-line {
-    width: 100%;
-    height: 1px;
-    background: rgba(26, 26, 78, 0.1);
-    margin-bottom: 1rem;
-  }
-
-  .project-footer-actions {
-    display: flex;
-    justify-content: flex-end;
-    gap: 0.75rem;
-  }
-
-  @media (max-width: 768px) {
-    .project-list-card {
-      min-height: auto;
-    }
-
-    .project-list-card-top-section {
-      flex-direction: column;
-      min-height: auto;
-    }
-
-    .project-main-content {
-      flex-direction: column;
-      min-height: auto;
-    }
-
-    .project-thumbnail-container {
-      width: 100%;
-      min-width: 100%;
-      height: 200px;
-    }
-
-    .project-content {
-      padding: 1.5rem;
-    }
-
-    /* Reduce gap between description and SDGs on mobile */
-    .project-content .project-description {
-      margin-bottom: 0.75rem;
-    }
-
-    .project-sdgs-sidebar {
-      width: 100%;
-      padding: 1rem 1.5rem;
-      align-items: flex-start;
-      margin-top: -0.25rem; /* Pull SDGs closer to description */
-    }
-
-    .sdg-display-vertical {
-      flex-direction: row;
-      flex-wrap: wrap;
-      align-items: flex-start;
-    }
-
-    .project-footer {
-      padding: 0 1.5rem 1.5rem 1.5rem;
-    }
-  }
-
-  /* Founder Info */
-  .founder-link {
-    text-decoration: none;
-    display: inline-block;
-    transition: all 0.2s ease;
-  }
-
-  .founder-link:hover {
-    transform: translateX(4px);
-  }
-
-  .founder-link:hover .founder-name {
-    color: #4ecdc4;
-  }
-
-  .founder-link:hover .founder-avatar {
-    border-color: #f4d03f;
-  }
-
-  .founder-link:hover .founder-avatar-placeholder {
-    border-color: #f4d03f;
-  }
-
-  .founder-avatar {
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-    border: 2px solid #4ecdc4;
-    object-fit: cover;
-    transition: border-color 0.2s ease;
-  }
-
-  .founder-avatar-placeholder {
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-    border: 2px solid #4ecdc4;
-    background: linear-gradient(135deg, #4ecdc4, #f4d03f);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: white;
-    font-weight: 700;
-    font-size: 1.125rem;
-    text-transform: uppercase;
-    transition: border-color 0.2s ease;
-  }
-
-  .founder-name {
-    color: #1a1a4e;
-    font-weight: 600;
-    font-size: 0.875rem;
-    transition: color 0.2s ease;
-  }
-
-  /* Cards */
-  .card {
-    background: white;
-    border-radius: 16px;
-    border: 1px solid rgba(26, 26, 78, 0.08);
-    box-shadow: 0 2px 12px rgba(26, 26, 78, 0.06);
-    transition: all 0.3s ease;
-  }
-
-  .card:hover {
-    box-shadow: 0 4px 20px rgba(26, 26, 78, 0.1);
-  }
-
-  /* Buttons */
-  .btn-primary {
-    background: #1a1a4e;
-    color: white;
-    border-radius: 12px;
-    font-weight: 600;
-    transition: all 0.2s ease;
-    border: none;
-  }
-
-  .btn-primary:hover {
-    background: #2a2a6e;
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(26, 26, 78, 0.3);
-  }
-
-  .btn-edit-small {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    background: white;
-    color: #1a1a4e;
-    border: 2px solid rgba(26, 26, 78, 0.1);
-    border-radius: 8px;
-    padding: 0.5rem 1rem;
-    font-size: 0.875rem;
-    font-weight: 600;
-    transition: all 0.2s ease;
-    cursor: pointer;
-    text-decoration: none;
-  }
-
-  .btn-edit-small:hover {
-    border-color: #4ecdc4;
-    color: #4ecdc4;
-    transform: translateY(-1px);
-    box-shadow: 0 2px 8px rgba(78, 205, 196, 0.2);
-  }
-
-  .btn-danger-small {
-    background: white;
-    color: #ef4444;
-    border: 2px solid #ef4444;
-    border-radius: 8px;
-    padding: 0.5rem 1rem;
-    font-size: 0.875rem;
-    font-weight: 600;
-    transition: all 0.2s ease;
-    cursor: pointer;
-  }
-
-  .btn-danger-small:hover {
-    background: #ef4444;
-    color: white;
-    transform: translateY(-1px);
-    box-shadow: 0 2px 8px rgba(239, 68, 68, 0.3);
-  }
-
-  /* Input */
-  .input {
-    padding: 0.875rem 1rem;
-    background: white;
-    border: 2px solid rgba(26, 26, 78, 0.1);
-    border-radius: 10px;
-    color: #1a1a4e;
-    transition: all 0.2s ease;
-    font-size: 0.9375rem;
-  }
-
-  .input:focus {
-    outline: none;
-    border-color: #4ecdc4;
-    box-shadow: 0 0 0 3px rgba(78, 205, 196, 0.1);
-  }
-
-  .input::placeholder {
-    color: rgba(26, 26, 78, 0.4);
-  }
-
-  /* Badge */
-  .badge {
-    padding: 0.25rem 0.75rem;
-    background: #f4d03f;
-    border-radius: 999px;
-    font-size: 0.75rem;
-    color: #1a1a4e;
-    font-weight: 700;
-  }
-
-  /* Line Clamp */
-  .line-clamp-3 {
-    display: -webkit-box;
-    -webkit-line-clamp: 3;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-  }
-
-  /* SDG Selection Grid */
-  .sdg-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
-    gap: 0.75rem;
-    padding: 0.5rem;
-    background: rgba(78, 205, 196, 0.03);
-    border-radius: 12px;
-  }
-
-  .sdg-selector {
-    position: relative;
-    aspect-ratio: 1;
-    border: 3px solid transparent;
-    border-radius: 8px;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    padding: 0;
-    background: white;
-    overflow: hidden;
-  }
-
-  .sdg-selector:hover:not(:disabled) {
-    transform: scale(1.05);
-    border-color: #4ecdc4;
-    box-shadow: 0 4px 12px rgba(78, 205, 196, 0.2);
-  }
-
-  .sdg-selector.selected {
-    border-color: #f4d03f;
-    box-shadow: 0 4px 16px rgba(244, 208, 63, 0.3);
-  }
-
-  .sdg-selector:disabled {
-    opacity: 0.4;
-    cursor: not-allowed;
-  }
-
-  .sdg-image {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    display: block;
-  }
-
-  .sdg-checkmark {
-    position: absolute;
-    top: 4px;
-    right: 4px;
-    width: 24px;
-    height: 24px;
-    background: #f4d03f;
-    color: #1a1a4e;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: 900;
-    font-size: 14px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-  }
-
-  /* SDG Display in Project Cards - unused styles removed */
-
-  /* Create/Edit Project Content */
-  .create-project-content,
-  .edit-project-content {
-    width: 100%;
-    overflow: visible; /* Don't constrain SDG grid */
-  }
-  
-  /* Ensure forms and all containers don't create scroll containers */
-  .create-project-content form,
-  .edit-project-content form {
-    overflow: visible;
-    max-height: none;
-  }
-  
-  /* Ensure SDG grid parent containers don't scroll */
-  .create-project-content *,
-  .edit-project-content * {
-    max-height: none;
-  }
-  
-  .create-project-content .sdg-grid,
-  .edit-project-content .sdg-grid {
-    overflow: visible !important;
-    max-height: none !important;
-  }
-
-  .project-title-link {
-    text-decoration: none;
-    color: inherit;
-    transition: color 0.2s;
-    display: block;
-  }
-
-  .project-title-link:hover {
-    color: #4ecdc4;
-  }
-
-  .project-title-link h3 {
-    transition: color 0.2s;
-  }
-</style>
