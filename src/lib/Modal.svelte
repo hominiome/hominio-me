@@ -67,7 +67,7 @@
   });
 
   const modalBgColor = $derived(
-    variant === "danger" ? "var(--color-alert-500)" : "rgba(255, 255, 255, 0.9)"
+    variant === "danger" ? "var(--color-alert-500)" : "white" /* Solid white background, no transparency */
   );
 </script>
 
@@ -85,7 +85,7 @@
     tabindex="-1"
   >
     <div
-      class="backdrop-blur-lg rounded-3xl pt-10 px-8 @md:px-12 pb-0 @xs:px-6 @xs:pt-7 w-full max-w-[700px] @md:max-w-[800px] relative shadow-[0_-4px_24px_rgba(0,0,0,0.15)] flex flex-col items-center mb-0 overflow-y-auto overflow-x-hidden transition-transform duration-300 ease-out"
+      class="rounded-3xl pt-10 px-8 @md:px-12 pb-0 @xs:px-6 @xs:pt-7 w-full max-w-[700px] @md:max-w-[800px] relative shadow-[0_-4px_24px_rgba(0,0,0,0.15)] flex flex-col items-center mb-0 overflow-y-auto overflow-x-hidden transition-transform duration-300 ease-out"
       class:translate-y-full={!open}
       class:translate-y-0={open}
       style="max-height: calc(95vh - 72px); margin-top: 5vh; margin-bottom: 0; background-color: {modalBgColor};"

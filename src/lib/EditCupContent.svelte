@@ -118,12 +118,21 @@
   // Form validation
   const canEditCup = $derived(cup && name.trim().length > 0 && !saving);
   
-  // Expose for layout
+  // Expose for layout - use requestAnimationFrame to debounce updates
+  let rafId: number | null = null;
+  $effect(() => {
+    // Access reactive values at effect level to ensure tracking
+    const canEdit = canEditCup;
+    const isSaving = saving;
+    
   if (typeof window !== "undefined") {
-    $effect(() => {
+      if (rafId !== null) {
+        cancelAnimationFrame(rafId);
+      }
+      rafId = requestAnimationFrame(() => {
       (window as any).__cupModalActions = {
-        canEditCup,
-        saving,
+          canEditCup: canEdit,
+          saving: isSaving,
         handleEditSubmit: () => {
           const form = document.getElementById("edit-cup-form") as HTMLFormElement;
           if (form && canEditCup) {
@@ -131,8 +140,16 @@
           }
         },
       };
+        rafId = null;
     });
   }
+    return () => {
+      if (rafId !== null) {
+        cancelAnimationFrame(rafId);
+        rafId = null;
+      }
+    };
+  });
 </script>
 
 <div class="edit-cup-content">

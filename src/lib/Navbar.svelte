@@ -155,7 +155,8 @@
                     aria-label={button.ariaLabel || button.label}
                     disabled={button.disabled}
                     size="sm"
-                    class="!rounded-full"
+                    fullWidth={true}
+                    class="!rounded-full {button.variant === 'primary' ? 'outline-primary-muted' : ''}"
                   >
                     {button.label}
                   </Button>
@@ -192,6 +193,7 @@
                     aria-label={button.ariaLabel || button.label}
                     disabled={button.disabled}
                     size="sm"
+                    fullWidth={true}
                     class="!rounded-full"
                   >
                     {button.label}
@@ -722,6 +724,25 @@
     pointer-events: auto; /* Re-enable clicks on button */
   }
 
+  /* Outline primary muted button style - matches non-active nav items */
+  :global(button.outline-primary-muted) {
+    background: transparent !important;
+    border-color: var(--color-primary-300) !important; /* Same as non-active nav items */
+    color: var(--color-primary-300) !important; /* Same as non-active nav items */
+  }
+
+  :global(button.outline-primary-muted:hover:not(:disabled)) {
+    background: rgba(162, 176, 195, 0.1) !important; /* Light background on hover */
+    border-color: var(--color-primary-300) !important;
+    color: var(--color-primary-300) !important;
+  }
+
+  :global(button.outline-primary-muted:active:not(:disabled)) {
+    background: rgba(162, 176, 195, 0.2) !important; /* Slightly darker on click */
+    border-color: var(--color-primary-400) !important;
+    color: var(--color-primary-400) !important;
+  }
+
   @media (min-width: 768px) {
     .back-button-above-navbar {
       padding: 0 1.5rem;
@@ -788,6 +809,7 @@
     justify-content: flex-start;
     gap: 0.5rem;
     z-index: 1;
+    width: 100%;
   }
 
   .modal-right-buttons {
@@ -797,6 +819,7 @@
     justify-content: flex-end;
     gap: 0.5rem;
     z-index: 1;
+    width: 100%;
   }
 
   .modal-action-button {

@@ -76,15 +76,19 @@
 
   // Expose for layout - use requestAnimationFrame to debounce updates
   let rafId: number | null = null;
-  if (typeof window !== "undefined") {
-    $effect(() => {
+  $effect(() => {
+    // Access reactive values at effect level to ensure tracking
+    const canCreate = canCreateCup;
+    const isCreating = creating;
+
+    if (typeof window !== "undefined") {
       if (rafId !== null) {
         cancelAnimationFrame(rafId);
       }
       rafId = requestAnimationFrame(() => {
         (window as any).__cupModalActions = {
-          canCreateCup,
-          creating,
+          canCreateCup: canCreate,
+          creating: isCreating,
           handleCreateSubmit: () => {
             const form = document.getElementById(
               "create-cup-form"
@@ -96,14 +100,14 @@
         };
         rafId = null;
       });
-      return () => {
-        if (rafId !== null) {
-          cancelAnimationFrame(rafId);
-          rafId = null;
-        }
-      };
-    });
-  }
+    }
+    return () => {
+      if (rafId !== null) {
+        cancelAnimationFrame(rafId);
+        rafId = null;
+      }
+    };
+  });
 </script>
 
 <div class="create-cup-content">

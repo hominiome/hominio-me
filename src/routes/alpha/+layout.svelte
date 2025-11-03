@@ -678,6 +678,7 @@
             canCreateProject: actions.canCreateProject,
             canEditProject: actions.canEditProject,
             editSaving: actions.editSaving,
+            creating: actions.creating,
             showCreateModal: actions.showCreateModal,
             showEditModal: actions.showEditModal,
           };
@@ -730,6 +731,7 @@
           label: `Mark all read (${nonPriorityUnreadCount()})`,
           onClick: markAllNonPriorityAsRead,
           ariaLabel: "Mark all non-priority notifications as read",
+          variant: "primary" as const,
         },
       ];
     }
@@ -754,6 +756,7 @@
           label: `Next (${remainingUnreadCount()})`,
           onClick: goToNextNotification,
           ariaLabel: "Next notification",
+          variant: "secondary" as const,
         },
       ];
     }
@@ -765,9 +768,10 @@
       const canCreate = projectActions
         ? (projectActions.canCreateProject ?? true)
         : true;
+      const creating = projectActions?.creating ?? false;
       return [
         {
-          label: "Create Project",
+          label: creating ? "Creating..." : "Create Project",
           onClick: () => {
             const form = document.getElementById(
               "create-project-form"
@@ -777,8 +781,8 @@
             }
           },
           ariaLabel: "Create project",
-          disabled: projectActions ? !canCreate : false,
-          variant: "primary" as const,
+          disabled: projectActions ? !canCreate || creating : false,
+          variant: "secondary" as const,
         },
       ];
     } else if (showEditProjectModal) {
@@ -800,7 +804,7 @@
             }
           },
           ariaLabel: "Save project changes",
-          disabled: projectActions ? !canEdit : false,
+          disabled: projectActions ? !canEdit || saving : false,
           variant: "secondary" as const,
         },
       ];
@@ -822,8 +826,8 @@
             }
           },
           ariaLabel: "Create cup",
-          disabled: cupActions ? !canCreate : false,
-          variant: "primary" as const,
+          disabled: cupActions ? !canCreate || creating : false,
+          variant: "secondary" as const,
         },
       ];
     } else if (showEditCupModal) {
@@ -841,7 +845,7 @@
             }
           },
           ariaLabel: "Save cup changes",
-          disabled: cupActions ? !canEdit : false,
+          disabled: cupActions ? !canEdit || saving : false,
           variant: "secondary" as const,
         },
       ];
@@ -883,6 +887,7 @@
   });
 
   const showBackState = $derived(isDetailPage && !isModalOpenState);
+  const showBackAboveNotification = $derived(isDetailPage && !isModalOpenState && unreadCount > 0);
 
   function handleModalClose() {
     // Stay on the same route, just remove the modal param
@@ -942,6 +947,7 @@
   {signInWithGoogle}
   isModalOpen={isModalOpenState}
   showBack={showBackState}
+  showBackAboveNotification={showBackAboveNotification}
   backUrl={backUrl()}
   onModalClose={modalType ? handleModalClose : handleNotificationClose}
   modalLeftButtons={modalLeftButtons()}

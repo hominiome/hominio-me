@@ -106,6 +106,7 @@
   let editProject = $state(null);
   let editLoading = $state(false);
   let editSaving = $state(false);
+  let creating = $state(false);
   let editFormData = $state({
     title: "",
     description: "",
@@ -156,6 +157,14 @@
   // Use requestAnimationFrame to debounce updates and avoid forced reflows
   let rafId = null;
   $effect(() => {
+    // Access reactive values at effect level to ensure tracking
+    const canCreate = canCreateProject;
+    const canEdit = canSaveEditProject;
+    const saving = editSaving;
+    const isCreating = creating;
+    const showCreate = showCreateModal;
+    const showEdit = showEditModal;
+
     if (typeof window !== "undefined") {
       if (rafId !== null) {
         cancelAnimationFrame(rafId);
@@ -164,11 +173,12 @@
         window.__projectModalActions = {
           handleCreateSubmit,
           handleEditSubmit,
-          canCreateProject,
-          canEditProject: canSaveEditProject,
-          editSaving,
-          showCreateModal,
-          showEditModal,
+          canCreateProject: canCreate,
+          canEditProject: canEdit,
+          editSaving: saving,
+          creating: isCreating,
+          showCreateModal: showCreate,
+          showEditModal: showEdit,
         };
         rafId = null;
       });
@@ -516,8 +526,10 @@
   });
 
   async function createProject() {
+    if (!zero || creating) {
     if (!zero) {
       showError("Zero sync is not ready. Please wait...");
+      }
       return;
     }
 
@@ -544,6 +556,8 @@
       newProject.sdgs.length === 0
     )
       return;
+
+    creating = true;
 
     // Use selected owner if admin selected one, otherwise use current user
     const ownerId =
@@ -578,6 +592,8 @@
       console.error("[createProject] Client error:", error);
       const errorMessage = error?.message || "Failed to create project";
       showError(errorMessage);
+    } finally {
+      creating = false;
     }
 
     // Reset form
