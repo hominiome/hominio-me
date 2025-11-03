@@ -222,7 +222,7 @@ export function createServerMutators(
         // Check admin status first - admins can mark any notification as read
         if (authData?.sub) {
           const userIsAdmin = isAdmin(authData.sub);
-          
+
           // Admins can mark any notification as read
           if (userIsAdmin) {
             // Admin override - allow
@@ -480,7 +480,7 @@ export function createServerMutators(
 
         // Delegate to client mutator (which will read latest state and append)
         await clientMutators.cup.addProject(tx, args);
-        
+
         console.log('[SERVER addProject] Mutation completed:', {
           cupId: args.cupId,
           projectId: args.projectId
@@ -515,4 +515,5 @@ export function createServerMutators(
     },
   } as const;
 }
+
 
