@@ -5,8 +5,9 @@ app = 'hominio-me-sync'
 primary_region = 'fra'
 
 [build]
-  # Build from same repo
-  # You may need a separate Dockerfile or build command for zero-cache
+  # Build custom image from Dockerfile.sync
+  # This extends the official rocicorp/zero image and adds our schema file
+  dockerfile = "Dockerfile.sync"
 
 [env]
   PORT = '4848'

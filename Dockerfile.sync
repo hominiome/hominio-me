@@ -1,6 +1,7 @@
 # Dockerfile for Zero sync service
 # Use the official Zero Docker image as base
-FROM rocicorp/zero:0.24.2025101500
+# Docker tag 0.24.3000000000 corresponds to npm package @rocicorp/zero@0.24.x
+FROM rocicorp/zero:0.24.3000000000
 
 WORKDIR /app
 
@@ -11,9 +12,9 @@ COPY src/zero-schema.ts ./src/zero-schema.ts
 # The Zero image likely has an ENTRYPOINT that we need to clear
 ENTRYPOINT []
 
-# Start zero-cache with admin password from environment variable
+# Start zero-cache with required flags
 # Zero requires --admin-password in production mode
-# We reuse ZERO_AUTH_SECRET as the admin password (same secret, different purpose)
-# Zero can read ZERO_ADMIN_PASSWORD from env, but we'll pass it explicitly to be sure
-CMD ["sh", "-c", "zero-cache --schema-path=./src/zero-schema.ts --admin-password=\"${ZERO_AUTH_SECRET}\""]
+# Cookie forwarding flags are set via environment variables (ZERO_GET_QUERIES_FORWARD_COOKIES, ZERO_MUTATE_FORWARD_COOKIES)
+# Schema path and other config come from environment variables
+CMD ["sh", "-c", "zero-cache --schema-path=./src/zero-schema.ts --admin-password=\"${ZERO_AUTH_SECRET}\" --get-queries-forward-cookies --push-forward-cookies"]
 
