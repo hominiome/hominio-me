@@ -11,6 +11,9 @@ const SECRET_GOOGLE_CLIENT_SECRET = env.SECRET_GOOGLE_CLIENT_SECRET || "";
 const SECRET_AUTH_SECRET =
   env.SECRET_AUTH_SECRET || "dev-secret-key-change-in-production";
 
+// Detect environment - only use secure cookies in production
+const isProduction = process.env.NODE_ENV === 'production';
+
 // Get the database instance - ensure it's the real one, not a stub
 // If building and env vars aren't available, Better Auth won't be used anyway
 const authDb = getAuthDb();
@@ -42,23 +45,26 @@ export const auth = betterAuth({
     : {}),
   plugins: [sveltekitCookies(getRequestEvent)],
   advanced: {
-    // Enable cross-subdomain cookies for Zero sync (REQUIRED by Zero docs)
+    // Enable cross-subdomain cookies ONLY in production (for Zero sync)
     // BetterAuth automatically sets cookies for .hominio.me with SameSite=Lax
     // This makes cookies accessible from hominio.me and sync.hominio.me (but NOT other domains)
     // Zero requires cookies to be accessible from both hominio.me and sync.hominio.me
-    crossSubDomainCookies: {
-      enabled: true,
-      domain: 'hominio.me', // Root domain (BetterAuth automatically adds dot prefix: .hominio.me)
-    },
-    // Force secure cookies (HTTPS only) - REQUIRED for production
-    // Ensures cookies are only sent over HTTPS connections
-    useSecureCookies: true,
+    // In development (localhost), we don't need cross-subdomain cookies
+    ...(isProduction ? {
+      crossSubDomainCookies: {
+        enabled: true,
+        domain: 'hominio.me', // Root domain (BetterAuth automatically adds dot prefix: .hominio.me)
+      },
+    } : {}),
+    // Force secure cookies (HTTPS only) ONLY in production
+    // In development (localhost), allow HTTP cookies for local testing
+    useSecureCookies: isProduction,
     // Default cookie attributes - httpOnly prevents JavaScript access (XSS protection)
-    // secure is handled by useSecureCookies above, but explicit here for clarity
-    // sameSite is automatically set to 'lax' by crossSubDomainCookies
+    // secure is set conditionally based on environment (production = true, dev = false)
+    // sameSite is automatically set to 'lax' by crossSubDomainCookies in production
     defaultCookieAttributes: {
-      httpOnly: true, // Prevent JavaScript access (XSS protection)
-      secure: true,   // HTTPS only (redundant with useSecureCookies but explicit)
+      httpOnly: true, // Prevent JavaScript access (XSS protection) - always enabled
+      secure: isProduction, // HTTPS only in production, allow HTTP in development
     },
   },
 });
