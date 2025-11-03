@@ -9,15 +9,72 @@ env:
   FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
 
 jobs:
-  deploy-main-app:
-    name: Deploy SvelteKit App (hominio.me)
+  deploy-sync:
+    name: Deploy sync service
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Setup Fly.io CLI
-        uses: superfly/flyctl-actions/setup-flyctl@master
+      - uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Set Zero secrets
+        run: |
+          # Set secrets for sync service (directly from GitHub secrets)
+          # ZERO_AUTH_SECRET is reused as admin password (same secret, different purpose)
+          flyctl secrets set \
+            ZERO_UPSTREAM_DB="${{ secrets.SECRET_ZERO_DEV_PG }}" \
+            ZERO_AUTH_SECRET="${{ secrets.SECRET_ZERO_AUTH_SECRET }}" \
+            ZERO_ADMIN_PASSWORD="${{ secrets.SECRET_ZERO_AUTH_SECRET }}" \
+            ZERO_GET_QUERIES_URL="https://hominio.me/alpha/api/zero/get-queries" \
+            ZERO_PUSH_URL="https://hominio.me/alpha/api/zero/push" \
+            ZERO_GET_QUERIES_FORWARD_COOKIES="true" \
+            ZERO_MUTATE_FORWARD_COOKIES="true" \
+            ZERO_DB_CONNECT_TIMEOUT="10" \
+            NODE_ENV="production" \
+            --app hominio-me-sync
+
+      - name: Deploy sync service (Zero cache server)
+        run: |
+          flyctl deploy --config fly.sync.toml --remote-only --app hominio-me-sync
+
+      - name: Ensure exactly 1 machine (no auto-scaling)
+        run: |
+          # Explicitly set scale count to 1 to prevent auto-scaling
+          # This ensures only one machine runs, preventing replication slot conflicts
+          flyctl scale count 1 --yes --app hominio-me-sync
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: |
+          bun install
+
+      - name: Run database migration
+        run: |
+          # Run migration script to add new columns and update publication
+          # This ensures the database schema matches the Zero schema definition
+          bun run scripts/zero-migrate.js
+        env:
+          SECRET_ZERO_DEV_PG: ${{ secrets.SECRET_ZERO_DEV_PG }}
+
+      - name: Deploy Zero schema permissions
+        run: |
+          # Deploy schema permissions to ensure Zero server has latest schema
+          # This updates the replicated columns and permissions in the database
+          bunx zero-deploy-permissions -p ./src/zero-schema.ts
+        env:
+          ZERO_UPSTREAM_DB: ${{ secrets.SECRET_ZERO_DEV_PG }}
+
+  deploy-main:
+    name: Deploy main app
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: superfly/flyctl-actions/setup-flyctl@master
 
       - name: Set Fly.io secrets for main app
         run: |
@@ -35,31 +92,6 @@ jobs:
             PUBLIC_BASE_URL="https://hominio.me" \
             --app hominio-me
 
-      - name: Deploy main app to Fly.io
-        run: flyctl deploy --remote-only --app hominio-me
-
-  deploy-sync-service:
-    name: Deploy Zero Sync Service (sync.hominio.me)
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Fly.io CLI
-        uses: superfly/flyctl-actions/setup-flyctl@master
-
-      - name: Set Fly.io secrets for sync service
+      - name: Deploy main app
         run: |
-          flyctl secrets set \
-            ZERO_UPSTREAM_DB="${{ secrets.SECRET_ZERO_DEV_PG }}" \
-            ZERO_AUTH_SECRET="${{ secrets.SECRET_ZERO_AUTH_SECRET }}" \
-            ZERO_GET_QUERIES_URL="https://hominio.me/alpha/api/zero/get-queries" \
-            ZERO_PUSH_URL="https://hominio.me/alpha/api/zero/push" \
-            ZERO_GET_QUERIES_FORWARD_COOKIES="true" \
-            ZERO_MUTATE_FORWARD_COOKIES="true" \
-            ZERO_DB_CONNECT_TIMEOUT="10" \
-            NODE_ENV="production" \
-            --app hominio-me-sync
-
-      - name: Deploy sync service to Fly.io
-        run: flyctl deploy --remote-only --app hominio-me-sync
+          flyctl deploy --remote-only --app hominio-me
