@@ -88,11 +88,8 @@
         // zero-cache forwards cookies to our server endpoints
         // Server reads BetterAuth session from cookies
         
-        // Debug: Log Zero server URL to help diagnose connection issues
-        console.log('[Zero] Initializing with server URL:', zeroServerUrl);
-        console.log('[Zero] PUBLIC_DOMAIN:', publicEnv.PUBLIC_DOMAIN);
-        console.log('[Zero] PUBLIC_ZERO_SYNC_DOMAIN:', publicEnv.PUBLIC_ZERO_SYNC_DOMAIN);
-        console.log('[Zero] Hostname:', window.location.hostname);
+        // Debug: Log Zero server URL to help diagnose connection issues (only if URL is invalid)
+        // Note: PUBLIC_ZERO_SYNC_DOMAIN may be undefined in dev - domain utility handles this gracefully
         
         // Validate server URL has proper scheme
         if (!zeroServerUrl || (!zeroServerUrl.startsWith('http://') && !zeroServerUrl.startsWith('https://') && !zeroServerUrl.startsWith('ws://') && !zeroServerUrl.startsWith('wss://'))) {
