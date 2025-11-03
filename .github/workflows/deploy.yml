@@ -33,10 +33,21 @@ jobs:
             ZERO_DB_CONNECT_TIMEOUT="10" \
             NODE_ENV="production" \
             --app hominio-me-sync
-          
+
           # Remove any old/deprecated secret names that might conflict
           echo "Checking for old secrets to remove..."
           flyctl secrets list --app hominio-me-sync || true
+
+      - name: Verify sync domain DNS
+        run: |
+          echo "Checking if sync.hominio.me resolves..."
+          if curl -I https://sync.hominio.me/ 2>&1 | grep -q "HTTP"; then
+            echo "✅ sync.hominio.me is accessible"
+          else
+            echo "⚠️  WARNING: sync.hominio.me DNS not configured or not accessible"
+            echo "You may need to configure DNS for sync.hominio.me in Fly.io"
+            echo "Run: flyctl certs add sync.hominio.me --app hominio-me-sync"
+          fi
 
       - name: Deploy sync service (Zero cache server)
         run: |
