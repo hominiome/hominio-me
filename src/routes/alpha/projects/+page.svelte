@@ -456,7 +456,15 @@
   });
 
   async function createProject() {
-    if (!zero || !$session.data?.user) return;
+    if (!zero) {
+      showError("Zero sync is not ready. Please wait...");
+      return;
+    }
+    
+    if (!$session.data?.user) {
+      showError("You must be logged in to create projects. Please log in first.");
+      return;
+    }
     
     // Check if user has founder identity
     if (!hasFounderIdentity() && !isAdmin) {
@@ -478,19 +486,32 @@
       isAdmin && selectedOwner ? selectedOwner.id : $session.data.user.id;
 
     // Fire and forget - Zero handles optimistic updates
-    zero.mutate.project.create({
-      id: nanoid(),
-      title: newProject.title,
-      description: newProject.description,
-      country: newProject.country.name,
-      city: newProject.city,
-      videoUrl: newProject.videoUrl.trim() || "",
-      bannerImage: newProject.bannerImage.trim() || "",
-      profileImageUrl: newProject.profileImageUrl.trim() || "",
-      userId: ownerId,
-      sdgs: JSON.stringify(newProject.sdgs),
-      createdAt: new Date().toISOString(),
-    });
+    // Catch errors to show user-friendly messages
+    try {
+      await zero.mutate.project.create({
+        id: nanoid(),
+        title: newProject.title,
+        description: newProject.description,
+        country: newProject.country.name,
+        city: newProject.city,
+        videoUrl: newProject.videoUrl.trim() || "",
+        bannerImage: newProject.bannerImage.trim() || "",
+        profileImageUrl: newProject.profileImageUrl.trim() || "",
+        userId: ownerId,
+        sdgs: JSON.stringify(newProject.sdgs),
+        createdAt: new Date().toISOString(),
+      }).server.catch((error) => {
+        // Handle server-side errors
+        console.error('[createProject] Server error:', error);
+        const errorMessage = error?.details || error?.message || 'Failed to create project';
+        showError(errorMessage);
+      });
+    } catch (error) {
+      // Handle client-side errors
+      console.error('[createProject] Client error:', error);
+      const errorMessage = error?.message || 'Failed to create project';
+      showError(errorMessage);
+    }
 
     // Reset form
     newProject = {

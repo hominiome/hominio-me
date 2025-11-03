@@ -73,6 +73,13 @@ export const OPTIONS: RequestHandler = async ({ request }) => {
  */
 export const POST: RequestHandler = async ({ request, cookies }) => {
   try {
+    // Debug: Log cookie headers to diagnose forwarding issues
+    const cookieHeader = request.headers.get('cookie');
+    const allCookies = request.headers.get('set-cookie');
+    console.log('[push] Cookie header:', cookieHeader ? 'present' : 'missing', cookieHeader?.substring(0, 50) || '');
+    console.log('[push] Request origin:', request.headers.get('origin'));
+    console.log('[push] Request referer:', request.headers.get('referer'));
+    
     // Extract auth data from cookies using centralized auth context
     // This automatically reads BetterAuth session and checks admin status
     const authData = await extractAuthData(request);
@@ -82,6 +89,7 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
       console.log('[push] ✅ Authenticated user:', authData.sub, 'isAdmin:', authData.isAdmin);
     } else {
       console.log('[push] ❌ Anonymous request - NO AUTH DATA');
+      console.log('[push] Available cookies:', cookieHeader ? cookieHeader.split(';').map(c => c.split('=')[0].trim()) : 'none');
     }
 
     // Create client mutators (will be reused by server mutators)

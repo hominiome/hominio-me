@@ -29,9 +29,18 @@ export type AuthData = {
 export async function extractAuthData(request: Request): Promise<AuthData | undefined> {
   // Extract session from cookies using BetterAuth
   // BetterAuth automatically reads cookies from request.headers
+  // For requests from zero-cache, cookies are forwarded in the Cookie header
   const session = await auth.api.getSession({
     headers: request.headers,
   });
+
+  // Debug logging for cookie-based auth issues
+  const cookieHeader = request.headers.get('cookie');
+  if (!session?.user && cookieHeader) {
+    // Cookies present but no session - might be cookie domain/secure issue
+    const cookieNames = cookieHeader.split(';').map(c => c.split('=')[0].trim());
+    console.log('[auth-context] Cookies present but no session. Cookie names:', cookieNames);
+  }
 
   // If no session, user is anonymous
   if (!session?.user) {
