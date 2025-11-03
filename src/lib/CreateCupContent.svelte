@@ -4,14 +4,14 @@
   import { useZero } from "$lib/zero-utils";
   import { nanoid } from "nanoid";
   import { onMount } from "svelte";
-  
+
   let { onSuccess } = $props<{
     onSuccess?: (cupId: string) => void;
   }>();
-  
+
   const zeroContext = useZero();
   const session = authClient.useSession();
-  
+
   let zero: any = null;
   let name = $state("");
   let description = $state("");
@@ -28,7 +28,7 @@
       zero = zeroContext.getInstance();
     })();
   });
-  
+
   async function createCup() {
     if (!$session.data?.user || creating || !name.trim() || !zero) {
       return;
@@ -44,11 +44,11 @@
       // Fire and forget - Zero handles optimistic updates
       zero.mutate.cup.create({
         id: cupId,
-          name: name.trim(),
-          description: description.trim() || "",
-          logoImageUrl: logoImageUrl.trim() || "",
-          size: size,
-          creatorId: $session.data.user.id,
+        name: name.trim(),
+        description: description.trim() || "",
+        logoImageUrl: logoImageUrl.trim() || "",
+        size: size,
+        creatorId: $session.data.user.id,
         selectedProjectIds: "[]",
         status: "draft",
         currentRound: "",
@@ -70,22 +70,37 @@
       creating = false;
     }
   }
-  
+
   // Form validation
   const canCreateCup = $derived(name.trim().length > 0);
-  
-  // Expose for layout
+
+  // Expose for layout - use requestAnimationFrame to debounce updates
+  let rafId: number | null = null;
   if (typeof window !== "undefined") {
     $effect(() => {
-      (window as any).__cupModalActions = {
-        canCreateCup,
-        creating,
-        handleCreateSubmit: () => {
-          const form = document.getElementById("create-cup-form") as HTMLFormElement;
-          if (form && canCreateCup) {
-            form.requestSubmit();
-          }
-        },
+      if (rafId !== null) {
+        cancelAnimationFrame(rafId);
+      }
+      rafId = requestAnimationFrame(() => {
+        (window as any).__cupModalActions = {
+          canCreateCup,
+          creating,
+          handleCreateSubmit: () => {
+            const form = document.getElementById(
+              "create-cup-form"
+            ) as HTMLFormElement;
+            if (form && canCreateCup) {
+              form.requestSubmit();
+            }
+          },
+        };
+        rafId = null;
+      });
+      return () => {
+        if (rafId !== null) {
+          cancelAnimationFrame(rafId);
+          rafId = null;
+        }
       };
     });
   }
@@ -93,7 +108,7 @@
 
 <div class="create-cup-content">
   <h2 class="text-3xl font-bold text-navy mb-6">Create Cup</h2>
-  
+
   {#if !$session.data}
     <div class="text-center py-8">
       <p class="text-navy/70">Please sign in to create a cup.</p>
@@ -109,7 +124,9 @@
     >
       <!-- Cup Name -->
       <div>
-        <label for="cup-name" class="block text-navy/80 font-medium mb-2">Cup Name *</label>
+        <label for="cup-name" class="block text-navy/80 font-medium mb-2"
+          >Cup Name *</label
+        >
         <input
           id="cup-name"
           type="text"
@@ -123,7 +140,9 @@
 
       <!-- Description -->
       <div>
-        <label for="cup-description" class="block text-navy/80 font-medium mb-2">Description (Optional)</label>
+        <label for="cup-description" class="block text-navy/80 font-medium mb-2"
+          >Description (Optional)</label
+        >
         <textarea
           id="cup-description"
           bind:value={description}
@@ -158,7 +177,11 @@
 
       <!-- Logo Image URL -->
       <div>
-        <label for="cup-logoImageUrl" class="block text-navy/80 font-medium mb-2">Logo Image URL (Optional)</label>
+        <label
+          for="cup-logoImageUrl"
+          class="block text-navy/80 font-medium mb-2"
+          >Logo Image URL (Optional)</label
+        >
         <input
           id="cup-logoImageUrl"
           type="url"
@@ -175,7 +198,9 @@
       <!-- Info Box -->
       <div class="info-box">
         <svg class="w-5 h-5 text-teal" fill="currentColor" viewBox="0 0 24 24">
-          <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z" />
+          <path
+            d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"
+          />
         </svg>
         <div>
           <p class="text-navy font-semibold mb-1">After creating:</p>
@@ -196,12 +221,12 @@
     width: 100%;
     overflow: visible;
   }
-  
+
   .create-cup-content form {
     overflow: visible;
     max-height: none;
   }
-  
+
   .input {
     padding: 0.875rem 1rem;
     background: white;
@@ -216,7 +241,6 @@
   .input:focus {
     outline: none;
     border-color: #4ecdc4;
-    box-shadow: 0 0 0 3px rgba(78, 205, 196, 0.1);
   }
 
   .size-selector {
@@ -250,7 +274,6 @@
   .size-option:has(input[type="radio"]:checked) {
     border-color: #4ecdc4;
     background: rgba(78, 205, 196, 0.1);
-    box-shadow: 0 0 0 3px rgba(78, 205, 196, 0.1);
   }
 
   .size-label {
@@ -268,11 +291,11 @@
     display: flex;
     gap: 0.75rem;
   }
-  
+
   .text-teal {
     color: #4ecdc4;
   }
-  
+
   .text-navy {
     color: #1a1a4e;
   }

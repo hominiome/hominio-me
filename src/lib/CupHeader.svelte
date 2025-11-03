@@ -2,6 +2,7 @@
   import { calculatePrizePool, formatPrizePool } from "$lib/prizePoolUtils.js";
   import { getMatchEndDate } from "$lib/dateUtils.js";
   import CountdownTimer from "$lib/CountdownTimer.svelte";
+  import Icon from "$lib/design-system/atoms/Icon.svelte";
 
   let { cup, purchases = [], matches = [] } = $props();
 
@@ -31,6 +32,20 @@
     }
   }
 
+  // Helper function to get status label
+  function getStatusLabel(status) {
+    switch (status) {
+      case "active":
+        return "Active";
+      case "draft":
+        return "Draft";
+      case "completed":
+        return "Completed";
+      default:
+        return status;
+    }
+  }
+
   // Get prize pool for cup
   function getPrizePoolForCup(cupId) {
     const cupPurchases = purchases.filter((p) => p.cupId === cupId);
@@ -54,23 +69,40 @@
 {#if cup}
   <div class="cup-header-wrapper">
     <div class="cup-header">
-      <h3 class="cup-header-title">{cup.name}</h3>
-      <div class="cup-header-badges">
-        <div class="cup-badge prize-pool-badge">
-          <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-            <path
-              d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm.31-8.86c-1.77-.45-2.34-.94-2.34-1.67 0-.84.79-1.43 2.1-1.43 1.38 0 1.9.66 1.94 1.64h1.71c-.05-1.34-.87-2.57-2.49-2.97V5H10.9v1.69c-1.51.32-2.72 1.3-2.72 2.81 0 1.79 1.49 2.69 3.66 3.21 1.95.46 2.34 1.15 2.34 1.87 0 .53-.39 1.39-2.1 1.39-1.6 0-2.23-.72-2.32-1.64H8.04c.1 1.7 1.36 2.66 2.86 2.97V19h2.34v-1.67c1.52-.29 2.72-1.16 2.73-2.77-.01-2.2-1.9-2.96-3.66-3.42z"
-            />
-          </svg>
-          <span>{getPrizePoolForCup(cup.id)} Prize Pool</span>
-        </div>
-        <span class="cup-badge cup-round-badge"
-          >{getRoundLabel(cup.currentRound || "round_8")}</span
-        >
-        {#if roundEndDate}
-          <div class="cup-badge cup-countdown-badge">
-            <CountdownTimer endDate={roundEndDate} displayFormat="compact" />
+      <div class="cup-header-top-row">
+        <h3 class="cup-header-title">{cup.name}</h3>
+        <div class="prize-pool-display">
+          <div class="prize-pool-icon-circle">
+            <Icon name="mdi:currency-usd" size="xl" color="white" />
           </div>
+          <div class="prize-pool-text">
+            <div class="prize-pool-value">{getPrizePoolForCup(cup.id)}</div>
+            <div class="prize-pool-label">Prize Pool</div>
+          </div>
+        </div>
+      </div>
+      <div class="cup-header-badges">
+        {#if cup.currentRound}
+          <span class="cup-badge cup-round-badge">
+            <Icon
+              name="mdi:tournament"
+              size="xs"
+              color="var(--color-secondary-600)"
+            />
+            <span>{getRoundLabel(cup.currentRound)}</span>
+          </span>
+        {/if}
+        {#if roundEndDate}
+          <span class="cup-badge cup-countdown-badge">
+            <Icon
+              name="mdi:clock-outline"
+              size="xs"
+              color="var(--color-secondary-600)"
+            />
+            <span>
+              <CountdownTimer endDate={roundEndDate} displayFormat="compact" />
+            </span>
+          </span>
         {/if}
       </div>
     </div>
@@ -89,17 +121,25 @@
   .cup-header {
     display: flex;
     flex-direction: column;
-    align-items: center;
     gap: 1rem;
     padding: 1.5rem 2rem;
     background: rgba(45, 166, 180, 0.12);
-    border-radius: 16px;
+    border-radius: 16px 16px 0 0;
     border: 2px solid rgba(45, 166, 180, 0.2);
+    border-bottom: 3px solid rgba(26, 26, 78, 0.1);
     box-shadow:
       0 4px 16px rgba(8, 27, 71, 0.08),
       inset 0 1px 0 rgba(255, 255, 255, 0.3);
     width: 100%;
     max-width: 100%;
+  }
+
+  .cup-header-top-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    width: 100%;
   }
 
   .cup-header-title {
@@ -108,58 +148,85 @@
     color: #081b47;
     margin: 0;
     letter-spacing: -0.02em;
-    text-align: center;
+    text-align: left;
+  }
+
+  .prize-pool-display {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+
+  .prize-pool-icon-circle {
+    width: 3rem;
+    height: 3rem;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #2da6b4 0%, #2399a8 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow:
+      0 4px 12px rgba(45, 166, 180, 0.3),
+      0 0 0 2px rgba(45, 166, 180, 0.2);
+    flex-shrink: 0;
+  }
+
+  .prize-pool-text {
+    display: flex;
+    flex-direction: column;
+    gap: 0.125rem;
+  }
+
+  .prize-pool-label {
+    font-size: 0.625rem;
+    font-weight: 700;
+    color: #2da6b4;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    line-height: 1;
+  }
+
+  .prize-pool-value {
+    font-size: 1.5rem;
+    font-weight: 900;
+    color: #1a5478;
+    line-height: 1;
   }
 
   .cup-header-badges {
     display: flex;
     align-items: center;
-    justify-content: center;
-    gap: 0.75rem;
+    justify-content: flex-start;
+    gap: 0.5rem;
     flex-wrap: wrap;
   }
 
   .cup-badge {
     display: inline-flex;
     align-items: center;
-    gap: 0.5rem;
-    padding: 0.5rem 1rem;
-    font-size: 0.875rem;
+    gap: 0.375rem;
+    padding: 0.375rem 0.75rem;
+    font-size: 0.75rem;
     font-weight: 600;
     white-space: nowrap;
     border-radius: 9999px;
-    border: 1px solid rgba(45, 166, 180, 0.2);
-  }
-
-  .prize-pool-badge {
-    background: linear-gradient(135deg, #ffd700 0%, #ffed4e 100%);
-    color: #1a1a4e;
-    font-weight: 700;
-    box-shadow: 0 2px 8px rgba(255, 215, 0, 0.3);
-  }
-
-  .prize-pool-badge svg {
-    width: 1rem;
-    height: 1rem;
-    flex-shrink: 0;
-    fill: #1a1a4e;
+    background: rgba(45, 166, 180, 0.1);
+    border: 1px solid rgba(45, 166, 180, 0.3);
   }
 
   .cup-round-badge {
-    background: rgba(45, 166, 180, 0.1);
-    color: #081b47;
+    color: #2da6b4;
     text-transform: uppercase;
     letter-spacing: 0.05em;
   }
 
   .cup-countdown-badge {
-    background: rgba(45, 166, 180, 0.1);
-    color: #081b47;
+    color: #2da6b4;
   }
 
   .cup-countdown-badge :global(*) {
-    color: #081b47;
-    font-size: 0.875rem;
+    color: #2da6b4;
+    font-size: 0.75rem;
     font-weight: 600;
   }
 
@@ -173,18 +240,26 @@
       font-size: 1.25rem;
     }
 
+    .prize-pool-icon-circle {
+      width: 2.5rem;
+      height: 2.5rem;
+    }
+
+    .prize-pool-label {
+      font-size: 0.5625rem;
+    }
+
+    .prize-pool-value {
+      font-size: 1.25rem;
+    }
+
     .cup-header-badges {
-      gap: 0.625rem;
+      gap: 0.5rem;
     }
 
     .cup-badge {
-      padding: 0.4375rem 0.875rem;
-      font-size: 0.8125rem;
-    }
-
-    .prize-pool-badge svg {
-      width: 0.875rem;
-      height: 0.875rem;
+      padding: 0.3125rem 0.625rem;
+      font-size: 0.6875rem;
     }
   }
 
@@ -198,18 +273,26 @@
       font-size: 1.125rem;
     }
 
+    .prize-pool-icon-circle {
+      width: 2rem;
+      height: 2rem;
+    }
+
+    .prize-pool-label {
+      font-size: 0.5rem;
+    }
+
+    .prize-pool-value {
+      font-size: 1rem;
+    }
+
     .cup-header-badges {
-      gap: 0.5rem;
+      gap: 0.375rem;
     }
 
     .cup-badge {
-      padding: 0.375rem 0.75rem;
-      font-size: 0.75rem;
-    }
-
-    .prize-pool-badge svg {
-      width: 0.875rem;
-      height: 0.875rem;
+      padding: 0.25rem 0.5rem;
+      font-size: 0.625rem;
     }
   }
 </style>

@@ -594,6 +594,9 @@
   );
   const showCreateCupModal = $derived(modalType === "create-cup");
   const showEditCupModal = $derived(modalType === "edit-cup" && !!modalCupId);
+  const showDeleteProjectModal = $derived(
+    modalType === "delete-project" && !!modalProjectId
+  );
 
   // Ensure only one modal can be open at a time
   // If notification modal is open, close URL-based modals
@@ -604,6 +607,32 @@
       url.searchParams.delete("projectId");
       url.searchParams.delete("cupId");
       goto(url.pathname + url.search, { replaceState: true });
+    }
+  });
+
+  // Reactive state to track delete modal actions
+  let deleteActions = $state<any>(null);
+
+  // Watch for delete modal actions updates
+  $effect(() => {
+    if (browser && showDeleteProjectModal) {
+      // Check immediately and then periodically for updates
+      const checkActions = () => {
+        const actions = (window as any).__deleteModalActions;
+        if (actions) {
+          deleteActions = {
+            handleDelete: actions.handleDelete,
+            handleCancel: actions.handleCancel,
+          };
+        }
+      };
+
+      checkActions(); // Check immediately
+      const interval = setInterval(checkActions, 100);
+
+      return () => clearInterval(interval);
+    } else {
+      deleteActions = null;
     }
   });
 
@@ -693,7 +722,7 @@
     }
   });
 
-  // Get modal left buttons - for notification modal
+  // Get modal left buttons - for notification modal and delete modal
   const modalLeftButtons = $derived(() => {
     if (notificationModal && nonPriorityUnreadCount() > 0) {
       return [
@@ -701,6 +730,16 @@
           label: `Mark all read (${nonPriorityUnreadCount()})`,
           onClick: markAllNonPriorityAsRead,
           ariaLabel: "Mark all non-priority notifications as read",
+        },
+      ];
+    }
+    if (showDeleteProjectModal && deleteActions) {
+      return [
+        {
+          label: "Cancel",
+          onClick: deleteActions.handleCancel,
+          ariaLabel: "Cancel delete",
+          variant: "secondary" as const,
         },
       ];
     }
@@ -762,7 +801,7 @@
           },
           ariaLabel: "Save project changes",
           disabled: projectActions ? !canEdit : false,
-          variant: "primary" as const,
+          variant: "secondary" as const,
         },
       ];
     }
@@ -803,7 +842,19 @@
           },
           ariaLabel: "Save cup changes",
           disabled: cupActions ? !canEdit : false,
-          variant: "primary" as const,
+          variant: "secondary" as const,
+        },
+      ];
+    }
+
+    // Check for delete project modal buttons
+    if (showDeleteProjectModal && deleteActions) {
+      return [
+        {
+          label: "Delete",
+          onClick: deleteActions.handleDelete,
+          ariaLabel: "Delete project",
+          variant: "alert" as const,
         },
       ];
     }
@@ -812,7 +863,9 @@
   });
 
   // Derived modal open state for navbar - ensure reactivity
-  const isModalOpenState = $derived(!!notificationModal || !!modalType);
+  const isModalOpenState = $derived(
+    !!notificationModal || !!modalType || showDeleteProjectModal
+  );
 
   function handleModalClose() {
     // Stay on the same route, just remove the modal param
@@ -886,7 +939,7 @@
 ></div>
 
 <div class="content-wrapper relative min-h-screen">
-  <div class="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
+  <div class="mx-auto w-full max-w-7xl px-2 sm:px-4 lg:px-6">
     {@render children()}
     <!-- Spacer to ensure content can scroll properly behind navbar -->
     <div class="h-20"></div>

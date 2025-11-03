@@ -10,7 +10,7 @@
     glassIntensity?: "light" | "medium" | "heavy";
     config?: CardConfig;
     class?: string;
-    children?: any;
+    children?: import("svelte").Snippet;
   }
 
   let {
@@ -28,11 +28,12 @@
     "rounded-2xl border transition-all duration-300 overflow-hidden";
 
   const variantClasses = {
-    default: "bg-white border-2 border-brand-navy-500/6 shadow-md hover:shadow-lg hover:-translate-y-0.5",
+    default:
+      "bg-white border-2 border-brand-navy-500/6 hover:border-brand-teal-500/40 hover:-translate-y-0.5 hover:shadow-[0_8px_24px_rgba(78,205,196,0.15)]",
     elevated:
-      "bg-white border-2 border-brand-navy-500/10 shadow-lg hover:shadow-xl hover:-translate-y-1",
+      "bg-white border-2 border-brand-navy-500/6 hover:border-brand-teal-500/40 hover:-translate-y-0.5 hover:shadow-[0_8px_24px_rgba(78,205,196,0.15)]",
     floating:
-      "bg-white border-2 border-brand-navy-500/8 shadow-xl hover:shadow-2xl hover:-translate-y-1.5",
+      "bg-white border-2 border-brand-navy-500/6 hover:border-brand-teal-500/40 hover:-translate-y-0.5 hover:shadow-[0_8px_24px_rgba(78,205,196,0.15)]",
   };
 
   const glassClasses = {
@@ -46,7 +47,6 @@
 
 <div class={cardClasses}>
   {#if children}
-    {children}
+    {@render children()}
   {/if}
 </div>
-

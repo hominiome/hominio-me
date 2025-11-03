@@ -7,7 +7,7 @@
     onClick: () => void;
     ariaLabel?: string;
     disabled?: boolean;
-    variant?: "primary" | "secondary";
+    variant?: "primary" | "secondary" | "outline" | "alert";
   }
 
   // Receive session and signIn function from parent layout
@@ -125,13 +125,16 @@
           {#if modalLeftButtons.length > 0}
             <div class="modal-left-buttons">
               {#each modalLeftButtons as button}
-                <button
-                  class="modal-action-button"
+                <Button
+                  variant={button.variant || "secondary"}
                   onclick={button.onClick}
                   aria-label={button.ariaLabel || button.label}
+                  disabled={button.disabled}
+                  size="sm"
+                  class="!rounded-full"
                 >
                   {button.label}
-                </button>
+                </Button>
               {/each}
             </div>
           {/if}
@@ -159,15 +162,16 @@
           {#if modalRightButtons.length > 0}
             <div class="modal-right-buttons">
               {#each modalRightButtons as button}
-                <button
-                  class="modal-action-button"
-                  class:primary={button.variant === "primary"}
+                <Button
+                  variant={button.variant || "primary"}
                   onclick={button.onClick}
                   aria-label={button.ariaLabel || button.label}
                   disabled={button.disabled}
+                  size="sm"
+                  class="!rounded-full"
                 >
                   {button.label}
-                </button>
+                </Button>
               {/each}
             </div>
           {/if}
@@ -666,109 +670,194 @@
   /* Container for modal mode buttons - matches modal content max-width */
   .modal-nav-container {
     width: 100%;
-    max-width: 600px;
+    max-width: 700px;
     margin: 0 auto;
-    display: flex;
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
     align-items: center;
-    justify-content: space-between;
-    padding: 0.25rem 0.5rem;
+    padding: 0.25rem 1rem;
     padding-bottom: calc(0.25rem + env(safe-area-inset-bottom));
     position: relative;
     min-height: 60px;
     height: 60px;
   }
 
+  @media (min-width: 768px) {
+    .modal-nav-container {
+      max-width: 800px;
+      padding: 0.25rem 1.5rem;
+    }
+  }
+
   .modal-close-button {
-    position: absolute;
-    left: 50%;
-    transform: translateX(-50%);
+    grid-column: 2;
+    justify-self: center;
     z-index: 2;
-    background: rgba(255, 255, 255, 0.1);
-    border: 2px solid rgba(255, 255, 255, 0.2);
+    background: var(--color-primary-100); /* One darker bg color */
+    border: 2px solid var(--color-primary-200);
     border-radius: 50%;
-    width: 2rem;
-    height: 2rem;
+    width: 2.5rem;
+    height: 2.5rem;
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    transition: all 0.2s;
+    transition:
+      background-color 0.2s,
+      border-color 0.2s;
     flex-shrink: 0;
+    margin: 0 0.75rem; /* Add margin left and right */
   }
 
   .modal-close-button:hover {
-    background: rgba(255, 255, 255, 0.15);
-    border-color: rgba(255, 255, 255, 0.3);
-    transform: translateX(-50%) scale(1.05);
+    background: var(--color-primary-200);
+    border-color: var(--color-primary-300);
   }
 
   .modal-close-icon {
-    width: 0.875rem;
-    height: 0.875rem;
-    color: rgba(255, 255, 255, 0.9);
+    width: 1rem;
+    height: 1rem;
+    color: var(--color-primary-600); /* Dark blue X icon */
   }
 
   .modal-left-buttons {
+    grid-column: 1;
     display: flex;
     align-items: center;
+    justify-content: flex-start;
     gap: 0.5rem;
     z-index: 1;
-    margin-right: auto;
   }
 
   .modal-right-buttons {
+    grid-column: 3;
     display: flex;
     align-items: center;
+    justify-content: flex-end;
     gap: 0.5rem;
     z-index: 1;
-    margin-left: auto;
   }
 
   .modal-action-button {
-    background: rgba(255, 255, 255, 0.1);
-    border: 2px solid rgba(255, 255, 255, 0.2);
-    border-radius: 0.75rem; /* rounded-xl */
-    padding: 0.375rem 0.875rem;
+    background: white;
+    border: 2px solid var(--color-primary-500);
+    border-radius: 9999px; /* Fully rounded */
+    padding: 0.5rem 0.75rem;
     cursor: pointer;
     transition: all 0.2s;
     font-weight: 600;
-    font-size: 0.8rem;
+    font-size: 0.875rem;
     white-space: nowrap;
     flex-shrink: 0;
-    color: var(--color-secondary-100); /* Light teal text */
+    color: var(--color-primary-500); /* Dark blue brand color */
+    box-shadow: 0 2px 4px rgba(8, 27, 71, 0.1);
+  }
+
+  .modal-action-button:hover:not(:disabled) {
+    background: var(--color-primary-50);
+    border-color: var(--color-primary-600);
   }
 
   .modal-action-button.primary {
     background: var(--color-accent-500); /* Yellow brand color */
     border: 2px solid var(--color-accent-500);
     color: var(--color-accent-900); /* Dark yellow text */
-    border-radius: 0.75rem; /* rounded-xl */
+    border-radius: 9999px; /* Fully rounded */
   }
 
   .modal-action-button.primary:hover:not(:disabled) {
     background: var(--color-accent-400); /* Lighter yellow on hover */
     border-color: var(--color-accent-400);
     color: var(--color-accent-950); /* Darker text */
-    transform: scale(1.02);
+  }
+
+  .modal-action-button.secondary {
+    background: var(
+      --color-secondary-500
+    ); /* Solid turquoise fill - active state */
+    border: 2px solid var(--color-secondary-500);
+    color: var(--color-secondary-100); /* Light turquoise text */
+    border-radius: 9999px; /* Fully rounded */
+  }
+
+  .modal-action-button.secondary:hover:not(:disabled) {
+    background: transparent !important; /* No fill - outline variant on hover */
+    border: 2px solid var(--color-secondary-500) !important; /* Turquoise border */
+    color: var(
+      --color-secondary-500
+    ) !important; /* Turquoise text - stay turquoise */
+  }
+
+  .modal-action-button.secondary:active:not(:disabled) {
+    background: var(--color-secondary-600); /* Darker turquoise when clicked */
+    border-color: var(--color-secondary-600);
+    color: var(--color-secondary-50);
+  }
+
+  .modal-action-button:disabled {
+    background: var(--color-primary-100);
+    border-color: var(--color-primary-300);
+    color: var(--color-primary-400);
+    cursor: not-allowed;
+    transform: none;
+    opacity: 0.7;
   }
 
   .modal-action-button.primary:disabled {
-    background: rgba(244, 208, 63, 0.5);
-    border-color: rgba(244, 208, 63, 0.5);
-    color: var(--color-accent-700);
+    background: var(--color-primary-100);
+    border-color: var(--color-primary-300);
+    color: var(--color-primary-400);
     cursor: not-allowed;
-    opacity: 0.6;
+    opacity: 0.7;
   }
 
-  .modal-action-button:hover:not(:disabled):not(.primary) {
+  .modal-action-button.secondary:disabled {
+    background: var(
+      --color-secondary-500
+    ); /* Turquoise fill like active state */
+    border-color: var(--color-secondary-500);
+    color: var(--color-secondary-300); /* Muted turquoise text */
+    cursor: not-allowed;
+    opacity: 0.6; /* Muted appearance */
+    box-shadow: none; /* No glow/shadow */
+    transform: none; /* No lift effect */
+  }
+
+  .modal-action-button.alert {
+    background: var(--color-alert-500); /* Solid alert fill - active state */
+    border: 2px solid var(--color-alert-500);
+    color: var(--color-alert-100); /* Light alert text */
+    border-radius: 9999px; /* Fully rounded */
+  }
+
+  .modal-action-button.alert:hover:not(:disabled) {
+    background: transparent !important; /* No fill - outline variant on hover */
+    border: 2px solid var(--color-alert-500) !important; /* Alert border */
+    color: var(
+      --color-alert-500
+    ) !important; /* Alert text - stay alert color */
+  }
+
+  .modal-action-button.alert:active:not(:disabled) {
+    background: var(--color-alert-600); /* Darker alert when clicked */
+    border-color: var(--color-alert-600);
+    color: var(--color-alert-50);
+  }
+
+  .modal-action-button.alert:disabled {
+    background: var(--color-alert-500); /* Alert fill like active state */
+    border-color: var(--color-alert-500);
+    color: var(--color-alert-300); /* Muted alert text */
+    cursor: not-allowed;
+    opacity: 0.6; /* Muted appearance */
+    box-shadow: none; /* No glow/shadow */
+    transform: none; /* No lift effect */
+  }
+
+  .modal-action-button:hover:not(:disabled):not(.primary):not(.secondary) {
     background: rgba(255, 255, 255, 0.15);
     border-color: rgba(255, 255, 255, 0.3);
     color: var(--color-secondary-50); /* Lighter teal on hover */
-    transform: scale(1.02);
-  }
-
-  .modal-action-button:active:not(:disabled) {
-    transform: scale(1);
   }
 
   .modal-action-button:disabled {

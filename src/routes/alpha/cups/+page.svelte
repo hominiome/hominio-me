@@ -10,6 +10,11 @@
   import CreateCupContent from "$lib/CreateCupContent.svelte";
   import EditCupContent from "$lib/EditCupContent.svelte";
   import { allProjects } from "$lib/synced-queries";
+  import { Button, Icon } from "$lib/design-system/atoms";
+  import { PageHeader, PageHeaderActions } from "$lib/design-system/molecules";
+  import { Card } from "$lib/design-system/molecules";
+  import CountdownTimer from "$lib/CountdownTimer.svelte";
+  import { getMatchEndDate } from "$lib/dateUtils.js";
 
   const zeroContext = useZero();
   const session = authClient.useSession();
@@ -38,10 +43,13 @@
     })();
   });
 
+  let matches = $state<any[]>([]); // All matches for countdown timer
+
   onMount(() => {
     let cupsView: any;
     let purchasesView: any;
     let projectsView: any;
+    let matchesView: any;
 
     (async () => {
       // Wait for Zero to be ready
@@ -62,12 +70,20 @@
       const projectsQuery = allProjects();
       projectsView = zero.materialize(projectsQuery);
 
+      // Query all matches for countdown timer
+      const matchesQuery = allMatches();
+      matchesView = zero.materialize(matchesQuery);
+
       purchasesView.addListener((data: any) => {
         purchases = Array.from(data || []);
       });
 
       projectsView.addListener((data: any) => {
         projects = Array.from(data || []);
+      });
+
+      matchesView.addListener((data: any) => {
+        matches = Array.from(data || []);
       });
 
       cupsView.addListener((data: any) => {
@@ -80,6 +96,7 @@
       if (cupsView) cupsView.destroy();
       if (purchasesView) purchasesView.destroy();
       if (projectsView) projectsView.destroy();
+      if (matchesView) matchesView.destroy();
     };
   });
 
@@ -87,19 +104,6 @@
     const cupPurchases = purchases.filter((p) => p.cupId === cupId);
     const totalCents = calculatePrizePool(cupPurchases);
     return formatPrizePool(totalCents);
-  }
-
-  function getStatusColor(status: string) {
-    switch (status) {
-      case "draft":
-        return "text-navy/50";
-      case "active":
-        return "text-teal";
-      case "completed":
-        return "text-yellow";
-      default:
-        return "text-navy/50";
-    }
   }
 
   function getStatusLabel(status: string) {
@@ -139,564 +143,423 @@
         return round;
     }
   }
-  
+
   // Detect modal params from URL
-  const showCreateModal = $derived($page.url.searchParams.get("modal") === "create-cup");
-  const showEditModal = $derived($page.url.searchParams.get("modal") === "edit-cup");
+  const showCreateModal = $derived(
+    $page.url.searchParams.get("modal") === "create-cup"
+  );
+  const showEditModal = $derived(
+    $page.url.searchParams.get("modal") === "edit-cup"
+  );
   const editCupId = $derived($page.url.searchParams.get("cupId") || "");
-  
+
   function handleCreateModalClose() {
     const url = new URL($page.url);
     url.searchParams.delete("modal");
     goto(url.pathname + url.search, { replaceState: true });
   }
-  
+
   function handleEditModalClose() {
     const url = new URL($page.url);
     url.searchParams.delete("modal");
     url.searchParams.delete("cupId");
     goto(url.pathname + url.search, { replaceState: true });
   }
-  
+
   function handleCreateSuccess(cupId: string) {
     handleCreateModalClose();
     goto(`/alpha/cups/${cupId}/admin`);
   }
-  
+
   function handleEditSuccess() {
     handleEditModalClose();
   }
 </script>
 
-<div class="min-h-screen bg-cream p-8">
-  <div class="max-w-7xl mx-auto">
-    <!-- Header -->
-    <div class="flex items-center justify-between mb-12">
-      <div>
-        <h1 class="text-6xl font-bold text-navy mb-3">Cups</h1>
-        <p class="text-navy/60 text-lg">
-          Tournament brackets where projects compete for victory
-        </p>
-      </div>
-
+<div class="@container min-h-screen py-8">
+  <!-- Sticky Header -->
+  <div
+    class="sticky top-0 z-50 py-2 mb-5 px-4 sm:px-6 lg:px-8 relative"
+    style="margin-left: calc(-50vw + 50%); margin-right: calc(-50vw + 50%); width: 100vw;"
+  >
+    <div
+      class="absolute inset-0"
+      style="background: linear-gradient(to top, transparent 0%, rgba(250, 249, 246, 0.75) 50%, rgba(250, 249, 246, 1) 100%); backdrop-filter: blur(28px) saturate(200%); -webkit-backdrop-filter: blur(28px) saturate(200%); mask-image: linear-gradient(to top, transparent 0%, rgba(0,0,0,0.75) 50%, black 100%); -webkit-mask-image: linear-gradient(to top, transparent 0%, rgba(0,0,0,0.75) 50%, black 100%); pointer-events: none; border-bottom: 1px solid rgba(255, 255, 255, 0.2); box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.2);"
+    ></div>
+    <div
+      class="flex flex-col items-center max-w-md mx-auto pb-4 gap-3 relative z-10"
+    >
+      <PageHeader
+        title="Cups"
+        subtitle="Tournament brackets where projects compete for victory"
+        size="sm"
+      />
       {#if $session.data && isAdmin}
-        <button
+        <PageHeaderActions>
+          {#snippet children()}
+            <Button
+              variant="primary"
+              icon="mdi:plus"
+              iconPosition="left"
+              onclick={() => {
+                const url = new URL($page.url);
+                url.searchParams.set("modal", "create-cup");
+                goto(url.pathname + url.search, { replaceState: false });
+              }}
+            >
+              Create Cup
+            </Button>
+          {/snippet}
+        </PageHeaderActions>
+      {/if}
+    </div>
+  </div>
+
+  {#if loading}
+    <div
+      class="bg-white rounded-2xl border-2 border-brand-navy-500/6 shadow-md p-8 text-center"
+    >
+      <p class="text-brand-navy-700/70">Loading cups...</p>
+    </div>
+  {:else if cups.length === 0}
+    <div
+      class="bg-white rounded-2xl border-2 border-brand-navy-500/6 shadow-md p-12 text-center"
+    >
+      <h2 class="text-3xl font-bold text-primary-500 mb-4">No Cups Yet</h2>
+      <p class="text-primary-700/60 mb-6">
+        {#if $session.data && isAdmin}
+          Be the first to create a tournament cup!
+        {:else}
+          Check back soon for upcoming tournaments!
+        {/if}
+      </p>
+      {#if $session.data && isAdmin}
+        <Button
+          variant="primary"
+          icon="mdi:plus"
+          iconPosition="left"
           onclick={() => {
             const url = new URL($page.url);
             url.searchParams.set("modal", "create-cup");
             goto(url.pathname + url.search, { replaceState: false });
           }}
-          class="btn-primary"
         >
-          Create Cup
-        </button>
+          Create First Cup
+        </Button>
       {/if}
     </div>
+  {:else}
+    <!-- Cups Grid - Big List Items Layout -->
+    <div class="flex flex-col gap-6 w-full">
+      {#each cups as cup}
+        {@const canEdit = isAdmin || cup.creatorId === $session.data?.user?.id}
+        {@const prizePool = getPrizePoolForCup(cup.id)}
+        {@const winnerProject = cup.winnerId
+          ? projects.find((p) => p.id === cup.winnerId)
+          : null}
+        {@const cupMatches = matches.filter((m) => m.cupId === cup.id)}
+        {@const currentRoundMatch = cupMatches.find(
+          (m) =>
+            m.status === "voting" ||
+            (m.status === "pending" && cup.status === "active")
+        )}
+        {@const roundEndDate = currentRoundMatch
+          ? getMatchEndDate(currentRoundMatch, cupMatches)
+          : null}
+        {@const participatingProjectIds = Array.from(
+          new Set(
+            cupMatches
+              .flatMap((m) => [m.project1Id, m.project2Id])
+              .filter((id) => id && id.trim())
+          )
+        )}
+        {@const participatingProjects = participatingProjectIds
+          .map((id) => projects.find((p) => p.id === id))
+          .filter((p) => p)
+          .sort(() => Math.random() - 0.5)}
 
-    {#if loading}
-      <div class="card p-8 text-center">
-        <p class="text-navy/70">Loading cups...</p>
-      </div>
-    {:else if cups.length === 0}
-      <div class="card p-12 text-center">
-        <h2 class="text-3xl font-bold text-navy mb-4">No Cups Yet</h2>
-        <p class="text-navy/60 mb-6">
-          {#if $session.data && isAdmin}
-            Be the first to create a tournament cup!
-          {:else}
-            Check back soon for upcoming tournaments!
-          {/if}
-        </p>
-        {#if $session.data && isAdmin}
-          <button
-            onclick={() => {
-              const url = new URL($page.url);
-              url.searchParams.set("modal", "create-cup");
-              goto(url.pathname + url.search, { replaceState: false });
-            }}
-            class="btn-primary"
+        <a href="/alpha/cups/{cup.id}" class="group relative block w-full">
+          <Card
+            variant="default"
+            class="w-full min-h-[180px] @md:min-h-[280px] overflow-hidden"
           >
-            Create First Cup
-          </button>
-        {/if}
-      </div>
-    {:else}
-      <!-- Cups Grid -->
-      <div class="cups-grid">
-        {#each cups as cup}
-          {@const canEdit =
-            isAdmin || cup.creatorId === $session.data?.user?.id}
-          <a href="/alpha/cups/{cup.id}" class="cup-card-new">
-            <!-- Card Header -->
-            <div class="cup-card-header">
-              <div class="cup-header-top">
-                <span class="status-badge-new status-{cup.status}">
-                  {getStatusLabel(cup.status)}
-                </span>
-                <div class="cup-header-right">
-                  {#if cup.currentRound}
-                    <span class="round-badge-new">{getRoundLabel(cup.currentRound)}</span>
-                  {/if}
-                  {#if canEdit}
+            <!-- Big List Item Layout: Square Left Section + Right Content -->
+            <div class="flex flex-col @md:flex-row @md:min-h-[280px]">
+              <!-- Left Square Section - Full Height with Champion/Prize Pool -->
+              <div
+                class="w-full @md:w-[280px] @md:min-w-[280px] @md:self-stretch h-[140px] @md:h-auto @md:aspect-auto flex flex-col items-center justify-center p-3 @md:p-8 border-r-0 @md:border-r-2 border-b-2 @md:border-b-0
+                  {cup.status === 'completed' && winnerProject
+                  ? 'bg-gradient-to-br from-[#ffd700] to-[#ffed4e] border-accent-200/50'
+                  : cup.status === 'active'
+                    ? 'bg-gradient-to-br from-secondary-500/20 via-secondary-400/15 to-secondary-500/20 border-secondary-300/40'
+                    : 'bg-gradient-to-br from-accent-50 to-accent-100/50 border-accent-200/50'}"
+              >
+                {#if cup.status === "completed" && winnerProject}
+                  <!-- Winner Display -->
+                  <div
+                    class="flex flex-col items-center gap-1.5 @md:gap-4 text-center"
+                  >
                     <div
-                      class="cup-edit-btn-inline"
+                      class="w-10 h-10 @md:w-20 @md:h-20 rounded-full bg-gradient-to-br from-accent-400 to-accent-500 flex items-center justify-center shadow-lg shrink-0"
+                    >
+                      <Icon
+                        name="mdi:trophy"
+                        size={20}
+                        class="@md:hidden"
+                        color="white"
+                      />
+                      <Icon
+                        name="mdi:trophy"
+                        size="xl"
+                        class="hidden @md:block"
+                        color="white"
+                      />
+                    </div>
+                    <div>
+                      <div
+                        class="text-[10px] @md:text-xs font-bold text-accent-900 uppercase tracking-wider mb-0.5 @md:mb-1"
+                      >
+                        Champion
+                      </div>
+                      <div
+                        class="text-xs @md:text-xl font-bold text-accent-800 line-clamp-2"
+                      >
+                        {winnerProject.title}
+                      </div>
+                    </div>
+                  </div>
+                {:else if cup.status === "active"}
+                  <!-- Active Cup - Redesigned Prize Pool Display -->
+                  <div
+                    class="flex flex-col items-center gap-2 @md:gap-5 text-center"
+                  >
+                    <div
+                      class="w-12 h-12 @md:w-24 @md:h-24 rounded-full bg-gradient-to-br from-secondary-500 to-secondary-600 flex items-center justify-center shadow-xl shrink-0 ring-2 @md:ring-4 ring-secondary-200/50"
+                    >
+                      <Icon
+                        name="mdi:currency-usd"
+                        size={18}
+                        class="@md:hidden"
+                        color="white"
+                      />
+                      <Icon
+                        name="mdi:currency-usd"
+                        size="xl"
+                        class="hidden @md:block"
+                        color="white"
+                      />
+                    </div>
+                    <div class="space-y-0.5 @md:space-y-1">
+                      <div
+                        class="text-[10px] @md:text-xs font-bold text-secondary-800 uppercase tracking-wider"
+                      >
+                        Prize Pool
+                      </div>
+                      <div
+                        class="text-base @md:text-4xl font-black text-secondary-700 leading-none"
+                      >
+                        {prizePool}
+                      </div>
+                    </div>
+                  </div>
+                {:else}
+                  <!-- Draft Cup - Prize Pool Display -->
+                  <div
+                    class="flex flex-col items-center gap-1.5 @md:gap-4 text-center"
+                  >
+                    <div
+                      class="w-10 h-10 @md:w-20 @md:h-20 rounded-full bg-gradient-to-br from-accent-400 to-accent-500 flex items-center justify-center shadow-lg shrink-0"
+                    >
+                      <Icon
+                        name="mdi:currency-usd"
+                        size={18}
+                        class="@md:hidden"
+                        color="white"
+                      />
+                      <Icon
+                        name="mdi:currency-usd"
+                        size="xl"
+                        class="hidden @md:block"
+                        color="white"
+                      />
+                    </div>
+                    <div>
+                      <div
+                        class="text-[10px] @md:text-xs font-semibold text-accent-900 uppercase tracking-wider mb-0.5 @md:mb-1"
+                      >
+                        Prize Pool
+                      </div>
+                      <div
+                        class="text-sm @md:text-3xl font-bold text-accent-800"
+                      >
+                        {prizePool}
+                      </div>
+                    </div>
+                  </div>
+                {/if}
+              </div>
+
+              <!-- Right Content Section -->
+              <div
+                class="flex-1 p-4 @md:p-8 flex flex-col relative @md:self-stretch"
+              >
+                <!-- Title at Top -->
+                <div class="flex items-start justify-between mb-2 @md:mb-3">
+                  <h3
+                    class="text-xl @md:text-3xl font-bold text-primary-500 line-clamp-2 flex-1"
+                  >
+                    {cup.name}
+                  </h3>
+                  {#if canEdit}
+                    <Button
+                      variant="outline"
+                      icon="mdi:pencil"
+                      iconPosition="left"
                       onclick={(e) => {
                         e.preventDefault();
                         e.stopPropagation();
                         const url = new URL($page.url);
                         url.searchParams.set("modal", "edit-cup");
                         url.searchParams.set("cupId", cup.id);
-                        goto(url.pathname + url.search, { replaceState: false });
+                        goto(url.pathname + url.search, {
+                          replaceState: false,
+                        });
                       }}
-                      role="button"
-                      tabindex="0"
-                      onkeydown={(e) => {
-                        if (e.key === "Enter" || e.key === " ") {
-                          e.preventDefault();
-                          const url = new URL($page.url);
-                          url.searchParams.set("modal", "edit-cup");
-                          url.searchParams.set("cupId", cup.id);
-                          goto(url.pathname + url.search, { replaceState: false });
-                        }
-                      }}
-                    >
-                      <svg class="edit-icon-inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
-                      </svg>
-                    </div>
+                      class="aspect-square p-1.5 w-8 h-8 @md:w-10 @md:h-10 !px-1.5 @md:!px-2 ml-2 @md:ml-3 shrink-0"
+                      aria-label="Edit cup"
+                    ></Button>
                   {/if}
                 </div>
+
+                <!-- Description -->
+                {#if cup.description}
+                  <p
+                    class="text-sm @md:text-base text-primary-700/70 mb-4 line-clamp-2"
+                  >
+                    {cup.description}
+                  </p>
+                {/if}
+
+                <!-- Metadata Badges -->
+                <div class="flex flex-wrap items-center gap-2 mb-4">
+                  <!-- Status Badge -->
+                  <span
+                    class="px-3 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider
+                      {cup.status === 'active'
+                      ? 'bg-success-100 text-success-700 border border-success-300'
+                      : ''}
+                      {cup.status === 'draft'
+                      ? 'bg-warning-100 text-warning-700 border border-warning-300'
+                      : ''}
+                      {cup.status === 'completed'
+                      ? 'bg-info-100 text-info-700 border border-info-300'
+                      : ''}"
+                  >
+                    {getStatusLabel(cup.status)}
+                  </span>
+
+                  <!-- Round Badge -->
+                  {#if cup.currentRound}
+                    <span
+                      class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-secondary-500/10 rounded-full border border-secondary-300/30"
+                    >
+                      <Icon
+                        name="mdi:tournament"
+                        size="xs"
+                        color="var(--color-secondary-600)"
+                      />
+                      <span
+                        class="text-xs font-semibold text-secondary-700 uppercase tracking-wider"
+                      >
+                        {getRoundLabel(cup.currentRound)}
+                      </span>
+                    </span>
+                  {/if}
+
+                  <!-- Time Remaining Badge -->
+                  {#if cup.status === "active" && roundEndDate}
+                    <span
+                      class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-secondary-500/10 rounded-full border border-secondary-300/30"
+                    >
+                      <Icon
+                        name="mdi:clock-outline"
+                        size="xs"
+                        color="var(--color-secondary-600)"
+                      />
+                      <span class="text-xs font-semibold text-secondary-700">
+                        <CountdownTimer
+                          endDate={roundEndDate}
+                          displayFormat="compact"
+                        />
+                      </span>
+                    </span>
+                  {/if}
+                </div>
+
+                <!-- Divider Line -->
+                {#if participatingProjects.length > 0}
+                  <div class="border-t border-brand-navy-500/10 my-4"></div>
+                {/if}
+
+                <!-- Participating Projects Profile Images -->
+                {#if participatingProjects.length > 0}
+                  <div class="flex flex-col gap-2 mt-auto">
+                    <span
+                      class="text-xs font-semibold text-primary-700/60 uppercase tracking-wider"
+                    >
+                      Participants:
+                    </span>
+                    <div class="flex flex-wrap items-center gap-2">
+                      {#each participatingProjects as project}
+                        <a
+                          href="/alpha/projects/{project.id}"
+                          class="relative"
+                          onclick={(e) => e.stopPropagation()}
+                        >
+                          {#if project.bannerImage || project.profileImageUrl}
+                            <img
+                              src={project.profileImageUrl ||
+                                project.bannerImage ||
+                                `https://picsum.photos/seed/${project.id}/64/64`}
+                              alt={project.title}
+                              class="w-10 h-10 rounded-full object-cover border-2 border-secondary-200 hover:border-secondary-500 transition-colors shadow-sm"
+                              onerror={(e) => {
+                                const target = e.target as HTMLImageElement;
+                                if (target)
+                                  target.src = `https://picsum.photos/seed/${project.id}/64/64`;
+                              }}
+                            />
+                          {:else}
+                            <div
+                              class="w-10 h-10 rounded-full bg-gradient-to-br from-secondary-400 to-secondary-500 flex items-center justify-center border-2 border-secondary-200 hover:border-secondary-500 transition-colors shadow-sm text-white font-bold text-xs"
+                            >
+                              {project.title?.[0]?.toUpperCase() || "?"}
+                            </div>
+                          {/if}
+                        </a>
+                      {/each}
+                    </div>
+                  </div>
+                {/if}
               </div>
             </div>
-
-            <!-- Cup Content -->
-            <div class="cup-card-content">
-              {#if cup.logoImageUrl}
-                <div class="cup-logo-container">
-                  <img
-                    src={cup.logoImageUrl}
-                    alt="{cup.name} logo"
-                    class="cup-logo-new"
-                  />
-                </div>
-              {/if}
-
-              <h3 class="cup-title-new">{cup.name}</h3>
-
-              {#if cup.description}
-                <p class="cup-description">{cup.description}</p>
-              {/if}
-            </div>
-
-            <!-- Prize Pool or Winner Footer -->
-            <div class="cup-card-footer">
-              {#if cup.status === "completed" && cup.winnerId}
-                {@const winnerProject = projects.find((p) => p.id === cup.winnerId)}
-                <div class="cup-winner-display">
-                  <div class="cup-winner-trophy">
-                    <svg class="winner-trophy-icon" fill="currentColor" viewBox="0 0 24 24">
-                      <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
-                    </svg>
-                  </div>
-                  <div class="cup-winner-info">
-                    <span class="cup-winner-label">Champion</span>
-                    <span class="cup-winner-name">{winnerProject?.title || "Winner"}</span>
-                  </div>
-                </div>
-              {:else}
-                <div class="prize-pool-badge-new">
-                  <svg class="prize-icon" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm.31-8.86c-1.77-.45-2.34-.94-2.34-1.67 0-.84.79-1.43 2.1-1.43 1.38 0 1.9.66 1.94 1.64h1.71c-.05-1.34-.87-2.57-2.49-2.97V5H10.9v1.69c-1.51.32-2.72 1.3-2.72 2.81 0 1.79 1.49 2.69 3.66 3.21 1.95.46 2.34 1.15 2.34 1.87 0 .53-.39 1.39-2.1 1.39-1.6 0-2.23-.72-2.32-1.64H8.04c.1 1.7 1.36 2.66 2.86 2.97V19h2.34v-1.67c1.52-.29 2.72-1.16 2.73-2.77-.01-2.2-1.9-2.96-3.66-3.42z"/>
-                  </svg>
-                  <span class="prize-amount">{getPrizePoolForCup(cup.id)}</span>
-                </div>
-              {/if}
-            </div>
-
-
-            {#if cup.completedAt && cup.winnerId}
-              <div class="cup-winner-badge">
-                <svg class="winner-icon" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
-                </svg>
-                <span>Winner Decided</span>
-              </div>
-            {/if}
-          </a>
-        {/each}
-      </div>
-    {/if}
-  </div>
-  
-  <!-- Create Cup Modal -->
-  {#if showCreateModal && $session.data?.user}
-    <Modal open={showCreateModal} onClose={handleCreateModalClose}>
-      <CreateCupContent onSuccess={handleCreateSuccess} />
-    </Modal>
-  {/if}
-  
-  <!-- Edit Cup Modal -->
-  {#if showEditModal && $session.data?.user && editCupId}
-    <Modal open={showEditModal} onClose={handleEditModalClose}>
-      <EditCupContent cupId={editCupId} onSuccess={handleEditSuccess} />
-    </Modal>
+          </Card>
+        </a>
+      {/each}
+    </div>
   {/if}
 </div>
 
-<style>
-  .bg-cream {
-    background-color: #fef9f0;
-  }
+<!-- Create Cup Modal -->
+{#if showCreateModal && $session.data?.user}
+  <Modal open={showCreateModal} onClose={handleCreateModalClose}>
+    <CreateCupContent onSuccess={handleCreateSuccess} />
+  </Modal>
+{/if}
 
-  .btn-primary {
-    padding: 0.75rem 2rem;
-    background: linear-gradient(135deg, #4ecdc4 0%, #1a1a4e 100%);
-    color: white;
-    border-radius: 12px;
-    font-weight: 600;
-    font-size: 1rem;
-    border: none;
-    cursor: pointer;
-    transition: all 0.2s;
-    text-decoration: none;
-    display: inline-block;
-  }
-
-  .btn-primary:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 20px rgba(78, 205, 196, 0.3);
-  }
-
-  .card {
-    background: white;
-    border-radius: 16px;
-    box-shadow: 0 2px 12px rgba(26, 26, 78, 0.06);
-    border: 1px solid rgba(26, 26, 78, 0.08);
-  }
-
-
-  .line-clamp-2 {
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    line-clamp: 2;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-  }
-
-  .text-navy {
-    color: #1a1a4e;
-  }
-
-  .text-teal {
-    color: #4ecdc4;
-  }
-
-  .text-yellow {
-    color: #f4d03f;
-  }
-
-  /* Cup Cards Grid */
-  .cups-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
-    gap: 1.5rem;
-    padding: 0;
-  }
-
-  .cup-card-new {
-    background: white;
-    border-radius: 16px;
-    overflow: hidden;
-    text-decoration: none;
-    display: flex;
-    flex-direction: column;
-    position: relative;
-    border: 2px solid rgba(26, 26, 78, 0.1);
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    box-shadow: 0 2px 8px rgba(26, 26, 78, 0.06);
-    height: 100%;
-  }
-
-  .cup-card-new:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 12px 32px rgba(26, 26, 78, 0.15);
-    border-color: #4ecdc4;
-  }
-
-  /* Card Header */
-  .cup-card-header {
-    padding: 1rem 1.25rem;
-    background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
-    border-bottom: 2px solid rgba(26, 26, 78, 0.08);
-  }
-
-  .cup-header-top {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 0.75rem;
-    flex-wrap: wrap;
-  }
-
-  .cup-header-right {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-  }
-
-  .status-badge-new {
-    padding: 0.375rem 0.75rem;
-    border-radius: 8px;
-    font-size: 0.6875rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    display: inline-block;
-  }
-
-  .status-badge-new.status-active {
-    background: #d1fae5;
-    color: #065f46;
-    border: 1px solid #a7f3d0;
-  }
-
-  .status-badge-new.status-draft {
-    background: #fef3c7;
-    color: #92400e;
-    border: 1px solid #fde68a;
-  }
-
-  .status-badge-new.status-completed {
-    background: #e0e7ff;
-    color: #3730a3;
-    border: 1px solid #c7d2fe;
-  }
-
-  .round-badge-new {
-    padding: 0.375rem 0.75rem;
-    border-radius: 8px;
-    font-size: 0.6875rem;
-    font-weight: 700;
-    background: linear-gradient(135deg, #4ecdc4 0%, #1a1a4e 100%);
-    color: white;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    white-space: nowrap;
-    box-shadow: 0 1px 3px rgba(26, 26, 78, 0.2);
-  }
-
-  /* Card Content */
-  .cup-card-content {
-    padding: 1.25rem 1.5rem;
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    gap: 0.875rem;
-    min-height: 140px;
-  }
-
-  .cup-logo-container {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    margin-bottom: 0.25rem;
-    padding: 0.5rem 0;
-  }
-
-  .cup-logo-new {
-    max-width: 80px;
-    max-height: 64px;
-    width: auto;
-    height: auto;
-    object-fit: contain;
-    border-radius: 8px;
-  }
-
-  .cup-title-new {
-    font-size: 1.375rem;
-    font-weight: 700;
-    line-height: 1.3;
-    color: #1a1a4e;
-    margin: 0;
-    letter-spacing: -0.01em;
-  }
-
-  .cup-description {
-    font-size: 0.875rem;
-    line-height: 1.5;
-    color: #6b7280;
-    margin: 0;
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-  }
-
-  /* Card Footer */
-  .cup-card-footer {
-    padding: 1rem 1.5rem;
-    background: linear-gradient(135deg, #fffef5 0%, #fef9f0 100%);
-    border-top: 2px solid rgba(244, 208, 63, 0.2);
-  }
-
-  .prize-pool-badge-new {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.625rem;
-    padding: 0.75rem 1rem;
-    background: linear-gradient(135deg, #f4d03f 0%, #facc15 100%);
-    border-radius: 12px;
-    box-shadow: 0 2px 6px rgba(244, 208, 63, 0.25);
-    border: 1px solid rgba(244, 208, 63, 0.3);
-  }
-
-  .prize-icon {
-    width: 18px;
-    height: 18px;
-    flex-shrink: 0;
-    color: #1a1a4e;
-  }
-
-  .prize-amount {
-    font-size: 1.125rem;
-    font-weight: 800;
-    color: #1a1a4e;
-    letter-spacing: -0.01em;
-  }
-
-  /* Cup Winner Display (different from prize pool) */
-  .cup-winner-display {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-    padding: 1rem 1.25rem;
-    background: linear-gradient(135deg, #fff9e6 0%, #fff5d9 100%);
-    border-radius: 12px;
-    border: 2px solid rgba(244, 208, 63, 0.4);
-    box-shadow: 0 4px 12px rgba(244, 208, 63, 0.2);
-  }
-
-  .cup-winner-trophy {
-    flex-shrink: 0;
-    width: 48px;
-    height: 48px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: linear-gradient(135deg, #f4d03f 0%, #facc15 100%);
-    border-radius: 50%;
-    box-shadow: 0 2px 8px rgba(244, 208, 63, 0.3);
-  }
-
-  .winner-trophy-icon {
-    width: 28px;
-    height: 28px;
-    color: #1a1a4e;
-  }
-
-  .cup-winner-info {
-    display: flex;
-    flex-direction: column;
-    gap: 0.25rem;
-    flex: 1;
-  }
-
-  .cup-winner-label {
-    font-size: 0.75rem;
-    font-weight: 600;
-    color: rgba(26, 26, 78, 0.6);
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-  }
-
-  .cup-winner-name {
-    font-size: 1.25rem;
-    font-weight: 700;
-    color: #1a1a4e;
-    line-height: 1.2;
-  }
-
-  /* Edit Button Inline */
-  .cup-edit-btn-inline {
-    width: 32px;
-    height: 32px;
-    background: white;
-    border-radius: 8px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    transition: all 0.2s;
-    border: 1px solid rgba(26, 26, 78, 0.15);
-    flex-shrink: 0;
-  }
-
-  .cup-edit-btn-inline:hover {
-    background: #4ecdc4;
-    border-color: #4ecdc4;
-    transform: scale(1.05);
-    box-shadow: 0 2px 8px rgba(78, 205, 196, 0.3);
-  }
-
-  .edit-icon-inline {
-    width: 16px;
-    height: 16px;
-    color: #1a1a4e;
-    transition: color 0.2s;
-  }
-
-  .cup-edit-btn-inline:hover .edit-icon-inline {
-    color: white;
-  }
-
-  /* Winner Badge */
-  .cup-winner-badge {
-    position: absolute;
-    top: 1rem;
-    left: 1rem;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.5rem 1rem;
-    background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
-    border-radius: 12px;
-    font-size: 0.75rem;
-    font-weight: 700;
-    color: #1a1a4e;
-    box-shadow: 0 2px 8px rgba(251, 191, 36, 0.3);
-    z-index: 10;
-  }
-
-  .winner-icon {
-    width: 16px;
-    height: 16px;
-    color: #1a1a4e;
-  }
-
-  /* Mobile Responsive */
-  @media (max-width: 768px) {
-    .cups-grid {
-      grid-template-columns: 1fr;
-      gap: 1.5rem;
-    }
-
-    .cup-card-new {
-      border-radius: 16px;
-    }
-
-    .cup-card-content {
-      padding: 1.25rem;
-      min-height: 120px;
-    }
-
-    .cup-card-footer {
-      padding: 1rem 1.25rem;
-    }
-
-    .cup-title-new {
-      font-size: 1.25rem;
-    }
-  }
-
-</style>
+<!-- Edit Cup Modal -->
+{#if showEditModal && $session.data?.user && editCupId}
+  <Modal open={showEditModal} onClose={handleEditModalClose}>
+    <EditCupContent cupId={editCupId} onSuccess={handleEditSuccess} />
+  </Modal>
+{/if}

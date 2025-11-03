@@ -153,18 +153,32 @@
   }
 
   // Expose submit functions and state globally for layout to access (reactive)
+  // Use requestAnimationFrame to debounce updates and avoid forced reflows
+  let rafId = null;
   $effect(() => {
     if (typeof window !== "undefined") {
-      window.__projectModalActions = {
-        handleCreateSubmit,
-        handleEditSubmit,
-        canCreateProject,
-        canEditProject: canSaveEditProject,
-        editSaving,
-        showCreateModal,
-        showEditModal,
-      };
+      if (rafId !== null) {
+        cancelAnimationFrame(rafId);
+      }
+      rafId = requestAnimationFrame(() => {
+        window.__projectModalActions = {
+          handleCreateSubmit,
+          handleEditSubmit,
+          canCreateProject,
+          canEditProject: canSaveEditProject,
+          editSaving,
+          showCreateModal,
+          showEditModal,
+        };
+        rafId = null;
+      });
     }
+    return () => {
+      if (rafId !== null) {
+        cancelAnimationFrame(rafId);
+        rafId = null;
+      }
+    };
   });
 
   function handleCreateModalClose() {
@@ -300,11 +314,12 @@
 
                     // Clean up listener after getting data
                     if (timeoutId) clearTimeout(timeoutId);
-                    setTimeout(() => {
+                    // Use requestAnimationFrame for cleanup to avoid blocking
+                    requestAnimationFrame(() => {
                       if (projectView) {
                         projectView.destroy();
                       }
-                    }, 100);
+                    });
                   }
                 } else if (hasReceivedData && projectData.length === 0) {
                   console.log(
@@ -312,11 +327,12 @@
                   );
                   editLoading = false;
                   if (timeoutId) clearTimeout(timeoutId);
-                  setTimeout(() => {
+                  // Use requestAnimationFrame for cleanup to avoid blocking
+                  requestAnimationFrame(() => {
                     if (projectView) {
                       projectView.destroy();
                     }
-                  }, 100);
+                  });
                 }
               });
 
@@ -581,8 +597,16 @@
     handleCreateModalClose();
   }
 
-  let showDeleteConfirm = $state(false);
-  let projectToDelete = $state(null);
+  // Delete modal state - now uses URL params
+  const showDeleteModal = $derived(
+    $page.url.searchParams.get("modal") === "delete-project"
+  );
+  const deleteProjectId = $derived(
+    $page.url.searchParams.get("projectId") || ""
+  );
+  const projectToDelete = $derived(
+    deleteProjectId ? projects.find((p) => p.id === deleteProjectId) : null
+  );
 
   function requestDeleteProject(id) {
     if (!zero || !$session.data?.user) return;
@@ -600,27 +624,50 @@
       return;
     }
 
-    projectToDelete = id;
-    showDeleteConfirm = true;
+    // Open delete modal via URL
+    const url = new URL($page.url);
+    url.searchParams.set("modal", "delete-project");
+    url.searchParams.set("projectId", id);
+    goto(url.pathname + url.search, { replaceState: false });
+  }
+
+  function handleDeleteModalClose() {
+    const url = new URL($page.url);
+    url.searchParams.delete("modal");
+    url.searchParams.delete("projectId");
+    goto(url.pathname + url.search, { replaceState: true });
   }
 
   async function confirmDeleteProject() {
-    if (!projectToDelete || !zero) return;
+    if (!deleteProjectId || !zero) return;
 
     try {
       // Use Zero custom mutator for project delete (admin-only)
       // Fire and forget - Zero handles optimistic updates
-      zero.mutate.project.delete({ id: projectToDelete });
+      zero.mutate.project.delete({ id: deleteProjectId });
 
-      projectToDelete = null;
-      showDeleteConfirm = false;
+      handleDeleteModalClose();
     } catch (error) {
       console.error("Failed to delete project:", error);
       const message = error instanceof Error ? error.message : "Unknown error";
       showError(`Failed to delete project: ${message}`);
-      showDeleteConfirm = false; // Close modal even on error
+      handleDeleteModalClose(); // Close modal even on error
     }
   }
+
+  // Expose delete action for layout navbar
+  $effect(() => {
+    if (typeof window !== "undefined") {
+      if (showDeleteModal && projectToDelete) {
+        window.__deleteModalActions = {
+          handleDelete: confirmDeleteProject,
+          handleCancel: handleDeleteModalClose,
+        };
+      } else {
+        delete window.__deleteModalActions;
+      }
+    }
+  });
 
   function isMyProject(project) {
     return project.userId === $session.data?.user?.id;
@@ -1164,38 +1211,21 @@
                   class="flex flex-col @md:flex-row flex-1 @3xs:min-h-auto min-h-[240px]"
                 >
                   <!-- Content Section -->
-                  <div class="flex-1 p-6 @3xs:p-6 flex flex-col">
-                    <!-- Card Header -->
-                    <div class="flex justify-between items-start mb-3">
+                  <div
+                    class="flex-1 p-6 @3xs:p-6 flex flex-col pr-16 @md:pr-20 relative"
+                  >
+                    <!-- Top Row: Profile Icon, Title, Yours Badge, Location -->
+                    <div class="flex items-start gap-3 mb-4">
+                      <!-- Founder Avatar (Left in Front) -->
                       <a
-                        href="/alpha/projects/{project.id}"
-                        class="no-underline text-inherit transition-colors duration-200 block hover:text-brand-teal-500"
+                        href="/alpha/user/{project.userId}"
+                        class="no-underline inline-block transition-all duration-200 hover:scale-105 hover:[&_.founder-avatar]:border-brand-yellow-500 hover:[&_.founder-avatar-placeholder]:border-brand-yellow-500 shrink-0"
                       >
-                        <h3
-                          class="text-2xl font-bold text-brand-navy-500 leading-tight transition-colors duration-200"
-                        >
-                          {project.title}
-                        </h3>
-                      </a>
-                      {#if isMyProject(project)}
-                        <span
-                          class="px-3 py-1 bg-brand-yellow-500 rounded-full text-xs text-brand-yellow-900 font-bold"
-                          >Yours</span
-                        >
-                      {/if}
-                    </div>
-
-                    <!-- Founder Info -->
-                    <a
-                      href="/alpha/user/{project.userId}"
-                      class="no-underline inline-block transition-all duration-200 hover:translate-x-1 hover:[&_.founder-name]:text-brand-teal-500 hover:[&_.founder-avatar]:border-brand-yellow-500 hover:[&_.founder-avatar-placeholder]:border-brand-yellow-500"
-                    >
-                      <div class="flex items-center gap-2.5 mb-3">
                         {#if userProfile?.image && !failedImages.has(project.userId)}
                           <img
                             src={userProfile.image}
                             alt={userProfile.name || "User"}
-                            class="w-10 h-10 rounded-full border-2 border-brand-teal-500 object-cover transition-colors duration-200"
+                            class="founder-avatar w-[60px] h-[60px] rounded-full border-2 border-brand-teal-500 object-cover transition-colors duration-200"
                             onerror={() => {
                               failedImages = new Set(failedImages).add(
                                 project.userId
@@ -1204,40 +1234,55 @@
                           />
                         {:else}
                           <div
-                            class="w-10 h-10 rounded-full border-2 border-brand-teal-500 bg-gradient-to-br from-brand-teal-500 to-brand-yellow-500 flex items-center justify-center text-white font-bold text-lg uppercase transition-colors duration-200 leading-none"
+                            class="founder-avatar-placeholder w-[60px] h-[60px] rounded-full border-2 border-brand-teal-500 bg-gradient-to-br from-brand-teal-500 to-brand-yellow-500 flex items-center justify-center text-white font-bold text-xl uppercase transition-colors duration-200 leading-none"
                           >
                             {userProfile?.name?.[0] ||
                               project.userId?.[0] ||
                               "?"}
                           </div>
                         {/if}
-                        <span
-                          class="text-brand-navy-700 font-semibold text-sm transition-colors duration-200 leading-tight"
-                          >{userProfile?.name || "Anonymous"}</span
+                      </a>
+                      <div class="flex-1 min-w-0">
+                        <div class="flex items-center gap-3 mb-2">
+                          <a
+                            href="/alpha/projects/{project.id}"
+                            class="no-underline text-inherit transition-colors duration-200 hover:text-brand-teal-500"
+                          >
+                            <h3
+                              class="text-2xl font-bold text-brand-navy-500 leading-tight transition-colors duration-200"
+                            >
+                              {project.title}
+                            </h3>
+                          </a>
+                          {#if isMyProject(project)}
+                            <span
+                              class="px-3 py-1 bg-brand-yellow-500 rounded-full text-xs text-brand-yellow-900 font-bold shrink-0"
+                              >Yours</span
+                            >
+                          {/if}
+                        </div>
+                        <!-- Location - Right Below Title -->
+                        <div
+                          class="flex items-center gap-2 text-brand-teal-500 text-sm font-medium"
                         >
+                          <svg
+                            class="w-4 h-4 shrink-0"
+                            fill="currentColor"
+                            viewBox="0 0 20 20"
+                          >
+                            <path
+                              fill-rule="evenodd"
+                              d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z"
+                              clip-rule="evenodd"
+                            />
+                          </svg>
+                          <span
+                            >{project.city}{project.country
+                              ? `, ${project.country}`
+                              : ""}</span
+                          >
+                        </div>
                       </div>
-                    </a>
-
-                    <!-- Location -->
-                    <div
-                      class="flex items-center gap-2 text-brand-teal-500 text-sm font-medium mb-4"
-                    >
-                      <svg
-                        class="w-4 h-4 flex-shrink-0"
-                        fill="currentColor"
-                        viewBox="0 0 20 20"
-                      >
-                        <path
-                          fill-rule="evenodd"
-                          d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z"
-                          clip-rule="evenodd"
-                        />
-                      </svg>
-                      <span
-                        >{project.city}{project.country
-                          ? `, ${project.country}`
-                          : ""}</span
-                      >
                     </div>
 
                     <!-- Description -->
@@ -1246,67 +1291,69 @@
                     >
                       {project.description}
                     </p>
-                  </div>
 
-                  <!-- SDGs Display - Vertical on Right -->
-                  {#if project.sdgs}
-                    {@const sdgArray =
-                      typeof project.sdgs === "string"
-                        ? JSON.parse(project.sdgs || "[]")
-                        : project.sdgs}
-                    {#if sdgArray.length > 0}
-                      <div
-                        class="flex-shrink-0 w-full @md:w-20 p-6 @md:p-8 @md:pr-4 @md:pl-0 flex flex-col items-start @md:items-end justify-start @3xs:p-4 @3xs:-mt-1"
-                      >
-                        <div
-                          class="flex flex-row @md:flex-col gap-3 items-start @md:items-end"
-                        >
+                    <!-- SDGs - Below Description -->
+                    {#if project.sdgs}
+                      {@const sdgArray =
+                        typeof project.sdgs === "string"
+                          ? JSON.parse(project.sdgs || "[]")
+                          : project.sdgs}
+                      {#if sdgArray.length > 0}
+                        <div class="flex flex-row gap-2 items-center mt-auto">
                           {#each sdgArray as sdgId}
                             <img
                               src="/sdgs/{sdgId}.svg"
                               alt={sdgId}
-                              class="w-[60px] h-[60px] min-w-[60px] min-h-[60px] aspect-square rounded-lg object-cover block"
+                              class="w-[48px] h-[48px] min-w-[48px] min-h-[48px] aspect-square rounded-lg object-cover block"
                               title={availableSDGs.find((s) => s.id === sdgId)
                                 ?.name || sdgId}
                             />
                           {/each}
                         </div>
-                      </div>
+                      {/if}
                     {/if}
-                  {/if}
-                </div>
-              </div>
 
-              <!-- Footer with Actions - Below Full Width Line -->
-              {#if canEditProject(project)}
-                <div class="w-full px-8 @3xs:px-6 pb-6">
-                  <div class="w-full h-px bg-brand-navy-500/10 mb-4"></div>
-                  <div class="flex justify-end gap-3">
-                    <Button
-                      variant="outline"
-                      icon="mdi:pencil"
-                      iconPosition="left"
-                      onclick={() => {
-                        goto(`?modal=edit-project&projectId=${project.id}`, {
-                          replaceState: false,
-                        });
-                      }}
-                    >
-                      Edit
-                    </Button>
-                    {#if isAdmin}
-                      <Button
-                        variant="alert"
-                        icon="mdi:delete"
-                        iconPosition="left"
-                        onclick={() => requestDeleteProject(project.id)}
+                    <!-- Edit/Delete Buttons - Small, Vertical, Right Edge -->
+                    {#if canEditProject(project)}
+                      <div
+                        class="absolute bottom-4 right-4 @md:top-4 @md:right-6 flex flex-col gap-2 items-end"
                       >
-                        Delete
-                      </Button>
+                        <Button
+                          variant="outline"
+                          icon="mdi:pencil"
+                          iconPosition="left"
+                          onclick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            goto(
+                              `?modal=edit-project&projectId=${project.id}`,
+                              {
+                                replaceState: false,
+                              }
+                            );
+                          }}
+                          class="aspect-square p-1.5 w-8 h-8 !px-1.5"
+                          size="sm"
+                        ></Button>
+                        {#if isAdmin}
+                          <Button
+                            variant="alert"
+                            icon="mdi:delete"
+                            iconPosition="left"
+                            onclick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              requestDeleteProject(project.id);
+                            }}
+                            class="aspect-square p-1.5 w-8 h-8 !px-1.5"
+                            size="sm"
+                          ></Button>
+                        {/if}
+                      </div>
                     {/if}
                   </div>
                 </div>
-              {/if}
+              </div>
             </div>
           {/each}
         </div>
@@ -1315,30 +1362,29 @@
   {/if}
 
   <!-- Delete Confirmation Modal -->
-  {#if showDeleteConfirm}
+  {#if showDeleteModal && projectToDelete}
     <Modal
-      open={showDeleteConfirm}
-      onClose={() => {
-        showDeleteConfirm = false;
-      }}
+      open={showDeleteModal}
+      onClose={handleDeleteModalClose}
+      variant="danger"
     >
       <div class="w-full">
-        <h2 class="text-3xl font-bold text-primary-500 mb-4">Delete Project</h2>
-        <p class="text-primary-700/80 mb-8 text-lg leading-relaxed">
+        <!-- Project Info Header -->
+        <div class="mb-6 pb-6 border-b border-alert-100/20">
+          <h2 class="text-3xl font-bold text-alert-100 mb-2">Delete Project</h2>
+          <h3 class="text-xl font-semibold text-alert-100 mb-2">
+            {projectToDelete.title}
+          </h3>
+          {#if projectToDelete.description}
+            <p class="text-alert-100/80 text-sm leading-relaxed line-clamp-3">
+              {projectToDelete.description}
+            </p>
+          {/if}
+        </div>
+        <p class="text-alert-100/90 mb-4 text-base leading-relaxed">
           Are you sure you want to delete this project? This action cannot be
           undone.
         </p>
-        <div class="flex gap-4 justify-end">
-          <Button
-            variant="outline"
-            onclick={() => {
-              showDeleteConfirm = false;
-            }}
-          >
-            Cancel
-          </Button>
-          <Button variant="alert" onclick={confirmDeleteProject}>Delete</Button>
-        </div>
       </div>
     </Modal>
   {/if}

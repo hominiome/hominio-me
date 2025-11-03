@@ -6,7 +6,12 @@
   import { authClient } from "$lib/auth.client.js";
   import { getUserProfile } from "$lib/userProfileCache";
   import { getYouTubeEmbedUrl } from "$lib/youtubeUtils";
-  import { projectById, allCups, allMatches, allProjects } from "$lib/synced-queries";
+  import {
+    projectById,
+    allCups,
+    allMatches,
+    allProjects,
+  } from "$lib/synced-queries";
   import { Button } from "$lib/design-system/atoms";
 
   const zeroContext = getContext<{
@@ -20,7 +25,10 @@
   let zero: any = null;
   let project = $state<any>(null);
   let loading = $state(true);
-  let ownerProfile = $state<{ name: string | null; image: string | null } | null>(null);
+  let ownerProfile = $state<{
+    name: string | null;
+    image: string | null;
+  } | null>(null);
   let matches = $state<any[]>([]);
   let cups = $state<any[]>([]);
   let projects = $state<any[]>([]);
@@ -102,13 +110,12 @@
           showVideoThumbnail = true;
 
           // Fetch owner profile
-          if (newProject.userId) {
-            const profile = await getUserProfile(newProject.userId);
+          if (newProject && (newProject as any).userId) {
+            const profile = await getUserProfile((newProject as any).userId);
             ownerProfile = { name: profile.name, image: profile.image };
           }
         }
       });
-
 
       cupsView.addListener((data: any) => {
         cups = Array.from(data || []);
@@ -171,7 +178,8 @@
   function getMatchResult(match: any) {
     if (match.status !== "completed") return null;
     if (match.winnerId === projectId) return "won";
-    if (match.project1Id === projectId || match.project2Id === projectId) return "lost";
+    if (match.project1Id === projectId || match.project2Id === projectId)
+      return "lost";
     return null;
   }
 
@@ -200,215 +208,294 @@
   const isOwner = $derived(
     project?.userId === $session.data?.user?.id || isAdmin
   );
-  
+
   const canEdit = $derived(
-    project && $session.data?.user && (project.userId === $session.data.user.id || isAdmin)
+    project &&
+      $session.data?.user &&
+      (project.userId === $session.data.user.id || isAdmin)
   );
 
   // Computed values for video/thumbnail
   const videoUrl = $derived(
-    project?.videoUrl && project.videoUrl.trim() ? project.videoUrl.trim() : null
+    project?.videoUrl && project.videoUrl.trim()
+      ? project.videoUrl.trim()
+      : null
   );
 
   const thumbnailUrl = $derived(
     project?.bannerImage && project.bannerImage.trim()
       ? project.bannerImage.trim()
-      : `https://picsum.photos/seed/${project?.id || 'project'}/400/225`
+      : `https://picsum.photos/seed/${project?.id || "project"}/400/225`
   );
 
   // Always provide a video embed URL (uses default YouTube if no videoUrl)
-  const videoEmbedUrl = $derived(
-    getYouTubeEmbedUrl(videoUrl, false)
-  );
+  const videoEmbedUrl = $derived(getYouTubeEmbedUrl(videoUrl, false));
 
   // Check if we should show play button (always true since we have default YouTube fallback)
   const hasVideo = $derived(true);
 </script>
 
 <div class="min-h-screen py-8">
-    {#if loading}
-      <div class="bg-white rounded-2xl border-2 border-brand-navy-500/6 shadow-md p-8 text-center">
-        <p class="text-brand-navy-700/70">Loading project...</p>
-      </div>
-    {:else if !project}
-      <div class="bg-white rounded-2xl border-2 border-brand-navy-500/6 shadow-md p-12 text-center">
-        <h1 class="text-3xl font-bold text-brand-navy-500 mb-4">Project Not Found</h1>
-        <p class="text-brand-navy-700/60 mb-6">
-          The project you're looking for doesn't exist or has been removed.
-        </p>
-        <Button variant="primary" onclick={() => goto("/alpha/projects")}>
-          Back to Projects
-        </Button>
+  {#if loading}
+    <div
+      class="bg-white rounded-2xl border-2 border-brand-navy-500/6 shadow-md p-8 text-center"
+    >
+      <p class="text-brand-navy-700/70">Loading project...</p>
+    </div>
+  {:else if !project}
+    <div
+      class="bg-white rounded-2xl border-2 border-brand-navy-500/6 shadow-md p-12 text-center"
+    >
+      <h1 class="text-3xl font-bold text-brand-navy-500 mb-4">
+        Project Not Found
+      </h1>
+      <p class="text-brand-navy-700/60 mb-6">
+        The project you're looking for doesn't exist or has been removed.
+      </p>
+      <Button variant="primary" onclick={() => goto("/alpha/projects")}>
+        Back to Projects
+      </Button>
+    </div>
+  {:else}
+    <!-- Back Button -->
+    <a
+      href="/alpha/projects"
+      class="text-brand-teal-500 hover:underline mb-6 inline-block"
+    >
+      ← Back to Projects
+    </a>
+
+    <!-- Full-Width Video/Thumbnail Header -->
+    {#if showVideoThumbnail}
+      <div class="w-full mb-6 rounded-2xl overflow-hidden">
+        <div class="relative w-full aspect-video bg-brand-navy-500/10">
+          <img
+            src={thumbnailUrl}
+            alt={project.title}
+            class="w-full h-full object-cover"
+            onerror={(e) => {
+              const target = e.target as HTMLImageElement;
+              if (target)
+                target.src = `https://picsum.photos/seed/${project.id || "project"}/400/225`;
+            }}
+          />
+          <button
+            class="absolute inset-0 flex items-center justify-center bg-black/30 hover:bg-black/40 transition-colors rounded-2xl group"
+            title="Play {project.title}"
+            onclick={() => {
+              showVideoThumbnail = false;
+            }}
+          >
+            <svg
+              class="w-20 h-20 text-white group-hover:scale-110 transition-transform"
+              fill="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path d="M8 5v14l11-7z" />
+            </svg>
+          </button>
+        </div>
       </div>
     {:else}
-      <!-- Back Button -->
-      <a href="/alpha/projects" class="text-brand-teal-500 hover:underline mb-6 inline-block">
-        ← Back to Projects
-      </a>
-
-      <!-- Full-Width Video/Thumbnail Header -->
-      {#if showVideoThumbnail}
-        <div class="w-full mb-6 rounded-2xl overflow-hidden">
-          <div class="relative w-full aspect-video bg-brand-navy-500/10">
-            <img
-              src={thumbnailUrl}
-              alt={project.title}
-              class="w-full h-full object-cover"
-              onerror={(e) => {
-                e.target.src = `https://picsum.photos/seed/${project.id || 'project'}/400/225`;
-              }}
-            />
-            <button
-              class="absolute inset-0 flex items-center justify-center bg-black/30 hover:bg-black/40 transition-colors rounded-2xl group"
-              title="Play {project.title}"
-              onclick={() => {
-                showVideoThumbnail = false;
-              }}
-            >
-              <svg class="w-20 h-20 text-white group-hover:scale-110 transition-transform" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M8 5v14l11-7z" />
-              </svg>
-            </button>
-          </div>
+      <div class="w-full mb-6 rounded-2xl overflow-hidden">
+        <div class="relative w-full aspect-video bg-black">
+          <iframe
+            src={videoEmbedUrl}
+            class="absolute inset-0 w-full h-full"
+            title="Project video"
+            frameborder="0"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            allowfullscreen
+          ></iframe>
         </div>
-      {:else}
-        <div class="w-full mb-6 rounded-2xl overflow-hidden">
-          <div class="relative w-full aspect-video bg-black">
-            <iframe
-              src={videoEmbedUrl}
-              class="absolute inset-0 w-full h-full"
-              title="Project video"
-              frameborder="0"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-              allowfullscreen
-            ></iframe>
+      </div>
+    {/if}
+
+    <!-- Project Header -->
+    <div
+      class="bg-white rounded-2xl border-2 border-brand-navy-500/6 shadow-md p-6 md:p-8 mb-6"
+    >
+      <div class="flex flex-col md:flex-row md:items-start gap-6">
+        <div class="flex-1">
+          <div class="flex items-start justify-between gap-4 mb-4">
+            <div>
+              <h1
+                class="text-3xl md:text-4xl font-bold text-brand-navy-500 mb-2"
+              >
+                {project.title}
+              </h1>
+              {#if project.description}
+                <p class="text-brand-navy-700/70 text-lg leading-relaxed">
+                  {project.description}
+                </p>
+              {/if}
+            </div>
+            {#if canEdit}
+              <Button
+                variant="outline"
+                icon="mdi:pencil"
+                iconPosition="left"
+                onclick={() => {
+                  goto(
+                    `/alpha/projects?modal=edit-project&projectId=${projectId}`
+                  );
+                }}
+              >
+                Edit
+              </Button>
+            {/if}
           </div>
-        </div>
-      {/if}
 
-      <!-- Project Header -->
-      <div class="bg-white rounded-2xl border-2 border-brand-navy-500/6 shadow-md p-6 md:p-8 mb-6">
-        <div class="flex flex-col md:flex-row md:items-start gap-6">
-
-          <div class="flex-1">
-            <div class="flex items-start justify-between gap-4 mb-4">
-              <div>
-                <h1 class="text-3xl md:text-4xl font-bold text-brand-navy-500 mb-2">
-                  {project.title}
-                </h1>
-                {#if project.description}
-                  <p class="text-brand-navy-700/70 text-lg leading-relaxed">
-                    {project.description}
-                  </p>
-                {/if}
-              </div>
-              {#if canEdit}
-                <Button
-                  variant="outline"
-                  icon="mdi:pencil"
-                  iconPosition="left"
-                  onclick={() => {
-                    goto(`/alpha/projects?modal=edit-project&projectId=${project?.id || projectId}`);
-                  }}
+          <!-- Project Details -->
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {#if ownerProfile}
+              <div class="flex flex-col">
+                <span
+                  class="text-xs font-bold text-brand-navy-500 uppercase tracking-wider mb-1"
+                  >Founder</span
                 >
-                  Edit
-                </Button>
-              {/if}
-            </div>
+                <a
+                  href="/alpha/user/{project.userId}"
+                  class="text-brand-teal-500 hover:text-brand-navy-500 font-semibold transition-colors"
+                >
+                  {ownerProfile.name || "Unknown"}
+                </a>
+              </div>
+            {/if}
 
-            <!-- Project Details -->
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {#if ownerProfile}
-                <div class="flex flex-col">
-                  <span class="text-xs font-bold text-brand-navy-500 uppercase tracking-wider mb-1">Founder</span>
-                  <a
-                    href="/alpha/user/{project.userId}"
-                    class="text-brand-teal-500 hover:text-brand-navy-500 font-semibold transition-colors"
-                  >
-                    {ownerProfile.name || "Unknown"}
-                  </a>
-                </div>
-              {/if}
+            {#if project.country}
+              <div class="flex flex-col">
+                <span
+                  class="text-xs font-bold text-brand-navy-500 uppercase tracking-wider mb-1"
+                  >Country</span
+                >
+                <span class="text-brand-navy-700 font-semibold"
+                  >{project.country}</span
+                >
+              </div>
+            {/if}
 
-              {#if project.country}
-                <div class="flex flex-col">
-                  <span class="text-xs font-bold text-brand-navy-500 uppercase tracking-wider mb-1">Country</span>
-                  <span class="text-brand-navy-700 font-semibold">{project.country}</span>
-                </div>
-              {/if}
-
-              {#if project.city}
-                <div class="flex flex-col">
-                  <span class="text-xs font-bold text-brand-navy-500 uppercase tracking-wider mb-1">City</span>
-                  <span class="text-brand-teal-500 font-semibold">{project.city}</span>
-                </div>
-              {/if}
-            </div>
+            {#if project.city}
+              <div class="flex flex-col">
+                <span
+                  class="text-xs font-bold text-brand-navy-500 uppercase tracking-wider mb-1"
+                  >City</span
+                >
+                <span class="text-brand-teal-500 font-semibold"
+                  >{project.city}</span
+                >
+              </div>
+            {/if}
           </div>
         </div>
       </div>
+    </div>
 
-      <!-- SDGs -->
-      {@const sdgArray = project.sdgs ? (typeof project.sdgs === "string" ? JSON.parse(project.sdgs || "[]") : project.sdgs) : []}
-      {#if sdgArray.length > 0}
-        <div class="bg-white rounded-2xl border-2 border-brand-navy-500/6 shadow-md p-6 md:p-8 mb-6">
-          <h2 class="text-xl font-bold text-brand-navy-500 mb-4">Sustainable Development Goals</h2>
-          <div class="grid grid-cols-[repeat(auto-fill,minmax(80px,1fr))] gap-4">
-            {#each sdgArray as sdgId}
-              <div class="flex items-center justify-center">
-                <img
-                  src="/sdgs/{sdgId}.svg"
-                  alt={sdgId}
-                  class="w-20 h-20 rounded-lg object-cover"
-                  onerror={(e) => {
-                    e.target.style.display = 'none';
-                  }}
-                />
-              </div>
-            {/each}
-          </div>
-        </div>
-      {/if}
-
-      <!-- Cups and Matches -->
-      {#if matches && matches.length > 0 && Array.from(matchesByCup).length > 0}
-        <div class="bg-white rounded-2xl border-2 border-brand-navy-500/6 shadow-md p-6 md:p-8 mb-6">
-          <h2 class="text-xl font-bold text-brand-navy-500 mb-4">Tournament Participation</h2>
-          {#each Array.from(matchesByCup) as [cupId, cupMatches]}
-            <div class="mb-8 last:mb-0">
-              <h3 class="text-lg font-bold text-brand-navy-500 mb-4 pb-2 border-b-2 border-brand-navy-500/10">{getCupName(cupId)}</h3>
-              <div class="flex flex-col gap-3">
-                {#each cupMatches as match}
-                  {@const result = getMatchResult(match)}
-                  {@const opponentId = getOpponentProject(match)}
-                  <div class="p-4 rounded-lg border-l-4 transition-all hover:translate-x-1 hover:shadow-md {result === 'won' ? 'bg-success-50 border-success-500' : result === 'lost' ? 'bg-brand-cream-50 border-brand-teal-500/30' : 'bg-brand-cream-50 border-brand-navy-500/20'}">
-                    <div class="flex items-center justify-between mb-2">
-                      <span class="text-xs font-semibold text-brand-navy-500 uppercase tracking-wider">{getRoundLabel(match.round)}</span>
-                      {#if result === "won"}
-                        <span class="px-3 py-1 rounded-xl text-xs font-bold uppercase tracking-wider bg-success-500 text-white">Won</span>
-                      {:else if result === "lost"}
-                        <span class="px-3 py-1 rounded-xl text-xs font-bold uppercase tracking-wider bg-brand-teal-500/15 text-brand-navy-700 border border-brand-teal-500/20">Lost</span>
-                      {:else if match.status === "voting"}
-                        <span class="px-3 py-1 rounded-xl text-xs font-bold uppercase tracking-wider bg-brand-yellow-500 text-brand-navy-500">Voting</span>
-                      {:else}
-                        <span class="px-3 py-1 rounded-xl text-xs font-bold uppercase tracking-wider bg-gray-400 text-white">Pending</span>
-                      {/if}
-                    </div>
-                    <div class="text-sm text-brand-navy-700 mb-1">
-                      vs <a href="/alpha/projects/{opponentId}" class="text-brand-teal-500 hover:text-brand-navy-500 font-semibold transition-colors hover:underline">{getProjectName(opponentId)}</a>
-                    </div>
-                    {#if match.completedAt}
-                      <div class="text-xs text-brand-navy-700/60">
-                        Completed: {new Date(match.completedAt).toLocaleDateString()}
-                      </div>
-                    {/if}
-                  </div>
-                {/each}
-              </div>
+    <!-- SDGs -->
+    {@const sdgArray = project.sdgs
+      ? typeof project.sdgs === "string"
+        ? JSON.parse(project.sdgs || "[]")
+        : project.sdgs
+      : []}
+    {#if sdgArray.length > 0}
+      <div
+        class="bg-white rounded-2xl border-2 border-brand-navy-500/6 shadow-md p-6 md:p-8 mb-6"
+      >
+        <h2 class="text-xl font-bold text-brand-navy-500 mb-4">
+          Sustainable Development Goals
+        </h2>
+        <div class="grid grid-cols-[repeat(auto-fill,minmax(80px,1fr))] gap-4">
+          {#each sdgArray as sdgId}
+            <div class="flex items-center justify-center">
+              <img
+                src="/sdgs/{sdgId}.svg"
+                alt={sdgId}
+                class="w-20 h-20 rounded-lg object-cover"
+                onerror={(e) => {
+                  const target = e.target as HTMLImageElement;
+                  if (target) target.style.display = "none";
+                }}
+              />
             </div>
           {/each}
         </div>
-      {/if}
+      </div>
     {/if}
-</div>
 
+    <!-- Cups and Matches -->
+    {#if matches && matches.length > 0 && Array.from(matchesByCup).length > 0}
+      <div
+        class="bg-white rounded-2xl border-2 border-brand-navy-500/6 shadow-md p-6 md:p-8 mb-6"
+      >
+        <h2 class="text-xl font-bold text-brand-navy-500 mb-4">
+          Tournament Participation
+        </h2>
+        {#each Array.from(matchesByCup) as [cupId, cupMatches]}
+          <div class="mb-8 last:mb-0">
+            <h3
+              class="text-lg font-bold text-brand-navy-500 mb-4 pb-2 border-b-2 border-brand-navy-500/10"
+            >
+              {getCupName(cupId)}
+            </h3>
+            <div class="flex flex-col gap-3">
+              {#each cupMatches as match}
+                {@const result = getMatchResult(match)}
+                {@const opponentId = getOpponentProject(match)}
+                <div
+                  class="p-4 rounded-lg border-l-4 transition-all hover:translate-x-1 hover:shadow-md {result ===
+                  'won'
+                    ? 'bg-success-50 border-success-500'
+                    : result === 'lost'
+                      ? 'bg-brand-cream-50 border-brand-teal-500/30'
+                      : 'bg-brand-cream-50 border-brand-navy-500/20'}"
+                >
+                  <div class="flex items-center justify-between mb-2">
+                    <span
+                      class="text-xs font-semibold text-brand-navy-500 uppercase tracking-wider"
+                      >{getRoundLabel(match.round)}</span
+                    >
+                    {#if result === "won"}
+                      <span
+                        class="px-3 py-1 rounded-xl text-xs font-bold uppercase tracking-wider bg-success-500 text-white"
+                        >Won</span
+                      >
+                    {:else if result === "lost"}
+                      <span
+                        class="px-3 py-1 rounded-xl text-xs font-bold uppercase tracking-wider bg-brand-teal-500/15 text-brand-navy-700 border border-brand-teal-500/20"
+                        >Lost</span
+                      >
+                    {:else if match.status === "voting"}
+                      <span
+                        class="px-3 py-1 rounded-xl text-xs font-bold uppercase tracking-wider bg-brand-yellow-500 text-brand-navy-500"
+                        >Voting</span
+                      >
+                    {:else}
+                      <span
+                        class="px-3 py-1 rounded-xl text-xs font-bold uppercase tracking-wider bg-gray-400 text-white"
+                        >Pending</span
+                      >
+                    {/if}
+                  </div>
+                  <div class="text-sm text-brand-navy-700 mb-1">
+                    vs <a
+                      href="/alpha/projects/{opponentId}"
+                      class="text-brand-teal-500 hover:text-brand-navy-500 font-semibold transition-colors hover:underline"
+                      >{getProjectName(opponentId)}</a
+                    >
+                  </div>
+                  {#if match.completedAt}
+                    <div class="text-xs text-brand-navy-700/60">
+                      Completed: {new Date(
+                        match.completedAt
+                      ).toLocaleDateString()}
+                    </div>
+                  {/if}
+                </div>
+              {/each}
+            </div>
+          </div>
+        {/each}
+      </div>
+    {/if}
+  {/if}
+</div>

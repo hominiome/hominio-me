@@ -14,6 +14,7 @@
   import CupHeader from "$lib/CupHeader.svelte";
   import WinnerCard from "$lib/components/WinnerCard.svelte";
   import { PageHeader } from "$lib/design-system/molecules";
+  import Icon from "$lib/design-system/atoms/Icon.svelte";
   import {
     allProjects,
     allPurchases,
@@ -41,6 +42,7 @@
   let expandedVideo = $state(null);
   let expandedMatch = $state(null);
   let votingSound = $state(null); // Preloaded audio instance
+  let championsExpanded = $state(false); // Collapsible Previous Champions section
 
   // Filter and group active matches by cup and round
   let groupedMatches = $derived.by(() => {
@@ -543,7 +545,7 @@
       <!-- Active Matches Section -->
       {#if groupedMatches.length > 0}
         <div
-          class="sticky top-0 z-50 py-2 mb-5 px-4 sm:px-6 lg:px-8 relative"
+          class="sticky top-0 z-50 py-2 mb-3 px-4 sm:px-6 lg:px-8 relative"
           style="margin-left: calc(-50vw + 50%); margin-right: calc(-50vw + 50%); width: 100vw;"
         >
           <div
@@ -561,7 +563,7 @@
       {/if}
 
       {#each groupedMatches as group (group.cupName + group.round)}
-        <div class="flex flex-col gap-4">
+        <div class="flex flex-col gap-4 mt-2">
           {#if group.matches.length > 0}
             {@const cup = getCupById(group.cupId)}
             {#if cup}
@@ -668,33 +670,59 @@
       {#if completedCupsWithWinners.length > 0}
         <div class="mt-16 @md:mt-20 mb-12 @md:mb-16">
           <div
-            class="sticky top-0 z-50 py-2 mb-5 px-4 sm:px-6 lg:px-8 relative"
+            class="sticky top-0 z-50 py-2 mb-3 px-4 sm:px-6 lg:px-8 relative"
             style="margin-left: calc(-50vw + 50%); margin-right: calc(-50vw + 50%); width: 100vw;"
           >
             <div
               class="absolute inset-0"
               style="background: linear-gradient(to top, transparent 0%, rgba(250, 249, 246, 0.75) 50%, rgba(250, 249, 246, 1) 100%); backdrop-filter: blur(28px) saturate(200%); -webkit-backdrop-filter: blur(28px) saturate(200%); mask-image: linear-gradient(to top, transparent 0%, rgba(0,0,0,0.75) 50%, black 100%); -webkit-mask-image: linear-gradient(to top, transparent 0%, rgba(0,0,0,0.75) 50%, black 100%); pointer-events: none; border-bottom: 1px solid rgba(255, 255, 255, 0.2); box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.2);"
             ></div>
-            <div class="max-w-md mx-auto pb-2 relative z-10">
+            <div
+              class="max-w-md mx-auto pb-2 relative z-10 flex flex-col items-center gap-3"
+            >
               <PageHeader
                 title="Previous Champions"
                 subtitle="Celebrating tournament winners"
                 size="sm"
               />
+              <button
+                onclick={() => (championsExpanded = !championsExpanded)}
+                onkeydown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    championsExpanded = !championsExpanded;
+                  }
+                }}
+                class="flex items-center justify-center w-10 h-10 rounded-full bg-primary-500 text-white hover:bg-primary-600 transition-colors shadow-lg hover:shadow-xl cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
+                aria-label={championsExpanded
+                  ? "Collapse Previous Champions"
+                  : "Expand Previous Champions"}
+                aria-expanded={championsExpanded}
+              >
+                <Icon
+                  name={championsExpanded
+                    ? "mdi:chevron-up"
+                    : "mdi:chevron-down"}
+                  size="lg"
+                  color="white"
+                />
+              </button>
             </div>
           </div>
-          <div
-            class="grid grid-cols-1 @md:grid-cols-[repeat(auto-fit,minmax(500px,1fr))] @lg:grid-cols-[repeat(auto-fit,minmax(700px,1fr))] gap-6 @md:gap-8 @lg:gap-10 max-w-7xl mx-auto w-full"
-          >
-            {#each completedCupsWithWinners as cup}
-              {@const winnerProject = projects.find(
-                (p) => p.id === cup.winnerId
-              )}
-              {#if winnerProject}
-                <WinnerCard {cup} {winnerProject} />
-              {/if}
-            {/each}
-          </div>
+          {#if championsExpanded}
+            <div
+              class="grid grid-cols-1 @md:grid-cols-[repeat(auto-fit,minmax(500px,1fr))] @lg:grid-cols-[repeat(auto-fit,minmax(700px,1fr))] gap-6 @md:gap-8 @lg:gap-10 max-w-7xl mx-auto w-full"
+            >
+              {#each completedCupsWithWinners as cup}
+                {@const winnerProject = projects.find(
+                  (p) => p.id === cup.winnerId
+                )}
+                {#if winnerProject}
+                  <WinnerCard {cup} {winnerProject} />
+                {/if}
+              {/each}
+            </div>
+          {/if}
         </div>
       {/if}
     </div>
