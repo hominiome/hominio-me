@@ -53,9 +53,9 @@ These can override the domain-based URLs if needed:
 
 ```bash
 # Override Zero callbacks (normally auto-generated from PUBLIC_DOMAIN)
-# Using wildcards (*.hominio.me) to allow both www and non-www domains
-SECRET_ZERO_GET_QUERIES_URL=https://*.hominio.me/alpha/api/zero/get-queries
-SECRET_ZERO_PUSH_URL=https://*.hominio.me/alpha/api/zero/push
+# Always use non-www domain - client code automatically uses non-www for Zero callbacks
+SECRET_ZERO_GET_QUERIES_URL=https://hominio.me/alpha/api/zero/get-queries
+SECRET_ZERO_PUSH_URL=https://hominio.me/alpha/api/zero/push
 ```
 
 ### For Zero Sync Service (`sync.hominio.me`)
@@ -73,9 +73,9 @@ ZERO_AUTH_SECRET=your-zero-auth-secret-min-32-chars
 ZERO_REPLICA_FILE=/data/zero-replica.db
 
 # Callback URLs to main app (normally auto-generated, but set explicitly for sync service)
-# Using wildcards (*.hominio.me) to allow both www and non-www domains
-ZERO_GET_QUERIES_URL=https://*.hominio.me/alpha/api/zero/get-queries
-ZERO_PUSH_URL=https://*.hominio.me/alpha/api/zero/push
+# Always use non-www domain (hominio.me) - client code automatically uses non-www for Zero callbacks
+ZERO_GET_QUERIES_URL=https://hominio.me/alpha/api/zero/get-queries
+ZERO_PUSH_URL=https://hominio.me/alpha/api/zero/push
 
 # Cookie forwarding (required for authentication)
 ZERO_GET_QUERIES_FORWARD_COOKIES=true

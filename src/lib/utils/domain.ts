@@ -93,6 +93,13 @@ export function getMainDomainUrl(path: string = '', preferWww?: boolean): string
       return `${window.location.origin}${path}`;
     }
     
+    // For Zero callbacks, always use non-www domain to match Zero sync service configuration
+    // Zero sync service is configured to accept hominio.me (not wildcard)
+    const isZeroCallback = path.includes('/alpha/api/zero/');
+    if (isZeroCallback) {
+      return `https://${baseDomain}${path}`;
+    }
+    
     const isWww = window.location.hostname.startsWith('www.');
     const useWww = preferWww ?? isWww;
     const domain = useWww ? `www.${baseDomain}` : baseDomain;
