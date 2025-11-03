@@ -43,6 +43,24 @@ function getProcessor(): PushProcessor {
   return processor;
 }
 
+// Handle CORS preflight requests
+export const OPTIONS: RequestHandler = async ({ request }) => {
+  const origin = request.headers.get('origin');
+  const allowedOrigins = ['https://hominio.me', 'https://www.hominio.me', 'https://sync.hominio.me'];
+  
+  const headers: Record<string, string> = {};
+  
+  if (origin && allowedOrigins.includes(origin)) {
+    headers['Access-Control-Allow-Origin'] = origin;
+    headers['Access-Control-Allow-Credentials'] = 'true';
+    headers['Access-Control-Allow-Methods'] = 'POST, OPTIONS';
+    headers['Access-Control-Allow-Headers'] = 'Content-Type, Cookie';
+    headers['Access-Control-Max-Age'] = '86400'; // 24 hours
+  }
+  
+  return new Response(null, { status: 204, headers });
+};
+
 /**
  * Zero Push Endpoint for Custom Mutators
  * Handles mutations from zero-cache with cookie-based authentication
@@ -80,7 +98,21 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
     // PushProcessor handles the push protocol, executing mutators in transactions
     const result = await pushProcessor.process(serverMutators, request);
 
-    return json(result);
+    // Add CORS headers to allow cross-origin requests (for www.hominio.me)
+    const origin = request.headers.get('origin');
+    const allowedOrigins = ['https://hominio.me', 'https://www.hominio.me', 'https://sync.hominio.me'];
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    };
+    
+    if (origin && allowedOrigins.includes(origin)) {
+      headers['Access-Control-Allow-Origin'] = origin;
+      headers['Access-Control-Allow-Credentials'] = 'true';
+      headers['Access-Control-Allow-Methods'] = 'POST, OPTIONS';
+      headers['Access-Control-Allow-Headers'] = 'Content-Type, Cookie';
+    }
+
+    return json(result, { headers });
   } catch (error) {
     console.error('Error handling push request:', error);
     return json(

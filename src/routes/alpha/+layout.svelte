@@ -36,9 +36,12 @@
   let priorityNotificationQueue = $state<any[]>([]);
   let markingAsReadIds = $state<Set<string>>(new Set()); // Track notifications being marked as read
 
-  // Get Zero server URL from environment (defaults to localhost:4848 for dev)
+  // Get Zero server URL from environment
+  // In production: wss://sync.hominio.me
+  // In dev: http://localhost:4848
+  // Must use http/https/wss scheme (not just hostname)
   const zeroServerUrl = browser
-    ? publicEnv.PUBLIC_ZERO_SERVER || "http://localhost:4848"
+    ? publicEnv.PUBLIC_ZERO_SERVER || (window.location.hostname === 'localhost' ? "http://localhost:4848" : "wss://sync.hominio.me")
     : "http://localhost:4848";
 
   // Initialize Zero once and make it available via context
