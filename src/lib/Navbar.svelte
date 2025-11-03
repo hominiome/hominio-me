@@ -140,115 +140,116 @@
     {/if}
 
     <!-- Mobile Bottom Navigation -->
-    <div class="mobile-bottom-nav" class:modal-mode={isModalOpen}>
-      {#if isModalOpen}
-        <!-- Modal Mode: Container constrained to modal max-width -->
-        <div class="modal-nav-container">
-          {#if modalLeftButtons.length > 0}
-            <div class="modal-left-buttons">
-              {#each modalLeftButtons as button}
-                <Button
-                  variant={button.variant || "secondary"}
-                  onclick={button.onClick}
-                  aria-label={button.ariaLabel || button.label}
-                  disabled={button.disabled}
-                  size="sm"
-                  class="!rounded-full"
-                >
-                  {button.label}
-                </Button>
-              {/each}
-            </div>
-          {/if}
-
-          <button
-            class="modal-close-button"
-            onclick={() => onModalClose?.()}
-            aria-label="Close"
-          >
-            <svg
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              class="modal-close-icon"
-            >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M6 18L18 6M6 6l12 12"
-              />
-            </svg>
-          </button>
-
-          {#if modalRightButtons.length > 0}
-            <div class="modal-right-buttons">
-              {#each modalRightButtons as button}
-                <Button
-                  variant={button.variant || "primary"}
-                  onclick={button.onClick}
-                  aria-label={button.ariaLabel || button.label}
-                  disabled={button.disabled}
-                  size="sm"
-                  class="!rounded-full"
-                >
-                  {button.label}
-                </Button>
-              {/each}
-            </div>
-          {/if}
-        </div>
-      {:else}
-        <!-- Default Mode: Normal navigation -->
-        <div class="footer-nav-container">
-          <!-- Left-aligned items -->
-          <div class="footer-nav-left">
-            <a href="/alpha" class="footer-nav-link footer-nav-logo-link">
-              <img src="/logo.png" alt="Hominio" class="footer-nav-logo" />
-            </a>
-
-            <a
-              href="/alpha"
-              class="footer-nav-link"
-              class:active={$page.url.pathname === "/alpha"}
-            >
-              <Icon name="mdi:check-circle" size={20} />
-              <span class="footer-nav-label">Live</span>
-            </a>
-
-            <a
-              href="/alpha/cups"
-              class="footer-nav-link"
-              class:active={$page.url.pathname.startsWith("/alpha/cups")}
-            >
-              <Icon name="mdi:star" size={20} />
-              <span class="footer-nav-label">Cups</span>
-            </a>
-
-            <a
-              href="/alpha/projects"
-              class="footer-nav-link"
-              class:active={$page.url.pathname === "/alpha/projects"}
-            >
-              <Icon name="mdi:view-grid" size={20} />
-              <span class="footer-nav-label">Projects</span>
-            </a>
-          </div>
-
-          <!-- Right-aligned items -->
-          <div class="footer-nav-right">
-            {#if isAdmin}
-              <a
-                href="/alpha/scan"
-                class="footer-nav-link"
-                class:active={$page.url.pathname === "/alpha/scan"}
-              >
-                <Icon name="mdi:qrcode-scan" size={20} />
-                <span class="footer-nav-label">Scan</span>
-              </a>
+    {#if session?.data?.user}
+      <!-- Signed in: Show full navigation bar -->
+      <div class="mobile-bottom-nav" class:modal-mode={isModalOpen}>
+        {#if isModalOpen}
+          <!-- Modal Mode: Container constrained to modal max-width -->
+          <div class="modal-nav-container">
+            {#if modalLeftButtons.length > 0}
+              <div class="modal-left-buttons">
+                {#each modalLeftButtons as button}
+                  <Button
+                    variant={button.variant || "secondary"}
+                    onclick={button.onClick}
+                    aria-label={button.ariaLabel || button.label}
+                    disabled={button.disabled}
+                    size="sm"
+                    class="!rounded-full"
+                  >
+                    {button.label}
+                  </Button>
+                {/each}
+              </div>
             {/if}
 
-            {#if session?.data?.user}
+            <button
+              class="modal-close-button"
+              onclick={() => onModalClose?.()}
+              aria-label="Close"
+            >
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                class="modal-close-icon"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M6 18L18 6M6 6l12 12"
+                />
+              </svg>
+            </button>
+
+            {#if modalRightButtons.length > 0}
+              <div class="modal-right-buttons">
+                {#each modalRightButtons as button}
+                  <Button
+                    variant={button.variant || "primary"}
+                    onclick={button.onClick}
+                    aria-label={button.ariaLabel || button.label}
+                    disabled={button.disabled}
+                    size="sm"
+                    class="!rounded-full"
+                  >
+                    {button.label}
+                  </Button>
+                {/each}
+              </div>
+            {/if}
+          </div>
+        {:else}
+          <!-- Default Mode: Normal navigation -->
+          <div class="footer-nav-container">
+            <!-- Left-aligned items -->
+            <div class="footer-nav-left">
+              <a href="/alpha" class="footer-nav-link footer-nav-logo-link">
+                <img src="/logo.png" alt="Hominio" class="footer-nav-logo" />
+              </a>
+
+              <a
+                href="/alpha"
+                class="footer-nav-link"
+                class:active={$page.url.pathname === "/alpha"}
+              >
+                <Icon name="mdi:check-circle" size={20} />
+                <span class="footer-nav-label">Live</span>
+              </a>
+
+              <a
+                href="/alpha/cups"
+                class="footer-nav-link"
+                class:active={$page.url.pathname.startsWith("/alpha/cups")}
+              >
+                <Icon name="mdi:star" size={20} />
+                <span class="footer-nav-label">Cups</span>
+              </a>
+
+              <a
+                href="/alpha/projects"
+                class="footer-nav-link"
+                class:active={$page.url.pathname === "/alpha/projects"}
+              >
+                <Icon name="mdi:view-grid" size={20} />
+                <span class="footer-nav-label">Projects</span>
+              </a>
+            </div>
+
+            <!-- Right-aligned items -->
+            <div class="footer-nav-right">
+              {#if isAdmin}
+                <a
+                  href="/alpha/scan"
+                  class="footer-nav-link"
+                  class:active={$page.url.pathname === "/alpha/scan"}
+                >
+                  <Icon name="mdi:qrcode-scan" size={20} />
+                  <span class="footer-nav-label">Scan</span>
+                </a>
+              {/if}
+
               <a href="/alpha/me" class="footer-nav-link footer-nav-user">
                 {#if session.data.user?.image && !userImageFailed}
                   <img
@@ -263,19 +264,37 @@
                   </div>
                 {/if}
               </a>
-            {:else}
-              <button
-                onclick={signInWithGoogle}
-                class="footer-nav-link footer-nav-signin"
-              >
-                <Icon name="mdi:account" size={20} />
-                <span class="footer-nav-label">Sign In</span>
-              </button>
-            {/if}
+            </div>
           </div>
-        </div>
-      {/if}
-    </div>
+        {/if}
+      </div>
+    {:else}
+      <!-- Not signed in: Show only Google sign-in button directly in navbar -->
+      <button
+        onclick={signInWithGoogle}
+        class="mobile-bottom-nav google-signin-button"
+      >
+        <svg class="google-icon" viewBox="0 0 24 24">
+          <path
+            fill="#4285F4"
+            d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+          />
+          <path
+            fill="#34A853"
+            d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+          />
+          <path
+            fill="#FBBC05"
+            d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
+          />
+          <path
+            fill="#EA4335"
+            d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
+          />
+        </svg>
+        <span class="google-signin-text">Sign in with Google</span>
+      </button>
+    {/if}
   </div>
 </nav>
 
@@ -671,13 +690,6 @@
     max-width: none; /* No max-width constraint */
   }
 
-  .footer-nav-signin {
-    flex: 0 0 auto; /* Don't fill space */
-    padding: 0.5rem 0.75rem; /* Consistent padding */
-    max-width: 40px; /* Same max-width constraint */
-    width: 40px; /* Same fixed width */
-  }
-
   /* Modal Mode Styles */
   .mobile-bottom-nav.modal-mode {
     position: relative;
@@ -691,7 +703,9 @@
 
   .back-button-above-navbar {
     position: fixed;
-    bottom: calc(56px + 0.375rem + 0.5rem); /* Navbar height (56px) + margin-bottom (0.375rem) + gap (0.5rem) */
+    bottom: calc(
+      56px + 0.375rem + 0.5rem
+    ); /* Navbar height (56px) + margin-bottom (0.375rem) + gap (0.5rem) */
     left: 50%;
     transform: translateX(-50%);
     z-index: 10001; /* Above navbar */
@@ -713,7 +727,6 @@
       padding: 0 1.5rem;
     }
   }
-
 
   /* Container for modal mode buttons - matches modal content max-width */
   .modal-nav-container {
@@ -929,6 +942,42 @@
     display: none; /* Hide logo - using bottom nav on all screens */
   }
 
+  /* Google Sign-in Button Styles - directly in navbar */
+  .mobile-bottom-nav.google-signin-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    padding: 0.5rem 1.5rem;
+    padding-bottom: calc(0.5rem + env(safe-area-inset-bottom));
+    background: var(--color-primary-500); /* Dark marine blue brand color */
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s ease-out;
+    white-space: nowrap;
+  }
+
+  .mobile-bottom-nav.google-signin-button:hover {
+    background: var(--color-primary-600); /* Slightly darker on hover */
+    transform: translateY(-1px);
+  }
+
+  .mobile-bottom-nav.google-signin-button:active {
+    transform: translateY(0);
+  }
+
+  .google-icon {
+    width: 20px;
+    height: 20px;
+    flex-shrink: 0;
+  }
+
+  .google-signin-text {
+    font-size: 0.9375rem;
+    font-weight: 600;
+    color: white; /* White text on dark background */
+  }
+
   /* Responsive */
   @media (max-width: 768px) {
     .footer-nav-container {
@@ -943,11 +992,41 @@
     .footer-nav-label {
       font-size: 0.65rem;
     }
+
+    .mobile-bottom-nav.google-signin-button {
+      padding: 0.5rem 1.25rem;
+      padding-bottom: calc(0.5rem + env(safe-area-inset-bottom));
+      gap: 0.625rem;
+    }
+
+    .google-icon {
+      width: 18px;
+      height: 18px;
+    }
+
+    .google-signin-text {
+      font-size: 0.875rem;
+    }
   }
 
   @media (max-width: 480px) {
     .nav-links {
       gap: 0.5rem;
+    }
+
+    .mobile-bottom-nav.google-signin-button {
+      padding: 0.5rem 1rem;
+      padding-bottom: calc(0.5rem + env(safe-area-inset-bottom));
+      gap: 0.5rem;
+    }
+
+    .google-icon {
+      width: 16px;
+      height: 16px;
+    }
+
+    .google-signin-text {
+      font-size: 0.8125rem;
     }
   }
 </style>
