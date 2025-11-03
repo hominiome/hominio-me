@@ -99,11 +99,13 @@ export function getMainDomainUrl(path: string = '', preferWww?: boolean): string
 
 /**
  * Get WebSocket URL for Zero sync service
- * Always uses wss:// protocol
+ * Zero client accepts https:// and handles WebSocket upgrade internally
+ * Using https:// instead of wss:// as Zero requires http/https scheme
  */
 export function getZeroServerUrl(): string {
   const syncDomain = getZeroSyncDomain();
-  return `wss://${syncDomain}`;
+  // Zero client accepts https:// and handles WebSocket upgrade internally
+  return `https://${syncDomain}`;
 }
 
 /**

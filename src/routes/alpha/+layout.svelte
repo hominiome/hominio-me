@@ -90,7 +90,8 @@
         
         // Debug: Log Zero server URL to help diagnose connection issues
         console.log('[Zero] Initializing with server URL:', zeroServerUrl);
-        console.log('[Zero] PUBLIC_ZERO_SERVER env:', publicEnv.PUBLIC_ZERO_SERVER);
+        console.log('[Zero] PUBLIC_DOMAIN:', publicEnv.PUBLIC_DOMAIN);
+        console.log('[Zero] PUBLIC_ZERO_SYNC_DOMAIN:', publicEnv.PUBLIC_ZERO_SYNC_DOMAIN);
         console.log('[Zero] Hostname:', window.location.hostname);
         
         // Validate server URL has proper scheme
