@@ -151,9 +151,11 @@ export async function startZero(): Promise<void> {
                 ZERO_GET_QUERIES_FORWARD_COOKIES: 'true',
         
         // Configure custom mutators endpoint for zero-cache
+        // Use ZERO_PUSH_URL (canonical) - ZERO_MUTATE_URL is just an alias
         ZERO_PUSH_URL: pushUrl,
         // Forward cookies to server for custom mutators (cookie-based auth)
-        // Per Zero docs: ZERO_MUTATE_FORWARD_COOKIES (not ZERO_PUSH_FORWARD_COOKIES)
+        // Per Zero docs: ZERO_MUTATE_FORWARD_COOKIES is the current preferred env var
+        // (ZERO_PUSH_FORWARD_COOKIES is deprecated)
         ZERO_MUTATE_FORWARD_COOKIES: 'true',
                 // Add connection timeout and retry settings
                 ZERO_DB_CONNECT_TIMEOUT: '10', // 10 seconds

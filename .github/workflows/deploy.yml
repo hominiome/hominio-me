@@ -26,7 +26,7 @@ jobs:
             ZERO_AUTH_SECRET="${{ secrets.SECRET_ZERO_AUTH_SECRET }}" \
             ZERO_ADMIN_PASSWORD="${{ secrets.SECRET_ZERO_AUTH_SECRET }}" \
             ZERO_GET_QUERIES_URL="https://hominio.me/alpha/api/zero/get-queries" \
-            ZERO_MUTATE_URL="https://hominio.me/alpha/api/zero/push" \
+            ZERO_PUSH_URL="https://hominio.me/alpha/api/zero/push" \
             ZERO_GET_QUERIES_FORWARD_COOKIES="true" \
             ZERO_MUTATE_FORWARD_COOKIES="true" \
             ZERO_DB_CONNECT_TIMEOUT="10" \
