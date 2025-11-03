@@ -73,7 +73,11 @@ flyctl open
 
 ### DNS Configuration
 
-Update your DNS records at your domain registrar:
+Fly.io uses 3dns (managed DNS) which automatically handles both domains. Both `hominio.me` and `www.hominio.me` point to the same app.
+
+**Note:** All `www.hominio.me` requests are automatically redirected to `hominio.me` (301 permanent redirect) at the application level in `src/hooks.server.js`. This is the recommended approach for Fly.io deployments, as Fly.io doesn't support DNS-level redirects.
+
+If you need to manually configure DNS (not using 3dns):
 
 **For hominio.me:**
 ```

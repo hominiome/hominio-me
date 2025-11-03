@@ -12,6 +12,8 @@ The codebase uses `src/lib/utils/domain.ts` to automatically:
 - Generate full URLs from domain names
 - Manage trusted origins for CORS
 
+**Important:** All `www.hominio.me` requests are automatically redirected to `hominio.me` (301 permanent redirect) for SEO consistency. This happens at the application level in `src/hooks.server.js`.
+
 ## Environment Variables
 
 ### For Main App (`hominio.me`)
