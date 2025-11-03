@@ -10,7 +10,8 @@
     | "warning"
     | "alert"
     | "outline"
-    | "inverted";
+    | "inverted"
+    | "footer";
 
   type ButtonSize = "sm" | "md" | "lg";
 
@@ -78,6 +79,7 @@
     alert: `bg-alert-500 text-alert-100 hover:bg-alert-600 hover:text-alert-50 focus:ring-alert-500 shadow-lg shadow-alert-500/30 hover:shadow-xl hover:shadow-alert-500/40 hover:-translate-y-0.5`,
     outline: `bg-secondary-500 text-secondary-100 hover:bg-secondary-600 hover:text-secondary-50 focus:ring-secondary-500 shadow-lg shadow-secondary-500/40 hover:shadow-xl hover:shadow-secondary-500/50 hover:-translate-y-0.5 backdrop-blur-sm`,
     inverted: `bg-white/70 border border-white/40 text-primary-900 hover:bg-white/90 hover:border-white/60 focus:ring-primary-500 shadow-lg hover:shadow-xl hover:-translate-y-0.5`,
+    footer: `bg-transparent text-secondary-100 hover:text-secondary-50 hover:bg-secondary-500/10 focus:ring-secondary-500 transition-all duration-200 rounded-xl flex flex-col items-center justify-center gap-1 px-3 py-2`,
   };
 
   // Glass intensity adjustments (backdrop blur)

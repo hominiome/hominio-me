@@ -223,7 +223,7 @@
 
   /* Cup Header Section */
   .cup-header-section {
-    background: linear-gradient(135deg, #f4d03f 0%, #facc15 100%);
+    background: linear-gradient(135deg, #ffd700 0%, #ffed4e 100%);
     padding: 1.5rem;
     display: flex;
     align-items: center;
@@ -375,7 +375,7 @@
     padding: 0.375rem 0.75rem;
     font-size: 0.75rem;
     font-weight: 600;
-    border-radius: 6px;
+    border-radius: 0.75rem; /* rounded-xl - design system default */
     text-decoration: none;
     transition: all 0.2s ease;
     margin-top: 0.25rem;

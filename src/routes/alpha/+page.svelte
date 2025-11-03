@@ -13,7 +13,16 @@
   import { calculatePrizePool, formatPrizePool } from "$lib/prizePoolUtils.js";
   import CupHeader from "$lib/CupHeader.svelte";
   import WinnerCard from "$lib/components/WinnerCard.svelte";
-  import { allProjects, allPurchases, identitiesByUser, allVotes, votesByUser, allCups, allMatches } from "$lib/synced-queries";
+  import { PageHeader } from "$lib/design-system/molecules";
+  import {
+    allProjects,
+    allPurchases,
+    identitiesByUser,
+    allVotes,
+    votesByUser,
+    allCups,
+    allMatches,
+  } from "$lib/synced-queries";
 
   const zeroContext = useZero();
   const session = authClient.useSession();
@@ -117,7 +126,7 @@
 
       cupsView.addListener(async (data) => {
         cups = Array.from(data);
-        
+
         // Check if any cups/matches have expired and close them
         try {
           await fetch("/alpha/api/check-expiry", {
@@ -126,7 +135,7 @@
         } catch (error) {
           console.warn("Failed to check expiry:", error);
         }
-        
+
         // Set loading to false once we have the cups data (even if empty)
         loading = false;
       });
@@ -146,7 +155,7 @@
       matchesView.addListener(async (data) => {
         // Store all matches - filtering by active cups happens reactively
         matches = Array.from(data);
-        
+
         // Check if any matches have expired and close them
         try {
           await fetch("/alpha/api/check-expiry", {
@@ -195,7 +204,6 @@
         userVotesView.addListener((data) => {
           userVotes = Array.from(data);
         });
-
       }
 
       return () => {
@@ -302,7 +310,9 @@
         expandedMatch = matchIdParam;
         // Scroll to match after a short delay to ensure DOM is ready
         setTimeout(() => {
-          const element = document.querySelector(`[data-match-id="${matchIdParam}"]`);
+          const element = document.querySelector(
+            `[data-match-id="${matchIdParam}"]`
+          );
           if (element) {
             element.scrollIntoView({ behavior: "smooth", block: "center" });
           }
@@ -490,7 +500,8 @@
 
   // Filter completed cups with winners
   const completedCupsWithWinners = $derived(
-    cups.filter((cup) => cup.status === "completed" && cup.winnerId)
+    cups
+      .filter((cup) => cup.status === "completed" && cup.winnerId)
       .sort((a, b) => {
         // Sort by completedAt descending (most recent first)
         const dateA = a.completedAt ? new Date(a.completedAt).getTime() : 0;
@@ -500,43 +511,64 @@
   );
 </script>
 
-<div class="alpha-timeline-container">
+<div class="@container min-h-screen py-8">
   {#if loading}
-    <div class="loading-state">
-      <p>Loading matches...</p>
+    <div class="flex items-center justify-center min-h-screen">
+      <div
+        class="bg-white rounded-2xl border-2 border-brand-navy-500/6 shadow-md p-8"
+      >
+        <p class="text-brand-navy-700">Loading matches...</p>
+      </div>
     </div>
   {:else if groupedMatches.length === 0 && completedCupsWithWinners.length === 0}
-    <div class="empty-state">
-      <p class="empty-message">
-        {#if $session.data?.user}
-          No active matches to vote on right now. Check back later!
-        {:else}
-          <a href="/alpha/signup" class="link">Sign in</a> to see matches waiting
-          for your vote.
-        {/if}
-      </p>
+    <div class="flex items-center justify-center min-h-screen">
+      <div
+        class="bg-white rounded-2xl border-2 border-brand-navy-500/6 shadow-md p-8 text-center"
+      >
+        <p class="text-brand-navy-700/80 text-lg">
+          {#if $session.data?.user}
+            No active matches to vote on right now. Check back later!
+          {:else}
+            <a
+              href="/alpha/signup"
+              class="text-secondary-500 hover:text-secondary-600 font-semibold underline"
+              >Sign in</a
+            > to see matches waiting for your vote.
+          {/if}
+        </p>
+      </div>
     </div>
   {:else}
-    <div class="timeline">
+    <div class="flex flex-col gap-8">
       <!-- Active Matches Section -->
       {#if groupedMatches.length > 0}
-        <div class="active-matches-section">
-          <div class="active-matches-header">
-            <h2 class="active-matches-title">Active Matches</h2>
-            <p class="active-matches-subtitle">Vote on ongoing tournaments</p>
+        <div
+          class="sticky top-0 z-50 py-2 mb-5 px-4 sm:px-6 lg:px-8 relative"
+          style="margin-left: calc(-50vw + 50%); margin-right: calc(-50vw + 50%); width: 100vw;"
+        >
+          <div
+            class="absolute inset-0"
+            style="background: linear-gradient(to top, transparent 0%, rgba(250, 249, 246, 0.75) 50%, rgba(250, 249, 246, 1) 100%); backdrop-filter: blur(28px) saturate(200%); -webkit-backdrop-filter: blur(28px) saturate(200%); mask-image: linear-gradient(to top, transparent 0%, rgba(0,0,0,0.75) 50%, black 100%); -webkit-mask-image: linear-gradient(to top, transparent 0%, rgba(0,0,0,0.75) 50%, black 100%); pointer-events: none; border-bottom: 1px solid rgba(255, 255, 255, 0.2); box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.2);"
+          ></div>
+          <div class="max-w-md mx-auto pb-2 relative z-10">
+            <PageHeader
+              title="Active Matches"
+              subtitle="Vote on ongoing tournaments"
+              size="sm"
+            />
           </div>
         </div>
       {/if}
 
       {#each groupedMatches as group (group.cupName + group.round)}
-        <div class="match-group">
+        <div class="flex flex-col gap-4">
           {#if group.matches.length > 0}
             {@const cup = getCupById(group.cupId)}
             {#if cup}
-              <CupHeader {cup} {purchases} matches={matches} />
+              <CupHeader {cup} {purchases} {matches} />
             {/if}
           {/if}
-          <div class="group-matches">
+          <div class="flex flex-col gap-4">
             {#each group.matches as match (match.id)}
               {@const cup = getCupById(match.cupId)}
               {@const project1 = getProjectById(match.project1Id)}
@@ -556,7 +588,7 @@
               {@const isExpanded = expandedMatch === match.id}
               {@const roundMatches = group.matches}
 
-              <div class="timeline-item" data-match-id={match.id}>
+              <div class="relative" data-match-id={match.id}>
                 {#if isExpanded}
                   <!-- Expanded Detail View -->
                   <MatchDetail
@@ -582,14 +614,14 @@
                   />
                   <button
                     onclick={() => toggleMatchExpand(match.id)}
-                    class="collapse-button"
+                    class="w-full flex justify-center items-center py-2 mt-2 bg-transparent border-none cursor-pointer transition-all duration-200 text-primary-400 hover:text-secondary-500"
                     aria-label="Collapse match"
                   >
                     <svg
                       fill="none"
                       stroke="currentColor"
                       viewBox="0 0 24 24"
-                      class="collapse-icon"
+                      class="w-5 h-5"
                     >
                       <path
                         stroke-linecap="round"
@@ -634,14 +666,30 @@
 
       <!-- Past Champions Section -->
       {#if completedCupsWithWinners.length > 0}
-        <div class="winners-section">
-          <div class="winners-section-header">
-            <h2 class="winners-section-title">🏆 Champions</h2>
-            <p class="winners-section-subtitle">Celebrating tournament winners</p>
+        <div class="mt-16 @md:mt-20 mb-12 @md:mb-16">
+          <div
+            class="sticky top-0 z-50 py-2 mb-5 px-4 sm:px-6 lg:px-8 relative"
+            style="margin-left: calc(-50vw + 50%); margin-right: calc(-50vw + 50%); width: 100vw;"
+          >
+            <div
+              class="absolute inset-0"
+              style="background: linear-gradient(to top, transparent 0%, rgba(250, 249, 246, 0.75) 50%, rgba(250, 249, 246, 1) 100%); backdrop-filter: blur(28px) saturate(200%); -webkit-backdrop-filter: blur(28px) saturate(200%); mask-image: linear-gradient(to top, transparent 0%, rgba(0,0,0,0.75) 50%, black 100%); -webkit-mask-image: linear-gradient(to top, transparent 0%, rgba(0,0,0,0.75) 50%, black 100%); pointer-events: none; border-bottom: 1px solid rgba(255, 255, 255, 0.2); box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.2);"
+            ></div>
+            <div class="max-w-md mx-auto pb-2 relative z-10">
+              <PageHeader
+                title="Previous Champions"
+                subtitle="Celebrating tournament winners"
+                size="sm"
+              />
+            </div>
           </div>
-          <div class="winners-grid">
+          <div
+            class="grid grid-cols-1 @md:grid-cols-[repeat(auto-fit,minmax(500px,1fr))] @lg:grid-cols-[repeat(auto-fit,minmax(700px,1fr))] gap-6 @md:gap-8 @lg:gap-10 max-w-7xl mx-auto w-full"
+          >
             {#each completedCupsWithWinners as cup}
-              {@const winnerProject = projects.find((p) => p.id === cup.winnerId)}
+              {@const winnerProject = projects.find(
+                (p) => p.id === cup.winnerId
+              )}
               {#if winnerProject}
                 <WinnerCard {cup} {winnerProject} />
               {/if}
@@ -652,171 +700,3 @@
     </div>
   {/if}
 </div>
-
-<style>
-  .alpha-timeline-container {
-    min-height: 100vh;
-    padding: 2rem;
-    max-width: 1200px;
-    margin: 0 auto;
-    background: linear-gradient(135deg, #f0fffe 0%, #fff9e6 100%);
-  }
-
-  .loading-state,
-  .empty-state {
-    text-align: center;
-    padding: 4rem 2rem;
-  }
-
-  .empty-message {
-    font-size: 1.125rem;
-    color: #6b7280;
-  }
-
-  .link {
-    color: #4fc3c3;
-    text-decoration: none;
-    font-weight: 600;
-  }
-
-  .link:hover {
-    text-decoration: underline;
-  }
-
-  .timeline {
-    display: flex;
-    flex-direction: column;
-    gap: 2rem;
-  }
-
-  .match-group {
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-  }
-
-  .group-matches {
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-  }
-
-  .timeline-item {
-    position: relative;
-  }
-
-  .collapse-button {
-    width: 100%;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    padding: 0.5rem;
-    margin-top: 0.5rem;
-    background: none;
-    border: none;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    color: rgba(26, 26, 78, 0.4);
-  }
-
-  .collapse-button:hover {
-    color: #4ecdc4;
-  }
-
-  .collapse-icon {
-    width: 20px;
-    height: 20px;
-  }
-
-  /* Winners Section */
-  .winners-section {
-    margin-bottom: 3rem;
-  }
-
-  .winners-section-header {
-    text-align: center;
-    margin-bottom: 2rem;
-  }
-
-  .winners-section-title {
-    font-size: 2.5rem;
-    font-weight: 800;
-    color: #1a1a4e;
-    margin: 0 0 0.5rem 0;
-    background: linear-gradient(135deg, #f4d03f 0%, #1a1a4e 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-  }
-
-  .winners-section-subtitle {
-    font-size: 1.125rem;
-    color: rgba(26, 26, 78, 0.7);
-    margin: 0;
-  }
-
-  .winners-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
-    gap: 2rem;
-    padding: 0;
-  }
-
-  /* Tablet Responsive */
-  @media (min-width: 769px) and (max-width: 1024px) {
-    .winners-grid {
-      grid-template-columns: repeat(auto-fit, minmax(700px, 1fr));
-      gap: 2.5rem;
-    }
-  }
-
-  /* Active Matches Section */
-  .active-matches-section {
-    margin-bottom: 0.5rem;
-  }
-
-  .active-matches-header {
-    text-align: center;
-    margin-bottom: 0.75rem;
-  }
-
-  .active-matches-title {
-    font-size: 2rem;
-    font-weight: 800;
-    color: #1a1a4e;
-    margin: 0 0 0.5rem 0;
-  }
-
-  .active-matches-subtitle {
-    font-size: 1rem;
-    color: rgba(26, 26, 78, 0.7);
-    margin: 0;
-  }
-
-  @media (max-width: 768px) {
-    .alpha-timeline-container {
-      padding: 1rem;
-    }
-
-    .timeline {
-      gap: 1rem;
-    }
-
-    .winners-section {
-      margin-bottom: 2rem;
-    }
-
-    .winners-section-title {
-      font-size: 2rem;
-    }
-
-    .winners-grid {
-      grid-template-columns: 1fr;
-      gap: 1.5rem;
-    }
-
-    .active-matches-title {
-      font-size: 1.5rem;
-    }
-  }
-</style>

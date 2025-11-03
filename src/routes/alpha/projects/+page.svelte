@@ -8,13 +8,13 @@
   import UserAutocomplete from "$lib/UserAutocomplete.svelte";
   import CountryAutocomplete from "$lib/CountryAutocomplete.svelte";
   import { showError } from "$lib/toastStore.js";
-  import ConfirmDialog from "$lib/ConfirmDialog.svelte";
   import Modal from "$lib/Modal.svelte";
   import { goto } from "$app/navigation";
   import TigrisImageUpload from "$lib/components/TigrisImageUpload.svelte";
   import { browser } from "$app/environment";
   import { projectById, identitiesByUser } from "$lib/synced-queries";
   import { Button, Icon } from "$lib/design-system/atoms";
+  import { PageHeader, PageHeaderActions } from "$lib/design-system/molecules";
 
   // Get Zero instance from context (initialized in layout)
   const zeroContext = getContext("zero");
@@ -24,9 +24,7 @@
   let loading = $state(true);
   let showCreateForm = $state(false);
   let isAdmin = $state(false);
-  let userProfiles = $state(
-    new Map()
-  );
+  let userProfiles = $state(new Map());
   let userIdentities = $state([]);
   let userIdentitiesView = null;
   // Track which user images have failed to load
@@ -96,10 +94,14 @@
   });
 
   // Detect modal params from URL
-  const showCreateModal = $derived($page.url.searchParams.get("modal") === "create-project");
-  const showEditModal = $derived($page.url.searchParams.get("modal") === "edit-project");
+  const showCreateModal = $derived(
+    $page.url.searchParams.get("modal") === "create-project"
+  );
+  const showEditModal = $derived(
+    $page.url.searchParams.get("modal") === "edit-project"
+  );
   const editProjectId = $derived($page.url.searchParams.get("projectId") || "");
-  
+
   // Edit form state (declare before derived that uses it)
   let editProject = $state(null);
   let editLoading = $state(false);
@@ -115,26 +117,26 @@
     sdgs: [],
   });
   let editSelectedOwner = $state(null);
-  
+
   // Form validation states (after state declarations)
   const canCreateProject = $derived(
     newProject.title.trim() &&
-    newProject.description.trim() &&
-    newProject.country &&
-    newProject.city.trim() &&
-    newProject.sdgs.length > 0
+      newProject.description.trim() &&
+      newProject.country &&
+      newProject.city.trim() &&
+      newProject.sdgs.length > 0
   );
-  
+
   const canSaveEditProject = $derived(
     editProject &&
-    editFormData.title.trim() &&
-    editFormData.description.trim() &&
-    editFormData.country &&
-    editFormData.city.trim() &&
-    editFormData.sdgs.length > 0 &&
-    !editSaving
+      editFormData.title.trim() &&
+      editFormData.description.trim() &&
+      editFormData.country &&
+      editFormData.city.trim() &&
+      editFormData.sdgs.length > 0 &&
+      !editSaving
   );
-  
+
   // Submit handlers
   function handleCreateSubmit() {
     const form = document.getElementById("create-project-form");
@@ -142,14 +144,14 @@
       form.requestSubmit();
     }
   }
-  
+
   function handleEditSubmit() {
     const form = document.getElementById("edit-project-form");
     if (form && canSaveEditProject) {
       form.requestSubmit();
     }
   }
-  
+
   // Expose submit functions and state globally for layout to access (reactive)
   $effect(() => {
     if (typeof window !== "undefined") {
@@ -164,13 +166,13 @@
       };
     }
   });
-  
+
   function handleCreateModalClose() {
     const url = new URL($page.url);
     url.searchParams.delete("modal");
     goto(url.pathname + url.search, { replaceState: true });
   }
-  
+
   function handleEditModalClose() {
     const url = new URL($page.url);
     url.searchParams.delete("modal");
@@ -189,7 +191,7 @@
     };
     editSelectedOwner = null;
   }
-  
+
   // Load project data when edit modal opens
   $effect(() => {
     if (showEditModal && editProjectId && zero) {
@@ -198,13 +200,13 @@
         editProject = null;
         editLoading = true;
       }
-      
+
       if (!editProject && !editLoading) {
         editLoading = true;
-        
+
         // First try to find in already loaded projects
         const project = projects.find((p) => p.id === editProjectId);
-        
+
         if (project) {
           // Found in list, use it
           editProject = project;
@@ -215,7 +217,11 @@
             city: project.city || "",
             videoUrl: project.videoUrl || "",
             bannerImage: project.bannerImage || "",
-            sdgs: project.sdgs ? (typeof project.sdgs === "string" ? JSON.parse(project.sdgs || "[]") : project.sdgs) : [],
+            sdgs: project.sdgs
+              ? typeof project.sdgs === "string"
+                ? JSON.parse(project.sdgs || "[]")
+                : project.sdgs
+              : [],
           };
           if (project.userId) {
             getUserProfile(project.userId).then((profile) => {
@@ -232,37 +238,54 @@
           let projectView = null;
           let timeoutId = null;
           let hasReceivedData = false;
-          
+
           (async () => {
             try {
               // Wait a bit for Zero to be fully ready
-              await new Promise(resolve => setTimeout(resolve, 100));
-              
+              await new Promise((resolve) => setTimeout(resolve, 100));
+
               const projectQuery = projectById(editProjectId);
               projectView = zero.materialize(projectQuery);
-              
+
               // Use listener to get the project data
               projectView.addListener((data) => {
                 hasReceivedData = true;
                 const projectData = Array.from(data || []);
-                console.log("📦 Zero query result:", { count: projectData.length, projectId: editProjectId, data: projectData[0]?.id });
-                
+                console.log("📦 Zero query result:", {
+                  count: projectData.length,
+                  projectId: editProjectId,
+                  data: projectData[0]?.id,
+                });
+
                 if (projectData.length > 0) {
                   const fetchedProject = projectData[0];
-                  console.log("✅ Found project via Zero:", fetchedProject.id, fetchedProject.title);
-                  
+                  console.log(
+                    "✅ Found project via Zero:",
+                    fetchedProject.id,
+                    fetchedProject.title
+                  );
+
                   // Check if we still need this project (might have changed)
-                  if (editProjectId === fetchedProject.id && (!editProject || editProject.id !== fetchedProject.id)) {
+                  if (
+                    editProjectId === fetchedProject.id &&
+                    (!editProject || editProject.id !== fetchedProject.id)
+                  ) {
                     editProject = fetchedProject;
                     editFormData = {
                       title: fetchedProject.title || "",
                       description: fetchedProject.description || "",
-                      country: fetchedProject.country ? { name: fetchedProject.country } : null,
+                      country: fetchedProject.country
+                        ? { name: fetchedProject.country }
+                        : null,
                       city: fetchedProject.city || "",
                       videoUrl: fetchedProject.videoUrl || "",
                       bannerImage: fetchedProject.bannerImage || "",
                       profileImageUrl: fetchedProject.profileImageUrl || "",
-                      sdgs: fetchedProject.sdgs ? (typeof fetchedProject.sdgs === "string" ? JSON.parse(fetchedProject.sdgs || "[]") : fetchedProject.sdgs) : [],
+                      sdgs: fetchedProject.sdgs
+                        ? typeof fetchedProject.sdgs === "string"
+                          ? JSON.parse(fetchedProject.sdgs || "[]")
+                          : fetchedProject.sdgs
+                        : [],
                     };
                     if (fetchedProject.userId) {
                       getUserProfile(fetchedProject.userId).then((profile) => {
@@ -273,8 +296,8 @@
                         };
                       });
                     }
-          editLoading = false;
-                    
+                    editLoading = false;
+
                     // Clean up listener after getting data
                     if (timeoutId) clearTimeout(timeoutId);
                     setTimeout(() => {
@@ -284,7 +307,9 @@
                     }, 100);
                   }
                 } else if (hasReceivedData && projectData.length === 0) {
-                  console.log("❌ No project found in Zero query - project doesn't exist");
+                  console.log(
+                    "❌ No project found in Zero query - project doesn't exist"
+                  );
                   editLoading = false;
                   if (timeoutId) clearTimeout(timeoutId);
                   setTimeout(() => {
@@ -294,11 +319,13 @@
                   }, 100);
                 }
               });
-              
+
               // Set a timeout to stop loading if no data arrives
               timeoutId = setTimeout(() => {
                 if (editLoading && !editProject && !hasReceivedData) {
-                  console.log("⏱️ Timeout waiting for project data - Zero may not be synced yet");
+                  console.log(
+                    "⏱️ Timeout waiting for project data - Zero may not be synced yet"
+                  );
                   editLoading = false;
                   if (projectView) {
                     projectView.destroy();
@@ -322,7 +349,7 @@
       editLoading = false;
     }
   });
-  
+
   function toggleEditSDG(sdgId) {
     if (editFormData.sdgs.includes(sdgId)) {
       editFormData.sdgs = editFormData.sdgs.filter((id) => id !== sdgId);
@@ -332,20 +359,30 @@
       }
     }
   }
-  
+
   async function updateProject() {
-    if (!editProject || editSaving || !editFormData.title.trim() || !editFormData.description.trim() || !editFormData.country || !editFormData.city.trim() || editFormData.sdgs.length === 0) {
+    if (
+      !editProject ||
+      editSaving ||
+      !editFormData.title.trim() ||
+      !editFormData.description.trim() ||
+      !editFormData.country ||
+      !editFormData.city.trim() ||
+      editFormData.sdgs.length === 0
+    ) {
       return;
     }
-    
+
     if (!isAdmin) {
       showError("Only admins can update projects");
       return;
     }
-    
-    const newUserId = editSelectedOwner ? editSelectedOwner.id : editProject.userId;
+
+    const newUserId = editSelectedOwner
+      ? editSelectedOwner.id
+      : editProject.userId;
     editSaving = true;
-    
+
     try {
       // Use Zero custom mutator for project update
       // Fire and forget - Zero handles optimistic updates
@@ -361,7 +398,7 @@
         sdgs: JSON.stringify(editFormData.sdgs),
         userId: newUserId,
       });
-      
+
       handleEditModalClose();
     } catch (error) {
       console.error("Failed to update project:", error);
@@ -371,10 +408,12 @@
       editSaving = false;
     }
   }
-  
+
   onMount(() => {
     // Check if URL has create parameter to open form directly (legacy support)
-    const shouldCreate = $page.url.searchParams.get("create") === "true" || $page.url.searchParams.get("modal") === "create-project";
+    const shouldCreate =
+      $page.url.searchParams.get("create") === "true" ||
+      $page.url.searchParams.get("modal") === "create-project";
     if (shouldCreate && $session.data?.user) {
       showCreateForm = true;
     }
@@ -395,39 +434,41 @@
 
         // Use synced query (client-side only, SSR doesn't need this)
         if (browser) {
-          import("$lib/synced-queries").then(({ allProjects }) => {
-            // Query ALL projects using synced query (server-controlled)
-            // Use zero.materialize() instead of query.materialize() for synced queries
-            const projectsQuery = allProjects();
-            projectsView = zero.materialize(projectsQuery);
+          import("$lib/synced-queries")
+            .then(({ allProjects }) => {
+              // Query ALL projects using synced query (server-controlled)
+              // Use zero.materialize() instead of query.materialize() for synced queries
+              const projectsQuery = allProjects();
+              projectsView = zero.materialize(projectsQuery);
 
-            projectsView.addListener(async (data) => {
-              const newProjects = Array.from(data);
-              projects = newProjects;
-              loading = false;
+              projectsView.addListener(async (data) => {
+                const newProjects = Array.from(data);
+                projects = newProjects;
+                loading = false;
 
-              // Fetch user profiles for all projects
-              const userIds = [
-                ...new Set(newProjects.map((p) => p.userId).filter(Boolean)),
-              ];
-              if (userIds.length > 0) {
-                await prefetchUserProfiles(userIds);
-                // Update userProfiles map
-                const newUserProfiles = new Map(userProfiles);
-                for (const userId of userIds) {
-                  const profile = await getUserProfile(userId);
-                  newUserProfiles.set(userId, {
-                    name: profile.name,
-                    image: profile.image,
-                  });
+                // Fetch user profiles for all projects
+                const userIds = [
+                  ...new Set(newProjects.map((p) => p.userId).filter(Boolean)),
+                ];
+                if (userIds.length > 0) {
+                  await prefetchUserProfiles(userIds);
+                  // Update userProfiles map
+                  const newUserProfiles = new Map(userProfiles);
+                  for (const userId of userIds) {
+                    const profile = await getUserProfile(userId);
+                    newUserProfiles.set(userId, {
+                      name: profile.name,
+                      image: profile.image,
+                    });
+                  }
+                  userProfiles = newUserProfiles; // Trigger reactivity
                 }
-                userProfiles = newUserProfiles; // Trigger reactivity
-              }
+              });
+            })
+            .catch((error) => {
+              console.error("Failed to load synced queries:", error);
+              loading = false;
             });
-          }).catch((error) => {
-            console.error("Failed to load synced queries:", error);
-            loading = false;
-          });
         }
 
         // Query user identities to check for founder status
@@ -453,7 +494,9 @@
   // Check if user has founder identity (any cup)
   const hasFounderIdentity = $derived(() => {
     if (!userIdentities || userIdentities.length === 0) return false;
-    return userIdentities.some((identity) => identity.identityType === "founder");
+    return userIdentities.some(
+      (identity) => identity.identityType === "founder"
+    );
   });
 
   async function createProject() {
@@ -461,18 +504,22 @@
       showError("Zero sync is not ready. Please wait...");
       return;
     }
-    
+
     if (!$session.data?.user) {
-      showError("You must be logged in to create projects. Please log in first.");
+      showError(
+        "You must be logged in to create projects. Please log in first."
+      );
       return;
     }
-    
+
     // Check if user has founder identity
     if (!hasFounderIdentity() && !isAdmin) {
-      showError("Only founders can create projects. Please purchase a founder identity first.");
+      showError(
+        "Only founders can create projects. Please purchase a founder identity first."
+      );
       return;
     }
-    
+
     if (
       !newProject.title.trim() ||
       !newProject.description.trim() ||
@@ -489,28 +536,31 @@
     // Fire and forget - Zero handles optimistic updates
     // Catch errors to show user-friendly messages
     try {
-      await zero.mutate.project.create({
-        id: nanoid(),
-        title: newProject.title,
-        description: newProject.description,
-        country: newProject.country.name,
-        city: newProject.city,
-        videoUrl: newProject.videoUrl.trim() || "",
-        bannerImage: newProject.bannerImage.trim() || "",
-        profileImageUrl: newProject.profileImageUrl.trim() || "",
-        userId: ownerId,
-        sdgs: JSON.stringify(newProject.sdgs),
-        createdAt: new Date().toISOString(),
-      }).server.catch((error) => {
-        // Handle server-side errors
-        console.error('[createProject] Server error:', error);
-        const errorMessage = error?.details || error?.message || 'Failed to create project';
-        showError(errorMessage);
-      });
+      await zero.mutate.project
+        .create({
+          id: nanoid(),
+          title: newProject.title,
+          description: newProject.description,
+          country: newProject.country.name,
+          city: newProject.city,
+          videoUrl: newProject.videoUrl.trim() || "",
+          bannerImage: newProject.bannerImage.trim() || "",
+          profileImageUrl: newProject.profileImageUrl.trim() || "",
+          userId: ownerId,
+          sdgs: JSON.stringify(newProject.sdgs),
+          createdAt: new Date().toISOString(),
+        })
+        .server.catch((error) => {
+          // Handle server-side errors
+          console.error("[createProject] Server error:", error);
+          const errorMessage =
+            error?.details || error?.message || "Failed to create project";
+          showError(errorMessage);
+        });
     } catch (error) {
       // Handle client-side errors
-      console.error('[createProject] Client error:', error);
-      const errorMessage = error?.message || 'Failed to create project';
+      console.error("[createProject] Client error:", error);
+      const errorMessage = error?.message || "Failed to create project";
       showError(errorMessage);
     }
 
@@ -568,6 +618,7 @@
       console.error("Failed to delete project:", error);
       const message = error instanceof Error ? error.message : "Unknown error";
       showError(`Failed to delete project: ${message}`);
+      showDeleteConfirm = false; // Close modal even on error
     }
   }
 
@@ -585,34 +636,48 @@
 <div class="@container min-h-screen p-8">
   {#if $session.isPending || loading}
     <div class="flex items-center justify-center min-h-screen">
-      <div class="bg-white rounded-2xl border border-brand-navy-100 shadow-md p-8 transition-all duration-300 hover:shadow-lg">
+      <div
+        class="bg-white rounded-2xl border border-brand-navy-100 shadow-md p-8 transition-all duration-300 hover:shadow-lg"
+      >
         <p class="text-brand-navy-700">Loading projects...</p>
       </div>
     </div>
   {:else}
     <div>
       <!-- Header -->
-      <div class="sticky top-0 z-50 bg-brand-cream-50/95 backdrop-blur-sm py-6 mb-6 -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 border-b border-brand-navy-500/10">
-        <div class="flex flex-col @md:flex-row justify-between items-start @md:items-center gap-4">
-          <div>
-            <h1 class="text-4xl font-bold text-brand-navy-500 mb-1">Projects</h1>
-            <p class="text-brand-navy-700/80 text-sm">
-              Explore amazing projects from around the world
-            </p>
-          </div>
+      <div
+        class="sticky top-0 z-50 py-2 mb-5 px-4 sm:px-6 lg:px-8 relative"
+        style="margin-left: calc(-50vw + 50%); margin-right: calc(-50vw + 50%); width: 100vw;"
+      >
+        <div
+          class="absolute inset-0"
+          style="background: linear-gradient(to top, transparent 0%, rgba(250, 249, 246, 0.75) 50%, rgba(250, 249, 246, 1) 100%); backdrop-filter: blur(28px) saturate(200%); -webkit-backdrop-filter: blur(28px) saturate(200%); mask-image: linear-gradient(to top, transparent 0%, rgba(0,0,0,0.75) 50%, black 100%); -webkit-mask-image: linear-gradient(to top, transparent 0%, rgba(0,0,0,0.75) 50%, black 100%); pointer-events: none; border-bottom: 1px solid rgba(255, 255, 255, 0.2); box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.2);"
+        ></div>
+        <div
+          class="flex flex-col items-center max-w-md mx-auto pb-4 gap-3 relative z-10"
+        >
+          <PageHeader
+            title="Projects"
+            subtitle="Explore amazing projects from around the world"
+            size="sm"
+          />
           {#if $session.data?.user && (hasFounderIdentity() || isAdmin)}
-            <Button
-              variant="primary"
-              icon="mdi:plus"
-              iconPosition="left"
-              onclick={() => {
-                const url = new URL($page.url);
-                url.searchParams.set("modal", "create-project");
-                goto(url.pathname + url.search, { replaceState: false });
-              }}
-            >
-              New Project
-            </Button>
+            <PageHeaderActions>
+              {#snippet children()}
+                <Button
+                  variant="primary"
+                  icon="mdi:plus"
+                  iconPosition="left"
+                  onclick={() => {
+                    const url = new URL($page.url);
+                    url.searchParams.set("modal", "create-project");
+                    goto(url.pathname + url.search, { replaceState: false });
+                  }}
+                >
+                  New Project
+                </Button>
+              {/snippet}
+            </PageHeaderActions>
           {/if}
         </div>
       </div>
@@ -635,7 +700,8 @@
               <div>
                 <label
                   for="project-title"
-                  class="block text-brand-navy-500/80 font-medium mb-2">Title</label
+                  class="block text-brand-navy-500/80 font-medium mb-2"
+                  >Title</label
                 >
                 <input
                   id="project-title"
@@ -649,7 +715,8 @@
               <div>
                 <label
                   for="project-description"
-                  class="block text-brand-navy-500/80 font-medium mb-2">Description</label
+                  class="block text-brand-navy-500/80 font-medium mb-2"
+                  >Description</label
                 >
                 <textarea
                   id="project-description"
@@ -671,7 +738,8 @@
               <div>
                 <label
                   for="project-city"
-                  class="block text-brand-navy-500/80 font-medium mb-2">City *</label
+                  class="block text-brand-navy-500/80 font-medium mb-2"
+                  >City *</label
                 >
                 <input
                   id="project-city"
@@ -685,7 +753,9 @@
 
               <!-- Profile Image (Optional) -->
               <div>
-                <div class="block text-brand-navy-500/80 font-medium mb-2">Profile Image (Optional)</div>
+                <div class="block text-brand-navy-500/80 font-medium mb-2">
+                  Profile Image (Optional)
+                </div>
                 <TigrisImageUpload
                   uploadButtonLabel="Upload Profile Image"
                   showPreview={false}
@@ -730,7 +800,9 @@
 
               <!-- Banner Image (Optional) -->
               <div>
-                <div class="block text-brand-navy-500/80 font-medium mb-2">Banner Image (Optional)</div>
+                <div class="block text-brand-navy-500/80 font-medium mb-2">
+                  Banner Image (Optional)
+                </div>
                 <TigrisImageUpload
                   uploadButtonLabel="Upload Banner"
                   showPreview={false}
@@ -778,14 +850,22 @@
                 <p class="text-sm text-brand-navy-500/60 mb-3">
                   Selected: {newProject.sdgs.length}/3
                 </p>
-                <div class="grid grid-cols-[repeat(auto-fill,minmax(80px,1fr))] gap-3 p-2 bg-brand-teal-500/3 rounded-xl overflow-visible max-h-none">
+                <div
+                  class="grid grid-cols-[repeat(auto-fill,minmax(80px,1fr))] gap-3 p-2 bg-brand-teal-500/3 rounded-xl overflow-visible max-h-none"
+                >
                   {#each availableSDGs as sdg}
                     <button
                       type="button"
                       onclick={() => toggleSDG(sdg.id)}
-                      class="relative aspect-square border-[3px] border-transparent rounded-lg cursor-pointer transition-all duration-200 p-0 bg-white overflow-hidden {newProject.sdgs.includes(sdg.id)
+                      class="relative aspect-square border-[3px] border-transparent rounded-lg cursor-pointer transition-all duration-200 p-0 bg-white overflow-hidden {newProject.sdgs.includes(
+                        sdg.id
+                      )
                         ? 'border-brand-yellow-500 shadow-[0_4px_16px_rgba(244,208,63,0.3)]'
-                        : 'hover:scale-105 hover:border-brand-teal-500 hover:shadow-[0_4px_12px_rgba(78,205,196,0.2)]'} {!newProject.sdgs.includes(sdg.id) && newProject.sdgs.length >= 3 ? 'opacity-40 cursor-not-allowed' : ''}"
+                        : 'hover:scale-105 hover:border-brand-teal-500 hover:shadow-[0_4px_12px_rgba(78,205,196,0.2)]'} {!newProject.sdgs.includes(
+                        sdg.id
+                      ) && newProject.sdgs.length >= 3
+                        ? 'opacity-40 cursor-not-allowed'
+                        : ''}"
                       disabled={!newProject.sdgs.includes(sdg.id) &&
                         newProject.sdgs.length >= 3}
                       title={sdg.name}
@@ -796,13 +876,16 @@
                         class="w-full h-full object-cover block"
                       />
                       {#if newProject.sdgs.includes(sdg.id)}
-                        <div class="absolute top-1 right-1 w-6 h-6 bg-brand-yellow-500 text-brand-navy-500 rounded-full flex items-center justify-center font-black text-sm shadow-[0_2px_8px_rgba(0,0,0,0.2)]">✓</div>
+                        <div
+                          class="absolute top-1 right-1 w-6 h-6 bg-brand-yellow-500 text-brand-navy-500 rounded-full flex items-center justify-center font-black text-sm shadow-[0_2px_8px_rgba(0,0,0,0.2)]"
+                        >
+                          ✓
+                        </div>
                       {/if}
                     </button>
                   {/each}
                 </div>
               </div>
-
             </form>
           </div>
         </Modal>
@@ -836,7 +919,8 @@
                 <div>
                   <label
                     for="edit-project-title"
-                    class="block text-brand-navy-500/80 font-medium mb-2">Title *</label
+                    class="block text-brand-navy-500/80 font-medium mb-2"
+                    >Title *</label
                   >
                   <input
                     id="edit-project-title"
@@ -852,7 +936,8 @@
                 <div>
                   <label
                     for="edit-project-description"
-                    class="block text-brand-navy-500/80 font-medium mb-2">Description *</label
+                    class="block text-brand-navy-500/80 font-medium mb-2"
+                    >Description *</label
                   >
                   <textarea
                     id="edit-project-description"
@@ -878,7 +963,8 @@
                 <div>
                   <label
                     for="edit-project-city"
-                    class="block text-brand-navy-500/80 font-medium mb-2">City *</label
+                    class="block text-brand-navy-500/80 font-medium mb-2"
+                    >City *</label
                   >
                   <input
                     id="edit-project-city"
@@ -892,7 +978,9 @@
 
                 <!-- Profile Image (Optional) -->
                 <div>
-                  <div class="block text-brand-navy-500/80 font-medium mb-2">Profile Image (Optional)</div>
+                  <div class="block text-brand-navy-500/80 font-medium mb-2">
+                    Profile Image (Optional)
+                  </div>
                   <TigrisImageUpload
                     uploadButtonLabel="Upload Profile Image"
                     showPreview={false}
@@ -937,7 +1025,9 @@
 
                 <!-- Banner Image (Optional) -->
                 <div>
-                  <div class="block text-brand-navy-500/80 font-medium mb-2">Banner Image (Optional)</div>
+                  <div class="block text-brand-navy-500/80 font-medium mb-2">
+                    Banner Image (Optional)
+                  </div>
                   <TigrisImageUpload
                     uploadButtonLabel="Upload Banner"
                     showPreview={false}
@@ -985,14 +1075,22 @@
                   <p class="text-sm text-brand-navy-500/60 mb-3">
                     Selected: {editFormData.sdgs.length}/3
                   </p>
-                  <div class="grid grid-cols-[repeat(auto-fill,minmax(80px,1fr))] gap-3 p-2 bg-brand-teal-500/3 rounded-xl overflow-visible max-h-none">
+                  <div
+                    class="grid grid-cols-[repeat(auto-fill,minmax(80px,1fr))] gap-3 p-2 bg-brand-teal-500/3 rounded-xl overflow-visible max-h-none"
+                  >
                     {#each availableSDGs as sdg}
                       <button
                         type="button"
                         onclick={() => toggleEditSDG(sdg.id)}
-                        class="relative aspect-square border-[3px] border-transparent rounded-lg cursor-pointer transition-all duration-200 p-0 bg-white overflow-hidden {editFormData.sdgs.includes(sdg.id)
+                        class="relative aspect-square border-[3px] border-transparent rounded-lg cursor-pointer transition-all duration-200 p-0 bg-white overflow-hidden {editFormData.sdgs.includes(
+                          sdg.id
+                        )
                           ? 'border-brand-yellow-500 shadow-[0_4px_16px_rgba(244,208,63,0.3)]'
-                          : 'hover:scale-105 hover:border-brand-teal-500 hover:shadow-[0_4px_12px_rgba(78,205,196,0.2)]'} {!editFormData.sdgs.includes(sdg.id) && editFormData.sdgs.length >= 3 ? 'opacity-40 cursor-not-allowed' : ''}"
+                          : 'hover:scale-105 hover:border-brand-teal-500 hover:shadow-[0_4px_12px_rgba(78,205,196,0.2)]'} {!editFormData.sdgs.includes(
+                          sdg.id
+                        ) && editFormData.sdgs.length >= 3
+                          ? 'opacity-40 cursor-not-allowed'
+                          : ''}"
                         disabled={!editFormData.sdgs.includes(sdg.id) &&
                           editFormData.sdgs.length >= 3}
                         title={sdg.name}
@@ -1003,13 +1101,16 @@
                           class="w-full h-full object-cover block"
                         />
                         {#if editFormData.sdgs.includes(sdg.id)}
-                          <div class="absolute top-1 right-1 w-6 h-6 bg-brand-yellow-500 text-brand-navy-500 rounded-full flex items-center justify-center font-black text-sm shadow-[0_2px_8px_rgba(0,0,0,0.2)]">✓</div>
+                          <div
+                            class="absolute top-1 right-1 w-6 h-6 bg-brand-yellow-500 text-brand-navy-500 rounded-full flex items-center justify-center font-black text-sm shadow-[0_2px_8px_rgba(0,0,0,0.2)]"
+                          >
+                            ✓
+                          </div>
                         {/if}
                       </button>
                     {/each}
                   </div>
                 </div>
-
               </form>
             {/if}
           </div>
@@ -1018,7 +1119,9 @@
 
       <!-- Grid View Layout -->
       {#if projects.length === 0}
-        <div class="bg-white rounded-2xl border border-brand-navy-100 shadow-md p-16 transition-all duration-300 hover:shadow-lg">
+        <div
+          class="bg-white rounded-2xl border border-brand-navy-100 shadow-md p-16 transition-all duration-300 hover:shadow-lg"
+        >
           <div class="text-center">
             <p class="text-brand-navy-700 text-lg">
               No projects yet. Create the first one!
@@ -1035,11 +1138,17 @@
               project.bannerImage.trim().length > 0
                 ? project.bannerImage.trim()
                 : `https://picsum.photos/seed/${project.id || "project"}/400/225`}
-            <div class="bg-white rounded-2xl border-2 border-brand-navy-500/6 p-0 transition-all duration-300 flex flex-col overflow-hidden w-full min-h-[240px] hover:border-brand-teal-500/40 hover:-translate-y-0.5 hover:shadow-[0_8px_24px_rgba(78,205,196,0.15)] @3xs:min-h-auto">
+            <div
+              class="bg-white rounded-2xl border-2 border-brand-navy-500/6 p-0 transition-all duration-300 flex flex-col overflow-hidden w-full min-h-[240px] hover:border-brand-teal-500/40 hover:-translate-y-0.5 hover:shadow-[0_8px_24px_rgba(78,205,196,0.15)] @3xs:min-h-auto"
+            >
               <!-- Top Section: Thumbnail and Content Side by Side -->
-              <div class="flex flex-col @md:flex-row flex-1 @3xs:min-h-auto min-h-[240px]">
+              <div
+                class="flex flex-col @md:flex-row flex-1 @3xs:min-h-auto min-h-[240px]"
+              >
                 <!-- Thumbnail on Left -->
-                <div class="flex-shrink-0 w-full @md:w-[280px] @md:min-w-[280px] overflow-hidden bg-brand-navy-500/5 relative flex items-stretch @3xs:h-[200px] @md:h-auto">
+                <div
+                  class="flex-shrink-0 w-full @md:w-[280px] @md:min-w-[280px] overflow-hidden bg-brand-navy-500/5 relative flex items-stretch @3xs:h-[200px] @md:h-auto"
+                >
                   <img
                     src={thumbnailUrl}
                     alt={project.title}
@@ -1051,7 +1160,9 @@
                 </div>
 
                 <!-- Main Content Area -->
-                <div class="flex flex-col @md:flex-row flex-1 @3xs:min-h-auto min-h-[240px]">
+                <div
+                  class="flex flex-col @md:flex-row flex-1 @3xs:min-h-auto min-h-[240px]"
+                >
                   <!-- Content Section -->
                   <div class="flex-1 p-6 @3xs:p-6 flex flex-col">
                     <!-- Card Header -->
@@ -1060,17 +1171,25 @@
                         href="/alpha/projects/{project.id}"
                         class="no-underline text-inherit transition-colors duration-200 block hover:text-brand-teal-500"
                       >
-                        <h3 class="text-2xl font-bold text-brand-navy-500 leading-tight transition-colors duration-200">
+                        <h3
+                          class="text-2xl font-bold text-brand-navy-500 leading-tight transition-colors duration-200"
+                        >
                           {project.title}
                         </h3>
                       </a>
                       {#if isMyProject(project)}
-                        <span class="px-3 py-1 bg-brand-yellow-500 rounded-full text-xs text-brand-yellow-900 font-bold">Yours</span>
+                        <span
+                          class="px-3 py-1 bg-brand-yellow-500 rounded-full text-xs text-brand-yellow-900 font-bold"
+                          >Yours</span
+                        >
                       {/if}
                     </div>
 
                     <!-- Founder Info -->
-                    <a href="/alpha/user/{project.userId}" class="no-underline inline-block transition-all duration-200 hover:translate-x-1 hover:[&_.founder-name]:text-brand-teal-500 hover:[&_.founder-avatar]:border-brand-yellow-500 hover:[&_.founder-avatar-placeholder]:border-brand-yellow-500">
+                    <a
+                      href="/alpha/user/{project.userId}"
+                      class="no-underline inline-block transition-all duration-200 hover:translate-x-1 hover:[&_.founder-name]:text-brand-teal-500 hover:[&_.founder-avatar]:border-brand-yellow-500 hover:[&_.founder-avatar-placeholder]:border-brand-yellow-500"
+                    >
                       <div class="flex items-center gap-2.5 mb-3">
                         {#if userProfile?.image && !failedImages.has(project.userId)}
                           <img
@@ -1084,13 +1203,16 @@
                             }}
                           />
                         {:else}
-                          <div class="w-10 h-10 rounded-full border-2 border-brand-teal-500 bg-gradient-to-br from-brand-teal-500 to-brand-yellow-500 flex items-center justify-center text-white font-bold text-lg uppercase transition-colors duration-200 leading-none">
+                          <div
+                            class="w-10 h-10 rounded-full border-2 border-brand-teal-500 bg-gradient-to-br from-brand-teal-500 to-brand-yellow-500 flex items-center justify-center text-white font-bold text-lg uppercase transition-colors duration-200 leading-none"
+                          >
                             {userProfile?.name?.[0] ||
                               project.userId?.[0] ||
                               "?"}
                           </div>
                         {/if}
-                        <span class="text-brand-navy-700 font-semibold text-sm transition-colors duration-200 leading-tight"
+                        <span
+                          class="text-brand-navy-700 font-semibold text-sm transition-colors duration-200 leading-tight"
                           >{userProfile?.name || "Anonymous"}</span
                         >
                       </div>
@@ -1111,9 +1233,11 @@
                           clip-rule="evenodd"
                         />
                       </svg>
-                      <span>{project.city}{project.country
-                        ? `, ${project.country}`
-                        : ""}</span>
+                      <span
+                        >{project.city}{project.country
+                          ? `, ${project.country}`
+                          : ""}</span
+                      >
                     </div>
 
                     <!-- Description -->
@@ -1131,8 +1255,12 @@
                         ? JSON.parse(project.sdgs || "[]")
                         : project.sdgs}
                     {#if sdgArray.length > 0}
-                      <div class="flex-shrink-0 w-full @md:w-20 p-6 @md:p-8 @md:pr-4 @md:pl-0 flex flex-col items-start @md:items-end justify-start @3xs:p-4 @3xs:-mt-1">
-                        <div class="flex flex-row @md:flex-col gap-3 items-start @md:items-end">
+                      <div
+                        class="flex-shrink-0 w-full @md:w-20 p-6 @md:p-8 @md:pr-4 @md:pl-0 flex flex-col items-start @md:items-end justify-start @3xs:p-4 @3xs:-mt-1"
+                      >
+                        <div
+                          class="flex flex-row @md:flex-col gap-3 items-start @md:items-end"
+                        >
                           {#each sdgArray as sdgId}
                             <img
                               src="/sdgs/{sdgId}.svg"
@@ -1159,7 +1287,9 @@
                       icon="mdi:pencil"
                       iconPosition="left"
                       onclick={() => {
-                        goto(`?modal=edit-project&projectId=${project.id}`, { replaceState: false });
+                        goto(`?modal=edit-project&projectId=${project.id}`, {
+                          replaceState: false,
+                        });
                       }}
                     >
                       Edit
@@ -1184,14 +1314,32 @@
     </div>
   {/if}
 
-  <!-- Delete Confirmation Dialog -->
-  <ConfirmDialog
-    bind:open={showDeleteConfirm}
-    title="Delete Project"
-    message="Are you sure you want to delete this project? This action cannot be undone."
-    confirmText="Delete"
-    cancelText="Cancel"
-    variant="danger"
-    onConfirm={confirmDeleteProject}
-  />
+  <!-- Delete Confirmation Modal -->
+  {#if showDeleteConfirm}
+    <Modal
+      open={showDeleteConfirm}
+      onClose={() => {
+        showDeleteConfirm = false;
+      }}
+    >
+      <div class="w-full">
+        <h2 class="text-3xl font-bold text-primary-500 mb-4">Delete Project</h2>
+        <p class="text-primary-700/80 mb-8 text-lg leading-relaxed">
+          Are you sure you want to delete this project? This action cannot be
+          undone.
+        </p>
+        <div class="flex gap-4 justify-end">
+          <Button
+            variant="outline"
+            onclick={() => {
+              showDeleteConfirm = false;
+            }}
+          >
+            Cancel
+          </Button>
+          <Button variant="alert" onclick={confirmDeleteProject}>Delete</Button>
+        </div>
+      </div>
+    </Modal>
+  {/if}
 </div>

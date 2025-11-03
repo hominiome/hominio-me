@@ -481,26 +481,24 @@
     display: flex;
     align-items: center;
     justify-content: center; /* Center the bar */
-    width: 100%;
+    width: fit-content; /* Shrink to inner content width */
     padding: 0;
-    margin: 0 auto;
-    max-width: 72rem; /* max-w-6xl - 1 less than layout (max-w-7xl = 80rem) */
+    margin: 0 auto 0.375rem auto; /* 6px bottom margin, centered */
     background: var(--color-primary-500); /* Dark marine blue brand color */
     backdrop-filter: blur(12px);
     gap: 0;
     min-height: 56px; /* Thinner than before (was 60px) */
     height: 56px;
-    border-top-left-radius: 1rem; /* rounded-2xl */
-    border-top-right-radius: 1rem; /* rounded-2xl */
+    border-radius: 9999px; /* Fully rounded 100% XL */
   }
 
-  /* Footer nav container - left aligned icons */
+  /* Footer nav container - defines the inner width */
   .footer-nav-container {
     display: flex;
     align-items: center;
     justify-content: space-between;
     width: 100%;
-    padding: 0.5rem 0.5rem; /* Standard padding */
+    padding: 0.5rem 0.75rem; /* Padding for inner content */
     padding-bottom: calc(0.5rem + env(safe-area-inset-bottom));
     gap: 0.25rem; /* Smaller gap between items */
   }
