@@ -35,12 +35,13 @@ SECRET_GOOGLE_CLIENT_SECRET=your-google-client-secret
 ADMIN=your-admin-user-id
 ```
 
-#### Zero Sync Service URLs
+#### Zero Sync Service Configuration
 ```bash
-# Public URL where clients connect to zero-cache (WebSocket)
-PUBLIC_ZERO_SERVER=wss://sync.hominio.me
+# Domain-based configuration (automatically handles www and non-www)
+PUBLIC_DOMAIN=hominio.me
+PUBLIC_ZERO_SYNC_DOMAIN=sync.hominio.me
 
-# Internal URLs zero-cache uses to call back to SvelteKit app
+# Optional: Override URLs if needed (normally auto-generated from domains above)
 SECRET_ZERO_GET_QUERIES_URL=https://hominio.me/alpha/api/zero/get-queries
 SECRET_ZERO_PUSH_URL=https://hominio.me/alpha/api/zero/push
 ```
@@ -107,18 +108,17 @@ const SECRET_AUTH_SECRET = env.SECRET_AUTH_SECRET || "dev-secret-key-change-in-p
 
 const authDb = getAuthDb();
 
+import { getTrustedOrigins } from "$lib/utils/domain";
+
 export const auth = betterAuth({
   database: {
     db: authDb,
     type: "postgres",
   },
   secret: SECRET_AUTH_SECRET,
-  baseURL: env.PUBLIC_BASE_URL || "https://hominio.me", // Explicit base URL
-  trustedOrigins: [
-    "https://hominio.me",
-    "https://www.hominio.me",
-    "https://sync.hominio.me", // Allow sync subdomain
-  ],
+  // Don't set baseURL - let BetterAuth auto-detect from request origin
+  // This allows both hominio.me and www.hominio.me to work
+  trustedOrigins: getTrustedOrigins(), // Automatically includes www and sync subdomain
   socialProviders: {
     google: {
       clientId: SECRET_GOOGLE_CLIENT_ID,
@@ -135,11 +135,12 @@ export const auth = betterAuth({
 });
 ```
 
-### Add Public Base URL Environment Variable
+### Add Domain Environment Variables
 
 ```bash
-# In SvelteKit app
-PUBLIC_BASE_URL=https://hominio.me
+# In SvelteKit app (domain-only, no protocol)
+PUBLIC_DOMAIN=hominio.me
+PUBLIC_ZERO_SYNC_DOMAIN=sync.hominio.me
 ```
 
 ### Cookie Configuration Notes
