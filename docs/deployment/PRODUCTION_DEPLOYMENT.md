@@ -72,8 +72,9 @@ ZERO_REPLICA_FILE=/data/zero-replica.db
 #### Callback URLs (to main app)
 ```bash
 # URLs zero-cache calls back to for synced queries and mutators
-ZERO_GET_QUERIES_URL=https://hominio.me/alpha/api/zero/get-queries
-ZERO_PUSH_URL=https://hominio.me/alpha/api/zero/push
+# Using wildcards (*.hominio.me) to allow both www and non-www domains
+ZERO_GET_QUERIES_URL=https://*.hominio.me/alpha/api/zero/get-queries
+ZERO_PUSH_URL=https://*.hominio.me/alpha/api/zero/push
 
 # Enable cookie forwarding for authentication
 ZERO_GET_QUERIES_FORWARD_COOKIES=true
@@ -178,8 +179,8 @@ PUBLIC_ZERO_SYNC_DOMAIN=sync.hominio.me
    # For sync service
    fly secrets set ZERO_UPSTREAM_DB="..." --app hominio-me-sync
    fly secrets set ZERO_AUTH_SECRET="..." --app hominio-me-sync
-   fly secrets set ZERO_GET_QUERIES_URL="https://hominio.me/alpha/api/zero/get-queries" --app hominio-me-sync
-   fly secrets set ZERO_PUSH_URL="https://hominio.me/alpha/api/zero/push" --app hominio-me-sync
+   fly secrets set ZERO_GET_QUERIES_URL="https://*.hominio.me/alpha/api/zero/get-queries" --app hominio-me-sync
+   fly secrets set ZERO_PUSH_URL="https://*.hominio.me/alpha/api/zero/push" --app hominio-me-sync
    fly secrets set ZERO_GET_QUERIES_FORWARD_COOKIES="true" --app hominio-me-sync
    fly secrets set ZERO_MUTATE_FORWARD_COOKIES="true" --app hominio-me-sync
    ```
