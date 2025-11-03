@@ -56,9 +56,50 @@
   onMount(() => {
     if (!browser) return; // Only run on client
 
+    // Filter out browser extension errors (content_script.js) from console
+    // These are harmless extension errors that clutter the console
+    const originalError = console.error;
+    const originalWarn = console.warn;
+    
+    console.error = (...args: any[]) => {
+      // Check if any argument contains content_script.js (from browser extensions)
+      const hasExtensionError = args.some(arg => {
+        if (typeof arg === 'string') {
+          return arg.includes('content_script.js');
+        }
+        if (arg instanceof Error && arg.stack) {
+          return arg.stack.includes('content_script.js');
+        }
+        return false;
+      });
+      
+      if (hasExtensionError) {
+        // Silently ignore extension errors
+        return;
+      }
+      
+      originalError.apply(console, args);
+    };
+    
+    console.warn = (...args: any[]) => {
+      const message = args.join(' ');
+      // Filter out content_script.js warnings from browser extensions
+      if (message.includes('content_script.js')) {
+        // Silently ignore extension warnings
+        return;
+      }
+      originalWarn.apply(console, args);
+    };
+
     // Add global unhandled rejection handler for debugging
     // This will help us see what mutations are failing
     const unhandledRejectionHandler = (event: PromiseRejectionEvent) => {
+      // Filter out extension errors
+      const errorMessage = event.reason?.message || String(event.reason || '');
+      if (errorMessage.includes('content_script.js')) {
+        return; // Ignore extension errors
+      }
+      
       console.error("Unhandled Promise Rejection detected:", event.reason);
       // Log more details if available
       if (event.reason && typeof event.reason === "object") {
@@ -70,6 +111,19 @@
       // Don't prevent default - let it log but we've captured it
     };
     window.addEventListener("unhandledrejection", unhandledRejectionHandler);
+    
+    // Also filter window.onerror for extension errors
+    const originalOnError = window.onerror;
+    window.onerror = (message, source, lineno, colno, error) => {
+      // Filter out content_script.js errors
+      if (source && source.includes('content_script.js')) {
+        return true; // Suppress the error
+      }
+      if (originalOnError) {
+        return originalOnError(message, source, lineno, colno, error);
+      }
+      return false;
+    };
 
     let initZero = async () => {
       try {
