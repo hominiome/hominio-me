@@ -17,11 +17,19 @@ jobs:
 
       - uses: superfly/flyctl-actions/setup-flyctl@master
 
-      - name: Set Zero secrets (overwrite existing)
+      - name: Remove deprecated Zero secrets
         run: |
-          # Set ALL secrets for sync service (overwrites existing)
+          # Remove old/deprecated secrets that conflict with correct ones
+          echo "Removing deprecated secrets..."
+          flyctl secrets unset \
+            ZERO_MUTATE_URL \
+            ZERO_PUSH_FORWARD_COOKIES \
+            --app hominio-me-sync || true
+
+      - name: Set Zero secrets (correct variables only)
+        run: |
+          # Set ONLY the correct secrets per Zero documentation
           # ZERO_AUTH_SECRET is reused as admin password (same secret, different purpose)
-          # Using explicit secret names per Zero documentation
           flyctl secrets set \
             ZERO_UPSTREAM_DB="${{ secrets.SECRET_ZERO_DEV_PG }}" \
             ZERO_AUTH_SECRET="${{ secrets.SECRET_ZERO_AUTH_SECRET }}" \
@@ -33,21 +41,9 @@ jobs:
             ZERO_DB_CONNECT_TIMEOUT="10" \
             NODE_ENV="production" \
             --app hominio-me-sync
-
-          # Remove any old/deprecated secret names that might conflict
-          echo "Checking for old secrets to remove..."
-          flyctl secrets list --app hominio-me-sync || true
-
-      - name: Verify sync domain DNS
-        run: |
-          echo "Checking if sync.hominio.me resolves..."
-          if curl -I https://sync.hominio.me/ 2>&1 | grep -q "HTTP"; then
-            echo "✅ sync.hominio.me is accessible"
-          else
-            echo "⚠️  WARNING: sync.hominio.me DNS not configured or not accessible"
-            echo "You may need to configure DNS for sync.hominio.me in Fly.io"
-            echo "Run: flyctl certs add sync.hominio.me --app hominio-me-sync"
-          fi
+          
+          echo "✅ Secrets set. Verifying..."
+          flyctl secrets list --app hominio-me-sync
 
       - name: Deploy sync service (Zero cache server)
         run: |
@@ -126,8 +122,19 @@ jobs:
 
       - uses: superfly/flyctl-actions/setup-flyctl@master
 
+      - name: Remove deprecated main app secrets
+        run: |
+          # Remove old PUBLIC_ZERO_SERVER (replaced by domain-based vars)
+          echo "Removing deprecated secrets..."
+          flyctl secrets unset \
+            PUBLIC_ZERO_SERVER \
+            SECRET_ZERO_GET_QUERIES_URL \
+            SECRET_ZERO_PUSH_URL \
+            --app hominio-me || true
+
       - name: Set Fly.io secrets for main app
         run: |
+          # Set ONLY the correct secrets (domain-based approach)
           flyctl secrets set \
             SECRET_ZERO_DEV_PG="${{ secrets.SECRET_ZERO_DEV_PG }}" \
             SECRET_NEON_PG_AUTH="${{ secrets.SECRET_NEON_PG_AUTH }}" \
@@ -139,6 +146,9 @@ jobs:
             PUBLIC_DOMAIN="hominio.me" \
             PUBLIC_ZERO_SYNC_DOMAIN="sync.hominio.me" \
             --app hominio-me
+          
+          echo "✅ Main app secrets set. Verifying..."
+          flyctl secrets list --app hominio-me
 
       - name: Deploy main app
         run: |
