@@ -361,7 +361,7 @@ sync.hominio.me → hominio-me-sync.fly.dev (or use custom domain)
 2. Check Fly.io DNS configuration for `sync.hominio.me`
 3. Verify zero-cache is running and listening on port 4848
 4. Zero client uses `https://sync.hominio.me` (Zero handles WebSocket upgrade internally)
-4. Check Fly.io firewall/network rules
+5. Check Fly.io firewall/network rules
 
 ## Security Checklist
 
