@@ -42,8 +42,13 @@ export const auth = betterAuth({
     : {}),
   plugins: [sveltekitCookies(getRequestEvent)],
   advanced: {
-    // Set cookie domain to parent domain to enable cookie sharing across subdomains
-    // Cookies set for .hominio.me are accessible from sync.hominio.me
-    cookieDomain: '.hominio.me',
+    // Enable cross-subdomain cookies for Zero sync (hominio.me ↔ sync.hominio.me)
+    // This is the proper BetterAuth way to enable cookie sharing across subdomains
+    crossSubDomainCookies: {
+      enabled: true,
+      domain: 'hominio.me', // Root domain (BetterAuth will add the dot automatically)
+    },
+    // Use secure cookies in production (HTTPS only)
+    useSecureCookies: true,
   },
 });
