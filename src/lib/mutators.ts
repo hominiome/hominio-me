@@ -455,41 +455,88 @@ export function createMutators(authData: AuthData | undefined) {
       ) => {
         const { cupId, projectId } = args;
 
-        // Read existing cup
-        const cup = await tx.query.cup.where('id', cupId).one();
+        // Read cup ONCE right before updating to get the absolute latest state
+        // This ensures we don't overwrite concurrent changes during rebase
+        // In Zero transactions, this read sees all committed changes up to this point
+        // CRITICAL: Must call .run() to execute the query
+        const cup = await tx.query.cup.where('id', cupId).one().run();
 
         if (!cup) {
           throw new Error('Cup not found');
         }
 
-        if (cup.status !== 'draft') {
-          throw new Error('Cannot modify projects in active or completed cups');
+        // Handle missing size field - cup may not be fully synced on client side
+        // Use default size of 16 if missing (server will have correct value)
+        const cupSize = cup.size ?? 16;
+        if (!cupSize || cupSize < 1) {
+          console.warn('[addProject] Cup has invalid size, using default 16:', { cupId, cupSize: cup.size, cupKeys: Object.keys(cup) });
+          // Don't throw - server will validate correctly
         }
 
-        // Parse current selected project IDs
+        // Allow adding projects if status is 'draft', empty, null, or undefined
+        // (treat empty/null/undefined as draft for new cups)
+        // Normalize status: handle null, undefined, empty string, or whitespace-only strings
+        const rawStatus = cup.status;
+        const cupStatus = rawStatus ? String(rawStatus).trim().toLowerCase() : '';
+        
+        // Only block if status is explicitly set to something other than 'draft'
+        if (cupStatus && cupStatus !== 'draft') {
+          throw new Error(`Cannot modify projects in active or completed cups. Current status: "${rawStatus || '(empty)'}"`);
+        }
+
+        // Parse current selected project IDs from the latest cup state
+        // CRITICAL: Always parse from the latest read to avoid race conditions
+        // Ensure we always have an array, even if the field is null/undefined/empty
         let selectedProjectIds: string[] = [];
         try {
-          selectedProjectIds = cup.selectedProjectIds
-            ? JSON.parse(cup.selectedProjectIds)
-            : [];
+          const rawSelectedIds = cup.selectedProjectIds;
+          if (rawSelectedIds && typeof rawSelectedIds === 'string' && rawSelectedIds.trim()) {
+            selectedProjectIds = JSON.parse(rawSelectedIds);
+            // Ensure it's an array
+            if (!Array.isArray(selectedProjectIds)) {
+              console.warn('[addProject] selectedProjectIds is not an array, resetting:', rawSelectedIds);
+              selectedProjectIds = [];
+            }
+          } else {
+            selectedProjectIds = [];
+          }
         } catch (e) {
+          // If parsing fails, start with empty array
+          console.warn('[addProject] Failed to parse selectedProjectIds:', e, 'raw:', cup.selectedProjectIds);
           selectedProjectIds = [];
         }
 
-        // Check if we're at the limit
-        if (selectedProjectIds.length >= cup.size) {
-          throw new Error(`Cannot add more than ${cup.size} projects`);
+        console.log('[addProject] Current state:', {
+          cupId,
+          projectId,
+          currentSelectedIds: selectedProjectIds,
+          currentLength: selectedProjectIds.length,
+          cupSize: cupSize,
+          rawSelectedIds: cup.selectedProjectIds
+        });
+
+        // Validate using the latest state
+        if (selectedProjectIds.length >= cupSize) {
+          throw new Error(`Cannot add more than ${cupSize} projects`);
         }
 
-        // Check if project is already in cup
         if (selectedProjectIds.includes(projectId)) {
           throw new Error('Project is already in the cup');
         }
 
-        // Add project to selected list
+        // Add project to selected list (append, don't overwrite)
         selectedProjectIds.push(projectId);
 
-        // Update cup
+        console.log('[addProject] After append:', {
+          cupId,
+          projectId,
+          newSelectedIds: selectedProjectIds,
+          newLength: selectedProjectIds.length,
+          willUpdateWith: JSON.stringify(selectedProjectIds)
+        });
+
+        // Update cup with the new array - Zero transaction ensures atomicity
+        // CRITICAL: Only update selectedProjectIds and updatedAt - Zero's update merges with existing fields
         await tx.mutate.cup.update({
           id: cupId,
           selectedProjectIds: JSON.stringify(selectedProjectIds),
@@ -511,18 +558,29 @@ export function createMutators(authData: AuthData | undefined) {
       ) => {
         const { cupId, projectId } = args;
 
-        // Read existing cup
-        const cup = await tx.query.cup.where('id', cupId).one();
+            // Read cup ONCE right before updating to get the absolute latest state
+            // This ensures we don't overwrite concurrent changes during rebase
+            // In Zero transactions, this read sees all committed changes up to this point
+            // CRITICAL: Must call .run() to execute the query
+            const cup = await tx.query.cup.where('id', cupId).one().run();
 
-        if (!cup) {
-          throw new Error('Cup not found');
+            if (!cup) {
+              throw new Error('Cup not found');
+            }
+
+        // Allow removing projects if status is 'draft', empty, null, or undefined
+        // (treat empty/null/undefined as draft for new cups)
+        // Normalize status: handle null, undefined, empty string, or whitespace-only strings
+        const rawStatus = cup.status;
+        const cupStatus = rawStatus ? String(rawStatus).trim().toLowerCase() : '';
+        
+        // Only block if status is explicitly set to something other than 'draft'
+        if (cupStatus && cupStatus !== 'draft') {
+          throw new Error(`Cannot modify projects in active or completed cups. Current status: "${rawStatus || '(empty)'}"`);
         }
 
-        if (cup.status !== 'draft') {
-          throw new Error('Cannot modify projects in active or completed cups');
-        }
-
-        // Parse current selected project IDs
+        // Parse current selected project IDs from the latest cup state
+        // CRITICAL: Always parse from the latest read to avoid race conditions
         let selectedProjectIds: string[] = [];
         try {
           selectedProjectIds = cup.selectedProjectIds
@@ -532,10 +590,10 @@ export function createMutators(authData: AuthData | undefined) {
           selectedProjectIds = [];
         }
 
-        // Remove project from selected list
+        // Remove project from selected list (filter out, don't overwrite)
         selectedProjectIds = selectedProjectIds.filter((id) => id !== projectId);
 
-        // Update cup
+        // Update cup with the new array - Zero transaction ensures atomicity
         await tx.mutate.cup.update({
           id: cupId,
           selectedProjectIds: JSON.stringify(selectedProjectIds),

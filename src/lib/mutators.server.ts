@@ -219,33 +219,39 @@ export function createServerMutators(
           throw new Error('Notification not found');
         }
 
-        // If notification.userId is undefined/null, it's likely a Zero query issue
-        // Since the synced query filters by userId, if they can see it, it's theirs
-        // We'll allow it (the synced query is the security boundary)
-        if (!notification.userId || notification.userId === 'undefined' || notification.userId === 'null') {
-          console.warn('[markRead] Notification userId is missing/undefined - allowing based on synced query filter. Notification:', {
-            id: args.id,
-            userId: notification.userId,
-            authUserId: authData?.sub
-          });
-          // Continue - synced query ensures users can only see their own notifications
-        } else if (authData?.sub) {
-          // Normalize user IDs for comparison (handle string/number mismatches)
-          const authUserId = String(authData.sub).trim();
-          const notifUserId = String(notification.userId).trim();
-
-          // Check if user owns the notification or is admin
+        // Check admin status first - admins can mark any notification as read
+        if (authData?.sub) {
           const userIsAdmin = isAdmin(authData.sub);
-          if (notifUserId !== authUserId && !userIsAdmin) {
-            console.error('[markRead] Permission denied:', {
-              authUserId: authUserId,
-              notificationUserId: notifUserId,
-              isAdmin: userIsAdmin,
-              notificationId: args.id,
-              userIdsMatch: notifUserId === authUserId,
-              comparison: `"${notifUserId}" !== "${authUserId}"`
+          
+          // Admins can mark any notification as read
+          if (userIsAdmin) {
+            // Admin override - allow
+          } else if (!notification.userId || notification.userId === 'undefined' || notification.userId === 'null') {
+            // If notification.userId is undefined/null and user is not admin,
+            // trust the synced query filter (if they can see it, it's theirs)
+            console.warn('[markRead] Notification userId is missing/undefined - allowing based on synced query filter. Notification:', {
+              id: args.id,
+              userId: notification.userId,
+              authUserId: authData.sub
             });
-            throw new Error('Forbidden: You can only mark your own notifications as read');
+            // Continue - synced query ensures users can only see their own notifications
+          } else {
+            // Normalize user IDs for comparison (handle string/number mismatches)
+            const authUserId = String(authData.sub).trim();
+            const notifUserId = String(notification.userId).trim();
+
+            // Check if user owns the notification
+            if (notifUserId !== authUserId) {
+              console.error('[markRead] Permission denied:', {
+                authUserId: authUserId,
+                notificationUserId: notifUserId,
+                isAdmin: userIsAdmin,
+                notificationId: args.id,
+                userIdsMatch: notifUserId === authUserId,
+                comparison: `"${notifUserId}" !== "${authUserId}"`
+              });
+              throw new Error('Forbidden: You can only mark your own notifications as read');
+            }
           }
         } else {
           // No authData - this happens when cookies aren't forwarded properly
@@ -465,8 +471,20 @@ export function createServerMutators(
           throw new Error('Forbidden: Only admins can add projects to cups');
         }
 
-        // Delegate to client mutator
+        console.log('[SERVER addProject] Processing mutation:', {
+          cupId: args.cupId,
+          projectId: args.projectId,
+          userId: authData.sub,
+          isAdmin: userIsAdmin
+        });
+
+        // Delegate to client mutator (which will read latest state and append)
         await clientMutators.cup.addProject(tx, args);
+        
+        console.log('[SERVER addProject] Mutation completed:', {
+          cupId: args.cupId,
+          projectId: args.projectId
+        });
       },
 
       /**
