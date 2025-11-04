@@ -1,5 +1,6 @@
 <script>
   import Hero from "$lib/components/Hero.svelte";
+  import WorldRecord from "$lib/components/WorldRecord.svelte";
   import Vision from "$lib/components/Vision.svelte";
   import HominioTransformation from "$lib/components/HominioTransformation.svelte";
   import HominioSummit from "$lib/components/HominioSummit.svelte";
@@ -8,9 +9,10 @@
   import FinalCTA from "$lib/components/FinalCTA.svelte";
 </script>
 
-<div class="page">
+<div class="page" style="margin-top: 0 !important; padding-top: 0 !important;">
+  <Hero />
   <div class="container">
-    <Hero />
+    <WorldRecord />
     <Vision />
     <HominioTransformation />
 
@@ -63,22 +65,30 @@
   .page {
     min-height: 100vh;
     background: linear-gradient(180deg, #fefdfb 0%, #faf8f5 100%);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 3rem 1.5rem;
+    display: block;
+    padding: 0 !important;
+    margin: 0 !important;
     overflow-x: hidden;
     width: 100%;
     position: relative;
+    margin-top: 0 !important;
+    padding-top: 0 !important;
   }
 
   .container {
     max-width: 1024px;
     width: 100%;
+    margin: 0 auto;
     text-align: center;
-    padding-bottom: 5rem;
+    padding: 0 0.375rem 5rem 0.375rem; /* 6px = 0.375rem */
     overflow-x: hidden;
     position: relative;
+  }
+
+  @media (min-width: 640px) {
+    .container {
+      padding: 0 1.5rem 5rem 1.5rem;
+    }
   }
 
   .cta-fixed {
@@ -91,7 +101,7 @@
     justify-content: center;
     gap: 1rem;
     z-index: 1000;
-    max-width: 1024px;
+    max-width: 600px;
     width: calc(100% - 3rem);
   }
 

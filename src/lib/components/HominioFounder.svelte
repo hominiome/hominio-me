@@ -1,11 +1,11 @@
 <script>
 </script>
 
-<div class="mb-16 bg-gradient-to-br from-accent-50 via-white to-primary-50 py-16 md:py-20 -mx-6 md:-mx-8 px-6 md:px-8">
+<div class="mb-16 bg-gradient-to-br from-accent-50 via-white to-primary-50 py-16 md:py-20 -mx-1.5 md:-mx-8 px-1.5 md:px-8">
   <div class="max-w-4xl mx-auto">
     <!-- Main Title -->
     <h2 class="text-3xl md:text-4xl lg:text-5xl font-bold text-primary-500 text-center mb-12 leading-tight">
-      This is what makes it different to become a Hominio Founder
+      This is what makes it different to become a Hominio Co-Founder
     </h2>
 
     <!-- The Golden Offer -->

@@ -2,7 +2,7 @@
 </script>
 
 <div class="mb-16">
-  <div class="max-w-5xl mx-auto px-6 md:px-8">
+  <div class="max-w-5xl mx-auto px-1.5 md:px-8">
     <!-- Section Intro -->
     <p
       class="text-xs md:text-sm font-bold text-secondary-500 uppercase tracking-wider text-center mb-12"
@@ -180,7 +180,7 @@
 
     <!-- First Things First - Highlight Box -->
     <div
-      class="mb-16 px-8 md:px-12 py-10 md:py-14 bg-gradient-to-br from-accent-50 via-primary-50 to-secondary-50 rounded-3xl border-l-4 border-accent-500"
+      class="mb-16 px-1.5 md:px-12 py-10 md:py-14 bg-gradient-to-br from-accent-50 via-primary-50 to-secondary-50 rounded-3xl border-l-4 border-accent-500"
     >
       <p
         class="text-xs md:text-sm font-bold text-accent-700 uppercase tracking-wider mb-4"
@@ -198,7 +198,7 @@
         <p
           class="text-xl md:text-2xl text-gray-900 leading-relaxed font-medium"
         >
-          In the first year, it's all about launching
+          In the first year, it's all about kicking off
         </p>
 
         <p
@@ -254,7 +254,7 @@
         > startup
       </p>
 
-      <div class="relative w-full max-w-6xl mx-auto px-4 md:px-8">
+      <div class="relative w-full max-w-6xl mx-auto px-1.5 md:px-8">
         <!-- Timeline Milestones Container -->
         <div class="relative">
           <!-- Central Axis Line - stops at last milestone -->

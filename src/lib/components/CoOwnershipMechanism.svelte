@@ -4,7 +4,7 @@
 <div class="mb-16 py-12 md:py-16 bg-surface-light-50 rounded-3xl">
   <!-- Section Header -->
   <div class="mb-16">
-    <div class="max-w-5xl mx-auto px-6 md:px-8">
+    <div class="max-w-5xl mx-auto px-1.5 md:px-8">
       <p
         class="text-xs md:text-sm font-bold text-secondary-500 uppercase tracking-wider text-center mb-12"
       >

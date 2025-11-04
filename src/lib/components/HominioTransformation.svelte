@@ -6,7 +6,7 @@
 <div class="mb-16">
   <!-- The Problem - Large Statement -->
   <div class="mb-16">
-    <div class="max-w-4xl mx-auto">
+    <div class="max-w-4xl mx-auto px-1.5 md:px-0">
       <div class="relative">
         <!-- Large broken text effect -->
         <div class="text-center mb-8">
@@ -32,7 +32,7 @@
           class="flex flex-col md:flex-row items-center justify-center gap-4 md:gap-6 mt-12"
         >
           <div
-            class="px-6 py-3 bg-secondary-50 rounded-full border-2 border-secondary-200"
+            class="px-1.5 md:px-6 py-3 bg-secondary-50 rounded-full border-2 border-secondary-200"
           >
             <span class="text-lg font-semibold text-gray-700">We work to</span>
             <span class="text-xl font-bold text-secondary-800 ml-2"
@@ -43,7 +43,7 @@
           <div class="text-2xl md:text-3xl text-gray-400 font-light">→</div>
 
           <div
-            class="px-6 py-3 bg-accent-50 rounded-full border-2 border-accent-200"
+            class="px-1.5 md:px-6 py-3 bg-accent-50 rounded-full border-2 border-accent-200"
           >
             <span class="text-lg font-semibold text-gray-700"
               >instead of living to</span
@@ -146,7 +146,7 @@
 
   <!-- How It Works - Hominio Startups Section -->
   <div class="mb-16">
-    <div class="max-w-5xl mx-auto">
+    <div class="max-w-5xl mx-auto px-1.5 md:px-0">
       <!-- Section Header -->
       <p
         class="text-xs md:text-sm font-bold text-secondary-500 uppercase tracking-wider text-center mb-12 mt-16"
@@ -172,7 +172,7 @@
 
       <!-- Core Concept - Split Layout with Cards -->
       <div
-        class="mb-16 relative overflow-hidden rounded-3xl p-8 md:p-16 bg-gradient-to-br from-primary-50 via-secondary-50 to-accent-50"
+        class="mb-16 relative overflow-hidden rounded-3xl px-1.5 py-8 md:p-16 bg-gradient-to-br from-primary-50 via-secondary-50 to-accent-50"
       >
         <div class="max-w-5xl mx-auto">
           <div
@@ -181,7 +181,7 @@
             <!-- Left: Smaller Card -->
             <div class="w-full md:w-auto flex-shrink-0">
               <div
-                class="px-6 py-4 md:px-8 md:py-6 bg-white rounded-2xl border-2 border-primary-200 shadow-lg"
+                class="px-1.5 py-4 md:px-8 md:py-6 bg-white rounded-2xl border-2 border-primary-200 shadow-lg"
               >
                 <p
                   class="text-lg md:text-xl font-bold text-primary-400 line-through text-center md:text-left"
@@ -211,7 +211,7 @@
             <!-- Right: Bigger Card -->
             <div class="flex-1 w-full md:w-auto">
               <div
-                class="px-6 py-4 md:px-10 md:py-8 bg-white rounded-2xl border-2 border-secondary-200 shadow-lg"
+                class="px-1.5 py-4 md:px-10 md:py-8 bg-white rounded-2xl border-2 border-secondary-200 shadow-lg"
               >
                 <p
                   class="text-lg md:text-xl text-gray-900 leading-relaxed font-semibold mb-4 text-center"
@@ -219,7 +219,7 @@
                   Just
                 </p>
                 <div
-                  class="inline-block px-6 py-3 bg-secondary-50 rounded-full mb-4"
+                  class="inline-block px-1.5 md:px-6 py-3 bg-secondary-50 rounded-full mb-4"
                 >
                   <p class="text-2xl md:text-3xl font-bold text-secondary-800">
                     Co-Founders
@@ -239,7 +239,7 @@
 
       <!-- The Purpose - Magazine Style Layout -->
       <div class="mb-16">
-        <div class="max-w-5xl mx-auto">
+        <div class="max-w-5xl mx-auto px-1.5 md:px-0">
           <!-- Section Header -->
           <p
             class="text-xs md:text-sm font-bold text-secondary-500 uppercase tracking-wider text-center mb-8"
@@ -276,7 +276,7 @@
               Example: Hominio's Purpose
             </p>
             <div
-              class="relative px-8 md:px-12 py-12 md:py-16 bg-gradient-to-br from-surface-light-50 via-white to-surface-light-50 rounded-lg shadow-2xl border border-surface-light-300 transform rotate-[-0.5deg]"
+              class="relative px-1.5 md:px-12 py-12 md:py-16 bg-gradient-to-br from-surface-light-50 via-white to-surface-light-50 rounded-lg shadow-2xl border border-surface-light-300 transform rotate-[-0.5deg]"
             >
               <!-- Letter texture overlay -->
               <div

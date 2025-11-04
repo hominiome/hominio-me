@@ -234,11 +234,41 @@ html, body {
   overflow-x: hidden;
   width: 100%;
   position: relative;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+html {
+  margin-top: 0 !important;
+  padding-top: 0 !important;
 }
 
 body {
+  margin-top: 0 !important;
+  padding-top: 0 !important;
   font-family: var(--font-family-body);
   line-height: 1.5;
+}
+
+/* Remove any top spacing from SvelteKit wrappers */
+body > div[style*="display: contents"],
+body > div {
+  margin-top: 0 !important;
+  padding-top: 0 !important;
+}
+
+/* Ensure first element in page starts at top */
+.page > :first-child {
+  margin-top: 0 !important;
+  padding-top: 0 !important;
+  top: 0 !important;
+}
+
+/* Target Hero component specifically */
+.page > :first-child > div:first-child {
+  margin-top: 0 !important;
+  padding-top: 0 !important;
+  top: 0 !important;
 }
 
 h1, h2, h3, h4, h5, h6 {

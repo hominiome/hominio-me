@@ -215,7 +215,7 @@
 
   @media (max-width: 480px) {
     .final-cta {
-      padding: 2.5rem 1.5rem;
+      padding: 2.5rem 0.375rem; /* 6px = 0.375rem */
       margin: 3rem auto 2.5rem auto;
     }
 

@@ -4,7 +4,7 @@
 
 <div class="mb-16 py-12 md:py-16 bg-gradient-to-br from-secondary-50/50 via-accent-50/30 to-white rounded-3xl">
   <!-- Founder Quote -->
-  <div class="max-w-4xl mx-auto px-6 md:px-10">
+  <div class="max-w-4xl mx-auto px-1.5 md:px-10">
     <div class="flex flex-col md:flex-row items-center gap-6 md:gap-8">
       <img 
         src="/hominiono1.jpg" 
