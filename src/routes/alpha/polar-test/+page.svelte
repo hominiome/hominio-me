@@ -1,10 +1,14 @@
 <script>
   import { authClient } from "$lib/auth.client.js";
   import { onMount } from "svelte";
+  import { env } from "$env/dynamic/public";
 
   let loading = false;
   let error = null;
   let session = null;
+  
+  // Get product ID from environment variable
+  const productId = env.PUBLIC_POLAR_PRODUCT_ID_1 || "aa8e6119-7f7f-4ce3-abde-666720be9fb3";
 
   onMount(async () => {
     // Get current session
@@ -36,7 +40,7 @@
     try {
       // Alternative: Trigger checkout using product ID directly
       await authClient.checkout({
-        products: ["aa8e6119-7f7f-4ce3-abde-666720be9fb3"],
+        products: [productId],
       });
       // Note: The checkout will redirect the user, so we won't reach here
     } catch (err) {
@@ -107,7 +111,7 @@
   <div class="bg-gray-50 rounded-lg p-6">
     <h3 class="font-semibold mb-2">Checkout Configuration:</h3>
     <ul class="list-disc list-inside space-y-1 text-sm text-gray-600">
-      <li>Product ID: <code class="bg-gray-200 px-1 rounded">aa8e6119-7f7f-4ce3-abde-666720be9fb3</code></li>
+      <li>Product ID: <code class="bg-gray-200 px-1 rounded">{productId}</code></li>
       <li>Slug: <code class="bg-gray-200 px-1 rounded">I-am-Hominio</code></li>
       <li>Success URL: <code class="bg-gray-200 px-1 rounded">/alpha/polar-test/success</code></li>
       <li>Authenticated Users Only: <code class="bg-gray-200 px-1 rounded">true</code></li>

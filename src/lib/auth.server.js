@@ -2,6 +2,7 @@ import { betterAuth } from "better-auth";
 import { sveltekitCookies } from "better-auth/svelte-kit";
 import { getRequestEvent } from "$app/server";
 import { env } from "$env/dynamic/private";
+import { env as publicEnv } from "$env/dynamic/public";
 import { getAuthDb } from "$lib/db.server.js";
 import { getTrustedOrigins } from "$lib/utils/domain.js";
 import { polar, webhooks, checkout } from "@polar-sh/better-auth";
@@ -14,6 +15,9 @@ const SECRET_AUTH_SECRET =
   env.SECRET_AUTH_SECRET || "dev-secret-key-change-in-production";
 const SECRET_POLAR_API_KEY = env.SECRET_POLAR_API_KEY || "";
 const SECRET_POLAR_WEBHOOK_SECRET = env.SECRET_POLAR_WEBHOOK_SECRET || "";
+// PUBLIC_ vars are accessible in both client and server
+// Fallback to localhost/sandbox product ID if not set (for development)
+const PUBLIC_POLAR_PRODUCT_ID_1 = publicEnv.PUBLIC_POLAR_PRODUCT_ID_1 || "aa8e6119-7f7f-4ce3-abde-666720be9fb3";
 
 // Detect environment - only use secure cookies in production
 const isProduction = process.env.NODE_ENV === "production";
@@ -67,16 +71,20 @@ export const auth = betterAuth({
             createCustomerOnSignUp: true, // Automatically sync user accounts with Polar
             use: [
               // Checkout plugin - enable Polar checkout flow
-              checkout({
-                products: [
-                  {
-                    productId: "aa8e6119-7f7f-4ce3-abde-666720be9fb3",
-                    slug: "I-am-Hominio", // Custom slug for easy reference in Checkout URL
-                  },
-                ],
-                successUrl: "/alpha/polar-test/success?checkout_id={CHECKOUT_ID}",
-                authenticatedUsersOnly: true, // Require user to be logged in
-              }),
+              ...(PUBLIC_POLAR_PRODUCT_ID_1
+                ? [
+                    checkout({
+                      products: [
+                        {
+                          productId: PUBLIC_POLAR_PRODUCT_ID_1,
+                          slug: "I-am-Hominio", // Custom slug for easy reference in Checkout URL
+                        },
+                      ],
+                      successUrl: "/alpha/polar-test/success?checkout_id={CHECKOUT_ID}",
+                      authenticatedUsersOnly: true, // Require user to be logged in
+                    }),
+                  ]
+                : []),
               // Webhooks plugin - handle Polar webhook events
               // Webhook endpoint is automatically available at: /api/auth/polar/webhooks
               ...(SECRET_POLAR_WEBHOOK_SECRET
