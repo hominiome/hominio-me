@@ -102,12 +102,6 @@
       {#if cupName}
         <p class="cup-name">{cupName}</p>
       {/if}
-      <div class="celebration-icons">
-        <div class="celebration-icon">🎉</div>
-        <div class="celebration-icon">⭐</div>
-        <div class="celebration-icon">🎊</div>
-        <div class="celebration-icon">🌟</div>
-      </div>
     </div>
   {/if}
 </div>
@@ -265,40 +259,6 @@
     color: rgba(26, 26, 78, 0.8);
     margin-bottom: 2rem;
     animation: fadeInUp 0.6s ease-out 0.4s both;
-  }
-
-  .celebration-icons {
-    display: flex;
-    gap: 2rem;
-    margin-top: 1rem;
-    animation: fadeInUp 0.6s ease-out 0.6s both;
-  }
-
-  .celebration-icon {
-    font-size: 3rem;
-    animation: float 2s ease-in-out infinite;
-  }
-
-  .celebration-icon:nth-child(1) {
-    animation-delay: 0s;
-  }
-  .celebration-icon:nth-child(2) {
-    animation-delay: 0.2s;
-  }
-  .celebration-icon:nth-child(3) {
-    animation-delay: 0.4s;
-  }
-  .celebration-icon:nth-child(4) {
-    animation-delay: 0.6s;
-  }
-
-  @keyframes float {
-    0%, 100% {
-      transform: translateY(0) rotate(0deg);
-    }
-    50% {
-      transform: translateY(-15px) rotate(10deg);
-    }
   }
 
   @keyframes fadeIn {

@@ -81,6 +81,19 @@
   --color-brand-cream-900: #252821;
   --color-brand-cream-950: #121310;
 
+  /* Surface Light - Light cream white to darker pastel earth tones */
+  --color-surface-light-50: #f5f1ea;
+  --color-surface-light-100: #ede8dc;
+  --color-surface-light-200: #e0d9c8;
+  --color-surface-light-300: #d4cab5;
+  --color-surface-light-400: #c8bca3;
+  --color-surface-light-500: #b8ab91;
+  --color-surface-light-600: #9c8f76;
+  --color-surface-light-700: #7a6f5c;
+  --color-surface-light-800: #5a5143;
+  --color-surface-light-900: #3d362d;
+  --color-surface-light-950: #2a251c;
+
   /* Success - Green (Base: #4ca984) */
   --color-success-50: #ecfdf5;
   --color-success-100: #d1fae5;
@@ -225,6 +238,10 @@ body {
 h1, h2, h3, h4, h5, h6 {
   font-family: var(--font-family-title);
   line-height: 1.2;
+}
+
+h1 span, h2 span, h3 span, h4 span, h5 span, h6 span {
+  font-family: inherit;
 }
 
 /* Montserrat has better baseline metrics - no special alignment hacks needed */

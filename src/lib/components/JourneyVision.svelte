@@ -61,7 +61,7 @@
   .journey-main {
     font-size: 2.5rem;
     font-weight: 800;
-    color: #1a2847;
+    color: var(--color-surface-light-900);
     line-height: 1.3;
     margin: 0;
     letter-spacing: -0.02em;
