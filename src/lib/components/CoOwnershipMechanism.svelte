@@ -248,7 +248,7 @@
               Collective Intelligence
             </h4>
             <p class="text-base md:text-lg text-gray-700 leading-relaxed">
-              1 million perspectives improving every decision YOU make.
+              1 million perspectives improving every decision WE make.
             </p>
           </div>
 

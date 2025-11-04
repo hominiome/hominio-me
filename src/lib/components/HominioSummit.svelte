@@ -43,11 +43,11 @@
               >Champions League</span
             >, but for
             <span class="font-bold text-primary-600"
-              >purpose-driven founders</span
+              >purpose-driven founders like YOU</span
             >
-            — where they compete in
+            — where you compete in
             <span class="font-bold text-accent-600">1vs1 pitching rounds</span>,
-            and we vote which vision we bring to life.
+            and we all vote which vision we bring to life.
           </p>
         </div>
       </div>
@@ -237,11 +237,6 @@
           >
             1 million € Seedfunding
           </p>
-          <p class="text-lg md:text-xl text-gray-700 leading-relaxed">
-            and becomes the <span class="font-bold text-primary-600"
-              >2nd of its kind Hominio startup</span
-            >.
-          </p>
         </div>
       </div>
     </div>
@@ -254,9 +249,9 @@
         This is the roadmap
       </h3>
       <p class="text-lg md:text-xl text-gray-700 text-center mb-12 font-medium">
-        toward the <span class="font-bold text-accent-600"
-          >1st of its kind 1 million co-owner startup</span
-        >
+        towards the 1st of its kind <span class="font-bold text-accent-600"
+          >1 million co-owner</span
+        > startup
       </p>
 
       <div class="relative w-full max-w-6xl mx-auto px-4 md:px-8">
@@ -439,18 +434,31 @@
                 Coming Sept. 2026 - Munich
               </p>
               <p
-                class="text-base md:text-lg text-gray-600 mb-6 italic leading-relaxed"
+                class="text-base md:text-lg text-gray-600 mb-8 italic leading-relaxed"
               >
                 Where purpose, planet and profit unite.
               </p>
-              <div class="pt-4 border-t-2 border-primary-200/50 mt-4">
-                <p class="text-sm md:text-base text-gray-700">
-                  <span class="font-bold text-primary-600"
-                    >5,000 participants live</span
+              <div
+                class="pt-6 border-t-4 border-primary-500 mt-6 bg-gradient-to-br from-primary-50 to-accent-50 rounded-2xl p-6 md:p-8"
+              >
+                <p
+                  class="text-lg md:text-xl text-gray-700 mb-6 text-center leading-relaxed font-medium"
+                >
+                  This is where we celebrate the <span
+                    class="font-bold text-primary-600"
+                    >1 millionth Co-Founder</span
                   >
-                  ·
-                  <span class="font-bold text-accent-600">1M voting online</span
-                  >
+                  joining and the
+                  <span class="font-bold text-secondary-600"
+                    >purpose-driven community</span
+                  > comes together for 3 days to witness this moment.
+                </p>
+                <p
+                  class="text-2xl md:text-3xl lg:text-4xl font-bold text-center leading-tight"
+                >
+                  <span class="text-primary-600">5,000 participants</span>
+                  live<br />
+                  <span class="text-accent-600">1M voting</span> online
                 </p>
               </div>
             </div>

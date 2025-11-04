@@ -48,13 +48,10 @@
             </div>
             <div>
               <p class="text-lg md:text-xl font-semibold text-gray-900 mb-1">
-                50% revenue share from all Hominio Summit ticket sales
+                50% revenue share from everything
               </p>
-              <p class="text-base text-gray-700 mb-2">
-                All summit ticket sales are revenue split 50/50. You earn sustainable runway while building YOUR startup.
-              </p>
-              <p class="text-sm text-gray-600 italic">
-                Every €1 vote goes 100% to funding. Your revenue comes from ticket sales.
+              <p class="text-base text-gray-700">
+                Everything is split 50/50—€1 votes and event tickets. You earn sustainable runway while building YOUR startup.
               </p>
             </div>
           </div>
@@ -79,8 +76,8 @@
     <!-- The Analogy -->
     <div class="mb-12 text-center">
       <p class="text-xl md:text-2xl text-gray-700 italic leading-relaxed">
-        It's like <span class="font-bold text-primary-600">Red Bull</span> — they sponsor extreme athletes.<br />
-        We sponsor <span class="font-bold text-secondary-600">purpose-driven founders</span>.
+        It's like <span class="font-bold text-primary-600">Red Bull</span> — but healthy and better — they sponsor extreme athletes.<br />
+        We sponsor <span class="font-bold text-accent-500">purpose-driven</span> <span class="font-bold text-secondary-500">Co-Founders</span>.
       </p>
     </div>
   </div>
