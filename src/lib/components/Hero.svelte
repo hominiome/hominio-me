@@ -25,7 +25,7 @@
   <!-- Question Text - Positioned at bottom -->
   <div class="absolute bottom-[10%] left-0 right-0 z-10 px-1.5 md:px-4">
     <p class="text-center text-xl md:text-2xl lg:text-3xl leading-relaxed text-surface-light-200 drop-shadow-lg">
-      What would you build with this collective power?
+      What will you build with this collective power?
     </p>
   </div>
 </div>

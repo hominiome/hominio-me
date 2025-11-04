@@ -563,22 +563,6 @@
       gap: 0.875rem;
     }
   }
-
-
-  .cup-logo-detail {
-    width: 60px;
-    height: 60px;
-    object-fit: contain;
-    border-radius: 12px;
-    flex-shrink: 0;
-  }
-
-  @media (min-width: 768px) {
-    .cup-logo-detail {
-      width: 80px;
-      height: 80px;
-    }
-  }
 </style>
 
 

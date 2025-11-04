@@ -27,7 +27,7 @@
       >
         <div class="preview-content">
           <div class="icon-badge-group">
-          <Icon icon="mdi:bell" color="var(--color-accent-500)" class="preview-icon bell-icon" />
+          <Icon icon="mdi:bell" color="var(--color-accent-500)" class="preview-icon-bell w-5 h-5 text-accent-500 shrink-0 transition-colors duration-200 md:w-[1.125rem] md:h-[1.125rem]" />
             <div class="preview-text">
               {#if latestTitle && typeof latestTitle === "string" && latestTitle.trim() !== ""}
                 <div class="preview-title">{latestTitle}</div>
@@ -121,25 +121,8 @@
     justify-content: flex-start;
   }
 
-  .preview-icon {
-    width: 1.25rem;
-    height: 1.25rem;
-    color: var(--color-accent-500) !important; /* Accent yellow color - force with !important */
-    flex-shrink: 0;
-    transition: color 0.2s ease-out;
-  }
-
-  .notification-preview:hover .preview-icon {
-    color: var(--color-accent-100) !important; /* Light accent yellow on hover */
-  }
-
-  .preview-icon :global(svg) {
-    width: 100%;
-    height: 100%;
-  }
-
-  .preview-icon :global(svg path) {
-    fill: currentColor !important; /* Force paths to use current color */
+  .notification-preview:hover .preview-icon-bell {
+    color: var(--color-accent-100) !important;
   }
 
   .notification-badge {
@@ -259,11 +242,6 @@
     .chevron-icon {
       width: 1.25rem;
       height: 1.25rem;
-    }
-
-    .preview-icon {
-      width: 1.125rem;
-      height: 1.125rem;
     }
   }
 </style>
