@@ -1,116 +1,31 @@
 <script>
 </script>
 
-<div class="hero">
-  <div class="logo-wrapper">
-    <img src="/logo.png" alt="Hominio" class="logo" />
+<div class="relative text-center mb-16 w-screen left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] -mt-[1.5rem] sm:-mt-[2rem] md:-mt-[2rem] lg:-mt-[3rem] h-[85vh] flex flex-col justify-center top-0">
+  <!-- Background Image -->
+  <div class="absolute top-0 left-0 right-0 overflow-hidden z-0 h-[85vh]" style="top: calc(-1 * clamp(1.5rem, 2rem, 3rem));">
+    <img 
+      src="/hero.jpg" 
+      alt="Hero Background" 
+      class="w-full h-full object-cover object-center" 
+    />
+    <!-- Gradient Overlay for Contrast -->
+    <div class="absolute top-0 left-0 right-0 h-full z-0" style="background: linear-gradient(to bottom, rgba(255, 253, 251, 0.1) 0%, rgba(4, 15, 28, 0.8) 100%);"></div>
+  </div>
+  
+  <!-- Content Layer -->
+  <div class="relative z-10 px-4">
+    <h1 class="text-3xl md:text-5xl lg:text-6xl font-bold leading-tight text-surface-light-50 mb-8 tracking-tight drop-shadow-lg">
+          <span class="block">Imagine <span class="text-secondary-200 font-extrabold">1 million</span> co-founders,</span>
+          <span class="block mt-2">bringing your <span class="line-through">startup</span> <span class="inline-block px-4 py-1 md:px-6 md:py-1.5 lg:px-8 lg:py-2 bg-accent-400 text-accent-800 rounded-full text-3xl md:text-4xl lg:text-5xl font-bold transform rotate-[-3deg] shadow-md">purpose</span> to life</span>
+          <span class="block mt-2 text-2xl md:text-3xl lg:text-4xl">— with just <span class="font-extrabold">€1 each</span>.</span>
+    </h1>
   </div>
 
-  <h1 class="headline">
-    We pay you to compete for up to 1 million in seedfunding
-  </h1>
-
-  <div class="hero-intro">
-    <p class="hero-opening">
-      I call you — the <span class="turquoise-highlight">
-        purpose-driven founder
-      </span>
-      — to unite for
-      <span class="badge-inline">Purpose · Planet · Profit</span> to build your vision
-      of a bright future.
+  <!-- Question Text - Positioned at bottom -->
+  <div class="absolute bottom-[10%] left-0 right-0 z-10 px-4">
+    <p class="text-center text-xl md:text-2xl lg:text-3xl leading-relaxed text-surface-light-200 drop-shadow-lg">
+      What would you build with this collective power?
     </p>
   </div>
 </div>
-
-<style>
-  .hero {
-    text-align: center;
-    margin-bottom: 4rem;
-  }
-
-  .logo-wrapper {
-    margin-bottom: 2.5rem;
-    display: flex;
-    justify-content: center;
-  }
-
-  .logo {
-    width: 100px;
-    height: 100px;
-    object-fit: contain;
-  }
-
-  .headline {
-    font-size: 3rem;
-    font-weight: 700;
-    line-height: 1.2;
-    color: #111827;
-    margin: 0 0 1rem 0;
-    letter-spacing: -0.02em;
-    max-width: 680px;
-    margin-left: auto;
-    margin-right: auto;
-  }
-
-  .hero-intro {
-    text-align: center;
-    margin-top: 3rem;
-  }
-
-  .hero-opening {
-    font-size: 1.25rem;
-    line-height: 1.8;
-    color: #374151;
-    margin: 0;
-  }
-
-  .turquoise-highlight {
-    color: #4fc3c3;
-    font-weight: 700;
-    font-size: 1.125em;
-  }
-
-  .badge-inline {
-    display: inline-block;
-    padding: 0.2em 0.6em;
-    background: linear-gradient(135deg, #f4d03f 0%, #f0c419 100%);
-    color: #1a1a1a;
-    border-radius: 4px;
-    font-weight: 700;
-    font-size: 0.85em;
-    letter-spacing: 0.05em;
-  }
-
-  @media (max-width: 768px) {
-    .headline {
-      font-size: 2.25rem;
-    }
-
-    .hero-intro {
-      margin-top: 2.5rem;
-    }
-
-    .hero-opening {
-      font-size: 1.063rem;
-    }
-  }
-
-  @media (max-width: 480px) {
-    .headline {
-      font-size: 1.875rem;
-    }
-
-    .logo {
-      width: 80px;
-      height: 80px;
-    }
-
-    .hero-opening {
-      font-size: 1rem;
-    }
-
-    .badge-inline {
-      font-size: 0.75em;
-    }
-  }
-</style>

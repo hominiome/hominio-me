@@ -1,8 +1,7 @@
 <script>
   import Hero from "$lib/components/Hero.svelte";
   import Vision from "$lib/components/Vision.svelte";
-  import CoOwnershipMechanism from "$lib/components/CoOwnershipMechanism.svelte";
-  import JourneyVision from "$lib/components/JourneyVision.svelte";
+  import HominioTransformation from "$lib/components/HominioTransformation.svelte";
   import HominioSummit from "$lib/components/HominioSummit.svelte";
   import CompetitionPhases from "$lib/components/CompetitionPhases.svelte";
   import HominioEvent from "$lib/components/HominioEvent.svelte";
@@ -14,8 +13,7 @@
   <div class="container">
     <Hero />
     <Vision />
-    <JourneyVision />
-    <CoOwnershipMechanism />
+    <HominioTransformation />
 
     <HominioSummit />
     <HominioEvent />
@@ -75,7 +73,7 @@
   }
 
   .container {
-    max-width: 720px;
+    max-width: 1024px;
     width: 100%;
     text-align: center;
     padding-bottom: 5rem;
@@ -91,7 +89,7 @@
     justify-content: center;
     gap: 1rem;
     z-index: 1000;
-    max-width: 720px;
+    max-width: 1024px;
     width: calc(100% - 3rem);
   }
 
