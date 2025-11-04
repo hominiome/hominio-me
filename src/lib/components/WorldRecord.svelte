@@ -50,15 +50,17 @@
       The World Record We Are Breaking
     </p>
     
-    <!-- Two Column Layout: Text Left, Video Right -->
+    <!-- This is the challenge - Centered above both columns -->
+    <h3 class="text-2xl md:text-3xl font-bold text-primary-500 mb-8 text-center">
+      This is the challenge
+    </h3>
+
+    <!-- Two Column Layout: Text Left, Image Right -->
     <div class="flex flex-col md:flex-row gap-8 md:gap-12 items-start">
       <!-- Left Column: Storytelling Content -->
       <div class="flex-1 space-y-8">
-        <!-- This is the challenge -->
+        <!-- Challenge content -->
         <div>
-          <h3 class="text-2xl md:text-3xl font-bold text-primary-500 mb-4">
-            This is the challenge
-          </h3>
           <p class="text-lg md:text-xl text-gray-700 leading-relaxed">
             In exactly <span class="font-extrabold text-primary-500 bg-primary-500/20 px-2 py-0.5 rounded-md whitespace-nowrap">{daysRemaining}</span> days, <span class="font-extrabold text-accent-500 bg-accent-500/20 px-2 py-0.5 rounded-md whitespace-nowrap">1 million co-founders</span> will launch 1 startup together, while voting with just 1€ each, which idea we turn from vision into reality.
           </p>
@@ -81,18 +83,14 @@
         </div>
       </div>
 
-      <!-- Right Column: Video -->
+      <!-- Right Column: Image -->
       <div class="w-full md:w-1/2 lg:w-2/5 flex-shrink-0">
         <div class="rounded-2xl overflow-hidden shadow-xl">
-          <video 
-            src="/1milliontower.mp4" 
-            controls 
-            muted
+          <img 
+            src="/1milliontower.png" 
+            alt="1 million coin tower"
             class="w-full h-auto"
-            poster=""
-          >
-            Your browser does not support the video tag.
-          </video>
+          />
         </div>
       </div>
     </div>
