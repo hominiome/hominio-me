@@ -61,10 +61,10 @@
               ✓
             </div>
             <div>
-              <p class="text-lg md:text-xl font-semibold text-gray-900 mb-1">
+              <p class="text-lg md:text-xl font-semibold text-gray-900 mb-2">
                 Summit tickets give your supporters higher voting power
               </p>
-              <p class="text-base text-gray-700">
+              <p class="text-base text-gray-700 leading-relaxed">
                 The more you tell your story and rally for YOUR vision, the more supporters you gather—giving them more influence in who wins.
               </p>
             </div>
@@ -74,9 +74,14 @@
     </div>
 
     <!-- The Analogy -->
-    <div class="mb-12 text-center">
+    <div class="mb-12 text-center space-y-2">
       <p class="text-xl md:text-2xl text-gray-700 italic leading-relaxed">
-        It's like <span class="font-bold text-primary-600">Red Bull</span> — but healthy and better — they sponsor extreme athletes.<br />
+        It's like <span class="font-bold text-primary-600">Red Bull</span> — but healthy and better.
+      </p>
+      <p class="text-xl md:text-2xl text-gray-700 italic leading-relaxed">
+        They sponsor extreme athletes.
+      </p>
+      <p class="text-xl md:text-2xl text-gray-700 italic leading-relaxed">
         We sponsor <span class="font-bold text-accent-500">purpose-driven</span> <span class="font-bold text-secondary-500">Co-Founders</span>.
       </p>
     </div>
