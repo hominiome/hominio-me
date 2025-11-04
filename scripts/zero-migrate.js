@@ -7,7 +7,9 @@ const DATABASE_URL = process.env.SECRET_ZERO_DEV_PG;
 
 if (!DATABASE_URL) {
   console.error("❌ SECRET_ZERO_DEV_PG environment variable is required");
-  console.error("💡 Make sure you have a .env file with SECRET_ZERO_DEV_PG set");
+  console.error(
+    "💡 Make sure you have a .env file with SECRET_ZERO_DEV_PG set"
+  );
   process.exit(1);
 }
 
@@ -38,7 +40,9 @@ async function createTables() {
       .addColumn("userId", "text", (col) => col.notNull())
       .addColumn("videoUrl", "text", (col) => col.notNull().defaultTo(""))
       .addColumn("bannerImage", "text", (col) => col.notNull().defaultTo(""))
-      .addColumn("profileImageUrl", "text", (col) => col.notNull().defaultTo(""))
+      .addColumn("profileImageUrl", "text", (col) =>
+        col.notNull().defaultTo("")
+      )
       .addColumn("sdgs", "text", (col) => col.notNull().defaultTo("[]"))
       .addColumn("createdAt", "text", (col) => col.notNull())
       .execute();
@@ -55,7 +59,9 @@ async function createTables() {
       .addColumn("creatorId", "text", (col) => col.notNull())
       .addColumn("logoImageUrl", "text", (col) => col.notNull().defaultTo(""))
       .addColumn("size", "integer", (col) => col.notNull())
-      .addColumn("selectedProjectIds", "text", (col) => col.notNull().defaultTo(""))
+      .addColumn("selectedProjectIds", "text", (col) =>
+        col.notNull().defaultTo("")
+      )
       .addColumn("status", "text", (col) => col.notNull().defaultTo("draft"))
       .addColumn("currentRound", "text", (col) => col.notNull().defaultTo(""))
       .addColumn("winnerId", "text", (col) => col.notNull().defaultTo(""))
@@ -146,16 +152,70 @@ async function createTables() {
       .addColumn("actions", "text", (col) => col.notNull().defaultTo("[]"))
       .addColumn("sound", "text", (col) => col.notNull().defaultTo(""))
       .addColumn("icon", "text", (col) => col.notNull().defaultTo(""))
-      .addColumn("displayComponent", "text", (col) => col.notNull().defaultTo(""))
+      .addColumn("displayComponent", "text", (col) =>
+        col.notNull().defaultTo("")
+      )
       .addColumn("priority", "text", (col) => col.notNull().defaultTo("false"))
       .execute();
     console.log("✅ Notification table created\n");
 
-    // Setup replication for all tables
+    // 8. Polar webhook events table (SERVER-SIDE ONLY - NOT in Zero schema, NOT synced to clients)
+    // This table exists in the same Postgres DB but is completely isolated from Zero replication
+    console.log("🔔 Creating polar_webhook_events table (server-side only)...");
+    await db.schema
+      .createTable("polar_webhook_events")
+      .ifNotExists()
+      .addColumn("id", "text", (col) => col.primaryKey())
+      .addColumn("event_type", "text", (col) => col.notNull()) // e.g., 'checkout.created', 'order.paid'
+      .addColumn("polar_event_id", "text", (col) => col.unique()) // Polar's event ID for deduplication
+      .addColumn("payload", sql`jsonb`, (col) => col.notNull()) // Full event payload as JSONB
+      .addColumn("processed", "boolean", (col) =>
+        col.notNull().defaultTo(false)
+      )
+      .addColumn("processed_at", "timestamp", (col) => col)
+      .addColumn("error_message", "text", (col) => col)
+      .addColumn("created_at", "timestamp", (col) =>
+        col.notNull().defaultTo(sql`NOW()`)
+      )
+      .execute();
+
+    // Create indexes for common queries
+    await sql`
+      CREATE INDEX IF NOT EXISTS idx_polar_webhook_events_type 
+      ON polar_webhook_events(event_type)
+    `.execute(db);
+
+    await sql`
+      CREATE INDEX IF NOT EXISTS idx_polar_webhook_events_processed 
+      ON polar_webhook_events(processed, created_at)
+    `.execute(db);
+
+    await sql`
+      CREATE INDEX IF NOT EXISTS idx_polar_webhook_events_created_at 
+      ON polar_webhook_events(created_at DESC)
+    `.execute(db);
+
+    // Index for JSONB queries (e.g., finding events by customer_id)
+    // Use B-tree index on extracted text value (GIN doesn't work directly on text)
+    await sql`
+      CREATE INDEX IF NOT EXISTS idx_polar_webhook_events_payload_customer 
+      ON polar_webhook_events ((payload->'data'->>'customer_id'))
+    `.execute(db);
+
+    console.log("✅ Polar webhook events table created\n");
+    console.log(
+      "⚠️  NOTE: polar_webhook_events is SERVER-ONLY and will NOT be synced to Zero clients\n"
+    );
+
+    // Setup replication for Zero tables
+    // ⚠️ IMPORTANT: polar_webhook_events is intentionally EXCLUDED from replication
+    // It exists in the same Postgres DB but is completely isolated from Zero sync
     await setupReplication();
 
     console.log("🎉 Zero database schema created successfully!\n");
-    console.log("⚠️  IMPORTANT: Restart your Zero cache server to pick up schema changes!");
+    console.log(
+      "⚠️  IMPORTANT: Restart your Zero cache server to pick up schema changes!"
+    );
   } catch (error) {
     console.error("❌ Migration failed:", error);
     throw error;
@@ -182,11 +242,17 @@ async function setupReplication() {
   // Enable replica identity for all tables
   for (const table of tables) {
     try {
-      const quotedTable = ["cupMatch", "userIdentities", "identityPurchase"].includes(table)
+      const quotedTable = [
+        "cupMatch",
+        "userIdentities",
+        "identityPurchase",
+      ].includes(table)
         ? `"${table}"`
         : table;
-      
-      await sql`ALTER TABLE ${sql.raw(quotedTable)} REPLICA IDENTITY FULL`.execute(db);
+
+      await sql`ALTER TABLE ${sql.raw(quotedTable)} REPLICA IDENTITY FULL`.execute(
+        db
+      );
       console.log(`✅ Enabled replica identity for ${table}`);
     } catch (error) {
       console.log(`ℹ️  Replica identity already set for ${table}`);
@@ -204,7 +270,7 @@ async function setupReplication() {
   } catch (error) {
     if (error.message?.includes("already exists")) {
       console.log("ℹ️  Publication 'zero_data' already exists\n");
-      
+
       // Ensure all current tables are included
       try {
         await sql`ALTER PUBLICATION zero_data SET TABLE project, cup, "cupMatch", "userIdentities", "identityPurchase", vote, notification`.execute(

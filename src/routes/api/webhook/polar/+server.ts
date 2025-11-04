@@ -1,6 +1,8 @@
 import { Webhooks } from "@polar-sh/sveltekit";
 import { env } from "$env/dynamic/private";
 import { json } from "@sveltejs/kit";
+import { getZeroDbInstance } from "$lib/db.server.js";
+import { nanoid } from "nanoid";
 
 /**
  * Polar Webhook Endpoint
@@ -9,23 +11,161 @@ import { json } from "@sveltejs/kit";
  * 
  * Endpoint: /api/webhook/polar
  * Configure this URL in Polar Dashboard: https://hominio-me.loca.lt/api/webhook/polar
+ * 
+ * Database Storage:
+ * - All webhook events are stored in `polar_webhook_events` table (Zero Postgres DB)
+ * - Events stored with full JSONB payload for audit trail and debugging
+ * - Deduplication via `polar_event_id` (format: `{event_type}:{data.id}` or `{event_type}:{timestamp}`)
+ * - Events marked as `processed: false` initially
+ * 
+ * Processing Strategy:
+ * - Option 1 (Current): Events stored, handlers log only - `processed` stays false
+ * - Option 2 (Future): Add normalization logic in handlers to create/update normalized tables
+ *   (e.g., subscriptions, orders tables) and mark as `processed: true` after normalization
+ * - Option 3 (Future): Background worker picks up `processed=false` events and normalizes them
+ * 
+ * Indexes created for: event_type, processed status, created_at, and JSONB customer_id queries
+ * 
+ * See: https://polar.sh/docs/api-reference/webhooks for event schemas
  */
+
+// Helper function to store webhook event in database
+async function storeWebhookEvent(payload: any) {
+  try {
+    const db = getZeroDbInstance();
+    
+    // Extract unique identifier from payload for deduplication
+    // Polar webhooks include timestamp + type, and data objects have IDs
+    // Use data.id if available (e.g., checkout.id, order.id, subscription.id)
+    // Otherwise, use a combination of type + timestamp for deduplication
+    const dataId = payload.data?.id || null;
+    const timestamp = payload.timestamp || new Date().toISOString();
+    
+    // Create a unique identifier: if data has an ID, use type + data.id
+    // Otherwise use type + timestamp (less reliable but better than nothing)
+    const polarEventId = dataId 
+      ? `${payload.type}:${dataId}` 
+      : `${payload.type}:${timestamp}`;
+    
+    // Check if event already exists (deduplication)
+    const existing = await db
+      .selectFrom("polar_webhook_events")
+      .selectAll()
+      .where("polar_event_id", "=", polarEventId)
+      .executeTakeFirst();
+    
+    if (existing) {
+      console.log(`⚠️  [Polar Webhook] Duplicate event detected (${polarEventId}), skipping storage`);
+      return existing.id;
+    }
+    
+    // Generate our own ID
+    const eventId = nanoid();
+    
+    // Store event in database
+    await db
+      .insertInto("polar_webhook_events")
+      .values({
+        id: eventId,
+        event_type: payload.type,
+        polar_event_id: polarEventId,
+        payload: payload, // JSONB column automatically handles JSON
+        processed: false,
+        created_at: new Date(),
+      })
+      .execute();
+    
+    console.log(`💾 [Polar Webhook] Stored event ${eventId} (type: ${payload.type}, polar_id: ${polarEventId})`);
+    
+    return eventId;
+  } catch (error: any) {
+    // Log error but don't fail webhook processing
+    console.error("[Polar Webhook] ❌ Error storing webhook event:", error);
+    return null;
+  }
+}
+
+// Helper function to mark event as processed by event ID
+async function markEventProcessed(eventId: string | null, error?: Error) {
+  if (!eventId) return;
+  
+  try {
+    const db = getZeroDbInstance();
+    
+    await db
+      .updateTable("polar_webhook_events")
+      .set({
+        processed: true,
+        processed_at: new Date(),
+        error_message: error ? error.message : null,
+      })
+      .where("id", "=", eventId)
+      .execute();
+    
+    if (error) {
+      console.error(`❌ [Polar Webhook] Marked event ${eventId} as processed with error`);
+    } else {
+      console.log(`✅ [Polar Webhook] Marked event ${eventId} as processed successfully`);
+    }
+  } catch (err) {
+    console.error("[Polar Webhook] Error marking event as processed:", err);
+  }
+}
+
+// Helper function to mark event as processed by payload (finds event by polar_event_id)
+async function markEventProcessedByPayload(payload: any, error?: Error) {
+  try {
+    const db = getZeroDbInstance();
+    
+    // Reconstruct the same polar_event_id we used when storing
+    const dataId = payload.data?.id || null;
+    const timestamp = payload.timestamp || new Date().toISOString();
+    const polarEventId = dataId 
+      ? `${payload.type}:${dataId}` 
+      : `${payload.type}:${timestamp}`;
+    
+    await db
+      .updateTable("polar_webhook_events")
+      .set({
+        processed: true,
+        processed_at: new Date(),
+        error_message: error ? error.message : null,
+      })
+      .where("polar_event_id", "=", polarEventId)
+      .execute();
+    
+    if (error) {
+      console.error(`❌ [Polar Webhook] Marked event (${polarEventId}) as processed with error`);
+    } else {
+      console.log(`✅ [Polar Webhook] Marked event (${polarEventId}) as processed successfully`);
+    }
+  } catch (err) {
+    console.error("[Polar Webhook] Error marking event as processed:", err);
+  }
+}
 
 // Create webhook handlers configuration
 const webhookConfig = {
   
   // Catch-all handler for any webhook event
-  onPayload: async (payload) => {
+  onPayload: async (payload: any) => {
+    let eventId: string | null = null;
+    
     try {
-    console.log("\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-    console.log("🔔 [Polar Webhook] Received Event");
-    console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-    console.log("📅 Timestamp:", new Date().toISOString());
-    console.log("📦 Event Type:", payload.type);
-    console.log("📋 Full Payload:", JSON.stringify(payload, null, 2));
-    console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
+      // Store event in database first
+      eventId = await storeWebhookEvent(payload);
+      
+      console.log("\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+      console.log("🔔 [Polar Webhook] Received Event");
+      console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+      console.log("📅 Timestamp:", new Date().toISOString());
+      console.log("📦 Event Type:", payload.type);
+      console.log("💾 Event ID:", eventId || "not stored");
+      console.log("📋 Full Payload:", JSON.stringify(payload, null, 2));
+      console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
     } catch (error) {
       console.error("[Polar Webhook] Error in onPayload handler:", error);
+      await markEventProcessed(eventId, error as Error);
       throw error;
     }
   },
@@ -237,6 +377,9 @@ export const POST = async (event) => {
     
     console.log("[Polar Webhook] ✅ Request processed successfully");
     console.log("[Polar Webhook] Response status:", response.status);
+    
+    // Note: Individual event handlers will mark events as processed
+    // The onPayload handler stores the event, and specific handlers can update processed status
     
     return response;
   } catch (error) {
