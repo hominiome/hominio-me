@@ -7,7 +7,7 @@
     <p
       class="text-xs md:text-sm font-bold text-secondary-500 uppercase tracking-wider text-center mb-12"
     >
-      Let's get this started
+      This is our first project
     </p>
 
     <!-- Main Headline -->

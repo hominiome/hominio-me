@@ -276,7 +276,7 @@
               Example: Hominio's Purpose
             </p>
             <div
-              class="relative px-1.5 md:px-12 py-12 md:py-16 bg-gradient-to-br from-surface-light-50 via-white to-surface-light-50 rounded-lg shadow-2xl border border-surface-light-300 transform rotate-[-0.5deg]"
+              class="relative px-6 md:px-16 py-12 md:py-16 bg-gradient-to-br from-surface-light-50 via-white to-surface-light-50 rounded-lg shadow-2xl border border-surface-light-300 transform rotate-[-0.5deg]"
             >
               <!-- Letter texture overlay -->
               <div
@@ -294,17 +294,53 @@
                   </p>
                 </div>
 
+                <!-- Introductory paragraph -->
+                <p
+                  class="text-base md:text-lg lg:text-xl text-gray-800 leading-relaxed font-serif italic text-left mb-6"
+                >
+                  We are so utterly mindblown by the extraordinary awesomeness
+                  of what humans are able to bring from vision into reality.
+                  Just look at us - pyramids, human flight, harvesting
+                  solar-energy, global internet, greening the desert - we are
+                  such a great species with an unlimited amount of gigantic
+                  untapped potential, that we just need to learn to
+                  (re)discover.
+                </p>
+
+                <p
+                  class="text-base md:text-lg lg:text-xl text-gray-800 leading-relaxed font-serif italic text-left mb-6"
+                >
+                  We believe, we are capable of far greater giga-visions,
+                  creating stronger systems and better environments, for humans
+                  to thrive in abundance and in harmony with our home planet -
+                  earth - when we just dare to take magnificently larger leaps
+                  of faith.
+                </p>
+
+                <p
+                  class="text-base md:text-lg lg:text-xl text-gray-800 leading-relaxed font-serif italic text-left mb-6"
+                >
+                  And here we - Hominini - are coming together to build visions
+                  so monumental - that each time we stop to take a breath, we
+                  want to say - I can't believe humans actually build this.
+                  Amazing!
+                </p>
+
+                <p
+                  class="text-base md:text-lg lg:text-xl text-gray-800 leading-relaxed font-serif italic text-left mb-6 font-semibold"
+                >
+                  And here is our mission.
+                </p>
+
                 <!-- Letter body -->
                 <blockquote
                   class="text-lg md:text-xl lg:text-2xl text-gray-800 leading-relaxed font-serif italic text-left"
                 >
-                  Inspire <span class="text-primary-600 font-bold not-italic"
+                  During the next 10 years, we inspire <span
+                    class="text-primary-600 font-bold not-italic"
                     >1 billion humans</span
                   >
-                  in
-                  <span class="text-primary-600 font-bold not-italic"
-                    >10 years</span
-                  >, uniting to unlock humanity's full
+                  to unite, unlocking humanities full
                   <span class="text-primary-600 font-bold not-italic"
                     >collective potential</span
                   >
