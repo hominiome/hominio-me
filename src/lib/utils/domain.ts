@@ -115,15 +115,26 @@ export function getZeroServerUrl(): string {
 /**
  * Get all trusted origins (for CORS, BetterAuth, etc.)
  * DNS-level redirect handles www → non-www, so we only need non-www
+ * Includes localhost and localtunnel for development
  */
 export function getTrustedOrigins(): string[] {
   const baseDomain = getBaseDomain();
   const syncDomain = getZeroSyncDomain();
   
-  return [
+  const origins: string[] = [
     `https://${baseDomain}`,
     `https://${syncDomain}`,
   ];
+  
+  // Add localhost for local development
+  // Better Auth needs http://localhost:5173 (not just localhost)
+  origins.push('http://localhost:5173');
+  
+  // Add localtunnel for webhook testing (development)
+  // The subdomain is deterministic: hominio-me
+  origins.push('https://hominio-me.loca.lt');
+  
+  return origins;
 }
 
 /**

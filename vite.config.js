@@ -8,5 +8,12 @@ export default defineConfig({
 		tailwindcss(),
 		sveltekit(),
 		devtoolsJson()
-	]
+	],
+	server: {
+		// Allow localtunnel host for webhook testing
+		allowedHosts: [
+			'hominio-me.loca.lt',
+			'.loca.lt' // Allow all loca.lt subdomains for flexibility
+		]
+	}
 });
