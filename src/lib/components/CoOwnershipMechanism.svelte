@@ -78,7 +78,7 @@
             <h4
               class="text-xl md:text-2xl font-bold text-secondary-500 text-center mb-3"
             >
-              Everything is a Proposal
+              Same Day decisions
             </h4>
             <p
               class="text-sm md:text-base text-gray-700 leading-relaxed text-center"
@@ -108,8 +108,8 @@
             <p
               class="text-sm md:text-base text-gray-700 leading-relaxed text-center"
             >
-              Every product or service OUR startup creates, co-owners earn 50%
-              revenue share by selling what we build together.
+              YOU as co-owner earn 50% revenue share, just by telling your story
+              as Hominio Founder.
             </p>
           </div>
         </div>
@@ -280,7 +280,7 @@
               Built-in Sales Force
             </h4>
             <p class="text-base md:text-lg text-gray-700 leading-relaxed">
-              You earn by selling OUR startup's products—instant distribution
+              You earn by sharing OUR startup's products—instant distribution
               network from day one.
             </p>
           </div>

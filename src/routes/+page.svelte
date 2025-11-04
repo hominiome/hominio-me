@@ -4,7 +4,6 @@
   import HominioTransformation from "$lib/components/HominioTransformation.svelte";
   import HominioSummit from "$lib/components/HominioSummit.svelte";
   import CompetitionPhases from "$lib/components/CompetitionPhases.svelte";
-  import HominioEvent from "$lib/components/HominioEvent.svelte";
   import HominioFounder from "$lib/components/HominioFounder.svelte";
   import FinalCTA from "$lib/components/FinalCTA.svelte";
 </script>
@@ -16,9 +15,7 @@
     <HominioTransformation />
 
     <HominioSummit />
-    <HominioEvent />
     <HominioFounder />
-    <CompetitionPhases />
     <FinalCTA />
 
     <!-- Footer -->

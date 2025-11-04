@@ -108,7 +108,7 @@
             Introducing the °Hominio Startup
           </h3>
           <p class="text-xl md:text-2xl lg:text-3xl text-gray-700 leading-relaxed max-w-3xl mx-auto">
-            A new breed of organization, built differently from the ground up.
+            A new kind of organization, built differently from the ground up.
           </p>
         </div>
       </div>
