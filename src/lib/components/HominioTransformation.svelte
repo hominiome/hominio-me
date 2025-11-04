@@ -310,7 +310,7 @@
                 <p
                   class="text-base md:text-lg lg:text-xl text-gray-800 leading-relaxed font-serif italic text-left mb-6"
                 >
-                  We believe, we are capable of far greater giga-visions,
+                  We believe, we are capable of far greater terra-visions,
                   creating stronger systems and better environments, for humans
                   to thrive in abundance and in harmony with our home planet -
                   earth - when we just dare to take magnificently larger leaps
@@ -329,7 +329,7 @@
                 <p
                   class="text-base md:text-lg lg:text-xl text-gray-800 leading-relaxed font-serif italic text-left mb-6 font-semibold"
                 >
-                  And here is our mission.
+                  This is the mission.
                 </p>
 
                 <!-- Letter body -->
