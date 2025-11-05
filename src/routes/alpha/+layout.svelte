@@ -1266,6 +1266,7 @@ import Footer from "$lib/components/Footer.svelte";
   />
 {/if}
 
+{#if hasExplorerIdentity}
 <Navbar
   session={$session}
   {signInWithGoogle}
@@ -1294,6 +1295,7 @@ import Footer from "$lib/components/Footer.svelte";
   modalLeftButtons={modalLeftButtons()}
   modalRightButtons={modalRightButtons()}
 />
+{/if}
 
 <!-- Background -->
 <div class="fixed inset-0 w-full h-full -z-10 bg-brand-cream-50"></div>

@@ -1028,8 +1028,14 @@
     font-size: 0.875rem;
     color: rgba(26, 26, 78, 0.7);
     line-height: 1.5;
-    margin: 1rem 0;
+    margin: 1rem 0 0.5rem 0;
     text-align: center;
+  }
+
+  @media (max-width: 768px) {
+    .cta-message {
+      margin: 0.75rem 0 0.25rem 0;
+    }
   }
 
   .qr-section :global(.qr-container) {

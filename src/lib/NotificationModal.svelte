@@ -355,11 +355,13 @@
         {@const isYesButton = action.action === "newsletter_subscribe"}
         {@const isNoButton = action.action === "newsletter_decline"}
         {@const isInstagramButton = isInstagramFollow && action.action === "navigate" && action.url?.includes("instagram.com")}
+        {@const isNeverMindButton = isInstagramFollow && action.action === "mark_read"}
         <button
           class="action-button"
           class:action-button-yes={isNewsletterPrompt && isYesButton}
           class:action-button-no={isNewsletterPrompt && isNoButton}
           class:action-button-instagram={isInstagramButton}
+          class:action-button-never-mind={isNeverMindButton}
           onclick={() => handleActionClick(action)}
         >
           {#if isInstagramButton}
@@ -448,25 +450,28 @@
     box-shadow: none;
   }
 
-  /* Yes button - solid secondary style */
-  .action-button-yes {
-    background: #4ecdc4;
-    color: #ffffff;
-    border: 2px solid #4ecdc4;
-  }
-
-  .action-button-yes:hover {
-    background: #3fb8b0;
-    border-color: #3fb8b0;
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(78, 205, 196, 0.3);
-  }
-
-  /* No button - outline light primary style */
+  /* No button - auto width based on text, outline light primary style */
   .action-button-no {
+    flex: 0 0 auto;
     background: transparent;
     color: #1a1a4e;
     border: 2px solid rgba(26, 26, 78, 0.3);
+  }
+
+  /* Yes button - spans remaining space with solid secondary style */
+  .action-button-yes {
+    flex: 1;
+    background: var(--color-secondary-500);
+    color: var(--color-secondary-100);
+    border: 2px solid var(--color-secondary-500);
+  }
+
+  .action-button-yes:hover {
+    background: transparent;
+    color: var(--color-secondary-500);
+    border: 2px solid var(--color-secondary-500);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(45, 166, 180, 0.3);
   }
 
   .action-button-no:hover {
@@ -476,8 +481,14 @@
     box-shadow: 0 4px 12px rgba(26, 26, 78, 0.15);
   }
 
-  /* Instagram button - gradient style matching profile page */
+  /* Never mind button - auto width based on text */
+  .action-button-never-mind {
+    flex: 0 0 auto;
+  }
+
+  /* Instagram button - spans remaining space with gradient style */
   .action-button-instagram {
+    flex: 1;
     background: linear-gradient(
       135deg,
       #f09433 0%,

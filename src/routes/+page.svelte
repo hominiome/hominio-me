@@ -32,8 +32,8 @@
     href="/signin"
     class="cta-button cta-apply"
   >
-    <span class="cta-text-full">Become Early Adopter Now</span>
-    <span class="cta-text-short">Become Early Adopter Now</span>
+    <span class="cta-text-full">Get early access now</span>
+    <span class="cta-text-short">Get early access now</span>
   </a>
 </div>
 
@@ -100,16 +100,16 @@
 
   .cta-apply {
     width: auto;
-    background: var(--color-primary-500);
+    background: var(--color-accent-500);
     border: 2px solid var(--color-primary-500);
-    color: var(--color-primary-100);
+    color: var(--color-primary-500);
     box-shadow: 0 4px 24px rgba(0, 0, 0, 0.2);
   }
 
   .cta-apply:hover {
-    background: var(--color-accent-500);
+    background: var(--color-primary-500);
     border-color: var(--color-primary-500);
-    color: var(--color-primary-500);
+    color: var(--color-primary-100);
     transform: translateY(-2px);
     box-shadow: 0 6px 32px rgba(0, 0, 0, 0.15);
   }
