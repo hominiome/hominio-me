@@ -32,8 +32,8 @@
     href="/signin"
     class="cta-button cta-apply"
   >
-    <span class="cta-text-full">Join Early-Adopter Version Now</span>
-    <span class="cta-text-short">Join Early-Adopter Version Now</span>
+    <span class="cta-text-full">Become Early Adopter Now</span>
+    <span class="cta-text-short">Become Early Adopter Now</span>
   </a>
 </div>
 
