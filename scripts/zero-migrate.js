@@ -165,10 +165,32 @@ async function createTables() {
         col.notNull().defaultTo("")
       )
       .addColumn("priority", "text", (col) => col.notNull().defaultTo("false"))
+      .addColumn("imageUrl", "text", (col) => col.notNull().defaultTo(""))
       .execute();
     console.log("✅ Notification table created\n");
 
-    // 8. Polar webhook events table (SERVER-SIDE ONLY - NOT in Zero schema, NOT synced to clients)
+    // 8. UserPreferences table
+    console.log("⚙️  Creating userPreferences table...");
+    await db.schema
+      .createTable("userPreferences")
+      .ifNotExists()
+      .addColumn("id", "text", (col) => col.primaryKey())
+      .addColumn("userId", "text", (col) => col.notNull())
+      .addColumn("newsletterSubscribed", "text", (col) =>
+        col.notNull().defaultTo("false")
+      )
+      .addColumn("updatedAt", "text", (col) => col.notNull())
+      .execute();
+
+    // Create index for efficient lookups by userId
+    await sql`
+      CREATE INDEX IF NOT EXISTS idx_userPreferences_user 
+      ON "userPreferences"("userId")
+    `.execute(db);
+
+    console.log("✅ UserPreferences table created\n");
+
+    // 9. Polar webhook events table (SERVER-SIDE ONLY - NOT in Zero schema, NOT synced to clients)
     // This table exists in the same Postgres DB but is completely isolated from Zero replication
     console.log("🔔 Creating polar_webhook_events table (server-side only)...");
     await db.schema
@@ -246,6 +268,7 @@ async function setupReplication() {
     "identityPurchase",
     "vote",
     "notification",
+    "userPreferences",
   ];
 
   // Enable replica identity for all tables
@@ -255,6 +278,7 @@ async function setupReplication() {
         "cupMatch",
         "userIdentities",
         "identityPurchase",
+        "userPreferences",
       ].includes(table)
         ? `"${table}"`
         : table;
@@ -272,7 +296,7 @@ async function setupReplication() {
 
   // Create or update publication
   try {
-    await sql`CREATE PUBLICATION zero_data FOR TABLE project, cup, "cupMatch", "userIdentities", "identityPurchase", vote, notification`.execute(
+    await sql`CREATE PUBLICATION zero_data FOR TABLE project, cup, "cupMatch", "userIdentities", "identityPurchase", vote, notification, "userPreferences"`.execute(
       db
     );
     console.log("✅ Created publication 'zero_data'\n");
@@ -282,7 +306,7 @@ async function setupReplication() {
 
       // Ensure all current tables are included
       try {
-        await sql`ALTER PUBLICATION zero_data SET TABLE project, cup, "cupMatch", "userIdentities", "identityPurchase", vote, notification`.execute(
+        await sql`ALTER PUBLICATION zero_data SET TABLE project, cup, "cupMatch", "userIdentities", "identityPurchase", vote, notification, "userPreferences"`.execute(
           db
         );
         console.log("✅ Updated publication to include all tables\n");
@@ -435,12 +459,44 @@ async function removeCupIdFromIdentityPurchase() {
   }
 }
 
+/**
+ * Add imageUrl column to notification table if it doesn't exist
+ */
+async function addImageUrlToNotification() {
+  console.log("🔄 Adding imageUrl column to notification table...\n");
+
+  try {
+    // Check if column exists
+    const columnExists = await sql`
+      SELECT column_name 
+      FROM information_schema.columns 
+      WHERE table_name = 'notification' 
+      AND column_name = 'imageUrl'
+    `.execute(db);
+
+    if (columnExists.rows.length === 0) {
+      // Column doesn't exist, add it
+      await sql`
+        ALTER TABLE notification 
+        ADD COLUMN "imageUrl" text NOT NULL DEFAULT ''
+      `.execute(db);
+      console.log("✅ Added imageUrl column to notification table\n");
+    } else {
+      console.log("ℹ️  imageUrl column already exists\n");
+    }
+  } catch (error) {
+    console.error("❌ Error adding imageUrl column:", error.message);
+    throw error;
+  }
+}
+
 // Run migration
 createTables()
   .then(() => addExpiresAtColumn())
   .then(() => addSubscriptionIdColumn())
   .then(() => removeCupIdFromUserIdentities())
   .then(() => removeCupIdFromIdentityPurchase())
+  .then(() => addImageUrlToNotification())
   .then(() => {
     console.log("✨ Migration completed successfully!");
     process.exit(0);

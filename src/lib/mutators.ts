@@ -187,6 +187,7 @@ export function createMutators(authData: AuthData | undefined) {
           icon: string;
           displayComponent: string;
           priority: string;
+          imageUrl?: string;
         }
       ) => {
         // Client-side validation
@@ -215,6 +216,7 @@ export function createMutators(authData: AuthData | undefined) {
           icon: args.icon || '',
           displayComponent: args.displayComponent || '',
           priority: args.priority || 'false',
+          imageUrl: args.imageUrl || '',
         });
       },
 
@@ -581,6 +583,68 @@ export function createMutators(authData: AuthData | undefined) {
           id: cupId,
           selectedProjectIds: JSON.stringify(selectedProjectIds),
           updatedAt: new Date().toISOString(),
+        });
+      },
+    },
+
+    // ========================================
+    // USER PREFERENCES MUTATORS
+    // ========================================
+
+    userPreferences: {
+      /**
+       * Create user preferences (defaults to newsletter subscribed: true)
+       * Client-side: Runs optimistically for instant UI updates
+       * Server-side: Validates user is creating their own preferences
+       */
+      create: async (
+        tx: Transaction<Schema>,
+        args: {
+          id: string;
+          userId: string;
+          newsletterSubscribed: string;
+          updatedAt: string;
+        }
+      ) => {
+        // Client-side validation
+        if (!args.userId || args.userId.trim().length === 0) {
+          throw new Error('userId is required');
+        }
+
+        await tx.mutate.userPreferences.insert({
+          id: args.id,
+          userId: args.userId.trim(),
+          newsletterSubscribed: args.newsletterSubscribed || 'false',
+          updatedAt: args.updatedAt,
+        });
+      },
+
+      /**
+       * Update user preferences
+       * Client-side: Runs optimistically for instant UI updates
+       * Server-side: Validates user is updating their own preferences
+       */
+      update: async (
+        tx: Transaction<Schema>,
+        args: {
+          id: string;
+          newsletterSubscribed?: string;
+          updatedAt: string;
+        }
+      ) => {
+        const { id } = args;
+
+        // Verify preferences exist
+        const preferences = await tx.query.userPreferences.where('id', id).one();
+        if (!preferences) {
+          throw new Error('User preferences not found');
+        }
+
+        // Update preferences
+        await tx.mutate.userPreferences.update({
+          id,
+          newsletterSubscribed: args.newsletterSubscribed !== undefined ? args.newsletterSubscribed : preferences.newsletterSubscribed,
+          updatedAt: args.updatedAt,
         });
       },
     },

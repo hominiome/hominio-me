@@ -43,10 +43,9 @@ export async function load({ request, url }) {
     const isApiRoute = url.pathname.startsWith("/alpha/api/");
     
     if (!explorerIdentity && !isMeRoute && !isInviteRoute && !isOnboardApi && !isPublicApi && !isApiRoute) {
-      // Redirect to /alpha with invite modal - always redirect to ensure modal shows
-      // Check if already on /alpha with modal param to avoid redirect loop
-      if (url.pathname !== "/alpha" || url.searchParams.get("modal") !== "invite") {
-        throw redirect(303, "/alpha?modal=invite");
+      // Redirect to /alpha/me - invite logic is now in profile page
+      if (url.pathname !== "/alpha/me") {
+        throw redirect(303, "/alpha/me");
       }
     }
   }

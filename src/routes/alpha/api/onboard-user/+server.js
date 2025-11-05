@@ -3,6 +3,7 @@ import { nanoid } from "nanoid";
 import { requireAdmin } from "$lib/api-helpers.server.js";
 import { zeroDb } from "$lib/db.server.js";
 import { authDb } from "$lib/db.server.js";
+import { getNotificationConfig } from "$lib/notification-helpers.server.js";
 
 export async function POST({ request }) {
   // Get the user who is onboarding (currently requires admin, but can be extended later)
@@ -43,6 +44,9 @@ export async function POST({ request }) {
     // Create explorer identity
     const identityId = nanoid();
     const now = new Date().toISOString();
+    
+    // Create timestamp slightly in the future for welcome message (so newsletter comes first)
+    const welcomeTimestamp = new Date(Date.now() + 1000).toISOString();
 
     await zeroDb
       .insertInto("userIdentities")
@@ -56,7 +60,10 @@ export async function POST({ request }) {
       })
       .execute();
 
-    // Create priority notification for the user
+    // Newsletter prompt should already have been created on signup (before onboarding)
+    // So we don't create it here - just create the welcome message
+
+    // Create priority notification for the user (welcome message)
     // Store onboarder image URL in resourceId format: "identityId|onboarderImageUrl"
     // This allows us to display the inviter's profile image in the notification
     const resourceId = onboarderImage 
@@ -75,7 +82,7 @@ export async function POST({ request }) {
         previewTitle: "",
         message: `You've been invited by ${onboarderName}! Welcome to the Hominio community. Start exploring and when you're ready, upgrade to vote on projects.`,
         read: "false",
-        createdAt: now,
+        createdAt: welcomeTimestamp, // Later timestamp - appears after newsletter
         actions: JSON.stringify([
           {
             label: "Start Exploring",
@@ -83,10 +90,11 @@ export async function POST({ request }) {
             url: "/alpha",
           },
         ]),
-        sound: "/notification.mp3",
+        sound: "/welcome.mp3",
         icon: "mdi:account-plus",
         displayComponent: "",
         priority: "true", // Priority notification - force opens
+        imageUrl: "",
       })
       .execute();
 

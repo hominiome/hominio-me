@@ -39,6 +39,23 @@ export const unreadNotificationCount = syncedQuery(
 
 /**
  * ========================================
+ * USER PREFERENCES QUERIES
+ * ========================================
+ */
+
+/**
+ * Get user preferences for a specific user
+ */
+export const userPreferencesByUser = syncedQuery(
+  'userPreferencesByUser',
+  z.tuple([z.string()]), // userId
+  (userId: string) => {
+    return builder.userPreferences.where('userId', '=', userId);
+  }
+);
+
+/**
+ * ========================================
  * PROJECT QUERIES
  * ========================================
  */

@@ -8,10 +8,10 @@
   let signingIn = $state(false);
 
   onMount(async () => {
-    // Check if user is already logged in and redirect to alpha
+    // Check if user is already logged in and redirect to profile
     const sessionData = await authClient.getSession();
     if (sessionData?.data?.user) {
-      goto("/alpha");
+      goto("/alpha/me");
       return;
     }
     loading = false;
@@ -22,7 +22,7 @@
     try {
       await authClient.signIn.social({
         provider: "google",
-        callbackURL: "/alpha", // Redirect to alpha home after login
+        callbackURL: "/alpha/me", // Redirect to profile page after signup/login
       });
     } catch (error) {
       console.error("Sign in error:", error);

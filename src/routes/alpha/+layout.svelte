@@ -145,6 +145,30 @@
         if ($session.data?.user || data.session) {
           const userId = $session.data?.user?.id || data.session?.id;
           if (userId && zero) {
+            // Create newsletter prompt notification for new users (immediately after signup)
+            // This should happen BEFORE onboarding, so check if user has no identities
+            (async () => {
+              try {
+                // Check if user already has newsletter prompt or preferences
+                const response = await fetch("/alpha/api/create-newsletter-prompt", {
+                  method: "POST",
+                  headers: {
+                    "Content-Type": "application/json",
+                  },
+                });
+                // Silently handle - if it already exists, that's fine
+                if (response.ok) {
+                  const result = await response.json();
+                  if (result.success && !result.alreadyExists) {
+                    console.log("[Newsletter] Newsletter prompt notification created for new user");
+                  }
+                }
+              } catch (error) {
+                // Silently fail - don't interrupt user flow
+                console.warn("[Newsletter] Failed to create newsletter prompt:", error);
+              }
+            })();
+
             // Query user identities to check for explorer identity
             const identitiesQuery = identitiesByUser(userId);
             userIdentitiesView = zero.materialize(identitiesQuery);
@@ -623,8 +647,8 @@
   const modalType = $derived($page.url.searchParams.get("modal"));
   const modalProjectId = $derived($page.url.searchParams.get("projectId"));
   const modalCupId = $derived($page.url.searchParams.get("cupId"));
-  // Auto-show invite modal if user doesn't have explorer identity (but allow closing)
-  // Also add modal param to URL if not present (except on /me route)
+  // Redirect new users (without explorer identity) to /alpha/me after signup
+  // This replaces the invite modal - invite logic is now in profile page
   $effect(() => {
     if (
       $session.data?.user &&
@@ -633,27 +657,15 @@
       !isAdminUser &&
       browser
     ) {
-      // Don't auto-show on /me route - let them access profile settings
-      if ($page.url.pathname === "/alpha/me") {
-        return;
-      }
-      const currentModal = $page.url.searchParams.get("modal");
-      if (currentModal !== "invite") {
-        const url = new URL($page.url);
-        url.searchParams.set("modal", "invite");
-        goto(url.pathname + url.search, { replaceState: true });
+      // Only redirect if not already on /me route and not on /invite route
+      if ($page.url.pathname !== "/alpha/me" && !$page.url.pathname.startsWith("/alpha/invite/")) {
+        goto("/alpha/me", { replaceState: true });
       }
     }
   });
 
-  const showInviteModal = $derived(
-    modalType === "invite" ||
-      ($session.data?.user &&
-        !hasExplorerIdentity &&
-        zeroReady &&
-        !isAdminUser &&
-        $page.url.pathname !== "/alpha/me")
-  );
+  // Invite modal is no longer used - invite logic is now in profile page (/alpha/me)
+  const showInviteModal = $derived(false);
   const showCreateProjectModal = $derived(modalType === "create-project");
   const showEditProjectModal = $derived(
     modalType === "edit-project" && !!modalProjectId

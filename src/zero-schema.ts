@@ -121,11 +121,22 @@ const notification = table('notification')
     icon: string(), // Optional Iconify icon name
     displayComponent: string(), // Optional component name to display
     priority: string(), // 'true' | 'false' (as string) - force opens notification
+    imageUrl: string(), // Optional image URL for notifications (e.g., newsletter images)
+  })
+  .primaryKey('id');
+
+// User preferences - stores user notification and other preferences
+const userPreferences = table('userPreferences')
+  .columns({
+    id: string(),
+    userId: string(), // User ID
+    newsletterSubscribed: string(), // 'true' | 'false' (as string for Zero compatibility)
+    updatedAt: string(), // ISO timestamp
   })
   .primaryKey('id');
 
 export const schema = createSchema({
-  tables: [project, cup, cupMatch, userIdentities, identityPurchase, vote, notification],
+  tables: [project, cup, cupMatch, userIdentities, identityPurchase, vote, notification, userPreferences],
   // Disable legacy queries - we use synced queries instead
   enableLegacyQueries: false,
   // Disable legacy CRUD mutators - we use custom mutators instead

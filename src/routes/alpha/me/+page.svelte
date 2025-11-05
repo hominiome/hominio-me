@@ -15,6 +15,7 @@
     votesByUser,
     allMatches,
     allCups,
+    userPreferencesByUser,
   } from "$lib/synced-queries";
 
   // Session data from layout
@@ -35,7 +36,6 @@
   );
 
   let copied = $state(false);
-  let qrCodeExpanded = $state(false);
 
   async function copyToClipboard() {
     if (!inviteLink) return;
@@ -51,9 +51,10 @@
     }
   }
 
-  function toggleQrCode() {
-    qrCodeExpanded = !qrCodeExpanded;
-  }
+  // Check if user has explorer identity
+  const hasExplorerIdentity = $derived(() => {
+    return userIdentities.some((id: any) => id.identityType === "explorer");
+  });
 
   const zeroContext = useZero();
   const session = authClient.useSession();
@@ -67,6 +68,7 @@
   let matches = $state<any[]>([]);
   let projects = $state<any[]>([]);
   let cups = $state<any[]>([]);
+  let userPreferences = $state<any[]>([]);
   let loading = $state(true);
 
   async function handleSignOut() {
@@ -284,6 +286,7 @@
     let matchesView: any;
     let projectsView: any;
     let cupsView: any;
+    let preferencesView: any;
 
     (async () => {
       // Wait for Zero to be ready
@@ -359,6 +362,14 @@
         cups = Array.from(data || []);
         loading = false;
       });
+
+      // Query user preferences using synced query
+      const preferencesQuery = userPreferencesByUser(userId);
+      preferencesView = zero.materialize(preferencesQuery);
+
+      preferencesView.addListener((data: any) => {
+        userPreferences = Array.from(data || []);
+      });
     })();
 
     return () => {
@@ -368,8 +379,48 @@
       if (matchesView) matchesView.destroy();
       if (projectsView) projectsView.destroy();
       if (cupsView) cupsView.destroy();
+      if (preferencesView) preferencesView.destroy();
     };
   });
+
+  // Get current user preferences (defaults to not subscribed: false)
+  const currentPreferences = $derived(() => {
+    return userPreferences.length > 0 ? userPreferences[0] : null;
+  });
+
+  const isNewsletterSubscribed = $derived(() => {
+    if (!currentPreferences()) {
+      return false; // Default to not subscribed
+    }
+    return currentPreferences()?.newsletterSubscribed === 'true';
+  });
+
+  // Toggle newsletter subscription
+  async function toggleNewsletterSubscription() {
+    if (!zero || !data.session?.id) return;
+
+    const userId = data.session.id;
+    const currentPrefs = currentPreferences();
+    const newSubscriptionStatus = isNewsletterSubscribed() ? 'false' : 'true';
+
+    if (currentPrefs) {
+      // Update existing preferences
+      zero.mutate.userPreferences.update({
+        id: currentPrefs.id,
+        newsletterSubscribed: newSubscriptionStatus,
+        updatedAt: new Date().toISOString(),
+      });
+    } else {
+      // Create new preferences (defaults to subscribed, but user is toggling)
+      const { nanoid } = await import('nanoid');
+      zero.mutate.userPreferences.create({
+        id: nanoid(),
+        userId: userId,
+        newsletterSubscribed: newSubscriptionStatus,
+        updatedAt: new Date().toISOString(),
+      });
+    }
+  }
 </script>
 
 <div class="profile-container">
@@ -391,49 +442,73 @@
       <h1 class="profile-name">{data.session?.name || "User"}</h1>
       <p class="profile-email">{data.session?.email}</p>
 
-      {#if profileUrl}
-        <div class="qr-code-toggle-section">
-          <button 
-            onclick={toggleQrCode}
-            class="qr-toggle-button"
-            aria-label={qrCodeExpanded ? "Hide invite link" : "Show invite link"}
-          >
-            <span>{qrCodeExpanded ? "Hide" : "Show"} Invite Link</span>
-            <svg 
-              class="toggle-icon" 
-              class:expanded={qrCodeExpanded}
-              fill="none" 
-              stroke="currentColor" 
-              viewBox="0 0 24 24"
+      {#if !hasExplorerIdentity() && profileUrl}
+        <!-- Invite section - shown when no explorer identity -->
+        <div class="invite-section">
+          <h2 class="invite-title">Invite Only</h2>
+          
+          <div class="qr-section">
+            <QRCodeDisplay data={profileUrl} />
+            <p class="qr-instruction">Get Early-Adopter alpha access</p>
+            <a
+              href="https://instagram.com/samuelandert"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="instagram-button"
             >
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-            </svg>
-          </button>
-          {#if qrCodeExpanded}
-            <div class="qr-code-section">
-              <QRCodeDisplay data={profileUrl} />
-              {#if inviteLink}
-                <div class="invite-link-section">
-                  <div class="link-container">
-                    <input 
-                      type="text" 
-                      value={inviteLink} 
-                      readonly 
-                      class="link-input"
-                      onclick={(e) => e.currentTarget.select()}
-                    />
-                    <button 
-                      onclick={copyToClipboard}
-                      class="copy-button"
-                      aria-label="Copy link to clipboard"
-                    >
-                      {copied ? "Copied!" : "Copy Link"}
-                    </button>
-                  </div>
-                </div>
-              {/if}
+              <svg class="instagram-icon" viewBox="0 0 24 24" fill="currentColor">
+                <path
+                  d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"
+                />
+              </svg>
+              <span>Message Me For Invite</span>
+            </a>
+          </div>
+
+          {#if inviteLink}
+            <div class="link-section">
+              <p class="link-label">Or share this link:</p>
+              <div class="link-container">
+                <input 
+                  type="text" 
+                  value={inviteLink} 
+                  readonly 
+                  class="link-input"
+                  onclick={(e) => e.currentTarget.select()}
+                />
+                <button 
+                  onclick={copyToClipboard}
+                  class="copy-button"
+                  aria-label="Copy link to clipboard"
+                >
+                  {copied ? "Copied!" : "Copy Link"}
+                </button>
+              </div>
             </div>
           {/if}
+
+          <div class="info-section">
+            <p class="info-text">
+              This is our first alpha MVP, held together with duct tape vibes. We're invite-only right now - get onboarded as an explorer to access the platform!
+            </p>
+          </div>
+        </div>
+      {:else if hasExplorerIdentity()}
+        <!-- Feedback button - shown when explorer identity exists -->
+        <div class="feedback-section">
+          <a
+            href="https://instagram.com/samuelandert"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="feedback-button"
+          >
+            <svg class="instagram-icon" viewBox="0 0 24 24" fill="currentColor">
+              <path
+                d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"
+              />
+            </svg>
+            <span>Message Me For Feedback</span>
+          </a>
         </div>
       {/if}
 
@@ -472,6 +547,28 @@
       </div>
     </div>
 
+    <div class="profile-section">
+      <h2 class="section-title">Notification Preferences</h2>
+      <div class="preferences-list">
+        <div class="preference-item">
+          <div class="preference-info">
+            <span class="preference-label">Newsletter Notifications</span>
+            <span class="preference-description">
+              Receive important updates and announcements
+            </span>
+          </div>
+          <button
+            class="toggle-switch"
+            class:active={isNewsletterSubscribed()}
+            onclick={toggleNewsletterSubscription}
+            aria-label={isNewsletterSubscribed() ? "Disable newsletter notifications" : "Enable newsletter notifications"}
+          >
+            <span class="toggle-slider"></span>
+          </button>
+        </div>
+      </div>
+    </div>
+
     {#if loading}
       <div class="profile-section">
         <p class="loading-text">Loading...</p>
@@ -500,9 +597,7 @@
         {#if userIdentities.length === 0}
           <div class="empty-state">
             <p>You don't have any active voting identities yet.</p>
-            <a href="?modal=invite" class="empty-state-link">
-              Get an identity (invite-only)
-            </a>
+            <p class="empty-state-note">Use the invite section above to get onboarded as an explorer.</p>
           </div>
         {:else}
           <div class="identities-list">
@@ -778,62 +873,153 @@
     margin: 0 0 1.5rem 0;
   }
 
-  .qr-code-toggle-section {
+  .invite-section {
     margin: 1.5rem 0;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1.5rem;
+    padding: 1.5rem;
+    background: rgba(240, 255, 254, 0.3);
+    border: 2px solid rgba(78, 205, 196, 0.2);
+    border-radius: 12px;
+  }
+
+  .invite-title {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: #1a1a4e;
+    margin: 0;
+    text-align: center;
+  }
+
+  .qr-section {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
     width: 100%;
   }
 
-  .qr-toggle-button {
+  .qr-instruction {
+    font-size: 0.875rem;
+    color: rgba(26, 26, 78, 0.8);
+    text-align: center;
+    margin: 0;
+    font-weight: 500;
+  }
+
+  .instagram-button {
     display: flex;
     align-items: center;
     justify-content: center;
     gap: 0.5rem;
-    width: 100%;
-    padding: 0.75rem 1rem;
-    background: rgba(240, 255, 254, 0.5);
-    border: 2px solid rgba(78, 205, 196, 0.3);
-    border-radius: 8px;
-    color: #1a1a4e;
+    padding: 0.75rem 1.5rem;
+    background: linear-gradient(
+      135deg,
+      #f09433 0%,
+      #e6683c 25%,
+      #dc2743 50%,
+      #cc2366 75%,
+      #bc1888 100%
+    );
+    color: white;
+    text-decoration: none;
+    border-radius: 50px;
     font-size: 0.875rem;
     font-weight: 600;
-    cursor: pointer;
-    transition: all 0.2s;
+    transition: all 0.3s;
+    box-shadow: 0 2px 12px rgba(188, 24, 136, 0.3);
   }
 
-  .qr-toggle-button:hover {
-    background: rgba(240, 255, 254, 0.7);
-    border-color: rgba(78, 205, 196, 0.5);
+  .instagram-button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 20px rgba(188, 24, 136, 0.5);
   }
 
-  .toggle-icon {
-    width: 16px;
-    height: 16px;
-    transition: transform 0.2s;
+  .instagram-button:active {
+    transform: translateY(0);
   }
 
-  .toggle-icon.expanded {
-    transform: rotate(180deg);
+  .instagram-icon {
+    width: 18px;
+    height: 18px;
+    flex-shrink: 0;
   }
 
-  .qr-code-section {
-    margin-top: 1rem;
+  .link-section {
     display: flex;
     flex-direction: column;
-    justify-content: center;
     align-items: center;
-    gap: 1rem;
-    padding: 1.5rem;
-    background: rgba(240, 255, 254, 0.5);
-    border-radius: 12px;
+    gap: 0.75rem;
     width: 100%;
-    overflow: hidden;
-    border: 1px solid rgba(78, 205, 196, 0.2);
+    max-width: 500px;
   }
 
-  .qr-code-section :global(.qr-container) {
+  .link-label {
+    font-size: 0.875rem;
+    color: rgba(26, 26, 78, 0.8);
+    text-align: center;
+    margin: 0;
+    font-weight: 500;
+  }
+
+  .info-section {
+    width: 100%;
+  }
+
+  .info-text {
+    font-size: 0.875rem;
+    color: rgba(26, 26, 78, 0.7);
+    line-height: 1.5;
+    margin: 0;
+    text-align: center;
+  }
+
+  .qr-section :global(.qr-container) {
     background: transparent;
     padding: 1rem;
     border-radius: 8px;
+  }
+
+  .feedback-section {
+    margin: 1.5rem 0;
+    width: 100%;
+    display: flex;
+    justify-content: center;
+  }
+
+  .feedback-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1.5rem;
+    background: linear-gradient(
+      135deg,
+      #f09433 0%,
+      #e6683c 25%,
+      #dc2743 50%,
+      #cc2366 75%,
+      #bc1888 100%
+    );
+    color: white;
+    text-decoration: none;
+    border-radius: 50px;
+    font-size: 0.875rem;
+    font-weight: 600;
+    transition: all 0.3s;
+    box-shadow: 0 2px 12px rgba(188, 24, 136, 0.3);
+  }
+
+  .feedback-button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 20px rgba(188, 24, 136, 0.5);
+  }
+
+  .feedback-button:active {
+    transform: translateY(0);
   }
 
   .invite-link-section {
@@ -889,9 +1075,24 @@
   }
 
   @media (max-width: 768px) {
-    .qr-code-section {
-      padding: 0.75rem;
-      margin: 1rem 0;
+    .invite-section {
+      padding: 1rem;
+      gap: 1.25rem;
+    }
+
+    .invite-title {
+      font-size: 1.5rem;
+    }
+
+    .instagram-button,
+    .feedback-button {
+      padding: 0.625rem 1.25rem;
+      font-size: 0.813rem;
+    }
+
+    .instagram-icon {
+      width: 16px;
+      height: 16px;
     }
 
     .link-container {
@@ -1217,6 +1418,82 @@
     font-weight: 700;
     color: #f4d03f;
     white-space: nowrap;
+  }
+
+  .preferences-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .preference-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1rem;
+    background: rgba(240, 255, 254, 0.5);
+    border: 2px solid rgba(78, 205, 196, 0.2);
+    border-radius: 12px;
+    transition: all 0.2s;
+  }
+
+  .preference-item:hover {
+    border-color: rgba(78, 205, 196, 0.4);
+    background: rgba(240, 255, 254, 0.7);
+  }
+
+  .preference-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    flex: 1;
+  }
+
+  .preference-label {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #1a1a4e;
+  }
+
+  .preference-description {
+    font-size: 0.875rem;
+    color: rgba(26, 26, 78, 0.6);
+  }
+
+  .toggle-switch {
+    position: relative;
+    width: 52px;
+    height: 28px;
+    background: rgba(26, 26, 78, 0.2);
+    border-radius: 999px;
+    border: none;
+    cursor: pointer;
+    transition: background 0.2s;
+    flex-shrink: 0;
+  }
+
+  .toggle-switch.active {
+    background: #4ecdc4;
+  }
+
+  .toggle-switch:hover {
+    opacity: 0.9;
+  }
+
+  .toggle-slider {
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 24px;
+    height: 24px;
+    background: white;
+    border-radius: 50%;
+    transition: transform 0.2s;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  }
+
+  .toggle-switch.active .toggle-slider {
+    transform: translateX(24px);
   }
 
   @media (max-width: 640px) {

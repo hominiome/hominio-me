@@ -145,5 +145,40 @@
         }
       ]
     }
+  },
+  "newsletter": {
+    "announcement": {
+      "title": "{title}",
+      "previewTitle": "{previewTitle}",
+      "message": "{message}",
+      "priority": true,
+      "icon": "mdi:email-newsletter",
+      "sound": "/mail.mp3",
+      "displayComponent": "ImageDisplay",
+      "actions": []
+    }
+  },
+  "signup": {
+    "newsletterPrompt": {
+      "title": "Stay Updated!",
+      "previewTitle": "Subscribe to our newsletter",
+      "message": "Get notified about important updates, new features, and exciting announcements. Would you like to subscribe to our newsletter?",
+      "priority": true,
+      "icon": "mdi:email-newsletter",
+      "sound": "/mail.mp3",
+      "displayComponent": null,
+      "actions": [
+        {
+          "label": "No",
+          "action": "newsletter_decline",
+          "position": "left"
+        },
+        {
+          "label": "Yes",
+          "action": "newsletter_subscribe",
+          "position": "right"
+        }
+      ]
+    }
   }
 }

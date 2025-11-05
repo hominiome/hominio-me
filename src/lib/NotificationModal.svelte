@@ -6,6 +6,7 @@
   import VotingProgressDisplay from "./components/VotingProgressDisplay.svelte";
   import OpponentReveal from "./components/OpponentReveal.svelte";
   import VictoryCelebration from "./components/VictoryCelebration.svelte";
+  import ImageDisplay from "./components/ImageDisplay.svelte";
   import Modal from "./Modal.svelte";
 
   let {
@@ -27,6 +28,7 @@
       sound?: string; // Optional sound file path
       icon?: string; // Optional Iconify icon name (e.g., "mdi:bell", "material-symbols:notifications")
       displayComponent?: string; // Optional component name to display above header
+      imageUrl?: string; // Optional image URL for notifications
     };
     onClose: () => void;
     onMarkRead?: (id: string) => void;
@@ -40,6 +42,7 @@
     VotingProgressDisplay: VotingProgressDisplay,
     OpponentReveal: OpponentReveal,
     VictoryCelebration: VictoryCelebration,
+    ImageDisplay: ImageDisplay,
   };
 
   const DisplayComponent = $derived(() => {
@@ -119,6 +122,16 @@
       return {
         cupId,
         cupName: "", // Will be fetched by the component
+      };
+    }
+
+    if (
+      notification.displayComponent === "ImageDisplay" &&
+      notification.imageUrl
+    ) {
+      // Pass imageUrl to ImageDisplay component
+      return {
+        imageUrl: notification.imageUrl,
       };
     }
 
@@ -213,6 +226,39 @@
       }
     }
 
+    // Handle newsletter subscription actions
+    if (action.action === "newsletter_subscribe" || action.action === "newsletter_decline") {
+      markAsRead();
+      try {
+        // Explicitly set subscription: Yes = true, No = false (not a toggle)
+        const shouldSubscribe = action.action === "newsletter_subscribe";
+        const response = await fetch("/alpha/api/toggle-newsletter", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            subscribe: shouldSubscribe, // true for Yes, false for No
+          }),
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.error || "Failed to update newsletter preference");
+        }
+
+        // Close modal after updating preference
+        onClose();
+        return;
+      } catch (error) {
+        console.error("Newsletter preference update failed:", error);
+        // Still close modal even on error
+        onClose();
+        return;
+      }
+    }
+
     // Default: navigate to URL
     markAsRead();
     onClose();
@@ -229,7 +275,14 @@
   const actions = $derived(() => {
     if (!notification.actions) return [];
     try {
-      return JSON.parse(notification.actions);
+      const parsed = JSON.parse(notification.actions);
+      // Sort actions by position: left first, then right
+      return parsed.sort((a: any, b: any) => {
+        const positionOrder = { left: 0, right: 1 };
+        const aPos = a.position || 'right';
+        const bPos = b.position || 'right';
+        return (positionOrder[aPos as keyof typeof positionOrder] || 1) - (positionOrder[bPos as keyof typeof positionOrder] || 1);
+      });
     } catch {
       return [];
     }
@@ -249,6 +302,8 @@
           />
         {:else if notification.displayComponent === "VictoryCelebration"}
           <Component cupId={props.cupId} cupName={props.cupName} />
+        {:else if notification.displayComponent === "ImageDisplay"}
+          <Component imageUrl={props.imageUrl} />
         {:else}
           <Component {...props} />
         {/if}
@@ -267,7 +322,15 @@
   {#if actions().length > 0}
     <div class="actions-container">
       {#each actions() as action}
-        <button class="action-button" onclick={() => handleActionClick(action)}>
+        {@const isNewsletterPrompt = notification.resourceType === "signup" && notification.resourceId === "newsletterPrompt"}
+        {@const isYesButton = action.action === "newsletter_subscribe"}
+        {@const isNoButton = action.action === "newsletter_decline"}
+        <button
+          class="action-button"
+          class:action-button-yes={isNewsletterPrompt && isYesButton}
+          class:action-button-no={isNewsletterPrompt && isNoButton}
+          onclick={() => handleActionClick(action)}
+        >
           {action.label}
         </button>
       {/each}
@@ -315,7 +378,8 @@
 
   .actions-container {
     display: flex;
-    flex-direction: column;
+    flex-direction: row;
+    justify-content: space-between;
     gap: 0.75rem;
     margin-top: 1.5rem;
     padding-top: 1.5rem;
@@ -342,8 +406,36 @@
     font-size: 0.9375rem;
     cursor: pointer;
     transition: all 0.2s;
-    width: auto;
+    flex: 1;
     box-shadow: none;
+  }
+
+  /* Yes button - solid secondary style */
+  .action-button-yes {
+    background: #4ecdc4;
+    color: #ffffff;
+    border: 2px solid #4ecdc4;
+  }
+
+  .action-button-yes:hover {
+    background: #3fb8b0;
+    border-color: #3fb8b0;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(78, 205, 196, 0.3);
+  }
+
+  /* No button - outline light primary style */
+  .action-button-no {
+    background: transparent;
+    color: #1a1a4e;
+    border: 2px solid rgba(26, 26, 78, 0.3);
+  }
+
+  .action-button-no:hover {
+    background: rgba(26, 26, 78, 0.05);
+    border-color: rgba(26, 26, 78, 0.5);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(26, 26, 78, 0.15);
   }
 
   @media (max-width: 768px) {

@@ -36,6 +36,18 @@ function getQuery(name: string, args: readonly ReadonlyJSONValue[]) {
   }
 
   // ========================================
+  // USER PREFERENCES QUERIES
+  // ========================================
+  
+  if (name === 'userPreferencesByUser') {
+    z.tuple([z.string()]).parse(args);
+    const [userId] = args as [string];
+    return {
+      query: builder.userPreferences.where('userId', '=', userId),
+    };
+  }
+
+  // ========================================
   // PROJECT QUERIES
   // ========================================
   

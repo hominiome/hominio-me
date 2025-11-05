@@ -193,6 +193,7 @@ export function createServerMutators(
           icon: string;
           displayComponent: string;
           priority: string;
+          imageUrl?: string;
         }
       ) => {
         // Check authentication
@@ -510,6 +511,73 @@ export function createServerMutators(
 
         // Delegate to client mutator
         await clientMutators.cup.removeProject(tx, args);
+      },
+    },
+
+    // ========================================
+    // USER PREFERENCES MUTATORS
+    // ========================================
+
+    userPreferences: {
+      /**
+       * Create user preferences (server-side)
+       * User can only create their own preferences
+       */
+      create: async (
+        tx: AnyTransaction,
+        args: {
+          id: string;
+          userId: string;
+          newsletterSubscribed: string;
+          updatedAt: string;
+        }
+      ) => {
+        // Check authentication
+        if (!authData?.sub) {
+          throw new Error('Unauthorized: Must be logged in to create preferences');
+        }
+
+        // Check if user is creating their own preferences or is admin
+        const userIsAdmin = isAdmin(authData.sub);
+        if (args.userId !== authData.sub && !userIsAdmin) {
+          throw new Error('Forbidden: You can only create your own preferences');
+        }
+
+        // Delegate to client mutator
+        await clientMutators.userPreferences.create(tx, args);
+      },
+
+      /**
+       * Update user preferences (server-side)
+       * User can only update their own preferences
+       */
+      update: async (
+        tx: AnyTransaction,
+        args: {
+          id: string;
+          newsletterSubscribed?: string;
+          updatedAt: string;
+        }
+      ) => {
+        // Check authentication
+        if (!authData?.sub) {
+          throw new Error('Unauthorized: Must be logged in to update preferences');
+        }
+
+        // Verify preferences exist
+        const preferences = await tx.query.userPreferences.where('id', args.id).one();
+        if (!preferences) {
+          throw new Error('User preferences not found');
+        }
+
+        // Check if user is updating their own preferences or is admin
+        const userIsAdmin = isAdmin(authData.sub);
+        if (preferences.userId !== authData.sub && !userIsAdmin) {
+          throw new Error('Forbidden: You can only update your own preferences');
+        }
+
+        // Delegate to client mutator
+        await clientMutators.userPreferences.update(tx, args);
       },
     },
   } as const;
