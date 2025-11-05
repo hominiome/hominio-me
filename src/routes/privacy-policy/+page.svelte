@@ -1,5 +1,6 @@
 <script>
 	import TextWrap from '$lib/components/TextWrap.svelte';
+	import Footer from '$lib/components/Footer.svelte';
 </script>
 
 <TextWrap>
@@ -309,4 +310,7 @@
 		periods - remain unaffected.
 	</p>
 </TextWrap>
+
+<!-- Footer -->
+<Footer />
 

@@ -1,5 +1,6 @@
 <script>
 	import TextWrap from '$lib/components/TextWrap.svelte';
+	import Footer from '$lib/components/Footer.svelte';
 </script>
 
 <TextWrap>
@@ -23,8 +24,8 @@
 
 	<h2>Contact</h2>
 	<p>
-		Phone: +49 89 55926086<br />
-		E-mail: hello@hominio.me
+		Phone: +49 89 38466851<br />
+		E-mail: architects@visioncreator.earth
 	</p>
 
 	<h2>VAT ID</h2>
@@ -64,9 +65,12 @@
 		DSA as follows:
 	</p>
 	<p>
-		E-mail: hello@hominio.me<br />
-		Phone: +49 89 55926086
+		E-mail: architects@visioncreator.earth<br />
+		Phone: +49 89 38466851
 	</p>
 	<p>The languages available for contact are: German, English.</p>
 </TextWrap>
+
+<!-- Footer -->
+<Footer />
 
