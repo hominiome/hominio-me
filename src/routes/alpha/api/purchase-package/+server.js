@@ -64,32 +64,31 @@ export async function POST({ request }) {
   const now = new Date().toISOString();
   const selectedPackage = PACKAGES[packageType];
 
-  // All identities are now universal (cupId = null)
-  // Ignore cupId from request if provided
-  const identityCupId = null;
-
   try {
-    // Check if user already has a universal identity (all identities are universal now)
-    const existingIdentity = await zeroDb
+    // Check for all identities (explorer and voting identities can coexist)
+    const existingIdentities = await zeroDb
       .selectFrom("userIdentities")
       .selectAll()
       .where("userId", "=", userId)
-      .where("cupId", "is", null)
-      .executeTakeFirst();
+      .execute();
 
-    if (existingIdentity) {
-      // User already has an identity - check if this is a valid upgrade
-      const currentIdentityType = existingIdentity.identityType;
+    // Find specific identity types
+    const existingVotingIdentity = existingIdentities.find(id => 
+      id.identityType === packageType || 
+      (id.votingWeight > 0 && ["hominio", "founder", "angel"].includes(id.identityType))
+    );
 
-      // Cannot select the same identity
-      if (currentIdentityType === packageType) {
+    if (existingVotingIdentity) {
+      // User already has a voting identity - check if this is the same one
+      if (existingVotingIdentity.identityType === packageType) {
         return json(
           { error: `You already have ${selectedPackage.name}` },
           { status: 400 }
         );
       }
 
-      // Check if this is a valid upgrade path
+      // Check if this is a valid upgrade path (founder/angel upgrades)
+      const currentIdentityType = existingVotingIdentity.identityType;
       const validUpgrades = UPGRADE_PATHS[currentIdentityType] || [];
       if (!validUpgrades.includes(packageType)) {
         return json(
@@ -100,8 +99,7 @@ export async function POST({ request }) {
         );
       }
 
-      // Update existing identity (upgrade)
-      // Handle both universal (cupId IS NULL) and cup-specific identities
+      // Update existing voting identity (upgrade from hominio to founder/angel)
       const updateQuery = zeroDb
         .updateTable("userIdentities")
         .set({
@@ -109,9 +107,10 @@ export async function POST({ request }) {
           votingWeight: selectedPackage.votingWeight,
           upgradedFrom: currentIdentityType,
           selectedAt: now, // Update selection time on upgrade
+          expiresAt: null, // Clear expiration on upgrade (new purchase)
         })
         .where("userId", "=", userId)
-        .where("id", "=", existingIdentity.id);
+        .where("id", "=", existingVotingIdentity.id);
 
       await updateQuery.execute();
 
@@ -122,7 +121,6 @@ export async function POST({ request }) {
         .values({
           id: purchaseId,
           userId,
-          cupId: null, // All identities are universal
           identityType: selectedPackage.packageType,
           price: selectedPackage.price,
           purchasedAt: now,
@@ -179,7 +177,6 @@ export async function POST({ request }) {
           identityType: selectedPackage.packageType,
           votingWeight: selectedPackage.votingWeight,
           name: selectedPackage.name,
-          cupId: null, // All identities are universal
           upgradedFrom: currentIdentityType,
         },
         message: `Successfully upgraded to ${selectedPackage.name}`,
@@ -193,11 +190,11 @@ export async function POST({ request }) {
         .values({
           id: identityId,
           userId,
-          cupId: null, // All identities are universal
           identityType: selectedPackage.packageType,
           votingWeight: selectedPackage.votingWeight,
           selectedAt: now,
           upgradedFrom: null,
+          expiresAt: null, // No expiration for direct purchases
         })
         .execute();
 
@@ -208,7 +205,6 @@ export async function POST({ request }) {
         .values({
           id: purchaseId,
           userId,
-          cupId: null, // All identities are universal
           identityType: selectedPackage.packageType,
           price: selectedPackage.price,
           purchasedAt: now,
@@ -265,7 +261,6 @@ export async function POST({ request }) {
           identityType: selectedPackage.packageType,
           votingWeight: selectedPackage.votingWeight,
           name: selectedPackage.name,
-          cupId: null, // All identities are universal
         },
         message: `Successfully purchased ${selectedPackage.name}`,
       });

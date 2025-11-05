@@ -17,7 +17,8 @@ const SECRET_POLAR_API_KEY = env.SECRET_POLAR_API_KEY || "";
 const SECRET_POLAR_WEBHOOK_SECRET = env.SECRET_POLAR_WEBHOOK_SECRET || "";
 // PUBLIC_ vars are accessible in both client and server
 // Fallback to localhost/sandbox product ID if not set (for development)
-const PUBLIC_POLAR_PRODUCT_ID_1 = publicEnv.PUBLIC_POLAR_PRODUCT_ID_1 || "aa8e6119-7f7f-4ce3-abde-666720be9fb3";
+const PUBLIC_POLAR_PRODUCT_ID_1 =
+  publicEnv.PUBLIC_POLAR_PRODUCT_ID_1 || "aa8e6119-7f7f-4ce3-abde-666720be9fb3";
 
 // Detect environment - only use secure cookies in production
 const isProduction = process.env.NODE_ENV === "production";
@@ -29,7 +30,7 @@ const authDb = getAuthDb();
 // Initialize Polar client if API key is provided
 // Only configure Polar if credentials are provided to prevent build-time errors
 // Automatically use sandbox in development, production in production
-const polarClient = SECRET_POLAR_API_KEY
+export const polarClient = SECRET_POLAR_API_KEY
   ? new Polar({
       accessToken: SECRET_POLAR_API_KEY,
       server: isProduction ? undefined : "sandbox", // Sandbox in dev, production in prod (undefined = production)
@@ -80,7 +81,7 @@ export const auth = betterAuth({
                           slug: "I-am-Hominio", // Custom slug for easy reference in Checkout URL
                         },
                       ],
-                      successUrl: "/alpha/polar-test/success?checkout_id={CHECKOUT_ID}",
+                      successUrl: "/alpha",
                       authenticatedUsersOnly: true, // Require user to be logged in
                     }),
                   ]

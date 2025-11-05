@@ -181,19 +181,15 @@
       if ($session.data?.user) {
         const userId = $session.data.user.id;
 
-        // Query user's universal identities (all identities are now universal, cupId = null)
+        // Query user's identities (all identities are universal)
         const userIdentityQuery = identitiesByUser(userId);
         userIdentityView = zero.materialize(userIdentityQuery);
 
         userIdentityView.addListener((data) => {
           const identities = Array.from(data);
-          // Find the highest voting weight universal identity (or any universal identity)
-          const universalIdentities = identities.filter(
-            (id) => id.cupId === null
-          );
-          if (universalIdentities.length > 0) {
+          if (identities.length > 0) {
             // Get the identity with highest voting weight
-            userIdentity = universalIdentities.reduce((prev, curr) => 
+            userIdentity = identities.reduce((prev, curr) => 
               (curr.votingWeight > prev.votingWeight) ? curr : prev
             );
           } else {

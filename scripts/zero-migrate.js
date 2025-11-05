@@ -92,44 +92,37 @@ async function createTables() {
     console.log("✅ CupMatch table created\n");
 
     // 4. UserIdentities table
-    // cupId is nullable: null = universal identity (applies to all cups), otherwise cup-specific
+    // All identities are universal (apply to all cups)
+    // expiresAt is nullable: null = no expiration, otherwise ISO timestamp when identity expires
     console.log("👤 Creating userIdentities table...");
     await db.schema
       .createTable("userIdentities")
       .ifNotExists()
       .addColumn("id", "text", (col) => col.primaryKey())
       .addColumn("userId", "text", (col) => col.notNull())
-      .addColumn("cupId", "text") // Nullable for universal identities (null = universal, otherwise cup-specific)
       .addColumn("identityType", "text", (col) => col.notNull())
       .addColumn("votingWeight", "integer", (col) => col.notNull())
       .addColumn("selectedAt", "text", (col) => col.notNull())
       .addColumn("upgradedFrom", "text", (col) => col.notNull().defaultTo(""))
+      .addColumn("expiresAt", "text") // Nullable: ISO timestamp when identity expires (null = no expiration)
       .execute();
 
-    // Create index for efficient lookups (universal or cup-specific)
+    // Create index for efficient lookups by userId
     await sql`
-      CREATE INDEX IF NOT EXISTS idx_userIdentities_user_cup 
-      ON "userIdentities"("userId", "cupId")
-    `.execute(db);
-
-    // Create index for universal identity lookups (cupId IS NULL)
-    await sql`
-      CREATE INDEX IF NOT EXISTS idx_userIdentities_user_universal 
-      ON "userIdentities"("userId") 
-      WHERE "cupId" IS NULL
+      CREATE INDEX IF NOT EXISTS idx_userIdentities_user 
+      ON "userIdentities"("userId")
     `.execute(db);
 
     console.log("✅ UserIdentities table created\n");
 
     // 5. IdentityPurchase table
-    // cupId is nullable: null = universal identity purchase, otherwise cup-specific
+    // All purchases are universal (apply to all cups)
     console.log("💰 Creating identityPurchase table...");
     await db.schema
       .createTable("identityPurchase")
       .ifNotExists()
       .addColumn("id", "text", (col) => col.primaryKey())
       .addColumn("userId", "text", (col) => col.notNull())
-      .addColumn("cupId", "text") // Nullable for universal identities (null = universal, otherwise cup-specific)
       .addColumn("identityType", "text", (col) => col.notNull())
       .addColumn("price", "integer", (col) => col.notNull())
       .addColumn("purchasedAt", "text", (col) => col.notNull())
@@ -304,8 +297,150 @@ async function setupReplication() {
   console.log("✅ Replication setup complete\n");
 }
 
+/**
+ * Add expiresAt column to userIdentities table if it doesn't exist
+ * This is a migration for existing databases
+ */
+async function addExpiresAtColumn() {
+  console.log("🔄 Adding expiresAt column to userIdentities table...\n");
+
+  try {
+    // Check if column exists
+    const columnExists = await sql`
+      SELECT column_name 
+      FROM information_schema.columns 
+      WHERE table_name = 'userIdentities' 
+      AND column_name = 'expiresAt'
+    `.execute(db);
+
+    if (columnExists.rows.length === 0) {
+      // Column doesn't exist, add it
+      await sql`
+        ALTER TABLE "userIdentities" 
+        ADD COLUMN "expiresAt" text
+      `.execute(db);
+      console.log("✅ Added expiresAt column to userIdentities table\n");
+    } else {
+      console.log("ℹ️  expiresAt column already exists\n");
+    }
+  } catch (error) {
+    console.error("❌ Error adding expiresAt column:", error.message);
+    throw error;
+  }
+}
+
+/**
+ * Add subscriptionId column to userIdentities table if it doesn't exist
+ * This stores the Polar subscription ID for subscription-based identities (hominio)
+ */
+async function addSubscriptionIdColumn() {
+  console.log("🔄 Adding subscriptionId column to userIdentities table...\n");
+
+  try {
+    // Check if column exists
+    const columnExists = await sql`
+      SELECT column_name 
+      FROM information_schema.columns 
+      WHERE table_name = 'userIdentities' 
+      AND column_name = 'subscriptionId'
+    `.execute(db);
+
+    if (columnExists.rows.length === 0) {
+      // Column doesn't exist, add it
+      await sql`
+        ALTER TABLE "userIdentities" 
+        ADD COLUMN "subscriptionId" text
+      `.execute(db);
+      console.log("✅ Added subscriptionId column to userIdentities table\n");
+    } else {
+      console.log("ℹ️  subscriptionId column already exists\n");
+    }
+  } catch (error) {
+    console.error("❌ Error adding subscriptionId column:", error.message);
+    throw error;
+  }
+}
+
+/**
+ * Remove cupId column from userIdentities table if it exists
+ * All identities are now universal (cupId = null)
+ */
+async function removeCupIdFromUserIdentities() {
+  console.log("🔄 Removing cupId column from userIdentities table...\n");
+
+  try {
+    // Check if column exists
+    const columnExists = await sql`
+      SELECT column_name 
+      FROM information_schema.columns 
+      WHERE table_name = 'userIdentities' 
+      AND column_name = 'cupId'
+    `.execute(db);
+
+    if (columnExists.rows.length > 0) {
+      // Column exists, drop it
+      await sql`
+        ALTER TABLE "userIdentities" 
+        DROP COLUMN "cupId"
+      `.execute(db);
+      console.log("✅ Removed cupId column from userIdentities table\n");
+    } else {
+      console.log(
+        "ℹ️  cupId column doesn't exist in userIdentities (already removed)\n"
+      );
+    }
+  } catch (error) {
+    console.error(
+      "❌ Error removing cupId column from userIdentities:",
+      error.message
+    );
+    throw error;
+  }
+}
+
+/**
+ * Remove cupId column from identityPurchase table if it exists
+ * All identities are now universal (cupId = null)
+ */
+async function removeCupIdFromIdentityPurchase() {
+  console.log("🔄 Removing cupId column from identityPurchase table...\n");
+
+  try {
+    // Check if column exists
+    const columnExists = await sql`
+      SELECT column_name 
+      FROM information_schema.columns 
+      WHERE table_name = 'identityPurchase' 
+      AND column_name = 'cupId'
+    `.execute(db);
+
+    if (columnExists.rows.length > 0) {
+      // Column exists, drop it
+      await sql`
+        ALTER TABLE "identityPurchase" 
+        DROP COLUMN "cupId"
+      `.execute(db);
+      console.log("✅ Removed cupId column from identityPurchase table\n");
+    } else {
+      console.log(
+        "ℹ️  cupId column doesn't exist in identityPurchase (already removed)\n"
+      );
+    }
+  } catch (error) {
+    console.error(
+      "❌ Error removing cupId column from identityPurchase:",
+      error.message
+    );
+    throw error;
+  }
+}
+
 // Run migration
 createTables()
+  .then(() => addExpiresAtColumn())
+  .then(() => addSubscriptionIdColumn())
+  .then(() => removeCupIdFromUserIdentities())
+  .then(() => removeCupIdFromIdentityPurchase())
   .then(() => {
     console.log("✨ Migration completed successfully!");
     process.exit(0);

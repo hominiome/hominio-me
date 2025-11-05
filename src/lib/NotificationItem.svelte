@@ -2,7 +2,11 @@
   import { goto } from "$app/navigation";
   import Icon from "@iconify/svelte";
 
-  let { notification, onMarkRead, showActions = true } = $props<{
+  let {
+    notification,
+    onMarkRead,
+    showActions = true,
+  } = $props<{
     notification: {
       id: string;
       title: string;
@@ -18,27 +22,46 @@
     showActions?: boolean;
   }>();
 
+  // Check if this is an explorer invitation notification with onboarder image
+  // Format: resourceId = "identityId|onboarderImageUrl" for explorer invitations
+  const onboarderImageUrl = $derived(() => {
+    if (
+      notification.resourceType === "identityPurchase" &&
+      notification.icon === "mdi:account-plus" &&
+      notification.resourceId.includes("|")
+    ) {
+      const parts = notification.resourceId.split("|");
+      if (parts.length >= 2) {
+        return parts[1]; // Return the image URL
+      }
+    }
+    return null;
+  });
+
+  // Track if image failed to load
+  let imageLoadFailed = $state(false);
+
   const isRead = $derived(notification.read === "true");
   const createdAt = $derived(new Date(notification.createdAt));
 
   function formatRelativeTime(date: Date): string {
     const now = new Date();
     const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
-    
+
     if (diffInSeconds < 60) {
       return `${diffInSeconds} sec ago`;
     }
-    
+
     const diffInMinutes = Math.floor(diffInSeconds / 60);
     if (diffInMinutes < 60) {
       return `${diffInMinutes} min ago`;
     }
-    
+
     const diffInHours = Math.floor(diffInMinutes / 60);
     if (diffInHours < 24) {
       return `${diffInHours} h ago`;
     }
-    
+
     const diffInDays = Math.floor(diffInHours / 24);
     return `${diffInDays} d ago`;
   }
@@ -48,8 +71,8 @@
   function handleMarkRead() {
     if (isRead) return;
     // Just call the callback - parent handles Zero mutation
-        onMarkRead?.(notification.id);
-      }
+    onMarkRead?.(notification.id);
+  }
 
   function handleKeydown(e: KeyboardEvent) {
     if (e.key === "Enter" || e.key === " ") {
@@ -58,9 +81,48 @@
     }
   }
 
-  function handleActionClick(url: string, event: MouseEvent) {
+  async function handleActionClick(
+    action: { action?: string; url?: string; label?: string },
+    event: MouseEvent
+  ) {
     event.stopPropagation();
-    goto(url);
+
+    // Handle custom action types
+    if (action.action === "renew_subscription") {
+      try {
+        const response = await fetch("/alpha/api/renew-subscription", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            packageType: "hominio",
+          }),
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.error || "Renewal failed");
+        }
+
+        // Success - reload page to reflect updated identity state
+        window.location.reload();
+        return;
+      } catch (error) {
+        console.error("Renewal failed:", error);
+        // On error, navigate to purchase page as fallback
+        if (action.url) {
+          goto(action.url);
+        }
+        return;
+      }
+    }
+
+    // Default: navigate to URL
+    if (action.url) {
+      goto(action.url);
+    }
   }
 
   const actions = $derived(() => {
@@ -73,10 +135,10 @@
   });
 </script>
 
-<div 
-  class="notification-item" 
-  class:read={isRead} 
-  class:modal-mode={!showActions} 
+<div
+  class="notification-item"
+  class:read={isRead}
+  class:modal-mode={!showActions}
   onclick={handleMarkRead}
   onkeydown={handleKeydown}
   role="button"
@@ -84,8 +146,24 @@
   aria-label={isRead ? "Notification (read)" : "Notification (unread)"}
 >
   <div class="notification-content">
-    {#if notification.icon && !showActions}
-      <div class="notification-icon-above" class:thumb-down={notification.icon === "mdi:thumb-down"}>
+    {#if onboarderImageUrl() && !showActions && !imageLoadFailed}
+      <!-- Display onboarder's profile image for explorer invitation -->
+      <div class="notification-icon-above profile-image-container">
+        <img
+          src={onboarderImageUrl()}
+          alt="Inviter profile"
+          class="profile-image"
+          onerror={() => {
+            // Fallback to icon if image fails to load
+            imageLoadFailed = true;
+          }}
+        />
+      </div>
+    {:else if notification.icon && !showActions}
+      <div
+        class="notification-icon-above"
+        class:thumb-down={notification.icon === "mdi:thumb-down"}
+      >
         <Icon icon={notification.icon} />
       </div>
     {/if}
@@ -96,13 +174,13 @@
     <time class="notification-time" datetime={notification.createdAt}>
       {relativeTime}
     </time>
-    
+
     {#if actions().length > 0 && showActions}
       <div class="actions-container">
         {#each actions() as action}
           <button
             class="action-button"
-            onclick={(e) => handleActionClick(action.url, e)}
+            onclick={(e) => handleActionClick(action, e)}
           >
             {action.label}
           </button>
@@ -180,6 +258,23 @@
   .notification-icon-above :global(svg) {
     width: 3rem;
     height: 3rem;
+  }
+
+  .profile-image-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    margin-bottom: 1rem;
+  }
+
+  .profile-image {
+    width: 4rem;
+    height: 4rem;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 3px solid #4ecdc4;
+    box-shadow: 0 4px 12px rgba(78, 205, 196, 0.2);
   }
 
   .notification-title {

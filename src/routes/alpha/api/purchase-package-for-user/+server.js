@@ -5,14 +5,13 @@ import { requireAdmin } from "$lib/api-helpers.server.js";
 import { zeroDb } from "$lib/db.server.js";
 import { getNotificationConfig } from "$lib/notification-helpers.server.js";
 
-// Package definitions
+// Package definitions - All identities are now universal
 const PACKAGES = {
   hominio: {
     packageType: "hominio",
     votingWeight: 1,
     name: "❤︎ I am Hominio",
     price: 1200, // Price in cents: 1200 = 12.00€/year (~14$ incl. taxes + VAT)
-    isUniversal: true, // Universal identity - applies to all cups (cupId = null)
     description: "Yearly Membership - Unlimited voting access to all cups",
   },
   founder: {
@@ -20,14 +19,12 @@ const PACKAGES = {
     votingWeight: 5,
     name: "Hominio Founder",
     price: 1000, // Price in cents: 1000 = 10.00€
-    isUniversal: false, // Cup-specific identity
   },
   angel: {
     packageType: "angel",
     votingWeight: 10,
     name: "Hominio Angel",
     price: 10000, // Price in cents: 10000 = 100.00€
-    isUniversal: false, // Cup-specific identity
   },
 };
 
@@ -42,7 +39,7 @@ export async function POST({ request }) {
   // Require admin
   await requireAdmin(request);
 
-  const { userId, packageType, cupId } = await request.json();
+  const { userId, packageType } = await request.json();
 
   if (!userId) {
     return json({ error: "userId is required" }, { status: 400 });
@@ -55,63 +52,34 @@ export async function POST({ request }) {
     );
   }
 
-  if (!cupId) {
-    return json(
-      { error: "cupId is required" },
-      { status: 400 }
-    );
-  }
-
   const now = new Date().toISOString();
   const selectedPackage = PACKAGES[packageType];
 
   try {
-    // Validate cup exists
-    const cup = await zeroDb
-      .selectFrom("cup")
-      .selectAll()
-      .where("id", "=", cupId)
-      .executeTakeFirst();
-
-    if (!cup) {
-      return json(
-        { error: "Cup not found" },
-        { status: 404 }
-      );
-    }
-
-    // Check if cup has expired and close it if needed
-    const { checkAndCloseExpiredCups } = await import("$lib/expiry-checker.server.js");
-    await checkAndCloseExpiredCups([cup]);
-    
-    // Re-fetch cup in case it was just closed
-    const updatedCup = await zeroDb
-      .selectFrom("cup")
-      .selectAll()
-      .where("id", "=", cupId)
-      .executeTakeFirst();
-
-    // Check if user already has an identity for this cup
-    const existingIdentity = await zeroDb
+    // Check for all identities (explorer and voting identities can coexist)
+    const existingIdentities = await zeroDb
       .selectFrom("userIdentities")
       .selectAll()
       .where("userId", "=", userId)
-      .where("cupId", "=", cupId)
-      .executeTakeFirst();
+      .execute();
 
-    if (existingIdentity) {
-      // User already has an identity - check if this is a valid upgrade
-      const currentIdentityType = existingIdentity.identityType;
+    // Find specific identity types
+    const existingVotingIdentity = existingIdentities.find(id => 
+      id.identityType === packageType || 
+      (id.votingWeight > 0 && ["hominio", "founder", "angel"].includes(id.identityType))
+    );
 
-      // Cannot select the same identity
-      if (currentIdentityType === packageType) {
+    if (existingVotingIdentity) {
+      // User already has a voting identity - check if this is the same one
+      if (existingVotingIdentity.identityType === packageType) {
         return json(
           { error: `User already has ${selectedPackage.name}` },
           { status: 400 }
         );
       }
 
-      // Check if this is a valid upgrade path
+      // Check if this is a valid upgrade path (founder/angel upgrades)
+      const currentIdentityType = existingVotingIdentity.identityType;
       const validUpgrades = UPGRADE_PATHS[currentIdentityType] || [];
       if (!validUpgrades.includes(packageType)) {
         return json(
@@ -122,7 +90,7 @@ export async function POST({ request }) {
         );
       }
 
-      // Update existing identity (upgrade)
+      // Update existing voting identity (upgrade from hominio to founder/angel)
       await zeroDb
         .updateTable("userIdentities")
         .set({
@@ -130,9 +98,10 @@ export async function POST({ request }) {
           votingWeight: selectedPackage.votingWeight,
           upgradedFrom: currentIdentityType,
           selectedAt: now, // Update selection time on upgrade
+          expiresAt: null, // Clear expiration on upgrade (new purchase)
         })
         .where("userId", "=", userId)
-        .where("cupId", "=", cupId)
+        .where("id", "=", existingVotingIdentity.id)
         .execute();
 
       // Create purchase record for upgrade
@@ -142,17 +111,16 @@ export async function POST({ request }) {
         .values({
           id: purchaseId,
           userId,
-          cupId,
           identityType: selectedPackage.packageType,
           price: selectedPackage.price,
           purchasedAt: now,
-          userIdentityId: existingIdentity.id,
+          userIdentityId: existingVotingIdentity.id,
         })
         .execute();
 
       // Create notification for identity purchase
       const notificationId = nanoid();
-      const isHominio = selectedPackage.name === "I am Hominio";
+      const isHominio = selectedPackage.name.includes("I am Hominio");
       const isFounder = selectedPackage.packageType === "founder";
       const identityName = isHominio ? "Hominio" : selectedPackage.name.replace("Hominio ", "");
       
@@ -160,7 +128,7 @@ export async function POST({ request }) {
       const notificationSubtype = isHominio ? "hominio" : isFounder ? "founder" : "other";
       const notificationConfig = getNotificationConfig("identityPurchase", notificationSubtype, {
         identityName,
-        cupName: updatedCup.name,
+        cupName: "All Cups", // All identities are universal now
       });
       
       await zeroDb
@@ -194,7 +162,7 @@ export async function POST({ request }) {
         message: `Successfully upgraded user to ${selectedPackage.name}`,
       });
     } else {
-      // No existing identity for this cup - create new one
+      // No existing voting identity - create new one
       const identityId = nanoid();
 
       await zeroDb
@@ -202,11 +170,11 @@ export async function POST({ request }) {
         .values({
           id: identityId,
           userId,
-          cupId,
           identityType: selectedPackage.packageType,
           votingWeight: selectedPackage.votingWeight,
           selectedAt: now,
           upgradedFrom: null,
+          expiresAt: null, // No expiration for direct purchases
         })
         .execute();
 
@@ -217,7 +185,6 @@ export async function POST({ request }) {
         .values({
           id: purchaseId,
           userId,
-          cupId,
           identityType: selectedPackage.packageType,
           price: selectedPackage.price,
           purchasedAt: now,
@@ -227,7 +194,7 @@ export async function POST({ request }) {
 
       // Create notification for identity purchase
       const notificationId = nanoid();
-      const isHominio = selectedPackage.name === "I am Hominio";
+      const isHominio = selectedPackage.name.includes("I am Hominio");
       const isFounder = selectedPackage.packageType === "founder";
       const identityName = isHominio ? "Hominio" : selectedPackage.name.replace("Hominio ", "");
       
@@ -235,7 +202,7 @@ export async function POST({ request }) {
       const notificationSubtype = isHominio ? "hominio" : isFounder ? "founder" : "other";
       const notificationConfig = getNotificationConfig("identityPurchase", notificationSubtype, {
         identityName,
-        cupName: updatedCup.name,
+        cupName: "All Cups", // All identities are universal now
       });
       
       await zeroDb

@@ -6,15 +6,24 @@
   import { useZero } from "$lib/zero-utils";
   import { formatPrizePool } from "$lib/prizePoolUtils.js";
   import QRCodeDisplay from "$lib/QRCodeDisplay.svelte";
-  import { allProjects, purchasesByUser, identitiesByUser, votesByUser, allMatches, allCups } from "$lib/synced-queries";
+  import Modal from "$lib/Modal.svelte";
+  import { page } from "$app/stores";
+  import {
+    allProjects,
+    purchasesByUser,
+    identitiesByUser,
+    votesByUser,
+    allMatches,
+    allCups,
+  } from "$lib/synced-queries";
 
   // Session data from layout
   let { data } = $props();
-  
+
   // Get the public profile URL
   let profileUrl = $derived(
-    browser && data.session?.id 
-      ? `${window.location.origin}/alpha/user/${data.session.id}` 
+    browser && data.session?.id
+      ? `${window.location.origin}/alpha/user/${data.session.id}`
       : ""
   );
 
@@ -38,8 +47,94 @@
     goto("/alpha");
   }
 
+  let canceling = $state(false);
+  let cancelError = $state("");
+  let cancelSuccess = $state("");
+  let cancelPackageType = $state<string | null>(null);
+
+  // Detect end subscription modal from URL
+  const showCancelModal = $derived(
+    $page.url.searchParams.get("modal") === "cancel-subscription"
+  );
+  const modalPackageType = $derived(
+    $page.url.searchParams.get("packageType") || null
+  );
+
+  // Set end subscription actions for layout to pick up
+  $effect(() => {
+    if (browser && showCancelModal && modalPackageType) {
+      (window as any).__cancelSubscriptionActions = {
+        handleCancel: handleCancelModalClose,
+        handleConfirm: confirmCancelSubscription,
+      };
+    } else {
+      delete (window as any).__cancelSubscriptionActions;
+    }
+  });
+
+  function requestCancelSubscription(packageType: string) {
+    const url = new URL($page.url);
+    url.searchParams.set("modal", "cancel-subscription");
+    url.searchParams.set("packageType", packageType);
+    goto(url.pathname + url.search, { replaceState: false });
+  }
+
+  function handleCancelModalClose() {
+    const url = new URL($page.url);
+    url.searchParams.delete("modal");
+    url.searchParams.delete("packageType");
+    goto(url.pathname + url.search, { replaceState: true });
+  }
+
+  async function confirmCancelSubscription() {
+    if (!modalPackageType || canceling) return;
+
+    canceling = true;
+    cancelError = "";
+    cancelSuccess = "";
+
+    try {
+      const response = await fetch("/alpha/api/cancel-subscription", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          packageType: modalPackageType,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Cancel failed");
+      }
+
+      cancelSuccess =
+        "Subscription ended successfully. Access will continue until the end of your billing period.";
+      handleCancelModalClose();
+      // Reload page to reflect updated identity state
+      setTimeout(() => {
+        window.location.reload();
+      }, 2000);
+    } catch (error) {
+      console.error("Cancel failed:", error);
+      cancelError =
+        error instanceof Error
+          ? error.message
+          : "Cancel failed. Please try again.";
+      setTimeout(() => {
+        cancelError = "";
+      }, 5000);
+    } finally {
+      canceling = false;
+    }
+  }
+
   function getIdentityLabel(identityType: string) {
     switch (identityType) {
+      case "explorer":
+        return "Explorer";
       case "hominio":
         return "I am Hominio";
       case "founder":
@@ -50,6 +145,65 @@
         return identityType;
     }
   }
+
+  // Calculate countdown for expiring identities
+  function getExpirationCountdown(
+    expiresAt: string | null | undefined
+  ): string | null {
+    if (!expiresAt) return null;
+
+    const expirationDate = new Date(expiresAt);
+    const now = new Date();
+    const diff = expirationDate.getTime() - now.getTime();
+
+    if (diff <= 0) return "Expired";
+
+    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+    const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+    const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+
+    if (days > 0) {
+      return `${days}d ${hours}h`;
+    } else if (hours > 0) {
+      return `${hours}h ${minutes}m`;
+    } else if (minutes > 0) {
+      return `${minutes}m ${seconds}s`;
+    } else {
+      return `${seconds}s`;
+    }
+  }
+
+  // Reactive countdown state - updates every second for identities with expiration
+  let countdowns = $state<Record<string, string | null>>({});
+
+  $effect(() => {
+    if (!browser) return;
+
+    // Update countdowns for all identities with expiration dates
+    const newCountdowns: Record<string, string | null> = {};
+    for (const identity of userIdentities) {
+      if (identity.expiresAt) {
+        newCountdowns[identity.id] = getExpirationCountdown(identity.expiresAt);
+      }
+    }
+    countdowns = newCountdowns;
+
+    // Set up interval to update countdowns every second
+    const interval = setInterval(() => {
+      const updatedCountdowns: Record<string, string | null> = {};
+      for (const identity of userIdentities) {
+        if (identity.expiresAt) {
+          updatedCountdowns[identity.id] = getExpirationCountdown(
+            identity.expiresAt
+          );
+        }
+      }
+      countdowns = updatedCountdowns;
+    }, 1000);
+
+    return () => clearInterval(interval);
+  });
 
   function getCupName(cupId: string) {
     const cup = cups.find((c) => c.id === cupId);
@@ -114,6 +268,17 @@
       if (!userId) {
         loading = false;
         return;
+      }
+
+      // Trigger lazy expiration cleanup when viewing profile
+      try {
+        await fetch("/alpha/api/check-identity-expiry", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ userId }),
+        });
+      } catch (error) {
+        console.warn("Failed to check identity expiry:", error);
       }
 
       // Query user's identities using synced query
@@ -184,8 +349,8 @@
     <div class="profile-header">
       <div class="avatar">
         {#if data.session?.image && !imageFailed}
-          <img 
-            src={data.session.image} 
+          <img
+            src={data.session.image}
             alt={data.session.name}
             onerror={() => (imageFailed = true)}
           />
@@ -197,7 +362,7 @@
       </div>
       <h1 class="profile-name">{data.session?.name || "User"}</h1>
       <p class="profile-email">{data.session?.email}</p>
-      
+
       {#if profileUrl}
         <div class="qr-code-section">
           <QRCodeDisplay data={profileUrl} />
@@ -212,8 +377,18 @@
           disabled={signingOut}
           class="btn-sign-out"
         >
-          <svg class="sign-out-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+          <svg
+            class="sign-out-icon"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
+            />
           </svg>
           {signingOut ? "Signing out..." : "Sign Out"}
         </button>
@@ -222,7 +397,8 @@
       <div class="details-grid">
         <div class="detail-item">
           <span class="detail-label">ID</span>
-          <span class="detail-value detail-mono">{data.session?.id || "—"}</span>
+          <span class="detail-value detail-mono">{data.session?.id || "—"}</span
+          >
         </div>
       </div>
     </div>
@@ -232,6 +408,24 @@
         <p class="loading-text">Loading...</p>
       </div>
     {:else}
+      {#if cancelError}
+        <div class="profile-section">
+          <div
+            class="bg-red/10 border-2 border-red text-red px-6 py-4 rounded-xl text-center font-medium"
+          >
+            {cancelError}
+          </div>
+        </div>
+      {/if}
+      {#if cancelSuccess}
+        <div class="profile-section">
+          <div
+            class="bg-green/10 border-2 border-green text-green px-6 py-4 rounded-xl text-center font-medium"
+          >
+            {cancelSuccess}
+          </div>
+        </div>
+      {/if}
       <div class="profile-section">
         <h2 class="section-title">My Active Identities</h2>
         {#if userIdentities.length === 0}
@@ -244,11 +438,21 @@
         {:else}
           <div class="identities-list">
             {#each userIdentities as identity}
+              {@const hasSubscription =
+                identity.identityType === "hominio" && identity.subscriptionId}
+              {@const isCanceled =
+                identity.expiresAt && new Date(identity.expiresAt) > new Date()}
               <div class="identity-item">
                 <div class="identity-main">
                   <div class="identity-hearts">
-                    <svg class="heart-icon-large" viewBox="0 0 24 24" fill="currentColor">
-                      <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+                    <svg
+                      class="heart-icon-large"
+                      viewBox="0 0 24 24"
+                      fill="currentColor"
+                    >
+                      <path
+                        d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"
+                      />
                     </svg>
                     <span class="heart-count">{identity.votingWeight}</span>
                   </div>
@@ -256,11 +460,46 @@
                     <span class="identity-name">
                       {getIdentityLabel(identity.identityType)}
                     </span>
+                    {#if identity.identityType === "hominio" && hasSubscription}
+                      <span class="identity-subscription text-xs text-[rgba(26,26,78,0.6)] mt-1">
+                        14$/year. excl. VAT
+                      </span>
+                    {/if}
                   </div>
                 </div>
-                {#if identity.upgradedFrom}
+                {#if identity.expiresAt}
+                  <div class="mt-2 flex items-center gap-2">
+                    <span
+                      class="inline-flex items-center px-4 py-1 rounded-full text-xs font-semibold bg-alert-100 text-alert-800 border border-alert-200 whitespace-nowrap"
+                    >
+                      {countdowns[identity.id] || "Calculating..."}
+                    </span>
+                    {#if hasSubscription && isCanceled}
+                      <button
+                        onclick={() =>
+                          requestCancelSubscription(identity.identityType)}
+                        disabled={canceling}
+                        class="px-4 py-2 text-xs font-semibold text-white bg-alert-500 rounded-lg hover:bg-alert-600 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                      >
+                        End Subscription
+                      </button>
+                    {/if}
+                  </div>
+                {:else if identity.upgradedFrom}
                   <div class="identity-upgrade">
                     Upgraded from {getIdentityLabel(identity.upgradedFrom)}
+                  </div>
+                {/if}
+                {#if hasSubscription && !identity.expiresAt}
+                  <div class="mt-2">
+                    <button
+                      onclick={() =>
+                        requestCancelSubscription(identity.identityType)}
+                      disabled={canceling}
+                      class="px-4 py-2 text-xs font-semibold text-white bg-alert-500 rounded-lg hover:bg-alert-600 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                    >
+                      Cancel Subscription
+                    </button>
                   </div>
                 {/if}
               </div>
@@ -279,42 +518,61 @@
           <div class="votes-list">
             {#each votes as vote}
               {@const match = matches.find((m) => m.id === vote.matchId)}
-              {@const cup = match ? cups.find((c) => c.id === match.cupId) : null}
-              {@const votedProject = vote.projectSide === "project1" ? getProjectById(match?.project1Id) : getProjectById(match?.project2Id)}
-              {@const opponentProject = vote.projectSide === "project1" ? getProjectById(match?.project2Id) : getProjectById(match?.project1Id)}
+              {@const cup = match
+                ? cups.find((c) => c.id === match.cupId)
+                : null}
+              {@const votedProject =
+                vote.projectSide === "project1"
+                  ? getProjectById(match?.project1Id)
+                  : getProjectById(match?.project2Id)}
+              {@const opponentProject =
+                vote.projectSide === "project1"
+                  ? getProjectById(match?.project2Id)
+                  : getProjectById(match?.project1Id)}
               <div class="vote-item">
                 <div class="vote-amount">
                   <span class="vote-plus">+</span>
                   <span class="vote-number">{vote.votingWeight || 1}</span>
                 </div>
-                  <div class="vote-details">
-                    {#if votedProject?.id}
-                      <a href="/alpha/projects/{votedProject.id}" class="vote-project-link">
-                        {getProjectName(votedProject.id)}
-                      </a>
-                    {:else}
-                      <span class="vote-project">
-                        {getProjectName(votedProject?.id || "")}
+                <div class="vote-details">
+                  {#if votedProject?.id}
+                    <a
+                      href="/alpha/projects/{votedProject.id}"
+                      class="vote-project-link"
+                    >
+                      {getProjectName(votedProject.id)}
+                    </a>
+                  {:else}
+                    <span class="vote-project">
+                      {getProjectName(votedProject?.id || "")}
+                    </span>
+                  {/if}
+                  <span class="vote-meta">
+                    <span class="vote-cup">{cup?.name || "Unknown Cup"}</span>
+                    {#if match}
+                      <span class="vote-round">
+                        • {getRoundLabel(match.round)}</span
+                      >
+                    {/if}
+                    {#if opponentProject}
+                      <span class="vote-opponent">
+                        vs
+                        {#if opponentProject?.id}
+                          <a
+                            href="/alpha/projects/{opponentProject.id}"
+                            class="vote-opponent-link"
+                          >
+                            {getProjectName(opponentProject.id)}
+                          </a>
+                        {:else}
+                          {opponentProject
+                            ? getProjectName(opponentProject.id)
+                            : "Unknown"}
+                        {/if}
                       </span>
                     {/if}
-                    <span class="vote-meta">
-                      <span class="vote-cup">{cup?.name || "Unknown Cup"}</span>
-                      {#if match}
-                        <span class="vote-round"> • {getRoundLabel(match.round)}</span>
-                      {/if}
-                      {#if opponentProject}
-                        <span class="vote-opponent"> vs 
-                          {#if opponentProject?.id}
-                            <a href="/alpha/projects/{opponentProject.id}" class="vote-opponent-link">
-                              {getProjectName(opponentProject.id)}
-                            </a>
-                          {:else}
-                            {opponentProject ? getProjectName(opponentProject.id) : "Unknown"}
-                          {/if}
-                        </span>
-                      {/if}
-                    </span>
-                  </div>
+                  </span>
+                </div>
               </div>
             {/each}
           </div>
@@ -337,13 +595,16 @@
                       {getIdentityLabel(purchase.identityType)}
                     </span>
                     <span class="purchase-date">
-                      {new Date(purchase.purchasedAt).toLocaleDateString("en-US", {
-                        year: "numeric",
-                        month: "short",
-                        day: "numeric",
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}
+                      {new Date(purchase.purchasedAt).toLocaleDateString(
+                        "en-US",
+                        {
+                          year: "numeric",
+                          month: "short",
+                          day: "numeric",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        }
+                      )}
                     </span>
                   </div>
                   <div class="purchase-price">
@@ -356,9 +617,27 @@
         {/if}
       </div>
     {/if}
-
   </div>
 </div>
+
+<!-- Cancel Subscription Confirmation Modal -->
+{#if showCancelModal && modalPackageType}
+  <Modal
+    open={showCancelModal}
+    onClose={handleCancelModalClose}
+    variant="danger"
+  >
+    <div class="w-full">
+      <h2 class="text-3xl font-bold text-alert-100 mb-4">
+        End Subscription
+      </h2>
+      <p class="text-alert-100/90 mb-4 text-base leading-relaxed">
+        Are you sure you want to end your subscription? Your voting access
+        will continue until the end of your current billing period.
+      </p>
+    </div>
+  </Modal>
+{/if}
 
 <style>
   .profile-container {
@@ -434,11 +713,19 @@
     margin: 1.5rem 0;
     display: flex;
     justify-content: center;
-    padding: 1rem;
-    background: rgba(78, 205, 196, 0.02);
+    align-items: center;
+    padding: 1.5rem;
+    background: rgba(240, 255, 254, 0.5);
     border-radius: 12px;
     width: 100%;
     overflow: hidden;
+    border: 1px solid rgba(78, 205, 196, 0.2);
+  }
+
+  .qr-code-section :global(.qr-container) {
+    background: transparent;
+    padding: 1rem;
+    border-radius: 8px;
   }
 
   @media (max-width: 768px) {
@@ -727,19 +1014,12 @@
     font-style: italic;
   }
 
-  .identity-cup,
-  .purchase-cup {
-    font-size: 0.8125rem;
-    color: #6b7280;
-  }
-
   .identity-upgrade {
     margin-top: 0.5rem;
     font-size: 0.75rem;
     color: #9ca3af;
     font-style: italic;
   }
-
 
   .heart-count {
     position: absolute;
@@ -765,7 +1045,6 @@
     color: #f4d03f;
     white-space: nowrap;
   }
-
 
   @media (max-width: 640px) {
     .profile-container {
@@ -827,4 +1106,3 @@
     }
   }
 </style>
-

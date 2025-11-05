@@ -270,8 +270,8 @@
   }
 
   function getUserVotingWeight(match) {
-    // Get universal identity (all identities are now universal, cupId = null)
-    const identity = userIdentities.find((id) => id.cupId === null && id.votingWeight > 0);
+    // Get voting identity (all identities are universal)
+    const identity = userIdentities.find((id) => id.votingWeight > 0);
     return identity?.votingWeight || 0;
   }
 
@@ -378,13 +378,23 @@
       return;
     }
 
-    // Check if user has a universal voting identity (all identities are now universal, cupId = null)
-    const hasVotingIdentity = userIdentities.some(
-      (id) => id.cupId === null && id.votingWeight > 0
-    );
+    // Check if user has a voting identity (all identities are universal)
+    // Also check that the identity hasn't expired
+    const now = new Date();
+    const hasVotingIdentity = userIdentities.some((id) => {
+      if (id.votingWeight <= 0) return false;
+      
+      // Check expiration: if expiresAt is set and has passed, identity is expired
+      if (id.expiresAt) {
+        const expirationDate = new Date(id.expiresAt);
+        if (now >= expirationDate) return false; // Expired
+      }
+      
+      return true; // Valid voting identity
+    });
     
     if (!hasVotingIdentity) {
-      // User has explorer identity but no voting identity - redirect to purchase page
+      // User has explorer identity but no voting identity (or it's expired) - redirect to purchase page
       goto(`/alpha/purchase?returnUrl=${encodeURIComponent($page.url.pathname + $page.url.search)}`, { replaceState: false });
       return;
     }

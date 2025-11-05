@@ -2,6 +2,7 @@ import { redirect } from "@sveltejs/kit";
 import { auth } from "$lib/auth.server.js";
 import { zeroDb } from "$lib/db.server.js";
 import { isAdmin } from "$lib/admin.server";
+import { checkAndCleanupExpiredIdentities } from "$lib/api-helpers.server.js";
 
 export async function load({ request, url }) {
   // Get session from better-auth
@@ -20,13 +21,15 @@ export async function load({ request, url }) {
   // Admins bypass this check (they don't need explorer identity)
   // Exception: allow access to /alpha/me for profile settings
   if (session?.user && !isPublicRoute && !isAdmin(session.user.id)) {
-    // Check if user has explorer identity (universal, cupId is null)
+    // Check and clean up expired identities before checking explorer identity
+    await checkAndCleanupExpiredIdentities(session.user.id);
+    
+    // Check if user has explorer identity (all identities are universal)
     const explorerIdentity = await zeroDb
       .selectFrom("userIdentities")
       .select(["id"])
       .where("userId", "=", session.user.id)
       .where("identityType", "=", "explorer")
-      .where("cupId", "is", null)
       .executeTakeFirst();
 
     // If no explorer identity, redirect to invite modal

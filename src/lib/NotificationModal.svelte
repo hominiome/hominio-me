@@ -60,7 +60,13 @@
       notification.displayComponent === "PrizePoolDisplay" &&
       notification.resourceType === "identityPurchase"
     ) {
-      return { purchaseId: notification.resourceId };
+      // For explorer invitations, resourceId format is "identityId|onboarderImageUrl"
+      // For regular purchases, resourceId is just the purchaseId
+      // Extract the first part (before |) as purchaseId
+      const purchaseId = notification.resourceId.includes("|")
+        ? notification.resourceId.split("|")[0]
+        : notification.resourceId;
+      return { purchaseId };
     }
 
     if (
@@ -156,7 +162,7 @@
   function markAsRead() {
     if (notification.read === "true") return;
     // Just call the callback - parent handles Zero mutation
-        onMarkRead?.(notification.id);
+    onMarkRead?.(notification.id);
   }
 
   function handleBackdropClick(event: MouseEvent) {
@@ -170,10 +176,49 @@
     onMarkRead?.(id);
   }
 
-  function handleActionClick(url: string) {
+  async function handleActionClick(action: {
+    action?: string;
+    url?: string;
+    label?: string;
+  }) {
+    // Handle custom action types
+    if (action.action === "renew_subscription") {
+      markAsRead();
+      try {
+        const response = await fetch("/alpha/api/renew-subscription", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            packageType: "hominio",
+          }),
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.error || "Renewal failed");
+        }
+
+        // Success - reload page to reflect updated identity state
+        window.location.reload();
+        return;
+      } catch (error) {
+        console.error("Renewal failed:", error);
+        // On error, navigate to purchase page as fallback
+        onClose();
+        goto("/alpha/purchase");
+        return;
+      }
+    }
+
+    // Default: navigate to URL
     markAsRead();
     onClose();
-    goto(url);
+    if (action.url) {
+      goto(action.url);
+    }
   }
 
   function handleClose() {
@@ -222,10 +267,7 @@
   {#if actions().length > 0}
     <div class="actions-container">
       {#each actions() as action}
-        <button
-          class="action-button"
-          onclick={() => handleActionClick(action.url)}
-        >
+        <button class="action-button" onclick={() => handleActionClick(action)}>
           {action.label}
         </button>
       {/each}

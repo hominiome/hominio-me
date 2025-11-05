@@ -1,6 +1,6 @@
 import { json } from "@sveltejs/kit";
 import { nanoid } from "nanoid";
-import { getSession, requireExplorerIdentity } from "$lib/api-helpers.server.js";
+import { getSession, requireExplorerIdentity, checkAndCleanupExpiredIdentities } from "$lib/api-helpers.server.js";
 import { zeroDb } from "$lib/db.server.js";
 import { getNotificationConfig } from "$lib/notification-helpers.server.js";
 import { getMatchEndDate } from "$lib/dateUtils.js";
@@ -104,15 +104,40 @@ export async function POST({ request }) {
       }
     }
 
-    // Check if user has a universal identity (all identities are now universal, cupId = null)
-    const userIdentity = await zeroDb
+    // Check and clean up expired identities before checking voting identity
+    await checkAndCleanupExpiredIdentities(userId);
+    
+    // Check if user has a voting identity (all identities are universal)
+    // Must have votingWeight > 0 (excludes explorer identity)
+    const userIdentities = await zeroDb
       .selectFrom("userIdentities")
       .selectAll()
       .where("userId", "=", userId)
-      .where("cupId", "is", null)
-      .executeTakeFirst();
+      .where("votingWeight", ">", 0) // Only voting identities
+      .execute();
+
+    // Find a valid (non-expired) voting identity
+    const now = new Date();
+    const userIdentity = userIdentities.find((id) => {
+      // Check expiration: if expiresAt is set and has passed, identity is expired
+      if (id.expiresAt) {
+        const expirationDate = new Date(id.expiresAt);
+        if (now >= expirationDate) return false; // Expired
+      }
+      return true; // Valid voting identity
+    });
 
     if (!userIdentity) {
+      // Check if user has any expired identities vs no voting identity at all
+      const hasExpiredIdentity = userIdentities.length > 0;
+      if (hasExpiredIdentity) {
+        return json(
+          {
+            error: "Your voting identity has expired. Please renew your subscription to continue voting.",
+          },
+          { status: 400 }
+        );
+      }
       return json(
         {
           error: "You need a voting identity to vote. Purchase '❤︎ I am Hominio' membership for unlimited voting access to all cups.",

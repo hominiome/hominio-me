@@ -63,26 +63,28 @@ const cupMatch = table('cupMatch')
   .primaryKey('id');
 
 // User identities - tracks which voting weight identity a user has selected
-// cupId is nullable: null = universal identity (applies to all cups), otherwise cup-specific
+// All identities are universal (apply to all cups)
+// expiresAt is nullable: null = no expiration, otherwise ISO timestamp when identity expires
+// subscriptionId is nullable: Polar subscription ID for subscription-based identities (hominio)
 const userIdentities = table('userIdentities')
   .columns({
     id: string(),
     userId: string(), // User ID
-    cupId: string(), // Cup ID (null for universal "I am Hominio" identity)
     identityType: string(), // 'explorer' | 'hominio' | 'founder' | 'angel'
     votingWeight: number(), // 0 (explorer) | 1 | 5 | 10
     selectedAt: string(), // ISO timestamp
     upgradedFrom: string(), // Previous identity type if upgraded
+    expiresAt: string(), // ISO timestamp when identity expires (null = no expiration)
+    subscriptionId: string(), // Polar subscription ID (nullable, only for subscription-based identities)
   })
   .primaryKey('id');
 
 // Identity purchases - tracks purchases of voting identities
-// cupId is nullable: null = universal identity purchase, otherwise cup-specific
+// All purchases are universal (apply to all cups)
 const identityPurchase = table('identityPurchase')
   .columns({
     id: string(),
     userId: string(), // User ID
-    cupId: string(), // Cup ID (null for universal "I am Hominio" identity)
     identityType: string(), // 'hominio' | 'founder' | 'angel'
     price: number(), // Price in cents
     purchasedAt: string(), // ISO timestamp

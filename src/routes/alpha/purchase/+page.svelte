@@ -5,9 +5,7 @@
   import { useZero } from "$lib/zero-utils";
   import { page } from "$app/stores";
   import Loading from "$lib/components/Loading.svelte";
-  import {
-    identitiesByUser,
-  } from "$lib/synced-queries";
+  import { identitiesByUser } from "$lib/synced-queries";
   import { env } from "$env/dynamic/public";
 
   const zeroContext = useZero();
@@ -58,7 +56,6 @@
     newPool: number;
   } | null>(null);
 
-
   // PURCHASE ROUTE IS DISABLED - INVITE-ONLY MODE
   // Redirect all purchase page visits to invite-only page
   // TEMPORARILY DISABLED - Purchase page is now accessible
@@ -79,12 +76,17 @@
   onMount(() => {
     (async () => {
       console.log("[Purchase] onMount started");
-      console.log("[Purchase] Zero ready:", zeroContext.isReady(), "Instance:", !!zeroContext.getInstance());
-      
+      console.log(
+        "[Purchase] Zero ready:",
+        zeroContext.isReady(),
+        "Instance:",
+        !!zeroContext.getInstance()
+      );
+
       // Wait for Zero to be ready (with timeout)
       const maxWaitTime = 10000; // 10 seconds max wait
       const startTime = Date.now();
-      
+
       while (!zeroContext.isReady() || !zeroContext.getInstance()) {
         if (Date.now() - startTime > maxWaitTime) {
           console.error("[Purchase] Zero context timeout - proceeding anyway");
@@ -118,13 +120,15 @@
       console.log("[Purchase] Starting identity query for user:", userId);
 
       try {
-        // Query all identities for user and filter for universal identities (cupId IS NULL)
+        // Query all identities for user (all identities are universal)
         const allIdentitiesQuery = identitiesByUser(userId);
         identityView = zero.materialize(allIdentitiesQuery);
 
         // Set a timeout to ensure loading doesn't hang forever
         const loadingTimeout = setTimeout(() => {
-          console.warn("[Purchase] Identity query timeout after 5s, setting loading = false");
+          console.warn(
+            "[Purchase] Identity query timeout after 5s, setting loading = false"
+          );
           loading = false;
         }, 5000); // 5 second timeout
 
@@ -132,20 +136,19 @@
           clearTimeout(loadingTimeout);
           console.log("[Purchase] Identity query returned:", data);
           const identities = Array.from(data);
-          // Find the highest voting weight universal identity (or any universal identity)
-          const universalIdentities = identities.filter(
-            (id: any) => id.cupId === null
-          );
-          console.log("[Purchase] Universal identities found:", universalIdentities.length);
-          if (universalIdentities.length > 0) {
-            // Get the identity with highest voting weight, or just the first one
-            userIdentity = universalIdentities.reduce((prev: any, curr: any) => 
-              (curr.votingWeight > prev.votingWeight) ? curr : prev
+          console.log("[Purchase] Identities found:", identities.length);
+          if (identities.length > 0) {
+            // Get the identity with highest voting weight
+            userIdentity = identities.reduce((prev: any, curr: any) =>
+              curr.votingWeight > prev.votingWeight ? curr : prev
             );
           } else {
             userIdentity = null;
           }
-          console.log("[Purchase] Setting loading = false, userIdentity:", userIdentity);
+          console.log(
+            "[Purchase] Setting loading = false, userIdentity:",
+            userIdentity
+          );
           loading = false;
         });
       } catch (error) {
@@ -195,12 +198,66 @@
 
   function getPackageStatus(
     packageType: string
-  ): "current" | "available" | "unavailable" {
+  ): "current" | "available" | "unavailable" | "renew" {
     if (!userIdentity) return "available";
-    if (userIdentity.identityType === packageType) return "current";
+    if (userIdentity.identityType === packageType) {
+      // Check if canceled (has expiration date)
+      if (userIdentity.expiresAt) {
+        return "renew";
+      }
+      return "current";
+    }
     if (canUpgradeTo(packageType)) return "available";
     return "unavailable";
   }
+
+  // Get expiration countdown for canceled subscriptions
+  function getExpirationCountdown(
+    expiresAt: string | null | undefined
+  ): string {
+    if (!expiresAt) return "";
+
+    const now = new Date();
+    const expiration = new Date(expiresAt);
+    const diffMs = expiration.getTime() - now.getTime();
+
+    if (diffMs <= 0) return "Expired";
+
+    const days = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+    const hours = Math.floor(
+      (diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)
+    );
+    const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+
+    if (days > 0) {
+      return `${days}d ${hours}h`;
+    } else if (hours > 0) {
+      return `${hours}h ${minutes}m`;
+    } else {
+      return `${minutes}m`;
+    }
+  }
+
+  // Reactive countdown state
+  let countdowns = $state<Record<string, string>>({});
+
+  // Update countdowns every second
+  $effect(() => {
+    if (!userIdentity?.expiresAt) return;
+
+    const updateCountdown = () => {
+      if (userIdentity?.expiresAt) {
+        countdowns[userIdentity.id] = getExpirationCountdown(
+          userIdentity.expiresAt
+        );
+      }
+    };
+
+    updateCountdown();
+    const interval = setInterval(updateCountdown, 1000);
+
+    return () => clearInterval(interval);
+  });
 
   async function purchasePackage(packageType: string) {
     if (purchasing) return;
@@ -215,7 +272,18 @@
       return;
     }
 
-    if (!canUpgradeTo(packageType)) {
+    // Check if this is a renewal (user has this identity with expiration)
+    // Renewals should bypass the canUpgradeTo check
+    const currentIdentity =
+      userIdentity &&
+      userIdentity.identityType === packageType &&
+      userIdentity.expiresAt
+        ? userIdentity
+        : null;
+    const isRenew = !!currentIdentity;
+
+    // Only check canUpgradeTo for non-renewal purchases
+    if (!isRenew && !canUpgradeTo(packageType)) {
       errorMessage = "Upgrade only.";
       setTimeout(() => {
         errorMessage = "";
@@ -227,7 +295,46 @@
     successMessage = "";
     errorMessage = "";
 
-    // Handle Polar checkout for "I am Hominio"
+    // Handle renewal for "I am Hominio" via direct API (no checkout round trip)
+    if (pkg.usesPolar && isRenew) {
+      try {
+        const response = await fetch("/alpha/api/renew-subscription", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            packageType,
+          }),
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.error || "Renewal failed");
+        }
+
+        successMessage = "Subscription renewed successfully!";
+        // Reload page to reflect updated identity state
+        setTimeout(() => {
+          window.location.reload();
+        }, 1500);
+        return;
+      } catch (error) {
+        console.error("Renewal failed:", error);
+        errorMessage =
+          error instanceof Error
+            ? error.message
+            : "Renewal failed. Please try again.";
+        setTimeout(() => {
+          errorMessage = "";
+        }, 5000);
+        purchasing = false;
+        return;
+      }
+    }
+
+    // Handle Polar checkout for new purchases
     if (pkg.usesPolar) {
       try {
         // Redirect to Polar checkout using the configured slug
@@ -260,7 +367,6 @@
         },
         body: JSON.stringify({
           packageType,
-          cupId: null, // All identities are now universal
         }),
       });
 
@@ -367,16 +473,51 @@
           {#each packages.filter((p) => p.packageType === "hominio") as pkg}
             {@const status = getPackageStatus(pkg.packageType)}
             {@const isCurrent = status === "current"}
+            {@const isRenew = status === "renew"}
             {@const isAvailable = status === "available"}
             {@const isUnavailable = status === "unavailable"}
+            {@const hasExpiration =
+              userIdentity?.expiresAt &&
+              userIdentity.identityType === pkg.packageType}
+            {@const countdown = hasExpiration
+              ? countdowns[userIdentity.id] ||
+                getExpirationCountdown(userIdentity.expiresAt)
+              : ""}
 
             <div
-              class="bg-white border-2 rounded-3xl p-8 flex flex-col gap-8 transition-all relative overflow-hidden mb-8 shadow-[0_2px_12px_rgba(26,26,78,0.06)] {isCurrent
+              class="bg-white border-2 rounded-3xl p-8 flex flex-col gap-8 transition-all relative overflow-hidden mb-8 shadow-[0_2px_12px_rgba(26,26,78,0.06)] {isCurrent ||
+              isRenew
                 ? 'bg-gradient-to-br from-[rgba(244,208,63,0.15)] to-[rgba(78,205,196,0.15)] border-[#f4d03f] border-[3px]'
                 : 'border-[rgba(26,26,78,0.1)]'} {isUnavailable
                 ? 'opacity-60'
                 : ''}"
             >
+              <!-- Canceled Badge - Full Triangle Corner -->
+              {#if isRenew && hasExpiration}
+                <div class="absolute top-0 left-0 pointer-events-none z-10">
+                  <!-- Triangle that fills the entire corner using clip-path -->
+                  <div
+                    class="bg-alert-500 text-white font-bold shadow-lg flex items-center justify-center"
+                    style="clip-path: polygon(0 0, 0 140px, 140px 0); width: 140px; height: 140px;"
+                  >
+                    <div
+                      class="flex flex-col items-center justify-center gap-0.5 text-center pb-2"
+                      style="transform: rotate(-45deg); transform-origin: center; margin-top: -8px; margin-left: -20px;"
+                    >
+                      <div
+                        class="text-[10px] md:text-[11px] uppercase tracking-wider font-bold leading-tight"
+                      >
+                        Canceled
+                      </div>
+                      <div
+                        class="text-[16px] md:text-[17px] font-extrabold leading-tight whitespace-nowrap"
+                      >
+                        {countdown}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              {/if}
               <!-- Main Card Content - CSS Grid Layout -->
               <div
                 class="grid grid-cols-1 md:grid-cols-[1fr_2fr] gap-12 w-full overflow-hidden"
@@ -647,16 +788,22 @@
               <!-- Full Width Purchase Button -->
               <button
                 onclick={() => purchasePackage(pkg.packageType)}
-                disabled={purchasing || isCurrent || isUnavailable}
-                class="text-sm font-semibold uppercase tracking-wider py-3.5 px-8 border-2 rounded-lg transition-all duration-200 cursor-pointer w-full mt-2 {isCurrent
-                  ? 'bg-[#f4d03f] text-[#1a1a4e] border-[#f4d03f] cursor-default'
-                  : isUnavailable
-                    ? 'bg-[rgba(26,26,78,0.1)] text-[rgba(26,26,78,0.5)] border-[rgba(26,26,78,0.2)] cursor-not-allowed opacity-60'
-                    : 'bg-[#f4d03f] text-[#1a1a4e] border-[#f4d03f] hover:bg-transparent hover:text-[#f4d03f]'} {purchasing
+                disabled={purchasing ||
+                  (isCurrent && !isRenew) ||
+                  isUnavailable}
+                class="text-sm font-semibold uppercase tracking-wider py-3.5 px-8 border-2 rounded-lg transition-all duration-200 cursor-pointer w-full mt-2 {isRenew
+                  ? 'bg-secondary-500 text-secondary-100 border-secondary-500 hover:bg-transparent hover:border-secondary-500 hover:text-secondary-500'
+                  : isCurrent
+                    ? 'bg-[rgba(244,208,63,0.3)] text-[rgba(26,26,78,0.5)] border-[rgba(244,208,63,0.4)] cursor-not-allowed opacity-60'
+                    : isUnavailable
+                      ? 'bg-[rgba(26,26,78,0.1)] text-[rgba(26,26,78,0.5)] border-[rgba(26,26,78,0.2)] cursor-not-allowed opacity-60'
+                      : 'bg-[#f4d03f] text-[#1a1a4e] border-[#f4d03f] hover:bg-transparent hover:text-[#f4d03f]'} {purchasing
                   ? 'opacity-60 cursor-not-allowed'
                   : ''}"
               >
-                {#if isCurrent}
+                {#if isRenew}
+                  Renew
+                {:else if isCurrent}
                   Current
                 {:else if isAvailable}
                   {pkg.usesPolar ? "Purchase now" : "Select"}

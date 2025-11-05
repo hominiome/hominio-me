@@ -2,6 +2,7 @@ import { json } from "@sveltejs/kit";
 import { auth } from "$lib/auth.server.js";
 import { isAdmin } from "$lib/admin.server";
 import { zeroDb } from "$lib/db.server.js";
+import { nanoid } from "nanoid";
 
 /**
  * Get authenticated session from request
@@ -39,10 +40,73 @@ export async function requireAdmin(request) {
 }
 
 /**
+ * Check and clean up expired identities for a user
+ * This performs "lazy expiration" - removes expired identities when accessed
+ * Only hominio identities expire (founder/angel are one-time purchases)
+ * @param {string} userId - User ID to check
+ * @returns {Promise<void>}
+ */
+export async function checkAndCleanupExpiredIdentities(userId) {
+  const now = new Date().toISOString();
+  
+  // Get all user identities with expiration dates
+  const identitiesWithExpiration = await zeroDb
+    .selectFrom("userIdentities")
+    .selectAll()
+    .where("userId", "=", userId)
+    .where("expiresAt", "is not", null)
+    .execute();
+
+  // Check each identity for expiration
+  for (const identity of identitiesWithExpiration) {
+    if (!identity.expiresAt) continue;
+    
+    const expirationDate = new Date(identity.expiresAt);
+    const nowDate = new Date();
+    
+    // If expired, downgrade hominio to explorer
+    if (nowDate >= expirationDate && identity.identityType === "hominio") {
+      // Ensure explorer identity exists
+      const explorerIdentity = await zeroDb
+        .selectFrom("userIdentities")
+        .select(["id"])
+        .where("userId", "=", userId)
+        .where("identityType", "=", "explorer")
+        .executeTakeFirst();
+
+      if (!explorerIdentity) {
+        // Create explorer identity if it doesn't exist
+        const explorerId = nanoid();
+        await zeroDb
+          .insertInto("userIdentities")
+          .values({
+            id: explorerId,
+            userId,
+            identityType: "explorer",
+            votingWeight: 0,
+            selectedAt: now,
+            upgradedFrom: "hominio",
+          })
+          .execute();
+      }
+
+      // Delete the expired hominio identity
+      await zeroDb
+        .deleteFrom("userIdentities")
+        .where("id", "=", identity.id)
+        .execute();
+    }
+    // Note: Founder/angel identities shouldn't expire (they're one-time purchases)
+    // But if they somehow have expiration dates, we could handle them here too
+  }
+}
+
+/**
  * Require explorer identity - throws 403 if user doesn't have explorer identity
  * Returns session.user if user has explorer identity
  * Note: Admins bypass this check (they don't need explorer identity)
  * Note: This should be called after requireAuth
+ * Note: Automatically cleans up expired identities before checking
  */
 export async function requireExplorerIdentity(request) {
   const user = await requireAuth(request);
@@ -52,13 +116,15 @@ export async function requireExplorerIdentity(request) {
     return user;
   }
   
-  // Check if user has explorer identity (universal, cupId is null)
+  // Check and clean up expired identities before checking explorer identity
+  await checkAndCleanupExpiredIdentities(user.id);
+  
+  // Check if user has explorer identity (all identities are universal)
   const explorerIdentity = await zeroDb
     .selectFrom("userIdentities")
     .select(["id"])
     .where("userId", "=", user.id)
     .where("identityType", "=", "explorer")
-    .where("cupId", "is", null)
     .executeTakeFirst();
 
   if (!explorerIdentity) {

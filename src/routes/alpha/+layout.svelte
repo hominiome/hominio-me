@@ -257,6 +257,7 @@
                       url.searchParams.delete("modal");
                       url.searchParams.delete("projectId");
                       url.searchParams.delete("cupId");
+                      url.searchParams.delete("packageType");
                       goto(url.pathname + url.search, { replaceState: true });
                     }
 
@@ -613,11 +614,9 @@
   const hasExplorerIdentity = $derived(() => {
     // Admins don't need explorer identity
     if (isAdminUser) return true;
-    
+
     if (!userIdentities.length) return false;
-    return userIdentities.some(
-      (id: any) => id.identityType === "explorer" && id.cupId === null
-    );
+    return userIdentities.some((id: any) => id.identityType === "explorer");
   });
 
   // Generic modal system: detect modal param from URL search params
@@ -627,7 +626,13 @@
   // Auto-show invite modal if user doesn't have explorer identity (but allow closing)
   // Also add modal param to URL if not present (except on /me route)
   $effect(() => {
-    if ($session.data?.user && !hasExplorerIdentity && zeroReady && !isAdminUser && browser) {
+    if (
+      $session.data?.user &&
+      !hasExplorerIdentity &&
+      zeroReady &&
+      !isAdminUser &&
+      browser
+    ) {
       // Don't auto-show on /me route - let them access profile settings
       if ($page.url.pathname === "/alpha/me") {
         return;
@@ -642,8 +647,12 @@
   });
 
   const showInviteModal = $derived(
-    modalType === "invite" || 
-    ($session.data?.user && !hasExplorerIdentity && zeroReady && !isAdminUser && $page.url.pathname !== "/alpha/me")
+    modalType === "invite" ||
+      ($session.data?.user &&
+        !hasExplorerIdentity &&
+        zeroReady &&
+        !isAdminUser &&
+        $page.url.pathname !== "/alpha/me")
   );
   const showCreateProjectModal = $derived(modalType === "create-project");
   const showEditProjectModal = $derived(
@@ -656,6 +665,9 @@
   const showEditCupModal = $derived(modalType === "edit-cup" && !!modalCupId);
   const showDeleteProjectModal = $derived(
     modalType === "delete-project" && !!modalProjectId
+  );
+  const showCancelSubscriptionModal = $derived(
+    modalType === "cancel-subscription"
   );
 
   // Ensure only one modal can be open at a time
@@ -696,6 +708,32 @@
     }
   });
 
+  // Reactive state to track cancel subscription modal actions
+  let cancelSubscriptionActions = $state<any>(null);
+
+  // Watch for cancel subscription modal actions updates
+  $effect(() => {
+    if (browser && showCancelSubscriptionModal) {
+      // Check immediately and then periodically for updates
+      const checkActions = () => {
+        const actions = (window as any).__cancelSubscriptionActions;
+        if (actions) {
+          cancelSubscriptionActions = {
+            handleConfirm: actions.handleConfirm,
+            handleCancel: actions.handleCancel,
+          };
+        }
+      };
+
+      checkActions(); // Check immediately
+      const interval = setInterval(checkActions, 100);
+
+      return () => clearInterval(interval);
+    } else {
+      cancelSubscriptionActions = null;
+    }
+  });
+
   // If URL-based modal is opened, close notification modal
   // BUT: Don't close if it's a priority notification (they should stay open)
   $effect(() => {
@@ -710,6 +748,7 @@
         url.searchParams.delete("modal");
         url.searchParams.delete("projectId");
         url.searchParams.delete("cupId");
+        url.searchParams.delete("packageType");
         goto(url.pathname + url.search, { replaceState: true });
       } else {
         // Non-priority notification, close it when URL modal opens
@@ -838,6 +877,16 @@
           label: "Cancel",
           onClick: deleteActions.handleCancel,
           ariaLabel: "Cancel delete",
+          variant: "secondary" as const,
+        },
+      ];
+    }
+    if (showCancelSubscriptionModal && cancelSubscriptionActions) {
+      return [
+        {
+          label: "No",
+          onClick: cancelSubscriptionActions.handleCancel,
+          ariaLabel: "Cancel ending subscription",
           variant: "secondary" as const,
         },
       ];
@@ -1004,6 +1053,16 @@
         },
       ];
     }
+    if (showCancelSubscriptionModal && cancelSubscriptionActions) {
+      return [
+        {
+          label: "Yes",
+          onClick: cancelSubscriptionActions.handleConfirm,
+          ariaLabel: "Confirm ending subscription",
+          variant: "alert" as const,
+        },
+      ];
+    }
 
     // Check for admin modal buttons
     if (adminActions?.showEndRoundModal) {
@@ -1047,6 +1106,7 @@
     !!notificationModal ||
       !!modalType ||
       showDeleteProjectModal ||
+      showCancelSubscriptionModal ||
       adminActions?.showEndRoundModal ||
       adminActions?.showStartCupModal ||
       adminActions?.showStartNextRoundModal

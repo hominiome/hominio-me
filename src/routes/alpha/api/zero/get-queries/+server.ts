@@ -115,23 +115,7 @@ function getQuery(name: string, args: readonly ReadonlyJSONValue[]) {
     };
   }
   
-  if (name === 'identityByUserAndCup') {
-    z.tuple([z.string(), z.string()]).parse(args);
-    const [userId, cupId] = args as [string, string];
-    return {
-      query: builder.userIdentities
-        .where('userId', '=', userId)
-        .where('cupId', '=', cupId),
-    };
-  }
-  
-  if (name === 'identitiesByCup') {
-    z.tuple([z.string()]).parse(args);
-    const [cupId] = args as [string];
-    return {
-      query: builder.userIdentities.where('cupId', '=', cupId),
-    };
-  }
+  // Removed: identityByUserAndCup and identitiesByCup - all identities are now universal
 
   // ========================================
   // VOTE QUERIES

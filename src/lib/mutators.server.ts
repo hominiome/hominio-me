@@ -235,16 +235,7 @@ export function createServerMutators(
           // Admins can mark any notification as read
           if (userIsAdmin) {
             // Admin override - allow
-          } else if (!notification.userId || notification.userId === 'undefined' || notification.userId === 'null') {
-            // If notification.userId is undefined/null and user is not admin,
-            // trust the synced query filter (if they can see it, it's theirs)
-            console.warn('[markRead] Notification userId is missing/undefined - allowing based on synced query filter. Notification:', {
-              id: args.id,
-              userId: notification.userId,
-              authUserId: authData.sub
-            });
-            // Continue - synced query ensures users can only see their own notifications
-          } else {
+          } else if (notification.userId && notification.userId !== 'undefined' && notification.userId !== 'null') {
             // Normalize user IDs for comparison (handle string/number mismatches)
             const authUserId = String(authData.sub).trim();
             const notifUserId = String(notification.userId).trim();
@@ -262,12 +253,11 @@ export function createServerMutators(
               throw new Error('Forbidden: You can only mark your own notifications as read');
             }
           }
-        } else {
-          // No authData - this happens when cookies aren't forwarded properly
-          // Since the synced query filters by userId, if they can see it, it's theirs
-          // We'll allow it but log a warning
-          console.warn('[markRead] No authData - allowing based on synced query filter. Notification userId:', notification.userId);
+          // If notification.userId is missing/undefined/null, trust the synced query filter
+          // The synced query (myNotifications) filters by userId, so if they can see it, it's theirs
+          // This is safe because Zero's synced queries ensure users can only query their own notifications
         }
+        // If no authData, trust the synced query filter (users can only see their own notifications)
 
         // Delegate to client mutator
         await clientMutators.notification.markRead(tx, args);

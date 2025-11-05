@@ -575,7 +575,7 @@
     color: #2da6b4;
   }
 
-  .cup-countdown-badge :global(*) {
+  .cup-countdown-badge :global(span) {
     color: #2da6b4;
     font-size: 0.75rem;
     font-weight: 600;
