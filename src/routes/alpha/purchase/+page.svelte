@@ -35,10 +35,11 @@
       packageType: "founder",
       votingWeight: 5,
       name: "Hominio Founder",
-      price: 10, // 10€
-      priceCents: 1000,
+      price: 987, // 987€
+      priceCents: 98700,
       description: "Founder package - Benefits to be brainstormed", // Placeholder
       usesPolar: false, // Uses legacy purchase flow
+      disabled: true, // Temporarily disabled
     },
   ];
 
@@ -199,6 +200,10 @@
   function getPackageStatus(
     packageType: string
   ): "current" | "available" | "unavailable" | "renew" {
+    // Check if package is disabled
+    const pkg = packages.find((p) => p.packageType === packageType);
+    if (pkg?.disabled) return "unavailable";
+    
     if (!userIdentity) return "available";
     if (userIdentity.identityType === packageType) {
       // Check if canceled (has expiration date)
@@ -819,7 +824,7 @@
             {@const status = getPackageStatus(pkg.packageType)}
             {@const isCurrent = status === "current"}
             {@const isAvailable = status === "available"}
-            {@const isUnavailable = status === "unavailable"}
+            {@const isUnavailable = status === "unavailable" || pkg.disabled}
 
             <div
               class="bg-white border-2 rounded-3xl p-8 flex flex-col gap-6 transition-all relative overflow-hidden mb-8 shadow-[0_2px_12px_rgba(26,26,78,0.06)] {isCurrent
@@ -848,7 +853,7 @@
 
               <button
                 onclick={() => purchasePackage(pkg.packageType)}
-                disabled={purchasing || isCurrent || isUnavailable}
+                disabled={purchasing || isCurrent || isUnavailable || pkg.disabled}
                 class="text-sm font-semibold uppercase tracking-wider py-3.5 px-8 border-2 rounded-lg transition-all duration-200 cursor-pointer w-full mt-2 {isCurrent
                   ? 'bg-[#f4d03f] text-[#1a1a4e] border-[#f4d03f] cursor-default'
                   : isUnavailable

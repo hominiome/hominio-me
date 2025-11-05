@@ -54,6 +54,7 @@
   let votes = $state([]); // All vote records
   let purchases = $state([]); // All identity purchases for this cup
   let userIdentity = $state(null);
+  let userIdentities = $state([]); // All user identities for voting check
   let userVotes = $state([]); // Track which matches user has voted on
   let loading = $state(true);
   let voting = $state(false);
@@ -187,6 +188,7 @@
 
         userIdentityView.addListener((data) => {
           const identities = Array.from(data);
+          userIdentities = identities;
           if (identities.length > 0) {
             // Get the identity with highest voting weight
             userIdentity = identities.reduce((prev, curr) => 
@@ -276,13 +278,24 @@
 
     if (voting) return;
 
-    // Check if user has an identity
-    if (!userIdentity) {
-      // Redirect to invite-only page (purchase is disabled, invite-only mode)
-      // Open invite modal on current route
-      const url = new URL($page.url);
-      url.searchParams.set("modal", "invite");
-      goto(url.pathname + url.search, { replaceState: false });
+    // Check if user has a voting identity (all identities are universal)
+    // Also check that the identity hasn't expired
+    const now = new Date();
+    const hasVotingIdentity = userIdentities.some((id) => {
+      if (id.votingWeight <= 0) return false;
+      
+      // Check expiration: if expiresAt is set and has passed, identity is expired
+      if (id.expiresAt) {
+        const expirationDate = new Date(id.expiresAt);
+        if (now >= expirationDate) return false; // Expired
+      }
+      
+      return true; // Valid voting identity
+    });
+    
+    if (!hasVotingIdentity) {
+      // User has explorer identity but no voting identity (or it's expired) - redirect to purchase page
+      goto(`/alpha/purchase?returnUrl=${encodeURIComponent($page.url.pathname + $page.url.search)}`, { replaceState: false });
       return;
     }
 

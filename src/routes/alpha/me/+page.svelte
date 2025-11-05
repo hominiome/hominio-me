@@ -835,6 +835,10 @@
     align-items: center;
     justify-content: center;
     padding: 2rem;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    overflow-x: hidden;
   }
 
   .profile-card {
@@ -847,6 +851,8 @@
       0 2px 8px rgba(0, 0, 0, 0.05);
     padding: 3rem;
     border: 2px solid #4fc3c3;
+    box-sizing: border-box;
+    overflow-x: hidden;
   }
 
   .profile-header {
@@ -1137,6 +1143,9 @@
     font-size: 0.875rem;
     font-family: monospace;
     cursor: text;
+    min-width: 0;
+    max-width: 100%;
+    box-sizing: border-box;
   }
 
   .link-input:focus {
@@ -1190,14 +1199,19 @@
 
     .link-container {
       flex-direction: column;
+      max-width: 100%;
+      overflow-x: hidden;
     }
 
     .link-input {
       width: 100%;
+      max-width: 100%;
+      box-sizing: border-box;
     }
 
     .copy-button {
       width: 100%;
+      box-sizing: border-box;
     }
   }
 
@@ -1599,10 +1613,13 @@
   @media (max-width: 640px) {
     .profile-container {
       padding: 1rem;
+      overflow-x: hidden;
     }
 
     .profile-card {
       padding: 2rem 1.5rem;
+      max-width: 100%;
+      overflow-x: hidden;
     }
 
     .avatar {
