@@ -179,6 +179,7 @@ export async function startZero(): Promise<void> {
             '--admin-password', ZERO_AUTH_SECRET, // zero-cache-dev requires this
             '--mutate-forward-cookies', // Explicitly enable cookie forwarding for mutators (current preferred)
             '--get-queries-forward-cookies', // Explicitly enable cookie forwarding for queries
+            '--log-level=error', // Only log errors to reduce console noise
         ],
         {
             env: childEnv,

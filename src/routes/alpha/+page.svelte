@@ -443,26 +443,16 @@
 
     // Exclude matches from completed cups
     if (cup?.status === "completed") {
-      console.log("❌ Match NOT active: Cup is completed", {
-        matchId: match.id,
-        cupId: cup?.id,
-        cupStatus: cup?.status,
-      });
       return false;
     }
 
     // Exclude matches that are completed
     if (match.status === "completed") {
-      console.log("❌ Match NOT active: Match is completed", {
-        matchId: match.id,
-        matchStatus: match.status,
-      });
       return false;
     }
 
     // Always return true for voting status (if cup is active)
     if (match.status === "voting" && cup?.status === "active") {
-      console.log("✅ Match is voting:", match.id, "cup found:", !!cup);
       return true;
     }
 
@@ -472,32 +462,11 @@
       const matchInCurrentRound = cup?.currentRound === match.round;
       const shouldBeActive = cupActive && matchInCurrentRound;
 
-      console.log("⏳ Pending match check:", {
-        matchId: match.id,
-        matchRound: match.round,
-        cupFound: !!cup,
-        cupId: cup?.id,
-        cupName: cup?.name,
-        cupStatus: cup?.status,
-        cupCurrentRound: cup?.currentRound,
-        cupActive,
-        matchInCurrentRound,
-        shouldBeActive,
-      });
-
       if (shouldBeActive) {
         return true;
       }
     }
 
-    console.log("❌ Match NOT active:", {
-      id: match.id,
-      status: match.status,
-      cupFound: !!cup,
-      cupStatus: cup?.status,
-      cupCurrentRound: cup?.currentRound,
-      matchRound: match.round,
-    });
     return false;
   }
 

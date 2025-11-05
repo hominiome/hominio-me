@@ -18,230 +18,35 @@
 </script>
 
 {#if hasUnread}
-  <div class="notification-bell-container">
+  <div class="fixed bottom-[calc(56px+0.375rem+0.5rem)] left-0 right-0 w-full z-[1001] flex flex-row items-end justify-center gap-0 p-0 m-0 md:bottom-[calc(56px+0.375rem+0.5rem)] md:left-0 md:right-0 md:transform-none md:w-full md:p-0 md:m-0">
     <!-- Main notification preview -->
       <button
-        class="notification-preview"
+        class="group relative bg-accent-100 border-2 border-accent-500 rounded-full w-fit min-w-[280px] max-w-[500px] h-12 px-4 pb-[env(safe-area-inset-bottom)] flex items-center cursor-pointer transition-all duration-200 ease-out z-[1] overflow-visible mx-auto shadow-[0_2px_8px_rgba(244,208,63,0.15)] hover:bg-accent-500 hover:border-accent-500 hover:-translate-y-px hover:shadow-[0_4px_16px_rgba(244,208,63,0.25)] active:bg-accent-600 active:border-accent-600 active:translate-y-0 active:shadow-[0_2px_8px_rgba(244,208,63,0.2)] md:w-fit md:min-w-[240px] md:max-w-[calc(100vw-2rem)] md:h-11 md:px-3.5 md:pb-[env(safe-area-inset-bottom)] md:rounded-full"
         onclick={handleClick}
         aria-label={`${unreadCount} unread notification${unreadCount === 1 ? "" : "s"}`}
       >
-        <div class="preview-content">
-          <div class="icon-badge-group">
-          <Icon icon="mdi:bell" color="var(--color-accent-500)" class="preview-icon-bell w-5 h-5 text-accent-500 shrink-0 transition-colors duration-200 md:w-[1.125rem] md:h-[1.125rem]" />
-            <div class="preview-text">
+        <div class="flex items-center gap-4 w-full min-h-0 overflow-visible">
+          <div class="flex items-center gap-2 flex-1 min-w-0 relative justify-start md:gap-1.5">
+          <Icon icon="mdi:bell" color="var(--color-accent-500)" class="w-5 h-5 text-accent-500 shrink-0 transition-colors duration-200 md:w-[1.125rem] md:h-[1.125rem] group-hover:text-accent-100" />
+            <div class="flex-1 min-w-0 flex flex-col gap-1 overflow-hidden text-left">
               {#if latestTitle && typeof latestTitle === "string" && latestTitle.trim() !== ""}
-                <div class="preview-title">{latestTitle}</div>
+                <div class="text-sm font-semibold text-accent-700 leading-[1.2] overflow-hidden text-ellipsis whitespace-nowrap transition-colors duration-200 group-hover:text-accent-100 md:text-[0.8125rem] md:text-accent-700">{latestTitle}</div>
               {:else}
                 <!-- Only show fallback if we truly have no title (shouldn't happen normally) -->
-                <div class="preview-title">New notification</div>
+                <div class="text-sm font-semibold text-accent-700 leading-[1.2] overflow-hidden text-ellipsis whitespace-nowrap transition-colors duration-200 group-hover:text-accent-100 md:text-[0.8125rem] md:text-accent-700">New notification</div>
               {/if}
             </div>
             {#if unreadCount > 0}
-              <span class="notification-badge"
+              <span class="bg-accent-500 text-accent-900 rounded-full min-w-6 w-auto h-6 px-2 flex items-center justify-center text-xs font-bold leading-none shrink-0 static ml-auto border-none shadow-[0_2px_4px_rgba(244,208,63,0.2)] outline-none md:min-w-[1.375rem] md:w-auto md:h-[1.375rem] md:text-[0.6875rem] md:px-[0.4375rem] md:static md:rounded-full md:leading-none md:ml-auto md:border-none md:shadow-[0_2px_4px_rgba(244,208,63,0.2)] md:outline-none md:bg-accent-500 md:text-accent-900"
                 >{unreadCount > 99 ? "99+" : unreadCount}</span
               >
             {/if}
           </div>
-          <div class="chevron-icon">
-            <Icon icon="mdi:chevron-up" />
+          <div class="w-6 h-6 text-accent-500 shrink-0 flex items-center justify-center transition-colors duration-200 group-hover:text-accent-100 md:w-5 md:h-5">
+            <Icon icon="mdi:chevron-up" class="w-full h-full" />
           </div>
         </div>
       </button>
   </div>
 {/if}
 
-<style>
-  .notification-bell-container {
-    position: fixed;
-    bottom: calc(56px + 0.375rem + 0.5rem); /* Navbar height + margin + gap */
-    left: 0;
-    right: 0;
-    width: 100%;
-    z-index: 1001;
-    display: flex;
-    flex-direction: row;
-    align-items: flex-end;
-    justify-content: center;
-    gap: 0;
-    padding: 0;
-    margin: 0;
-  }
-
-  .notification-preview {
-    position: relative;
-    background: var(--color-accent-100); /* Accent yellow 100 solid background */
-    border: 2px solid var(--color-accent-500); /* Accent yellow border */
-    border-radius: 9999px; /* Fully rounded */
-    width: fit-content;
-    min-width: 280px;
-    max-width: 500px;
-    height: 48px; /* Slightly smaller than navbar */
-    padding: 0 1rem;
-    padding-bottom: calc(0 + env(safe-area-inset-bottom));
-    display: flex;
-    align-items: center;
-    cursor: pointer;
-    transition: all 0.2s ease-out;
-    z-index: 1;
-    overflow: visible;
-    margin: 0 auto;
-    box-shadow: 0 2px 8px rgba(244, 208, 63, 0.15); /* Subtle shadow with accent yellow */
-  }
-
-  .notification-preview:hover {
-    background: var(--color-accent-500); /* Fill with accent yellow on hover */
-    border-color: var(--color-accent-500);
-    transform: translateY(-1px);
-    box-shadow: 0 4px 16px rgba(244, 208, 63, 0.25);
-  }
-
-  .notification-preview:active {
-    background: var(--color-accent-600); /* Darker accent yellow on click */
-    border-color: var(--color-accent-600);
-    transform: translateY(0);
-    box-shadow: 0 2px 8px rgba(244, 208, 63, 0.2);
-  }
-
-  .preview-content {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-    width: 100%;
-    min-height: 0;
-    overflow: visible;
-  }
-
-  .icon-badge-group {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    flex: 1;
-    min-width: 0;
-    position: relative;
-    justify-content: flex-start;
-  }
-
-  .notification-preview:hover .preview-icon-bell {
-    color: var(--color-accent-100) !important;
-  }
-
-  .notification-badge {
-    background: var(--color-accent-500); /* Accent yellow background */
-    color: var(--color-accent-900); /* Dark accent yellow text for contrast */
-    border-radius: 9999px; /* Fully rounded pill shape */
-    min-width: 1.5rem; /* Smaller width */
-    width: auto;
-    height: 1.5rem; /* Less fat - smaller height */
-    padding: 0 0.5rem; /* Less padding */
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 0.75rem; /* Smaller font */
-    font-weight: 700; /* Slightly less bold */
-    line-height: 1;
-    flex-shrink: 0;
-    position: static;
-    margin-left: auto;
-    border: none; /* No border */
-    box-shadow: 0 2px 4px rgba(244, 208, 63, 0.2);
-    outline: none;
-  }
-
-  .preview-text {
-    flex: 1;
-    min-width: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 0.25rem;
-    overflow: hidden;
-    text-align: left;
-  }
-
-  .preview-title {
-    font-size: 0.875rem;
-    font-weight: 600;
-    color: var(--color-accent-700); /* Dark accent yellow for contrast */
-    line-height: 1.2;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    transition: color 0.2s ease-out;
-  }
-
-  .notification-preview:hover .preview-title {
-    color: var(--color-accent-100); /* Light accent yellow on hover */
-  }
-
-  .chevron-icon {
-    width: 1.5rem;
-    height: 1.5rem;
-    color: var(--color-accent-500); /* Accent yellow */
-    flex-shrink: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: color 0.2s ease-out;
-  }
-
-  .notification-preview:hover .chevron-icon {
-    color: var(--color-accent-100); /* Light accent yellow on hover */
-  }
-
-  .chevron-icon :global(svg) {
-    width: 100%;
-    height: 100%;
-  }
-
-  @media (max-width: 768px) {
-    .notification-bell-container {
-      bottom: calc(56px + 0.375rem + 0.5rem);
-      left: 0;
-      right: 0;
-      transform: none;
-      width: 100%;
-      padding: 0;
-      margin: 0;
-    }
-
-    .notification-preview {
-      width: fit-content;
-      min-width: 240px;
-      max-width: calc(100vw - 2rem);
-      height: 44px;
-      padding: 0 0.875rem;
-      padding-bottom: calc(0 + env(safe-area-inset-bottom));
-      border-radius: 9999px;
-    }
-
-    .icon-badge-group {
-      gap: 0.375rem;
-    }
-
-    .notification-badge {
-      min-width: 1.375rem; /* Smaller on mobile */
-      width: auto;
-      height: 1.375rem; /* Less fat */
-      font-size: 0.6875rem; /* Smaller font */
-      padding: 0 0.4375rem; /* Less padding */
-      position: static;
-      border-radius: 9999px; /* Fully rounded */
-      line-height: 1;
-      margin-left: auto;
-      border: none; /* No border */
-      box-shadow: 0 2px 4px rgba(244, 208, 63, 0.2);
-      outline: none;
-      background: var(--color-accent-500);
-      color: var(--color-accent-900);
-    }
-
-    .preview-title {
-      font-size: 0.8125rem;
-      color: var(--color-accent-700);
-    }
-
-    .chevron-icon {
-      width: 1.25rem;
-      height: 1.25rem;
-    }
-  }
-</style>
