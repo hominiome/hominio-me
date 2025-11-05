@@ -16,7 +16,7 @@
   import {
     allProjects,
     purchasesByCup,
-    identityByUserAndCup,
+    identitiesByUser,
     allVotes,
     votesByUser,
     cupById,
@@ -181,14 +181,21 @@
       if ($session.data?.user) {
         const userId = $session.data.user.id;
 
-        // Query user's identity for this specific cup using synced query
-        const userIdentityQuery = identityByUserAndCup(userId, cupId);
+        // Query user's universal identities (all identities are now universal, cupId = null)
+        const userIdentityQuery = identitiesByUser(userId);
         userIdentityView = zero.materialize(userIdentityQuery);
 
         userIdentityView.addListener((data) => {
           const identities = Array.from(data);
-          if (identities.length > 0) {
-            userIdentity = identities[0];
+          // Find the highest voting weight universal identity (or any universal identity)
+          const universalIdentities = identities.filter(
+            (id) => id.cupId === null
+          );
+          if (universalIdentities.length > 0) {
+            // Get the identity with highest voting weight
+            userIdentity = universalIdentities.reduce((prev, curr) => 
+              (curr.votingWeight > prev.votingWeight) ? curr : prev
+            );
           } else {
             userIdentity = null;
           }

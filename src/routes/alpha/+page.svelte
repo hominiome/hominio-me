@@ -270,8 +270,8 @@
   }
 
   function getUserVotingWeight(match) {
-    // Get identity for the match's cup
-    const identity = userIdentities.find((id) => id.cupId === match.cupId);
+    // Get universal identity (all identities are now universal, cupId = null)
+    const identity = userIdentities.find((id) => id.cupId === null && id.votingWeight > 0);
     return identity?.votingWeight || 0;
   }
 
@@ -378,18 +378,14 @@
       return;
     }
 
-    // Check if user has a voting identity for this cup (exclude explorer identity)
+    // Check if user has a universal voting identity (all identities are now universal, cupId = null)
     const hasVotingIdentity = userIdentities.some(
-      (id) => id.cupId === match.cupId && id.votingWeight > 0
-    );
-    // Also check for universal voting identity (hominio with cupId null)
-    const hasUniversalVotingIdentity = userIdentities.some(
-      (id) => id.cupId === null && id.identityType === "hominio" && id.votingWeight > 0
+      (id) => id.cupId === null && id.votingWeight > 0
     );
     
-    if (!hasVotingIdentity && !hasUniversalVotingIdentity) {
+    if (!hasVotingIdentity) {
       // User has explorer identity but no voting identity - redirect to purchase page
-      goto(`/alpha/purchase?cupId=${match.cupId}&returnUrl=${encodeURIComponent($page.url.pathname + $page.url.search)}`, { replaceState: false });
+      goto(`/alpha/purchase?returnUrl=${encodeURIComponent($page.url.pathname + $page.url.search)}`, { replaceState: false });
       return;
     }
 

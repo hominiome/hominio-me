@@ -7,14 +7,13 @@ import {
 import { zeroDb } from "$lib/db.server.js";
 import { getNotificationConfig } from "$lib/notification-helpers.server.js";
 
-// Package definitions
+// Package definitions - All identities are now universal (cupId = null)
 const PACKAGES = {
   hominio: {
     packageType: "hominio",
     votingWeight: 1,
     name: "❤︎ I am Hominio",
     price: 1200, // Price in cents: 1200 = 12.00€/year (~14$ incl. taxes + VAT)
-    isUniversal: true, // Universal identity - applies to all cups (cupId = null)
     description: "Yearly Membership - Unlimited voting access to all cups",
   },
   founder: {
@@ -22,14 +21,12 @@ const PACKAGES = {
     votingWeight: 5,
     name: "Hominio Founder",
     price: 1000, // Price in cents: 1000 = 10.00€
-    isUniversal: false, // Cup-specific identity
   },
   angel: {
     packageType: "angel",
     votingWeight: 10,
     name: "Hominio Angel",
     price: 10000, // Price in cents: 10000 = 100.00€
-    isUniversal: false, // Cup-specific identity
   },
 };
 
@@ -66,84 +63,19 @@ export async function POST({ request }) {
   const userId = session.user.id;
   const now = new Date().toISOString();
   const selectedPackage = PACKAGES[packageType];
-  const isUniversal = selectedPackage.isUniversal === true;
 
-  // For universal identities (hominio), cupId is not required
-  // For cup-specific identities (founder, angel), cupId is required
-  if (!isUniversal && !cupId) {
-    return json(
-      { error: "cupId is required for cup-specific identities" },
-      { status: 400 }
-    );
-  }
+  // All identities are now universal (cupId = null)
+  // Ignore cupId from request if provided
+  const identityCupId = null;
 
   try {
-    let updatedCup = null;
-
-    // For cup-specific identities, validate cup exists
-    if (!isUniversal) {
-      const cup = await zeroDb
-        .selectFrom("cup")
-        .selectAll()
-        .where("id", "=", cupId)
-        .executeTakeFirst();
-
-      if (!cup) {
-        return json({ error: "Cup not found" }, { status: 404 });
-      }
-
-      // Check if cup has expired and close it if needed
-      const { checkAndCloseExpiredCups } = await import(
-        "$lib/expiry-checker.server.js"
-      );
-      await checkAndCloseExpiredCups([cup]);
-
-      // Re-fetch cup in case it was just closed
-      updatedCup = await zeroDb
-        .selectFrom("cup")
-        .selectAll()
-        .where("id", "=", cupId)
-        .executeTakeFirst();
-    }
-
-    // Check if user already has an identity
-    // For universal: check for universal identity (cupId IS NULL)
-    // For cup-specific: check for cup-specific identity OR universal identity
-    let existingIdentity = null;
-
-    if (isUniversal) {
-      // Check for existing universal identity
-      existingIdentity = await zeroDb
-        .selectFrom("userIdentities")
-        .selectAll()
-        .where("userId", "=", userId)
-        .where("cupId", "is", null)
-        .where("identityType", "=", "hominio")
-        .executeTakeFirst();
-    } else {
-      // Check for cup-specific identity first
-      existingIdentity = await zeroDb
-        .selectFrom("userIdentities")
-        .selectAll()
-        .where("userId", "=", userId)
-        .where("cupId", "=", cupId)
-        .executeTakeFirst();
-
-      // If no cup-specific identity, check for universal identity
-      if (!existingIdentity) {
-        const universalIdentity = await zeroDb
-          .selectFrom("userIdentities")
-          .selectAll()
-          .where("userId", "=", userId)
-          .where("cupId", "is", null)
-          .where("identityType", "=", "hominio")
-          .executeTakeFirst();
-
-        // Universal identity grants access to all cups, so user can vote
-        // But they can still purchase cup-specific upgrade if they want
-        // For now, allow purchasing cup-specific even if they have universal
-      }
-    }
+    // Check if user already has a universal identity (all identities are universal now)
+    const existingIdentity = await zeroDb
+      .selectFrom("userIdentities")
+      .selectAll()
+      .where("userId", "=", userId)
+      .where("cupId", "is", null)
+      .executeTakeFirst();
 
     if (existingIdentity) {
       // User already has an identity - check if this is a valid upgrade
@@ -190,7 +122,7 @@ export async function POST({ request }) {
         .values({
           id: purchaseId,
           userId,
-          cupId: isUniversal ? null : cupId, // Null for universal identities
+          cupId: null, // All identities are universal
           identityType: selectedPackage.packageType,
           price: selectedPackage.price,
           purchasedAt: now,
@@ -217,7 +149,7 @@ export async function POST({ request }) {
         notificationSubtype,
         {
           identityName,
-          cupName: updatedCup?.name || (isUniversal ? "All Cups" : ""),
+          cupName: "All Cups", // All identities are universal now
         }
       );
 
@@ -247,6 +179,7 @@ export async function POST({ request }) {
           identityType: selectedPackage.packageType,
           votingWeight: selectedPackage.votingWeight,
           name: selectedPackage.name,
+          cupId: null, // All identities are universal
           upgradedFrom: currentIdentityType,
         },
         message: `Successfully upgraded to ${selectedPackage.name}`,
@@ -260,7 +193,7 @@ export async function POST({ request }) {
         .values({
           id: identityId,
           userId,
-          cupId: isUniversal ? null : cupId, // Null for universal identities
+          cupId: null, // All identities are universal
           identityType: selectedPackage.packageType,
           votingWeight: selectedPackage.votingWeight,
           selectedAt: now,
@@ -275,7 +208,7 @@ export async function POST({ request }) {
         .values({
           id: purchaseId,
           userId,
-          cupId: isUniversal ? null : cupId, // Null for universal identities
+          cupId: null, // All identities are universal
           identityType: selectedPackage.packageType,
           price: selectedPackage.price,
           purchasedAt: now,
@@ -302,7 +235,7 @@ export async function POST({ request }) {
         notificationSubtype,
         {
           identityName,
-          cupName: updatedCup.name,
+          cupName: "All Cups", // All identities are universal now
         }
       );
 
@@ -332,6 +265,7 @@ export async function POST({ request }) {
           identityType: selectedPackage.packageType,
           votingWeight: selectedPackage.votingWeight,
           name: selectedPackage.name,
+          cupId: null, // All identities are universal
         },
         message: `Successfully purchased ${selectedPackage.name}`,
       });

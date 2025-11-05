@@ -104,25 +104,13 @@ export async function POST({ request }) {
       }
     }
 
-    // Check if user has an identity for this cup
-    // Check for cup-specific identity first, then universal identity (cupId IS NULL)
-    let userIdentity = await zeroDb
+    // Check if user has a universal identity (all identities are now universal, cupId = null)
+    const userIdentity = await zeroDb
       .selectFrom("userIdentities")
       .selectAll()
       .where("userId", "=", userId)
-      .where("cupId", "=", match.cupId)
+      .where("cupId", "is", null)
       .executeTakeFirst();
-
-    // If no cup-specific identity, check for universal identity
-    if (!userIdentity) {
-      userIdentity = await zeroDb
-        .selectFrom("userIdentities")
-        .selectAll()
-        .where("userId", "=", userId)
-        .where("cupId", "is", null)
-        .where("identityType", "=", "hominio")
-        .executeTakeFirst();
-    }
 
     if (!userIdentity) {
       return json(

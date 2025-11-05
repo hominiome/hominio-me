@@ -4,31 +4,25 @@
   import { goto } from "$app/navigation";
   import { useZero } from "$lib/zero-utils";
   import { page } from "$app/stores";
-  import { calculatePrizePool, formatPrizePool } from "$lib/prizePoolUtils.js";
   import Loading from "$lib/components/Loading.svelte";
   import {
-    identityByUserAndCup,
     identitiesByUser,
-    allCups,
-    allMatches,
-    allPurchases,
   } from "$lib/synced-queries";
   import { env } from "$env/dynamic/public";
 
   const zeroContext = useZero();
   const session = authClient.useSession();
 
-  // Get return URL and cupId from query parameters
+  // Get return URL from query parameters
   const returnUrl = $derived(
     $page.url.searchParams.get("returnUrl") || "/alpha"
   );
-  const cupIdFromQuery = $derived($page.url.searchParams.get("cupId") || "");
 
   // Get Polar product ID from environment
   const polarProductId =
     env.PUBLIC_POLAR_PRODUCT_ID_1 || "aa8e6119-7f7f-4ce3-abde-666720be9fb3";
 
-  // Package definitions
+  // Package definitions - All identities are now universal (cupId = null)
   const packages = [
     {
       packageType: "hominio",
@@ -36,7 +30,6 @@
       name: "I am Hominio",
       price: 12, // 12€/year (~14$ incl. taxes + VAT)
       priceCents: 1200,
-      isUniversal: true, // Universal identity - applies to all cups (cupId = null)
       description: "Yearly Membership - Unlimited voting access to all cups",
       usesPolar: true, // Uses Polar checkout
     },
@@ -46,19 +39,13 @@
       name: "Hominio Founder",
       price: 10, // 10€
       priceCents: 1000,
-      isUniversal: false, // Cup-specific identity
       description: "Founder package - Benefits to be brainstormed", // Placeholder
       usesPolar: false, // Uses legacy purchase flow
     },
   ];
 
   let zero: any = null;
-  let cups = $state<any[]>([]);
-  let selectedCupId = $state<string>("");
-  let selectedCup = $state<any>(null);
   let userIdentity = $state<any>(null);
-  let purchases = $state<any[]>([]); // For prize pool calculation
-  let matches = $state<any[]>([]); // For round info and countdown
   let loading = $state(true);
   let purchasing = $state(false);
   let successMessage = $state("");
@@ -71,23 +58,6 @@
     newPool: number;
   } | null>(null);
 
-  // Get prize pool for selected cup
-  function getPrizePoolForCup(cupId: string): string {
-    const cupPurchases = purchases.filter((p) => p.cupId === cupId);
-    return formatPrizePool(calculatePrizePool(cupPurchases));
-  }
-
-  // Get prize pool amount in cents for calculation
-  function getPrizePoolAmount(cupId: string): number {
-    const cupPurchases = purchases.filter((p) => p.cupId === cupId);
-    return calculatePrizePool(cupPurchases);
-  }
-
-  // Format prize pool amount (for display in animation)
-  function formatPrizePoolAmount(cents: number): string {
-    const euros = Math.floor(cents / 100);
-    return `${euros.toLocaleString("de-DE")}€`;
-  }
 
   // PURCHASE ROUTE IS DISABLED - INVITE-ONLY MODE
   // Redirect all purchase page visits to invite-only page
@@ -105,157 +75,91 @@
   });
 
   let identityView: any = null;
-  let cupsView: any = null;
-
-  // Reactive effect to select cup from query params when cups are loaded
-  // For universal packages (hominio), cupId is optional
-  $effect(() => {
-    if (cups.length > 0 && cupIdFromQuery) {
-      const cup = cups.find((c: any) => c.id === cupIdFromQuery);
-      if (cup) {
-        selectedCupId = cupIdFromQuery;
-        selectedCup = cup;
-      } else {
-        // Cup not found in query params, but this is OK for universal packages
-        // Only show error if user tries to purchase a cup-specific package
-        selectedCupId = "";
-        selectedCup = null;
-      }
-    } else if (cups.length > 0 && !cupIdFromQuery) {
-      // No cupId in query params - this is OK for universal packages
-      // User can still purchase "I am Hominio" without a cupId
-      selectedCupId = "";
-      selectedCup = null;
-    }
-    // Ensure loading is false once cups are available
-    if (cups.length > 0) {
-      loading = false;
-    }
-  });
-
-  // Reactive effect to update identity query when cup changes
-  // For universal packages, check for universal identity (cupId IS NULL)
-  // For cup-specific packages, check for cup-specific identity
-  $effect(() => {
-    if (!zero || !$session.data?.user) return;
-
-    const userId = $session.data.user.id;
-
-    // Clean up previous identity view
-    if (identityView) {
-      identityView.destroy();
-      identityView = null;
-    }
-
-    // If no cup selected, check for universal identity only
-    if (!selectedCupId) {
-      // Query all identities for user and filter for universal identity (cupId IS NULL)
-      const allIdentitiesQuery = identitiesByUser(userId);
-      identityView = zero.materialize(allIdentitiesQuery);
-
-      identityView.addListener((data: any) => {
-        const identities = Array.from(data);
-        // Filter for universal identity (cupId IS NULL and identityType is hominio)
-        const universalIdentity = identities.find(
-          (id: any) => id.cupId === null && id.identityType === "hominio"
-        );
-        if (universalIdentity) {
-          userIdentity = universalIdentity;
-        } else {
-          userIdentity = null;
-        }
-        if (cups.length > 0) {
-          loading = false;
-        }
-      });
-      return;
-    }
-
-    // Query user's identity for selected cup using synced query
-    const identityQuery = identityByUserAndCup(userId, selectedCupId);
-    identityView = zero.materialize(identityQuery);
-
-    identityView.addListener(async (data: any) => {
-      const identities = Array.from(data);
-      if (identities.length > 0) {
-        userIdentity = identities[0];
-      } else {
-        // If no cup-specific identity, check for universal identity
-        // Query all identities for user to find universal identity
-        const allIdentitiesQuery = identitiesByUser(userId);
-        const allIdentitiesView = zero.materialize(allIdentitiesQuery);
-        allIdentitiesView.addListener((allData: any) => {
-          const allIdentities = Array.from(allData);
-          const universalIdentity = allIdentities.find(
-            (id: any) => id.cupId === null && id.identityType === "hominio"
-          );
-          userIdentity = universalIdentity || null;
-          allIdentitiesView.destroy();
-        });
-      }
-      // Only set loading to false if cups are already loaded
-      if (cups.length > 0) {
-        loading = false;
-      }
-    });
-  });
 
   onMount(() => {
     (async () => {
-      // Wait for Zero to be ready
+      console.log("[Purchase] onMount started");
+      console.log("[Purchase] Zero ready:", zeroContext.isReady(), "Instance:", !!zeroContext.getInstance());
+      
+      // Wait for Zero to be ready (with timeout)
+      const maxWaitTime = 10000; // 10 seconds max wait
+      const startTime = Date.now();
+      
       while (!zeroContext.isReady() || !zeroContext.getInstance()) {
+        if (Date.now() - startTime > maxWaitTime) {
+          console.error("[Purchase] Zero context timeout - proceeding anyway");
+          loading = false;
+          return;
+        }
         await new Promise((resolve) => setTimeout(resolve, 100));
       }
       zero = zeroContext.getInstance();
+      console.log("[Purchase] Zero instance obtained:", !!zero);
 
-      // Wait for session to load
+      // Wait for session to load (with timeout)
+      const sessionStartTime = Date.now();
       while ($session.isPending) {
+        if (Date.now() - sessionStartTime > maxWaitTime) {
+          console.error("[Purchase] Session timeout - proceeding anyway");
+          loading = false;
+          return;
+        }
         await new Promise((resolve) => setTimeout(resolve, 100));
       }
+      console.log("[Purchase] Session loaded, user:", !!$session.data?.user);
 
       if (!$session.data?.user) {
+        console.log("[Purchase] No user, redirecting to /alpha");
         goto("/alpha");
         return;
+      }
+
+      const userId = $session.data.user.id;
+      console.log("[Purchase] Starting identity query for user:", userId);
+
+      try {
+        // Query all identities for user and filter for universal identities (cupId IS NULL)
+        const allIdentitiesQuery = identitiesByUser(userId);
+        identityView = zero.materialize(allIdentitiesQuery);
+
+        // Set a timeout to ensure loading doesn't hang forever
+        const loadingTimeout = setTimeout(() => {
+          console.warn("[Purchase] Identity query timeout after 5s, setting loading = false");
+          loading = false;
+        }, 5000); // 5 second timeout
+
+        identityView.addListener((data: any) => {
+          clearTimeout(loadingTimeout);
+          console.log("[Purchase] Identity query returned:", data);
+          const identities = Array.from(data);
+          // Find the highest voting weight universal identity (or any universal identity)
+          const universalIdentities = identities.filter(
+            (id: any) => id.cupId === null
+          );
+          console.log("[Purchase] Universal identities found:", universalIdentities.length);
+          if (universalIdentities.length > 0) {
+            // Get the identity with highest voting weight, or just the first one
+            userIdentity = universalIdentities.reduce((prev: any, curr: any) => 
+              (curr.votingWeight > prev.votingWeight) ? curr : prev
+            );
+          } else {
+            userIdentity = null;
+          }
+          console.log("[Purchase] Setting loading = false, userIdentity:", userIdentity);
+          loading = false;
+        });
+      } catch (error) {
+        console.error("[Purchase] Error setting up identity query:", error);
+        loading = false;
       }
 
       // Preload purchase sound effect
       purchaseSound = new Audio("/purchase-effect.mp3");
       purchaseSound.preload = "auto";
 
-      // Query all cups
-      const cupsQuery = allCups();
-      cupsView = zero.materialize(cupsQuery);
-
-      cupsView.addListener((data: any) => {
-        cups = Array.from(data || []);
-        // Cup selection is handled by reactive $effect above
-        // Set loading to false once cups are loaded
-        if (cups.length > 0) {
-          loading = false;
-        }
-      });
-
-      // Query all identity purchases for prize pool calculation
-      const purchasesQuery = allPurchases();
-      const purchasesView = zero.materialize(purchasesQuery);
-
-      purchasesView.addListener((data: any) => {
-        purchases = Array.from(data || []);
-      });
-
-      // Query matches for the selected cup to get round info
-      const matchesQuery = allMatches();
-      const matchesView = zero.materialize(matchesQuery);
-
-      matchesView.addListener((data: any) => {
-        matches = Array.from(data || []);
-      });
-
       return () => {
+        console.log("[Purchase] onMount cleanup");
         if (identityView) identityView.destroy();
-        if (cupsView) cupsView.destroy();
-        if (purchasesView) purchasesView.destroy();
-        if (matchesView) matchesView.destroy();
       };
     })();
   });
@@ -264,31 +168,18 @@
     const pkg = packages.find((p) => p.packageType === packageType);
     if (!pkg) return false;
 
-    // Universal packages (hominio) don't require a cupId
-    if (pkg.isUniversal) {
-      // Can purchase if no universal identity exists
-      if (!userIdentity || userIdentity.cupId !== null) {
-        return true;
-      }
-      // Already has this universal identity
-      if (
-        userIdentity.identityType === packageType &&
-        userIdentity.cupId === null
-      ) {
-        return false;
-      }
-      return true; // Can upgrade from one universal to another (shouldn't happen, but allow it)
-    }
-
-    // Cup-specific packages require a cupId
-    if (!selectedCupId) return false;
-
-    if (!userIdentity) return true; // Can select any identity if none exists for this cup
+    // All identities are now universal (cupId = null)
+    if (!userIdentity) return true; // Can purchase any identity if none exists
 
     const currentType = userIdentity.identityType;
     if (currentType === packageType) return false; // Already has this identity
 
-    // Valid upgrade paths
+    // Explorer identity has no voting rights - can purchase any voting identity
+    if (currentType === "explorer") {
+      return true; // Can purchase any voting identity (hominio, founder, angel)
+    }
+
+    // Valid upgrade paths (all universal)
     if (
       currentType === "hominio" &&
       (packageType === "founder" || packageType === "angel")
@@ -318,15 +209,6 @@
     const pkg = packages.find((p) => p.packageType === packageType);
     if (!pkg) {
       errorMessage = "Invalid package type.";
-      setTimeout(() => {
-        errorMessage = "";
-      }, 3000);
-      return;
-    }
-
-    // Cup-specific packages require a cupId
-    if (!pkg.isUniversal && !selectedCupId) {
-      errorMessage = "Please select a cup first.";
       setTimeout(() => {
         errorMessage = "";
       }, 3000);
@@ -369,14 +251,7 @@
       }
     }
 
-    // Legacy purchase flow for cup-specific packages (founder, angel)
-    // Calculate previous prize pool before purchase
-    const previousPoolAmount = selectedCupId
-      ? getPrizePoolAmount(selectedCupId)
-      : 0;
-
-    const purchasePrice = pkg.priceCents || pkg.price * 100; // Price in cents
-
+    // Legacy purchase flow (all identities are now universal, cupId = null)
     try {
       const response = await fetch("/alpha/api/purchase-package", {
         method: "POST",
@@ -385,7 +260,7 @@
         },
         body: JSON.stringify({
           packageType,
-          cupId: pkg.isUniversal ? null : selectedCupId,
+          cupId: null, // All identities are now universal
         }),
       });
 
@@ -404,42 +279,12 @@
         userIdentity = {
           id: userIdentity?.id || `temp-${Date.now()}`,
           userId: $session.data?.user?.id || "",
-          cupId: result.identity.cupId, // Can be null for universal
+          cupId: null, // All identities are universal
           identityType: result.identity.identityType,
           votingWeight: result.identity.votingWeight,
           upgradedFrom: result.identity.upgradedFrom || null,
           selectedAt: new Date().toISOString(),
         };
-      }
-
-      // Also add the new purchase to the purchases array for prize pool calculation
-      // This ensures the prize pool updates immediately in the UI
-      if (selectedCupId) {
-        const newPurchase = {
-          id: `temp-${Date.now()}`,
-          userId: $session.data?.user?.id || "",
-          cupId: selectedCupId,
-          identityType: packageType,
-          price: purchasePrice,
-          purchasedAt: new Date().toISOString(),
-        };
-        purchases = [...purchases, newPurchase];
-
-        // Get purchase price (increase amount)
-        const increase = purchasePrice;
-
-        // Trigger purchase animation immediately with purchase price
-        purchaseAnimation = {
-          packageType,
-          previousPool: previousPoolAmount,
-          increase,
-          newPool: previousPoolAmount + increase, // Calculate expected new total
-        };
-
-        // Clear animation after it completes (4 seconds total)
-        setTimeout(() => {
-          purchaseAnimation = null;
-        }, 4000);
       }
 
       // Play purchase sound effect
@@ -852,23 +697,14 @@
                 <p class="text-sm text-[rgba(26,26,78,0.7)] max-w-md">
                   {pkg.description}
                 </p>
-                {#if selectedCup}
-                  <p class="text-xs text-[rgba(26,26,78,0.6)]">
-                    For cup: {selectedCup.name}
-                  </p>
-                {:else}
-                  <p class="text-xs text-[rgba(26,26,78,0.6)]">
-                    Please select a cup to purchase this package
-                  </p>
-                {/if}
               </div>
 
               <button
                 onclick={() => purchasePackage(pkg.packageType)}
-                disabled={purchasing || isCurrent || isUnavailable || !selectedCupId}
+                disabled={purchasing || isCurrent || isUnavailable}
                 class="text-sm font-semibold uppercase tracking-wider py-3.5 px-8 border-2 rounded-lg transition-all duration-200 cursor-pointer w-full mt-2 {isCurrent
                   ? 'bg-[#f4d03f] text-[#1a1a4e] border-[#f4d03f] cursor-default'
-                  : isUnavailable || !selectedCupId
+                  : isUnavailable
                     ? 'bg-[rgba(26,26,78,0.1)] text-[rgba(26,26,78,0.5)] border-[rgba(26,26,78,0.2)] cursor-not-allowed opacity-60'
                     : 'bg-[#f4d03f] text-[#1a1a4e] border-[#f4d03f] hover:bg-transparent hover:text-[#f4d03f]'} {purchasing
                   ? 'opacity-60 cursor-not-allowed'
@@ -876,10 +712,8 @@
               >
                 {#if isCurrent}
                   Current
-                {:else if isAvailable && selectedCupId}
+                {:else if isAvailable}
                   Purchase
-                {:else if !selectedCupId}
-                  Select Cup First
                 {:else}
                   Unavailable
                 {/if}

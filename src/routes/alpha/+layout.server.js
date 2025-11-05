@@ -30,12 +30,16 @@ export async function load({ request, url }) {
       .executeTakeFirst();
 
     // If no explorer identity, redirect to invite modal
-    // Exception: allow access to /alpha/me (profile settings), invite route (admin-only), and onboard-user API
+    // Exception: allow access to /alpha/me (profile settings), invite route (admin-only), public API endpoints, and onboard-user API
     const isMeRoute = url.pathname === "/alpha/me";
     const isInviteRoute = url.pathname.startsWith("/alpha/invite/");
     const isOnboardApi = url.pathname === "/alpha/api/onboard-user";
+    const isPublicApi = url.pathname.startsWith("/alpha/api/user/"); // Public user profile API
     
-    if (!explorerIdentity && !isMeRoute && !isInviteRoute && !isOnboardApi) {
+    // Skip explorer identity check for API routes (they handle their own auth)
+    const isApiRoute = url.pathname.startsWith("/alpha/api/");
+    
+    if (!explorerIdentity && !isMeRoute && !isInviteRoute && !isOnboardApi && !isPublicApi && !isApiRoute) {
       // Redirect to /alpha with invite modal - always redirect to ensure modal shows
       // Check if already on /alpha with modal param to avoid redirect loop
       if (url.pathname !== "/alpha" || url.searchParams.get("modal") !== "invite") {

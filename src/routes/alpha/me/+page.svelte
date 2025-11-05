@@ -256,9 +256,6 @@
                     <span class="identity-name">
                       {getIdentityLabel(identity.identityType)}
                     </span>
-                    <span class="identity-cup">
-                      {getCupName(identity.cupId)}
-                    </span>
                   </div>
                 </div>
                 {#if identity.upgradedFrom}
@@ -338,9 +335,6 @@
                   <div class="purchase-info">
                     <span class="purchase-identity">
                       {getIdentityLabel(purchase.identityType)}
-                    </span>
-                    <span class="purchase-cup">
-                      {getCupName(purchase.cupId)}
                     </span>
                     <span class="purchase-date">
                       {new Date(purchase.purchasedAt).toLocaleDateString("en-US", {
