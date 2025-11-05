@@ -61,6 +61,9 @@
 
   let signingOut = $state(false);
   let imageFailed = $state(false);
+  let samuelImageFailed = $state(false);
+  // Samuel's profile image
+  let samuelImageUrl = $state<string | null>("/hominiono1.jpg");
   let zero = $state<any>(null);
   let userIdentities = $state<any[]>([]);
   let purchases = $state<any[]>([]);
@@ -483,10 +486,26 @@
                       </p>
                     </div>
 
-                    <p class="cta-message">
-                      I am Samuel, HominioNo1<br>
-                      and I am looking forward to chat with you.
-                    </p>
+                    <div class="samuel-profile-section">
+                      <div class="samuel-avatar-container">
+                        {#if samuelImageUrl && !samuelImageFailed}
+                          <img 
+                            src={samuelImageUrl} 
+                            alt="Samuel" 
+                            class="samuel-avatar"
+                            onerror={() => samuelImageFailed = true}
+                          />
+                        {:else}
+                          <div class="samuel-avatar-placeholder">
+                            <span>S</span>
+                          </div>
+                        {/if}
+                      </div>
+                      <p class="cta-message">
+                        I am Samuel, HominioNo1<br>
+                        and I am looking forward to chat with you.
+                      </p>
+                    </div>
 
             <a
               href="https://instagram.com/samuelandert"
@@ -928,7 +947,7 @@
     justify-content: center;
     gap: 0.5rem;
     padding: 0.875rem 1.5rem;
-    margin: 1.5rem 0;
+    margin: 0.5rem 0 1.5rem 0;
     background: linear-gradient(
       135deg,
       #f09433 0%,
@@ -1024,17 +1043,68 @@
     text-align: center;
   }
 
+  .samuel-profile-section {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.75rem;
+    margin: 1rem 0 0.25rem 0;
+  }
+
+  .samuel-avatar-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .samuel-avatar {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid rgba(78, 205, 196, 0.3);
+  }
+
+  .samuel-avatar-placeholder {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #4ecdc4 0%, #1a1a4e 100%);
+    border: 2px solid rgba(78, 205, 196, 0.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: 700;
+    font-size: 1.75rem;
+  }
+
   .cta-message {
     font-size: 0.875rem;
     color: rgba(26, 26, 78, 0.7);
     line-height: 1.5;
-    margin: 1rem 0 0.5rem 0;
+    margin: 0;
     text-align: center;
   }
 
   @media (max-width: 768px) {
-    .cta-message {
+    .samuel-profile-section {
       margin: 0.75rem 0 0.25rem 0;
+      gap: 0.5rem;
+    }
+
+    .samuel-avatar,
+    .samuel-avatar-placeholder {
+      width: 64px;
+      height: 64px;
+    }
+
+    .samuel-avatar-placeholder {
+      font-size: 1.5rem;
+    }
+
+    .cta-message {
+      margin: 0;
     }
   }
 

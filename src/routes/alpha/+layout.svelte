@@ -678,11 +678,17 @@ import Footer from "$lib/components/Footer.svelte";
 
   // Check if user has explorer identity
   const hasExplorerIdentity = $derived(() => {
-    // Admins don't need explorer identity
-    if (isAdminUser) return true;
-
     if (!userIdentities.length) return false;
     return userIdentities.some((id: any) => id.identityType === "explorer");
+  });
+
+  // Check if navbar should be shown - show if user has explorer identity OR is admin
+  const shouldShowNavbar = $derived(() => {
+    // Admins always see the navbar
+    if (isAdminUser) return true;
+    
+    // Normal users only see navbar if they have explorer identity
+    return hasExplorerIdentity;
   });
 
   // Generic modal system: detect modal param from URL search params
@@ -1266,7 +1272,7 @@ import Footer from "$lib/components/Footer.svelte";
   />
 {/if}
 
-{#if hasExplorerIdentity}
+{#if shouldShowNavbar}
 <Navbar
   session={$session}
   {signInWithGoogle}
@@ -1300,11 +1306,13 @@ import Footer from "$lib/components/Footer.svelte";
 <!-- Background -->
 <div class="fixed inset-0 w-full h-full -z-10 bg-brand-cream-50"></div>
 
-<!-- Bottom glassmorphic effect behind navbar (inverted) -->
+<!-- Bottom glassmorphic effect behind navbar (inverted) - only show if navbar should be visible -->
+{#if shouldShowNavbar}
 <div
   class="fixed bottom-0 left-0 right-0 z-[9999] pointer-events-none"
   style="height: 80px; background: linear-gradient(to bottom, transparent 0%, rgba(250, 249, 246, 0.75) 50%, rgba(250, 249, 246, 1) 100%); backdrop-filter: blur(28px) saturate(200%); -webkit-backdrop-filter: blur(28px) saturate(200%); mask-image: linear-gradient(to bottom, transparent 0%, rgba(0,0,0,0.75) 50%, black 100%); -webkit-mask-image: linear-gradient(to bottom, transparent 0%, rgba(0,0,0,0.75) 50%, black 100%); border-top: 1px solid rgba(255, 255, 255, 0.2); box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.12), inset 0 -1px 0 rgba(255, 255, 255, 0.2);"
 ></div>
+{/if}
 
 <div class="content-wrapper relative min-h-screen">
   <div class="mx-auto w-full max-w-7xl px-2 sm:px-4 lg:px-6">
@@ -1313,8 +1321,10 @@ import Footer from "$lib/components/Footer.svelte";
     <!-- Footer -->
     <Footer />
     
-    <!-- Spacer to ensure content can scroll properly behind navbar -->
+    <!-- Spacer to ensure content can scroll properly behind navbar - only if navbar should be visible -->
+    {#if shouldShowNavbar}
     <div class="h-20"></div>
+    {/if}
   </div>
 </div>
 
@@ -1354,16 +1364,16 @@ import Footer from "$lib/components/Footer.svelte";
   /* Footer styles are now in Footer component */
   
   :global(.footer) {
-    padding-bottom: 6rem; /* Extra padding to ensure links aren't cut off by fixed bottom nav */
+    padding-bottom: 6rem; /* Extra padding to ensure links aren't cut off by fixed bottom nav (only when navbar is visible) */
   }
 
   @media (max-width: 768px) {
     .content-wrapper {
-      padding-bottom: 20px; /* Space for bottom navbar */
+      padding-bottom: 20px; /* Space for bottom navbar (only when navbar is visible) */
     }
     
     :global(.footer) {
-      padding-bottom: 7rem; /* Even more padding on mobile for bottom nav */
+      padding-bottom: 7rem; /* Even more padding on mobile for bottom nav (only when navbar is visible) */
     }
   }
 </style>
