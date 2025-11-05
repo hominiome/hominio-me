@@ -5,7 +5,6 @@
   import { useZero } from "$lib/zero-utils";
   import { page } from "$app/stores";
   import { calculatePrizePool, formatPrizePool } from "$lib/prizePoolUtils.js";
-  import CupHeader from "$lib/CupHeader.svelte";
   import Loading from "$lib/components/Loading.svelte";
   import {
     identityByUserAndCup,
@@ -515,11 +514,6 @@
           >
             {errorMessage}
           </div>
-        {/if}
-
-        <!-- Cup Title Card -->
-        {#if selectedCup}
-          <CupHeader cup={selectedCup} {purchases} {matches} />
         {/if}
 
         <!-- Options -->
