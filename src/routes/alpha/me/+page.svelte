@@ -27,6 +27,29 @@
       : ""
   );
 
+  // Get the invite link for admin onboarding
+  const inviteLink = $derived(
+    browser && data.session?.id
+      ? `${window.location.origin}/alpha/invite/${data.session.id}`
+      : ""
+  );
+
+  let copied = $state(false);
+
+  async function copyToClipboard() {
+    if (!inviteLink) return;
+    
+    try {
+      await navigator.clipboard.writeText(inviteLink);
+      copied = true;
+      setTimeout(() => {
+        copied = false;
+      }, 2000);
+    } catch (err) {
+      console.error("Failed to copy link:", err);
+    }
+  }
+
   const zeroContext = useZero();
   const session = authClient.useSession();
 
@@ -366,6 +389,26 @@
       {#if profileUrl}
         <div class="qr-code-section">
           <QRCodeDisplay data={profileUrl} />
+          {#if inviteLink}
+            <div class="invite-link-section">
+              <div class="link-container">
+                <input 
+                  type="text" 
+                  value={inviteLink} 
+                  readonly 
+                  class="link-input"
+                  onclick={(e) => e.currentTarget.select()}
+                />
+                <button 
+                  onclick={copyToClipboard}
+                  class="copy-button"
+                  aria-label="Copy link to clipboard"
+                >
+                  {copied ? "Copied!" : "Copy Link"}
+                </button>
+              </div>
+            </div>
+          {/if}
         </div>
       {/if}
     </div>
@@ -712,8 +755,10 @@
   .qr-code-section {
     margin: 1.5rem 0;
     display: flex;
+    flex-direction: column;
     justify-content: center;
     align-items: center;
+    gap: 1rem;
     padding: 1.5rem;
     background: rgba(240, 255, 254, 0.5);
     border-radius: 12px;
@@ -728,10 +773,74 @@
     border-radius: 8px;
   }
 
+  .invite-link-section {
+    width: 100%;
+    max-width: 500px;
+  }
+
+  .link-container {
+    display: flex;
+    gap: 0.5rem;
+    width: 100%;
+    align-items: center;
+  }
+
+  .link-input {
+    flex: 1;
+    padding: 0.625rem 0.875rem;
+    border: 2px solid rgba(78, 205, 196, 0.3);
+    border-radius: 8px;
+    background: white;
+    color: #1a1a4e;
+    font-size: 0.875rem;
+    font-family: monospace;
+    cursor: text;
+  }
+
+  .link-input:focus {
+    outline: none;
+    border-color: #4ecdc4;
+    box-shadow: 0 0 0 3px rgba(78, 205, 196, 0.1);
+  }
+
+  .copy-button {
+    padding: 0.625rem 1.25rem;
+    background: #4ecdc4;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 0.875rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+  }
+
+  .copy-button:hover {
+    background: #3db5ac;
+    transform: translateY(-1px);
+  }
+
+  .copy-button:active {
+    transform: translateY(0);
+  }
+
   @media (max-width: 768px) {
     .qr-code-section {
       padding: 0.75rem;
       margin: 1rem 0;
+    }
+
+    .link-container {
+      flex-direction: column;
+    }
+
+    .link-input {
+      width: 100%;
+    }
+
+    .copy-button {
+      width: 100%;
     }
   }
 
