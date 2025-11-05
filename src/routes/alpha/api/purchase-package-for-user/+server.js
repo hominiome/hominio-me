@@ -10,20 +10,24 @@ const PACKAGES = {
   hominio: {
     packageType: "hominio",
     votingWeight: 1,
-    name: "I am Hominio",
-    price: 100, // Price in cents: 100 = 1.00€
+    name: "❤︎ I am Hominio",
+    price: 1200, // Price in cents: 1200 = 12.00€/year (~14$ incl. taxes + VAT)
+    isUniversal: true, // Universal identity - applies to all cups (cupId = null)
+    description: "Yearly Membership - Unlimited voting access to all cups",
   },
   founder: {
     packageType: "founder",
     votingWeight: 5,
     name: "Hominio Founder",
     price: 1000, // Price in cents: 1000 = 10.00€
+    isUniversal: false, // Cup-specific identity
   },
   angel: {
     packageType: "angel",
     votingWeight: 10,
     name: "Hominio Angel",
     price: 10000, // Price in cents: 10000 = 100.00€
+    isUniversal: false, // Cup-specific identity
   },
 };
 

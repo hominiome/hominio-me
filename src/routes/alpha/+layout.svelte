@@ -978,10 +978,10 @@
       adminActions?.showStartNextRoundModal
   );
 
-  // Detect detail pages for back navigation (including admin pages)
+  // Detect detail pages for back navigation (including admin pages and purchase page)
   const isDetailPage = $derived(
     $page.url.pathname.match(/^\/alpha\/(cups|projects)\/[^/]+(\/admin)?$/) !==
-      null
+      null || $page.url.pathname.startsWith("/alpha/purchase")
   );
 
   const backUrl = $derived(() => {
@@ -995,6 +995,9 @@
     }
     if ($page.url.pathname.startsWith("/alpha/projects/")) {
       return "/alpha/projects";
+    }
+    if ($page.url.pathname.startsWith("/alpha/purchase")) {
+      return "/alpha/cups";
     }
     return "/alpha";
   });

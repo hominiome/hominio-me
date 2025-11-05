@@ -62,12 +62,13 @@ const cupMatch = table('cupMatch')
   })
   .primaryKey('id');
 
-// User identities - tracks which voting weight identity a user has selected per cup
+// User identities - tracks which voting weight identity a user has selected
+// cupId is nullable: null = universal identity (applies to all cups), otherwise cup-specific
 const userIdentities = table('userIdentities')
   .columns({
     id: string(),
     userId: string(), // User ID
-    cupId: string(), // Cup ID
+    cupId: string(), // Cup ID (null for universal "I am Hominio" identity)
     identityType: string(), // 'hominio' | 'founder' | 'angel'
     votingWeight: number(), // 1 | 5 | 10
     selectedAt: string(), // ISO timestamp
@@ -75,12 +76,13 @@ const userIdentities = table('userIdentities')
   })
   .primaryKey('id');
 
-// Identity purchases - tracks purchases of voting identities per cup
+// Identity purchases - tracks purchases of voting identities
+// cupId is nullable: null = universal identity purchase, otherwise cup-specific
 const identityPurchase = table('identityPurchase')
   .columns({
     id: string(),
     userId: string(), // User ID
-    cupId: string(), // Cup ID
+    cupId: string(), // Cup ID (null for universal "I am Hominio" identity)
     identityType: string(), // 'hominio' | 'founder' | 'angel'
     price: number(), // Price in cents
     purchasedAt: string(), // ISO timestamp

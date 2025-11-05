@@ -101,18 +101,30 @@ export async function POST({ request }) {
       }
     }
 
-    // Check if user has an identity for this specific cup
-    const userIdentity = await zeroDb
+    // Check if user has an identity for this cup
+    // Check for cup-specific identity first, then universal identity (cupId IS NULL)
+    let userIdentity = await zeroDb
       .selectFrom("userIdentities")
       .selectAll()
       .where("userId", "=", userId)
       .where("cupId", "=", match.cupId)
       .executeTakeFirst();
 
+    // If no cup-specific identity, check for universal identity
+    if (!userIdentity) {
+      userIdentity = await zeroDb
+        .selectFrom("userIdentities")
+        .selectAll()
+        .where("userId", "=", userId)
+        .where("cupId", "is", null)
+        .where("identityType", "=", "hominio")
+        .executeTakeFirst();
+    }
+
     if (!userIdentity) {
       return json(
         {
-          error: "You need a voting identity for this cup before you can vote. This platform is currently invite-only - please show your QR code to an admin.",
+          error: "You need a voting identity to vote. Purchase '❤︎ I am Hominio' membership for unlimited voting access to all cups.",
         },
         { status: 400 }
       );

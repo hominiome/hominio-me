@@ -7,40 +7,39 @@
   import { calculatePrizePool, formatPrizePool } from "$lib/prizePoolUtils.js";
   import CupHeader from "$lib/CupHeader.svelte";
   import Loading from "$lib/components/Loading.svelte";
-  import { identityByUserAndCup, allCups, allMatches, allPurchases } from "$lib/synced-queries";
+  import {
+    identityByUserAndCup,
+    identitiesByUser,
+    allCups,
+    allMatches,
+    allPurchases,
+  } from "$lib/synced-queries";
+  import { env } from "$env/dynamic/public";
 
   const zeroContext = useZero();
   const session = authClient.useSession();
-  
+
   // Get return URL and cupId from query parameters
   const returnUrl = $derived(
     $page.url.searchParams.get("returnUrl") || "/alpha"
   );
   const cupIdFromQuery = $derived($page.url.searchParams.get("cupId") || "");
-  
 
-  // Package definitions
+  // Get Polar product ID from environment
+  const polarProductId =
+    env.PUBLIC_POLAR_PRODUCT_ID_1 || "aa8e6119-7f7f-4ce3-abde-666720be9fb3";
+
+  // Package definitions - only "I am Hominio" universal membership
   const packages = [
     {
       packageType: "hominio",
       votingWeight: 1,
       name: "I am Hominio",
-      price: 1,
-      description: "",
-    },
-    {
-      packageType: "founder",
-      votingWeight: 5,
-      name: "Hominio Founder",
-      price: 10,
-      description: "",
-    },
-    {
-      packageType: "angel",
-      votingWeight: 10,
-      name: "Hominio Angel",
-      price: 100,
-      description: "",
+      price: 12, // 12€/year (~14$ incl. taxes + VAT)
+      priceCents: 1200,
+      isUniversal: true, // Universal identity - applies to all cups (cupId = null)
+      description: "Yearly Membership - Unlimited voting access to all cups",
+      usesPolar: true, // Uses Polar checkout
     },
   ];
 
@@ -62,31 +61,32 @@
     increase: number;
     newPool: number;
   } | null>(null);
-  
+
   // Get prize pool for selected cup
   function getPrizePoolForCup(cupId: string): string {
     const cupPurchases = purchases.filter((p) => p.cupId === cupId);
     return formatPrizePool(calculatePrizePool(cupPurchases));
   }
-  
+
   // Get prize pool amount in cents for calculation
   function getPrizePoolAmount(cupId: string): number {
     const cupPurchases = purchases.filter((p) => p.cupId === cupId);
     return calculatePrizePool(cupPurchases);
   }
-  
+
   // Format prize pool amount (for display in animation)
   function formatPrizePoolAmount(cents: number): string {
     const euros = Math.floor(cents / 100);
-    return `${euros.toLocaleString('de-DE')}€`;
+    return `${euros.toLocaleString("de-DE")}€`;
   }
 
   // PURCHASE ROUTE IS DISABLED - INVITE-ONLY MODE
   // Redirect all purchase page visits to invite-only page
-  $effect(() => {
-    // Redirect to home with invite modal
-    goto("/alpha?modal=invite", { replaceState: false });
-  });
+  // TEMPORARILY DISABLED - Purchase page is now accessible
+  // $effect(() => {
+  //   // Redirect to home with invite modal
+  //   goto("/alpha?modal=invite", { replaceState: false });
+  // });
 
   // Redirect to home if not authenticated
   $effect(() => {
@@ -99,6 +99,7 @@
   let cupsView: any = null;
 
   // Reactive effect to select cup from query params when cups are loaded
+  // For universal packages (hominio), cupId is optional
   $effect(() => {
     if (cups.length > 0 && cupIdFromQuery) {
       const cup = cups.find((c: any) => c.id === cupIdFromQuery);
@@ -106,18 +107,16 @@
         selectedCupId = cupIdFromQuery;
         selectedCup = cup;
       } else {
-        // Cup not found in query params, redirect back
-        errorMessage = "Cup not found. Please try voting again.";
-        setTimeout(() => {
-          goto(returnUrl);
-        }, 2000);
+        // Cup not found in query params, but this is OK for universal packages
+        // Only show error if user tries to purchase a cup-specific package
+        selectedCupId = "";
+        selectedCup = null;
       }
     } else if (cups.length > 0 && !cupIdFromQuery) {
-      // No cupId in query params, redirect back
-      errorMessage = "No cup selected. Please try voting again.";
-      setTimeout(() => {
-        goto(returnUrl);
-      }, 2000);
+      // No cupId in query params - this is OK for universal packages
+      // User can still purchase "I am Hominio" without a cupId
+      selectedCupId = "";
+      selectedCup = null;
     }
     // Ensure loading is false once cups are available
     if (cups.length > 0) {
@@ -126,8 +125,10 @@
   });
 
   // Reactive effect to update identity query when cup changes
+  // For universal packages, check for universal identity (cupId IS NULL)
+  // For cup-specific packages, check for cup-specific identity
   $effect(() => {
-    if (!zero || !selectedCupId || !$session.data?.user) return;
+    if (!zero || !$session.data?.user) return;
 
     const userId = $session.data.user.id;
 
@@ -137,16 +138,51 @@
       identityView = null;
     }
 
+    // If no cup selected, check for universal identity only
+    if (!selectedCupId) {
+      // Query all identities for user and filter for universal identity (cupId IS NULL)
+      const allIdentitiesQuery = identitiesByUser(userId);
+      identityView = zero.materialize(allIdentitiesQuery);
+
+      identityView.addListener((data: any) => {
+        const identities = Array.from(data);
+        // Filter for universal identity (cupId IS NULL and identityType is hominio)
+        const universalIdentity = identities.find(
+          (id: any) => id.cupId === null && id.identityType === "hominio"
+        );
+        if (universalIdentity) {
+          userIdentity = universalIdentity;
+        } else {
+          userIdentity = null;
+        }
+        if (cups.length > 0) {
+          loading = false;
+        }
+      });
+      return;
+    }
+
     // Query user's identity for selected cup using synced query
     const identityQuery = identityByUserAndCup(userId, selectedCupId);
     identityView = zero.materialize(identityQuery);
 
-    identityView.addListener((data: any) => {
+    identityView.addListener(async (data: any) => {
       const identities = Array.from(data);
       if (identities.length > 0) {
         userIdentity = identities[0];
       } else {
-        userIdentity = null;
+        // If no cup-specific identity, check for universal identity
+        // Query all identities for user to find universal identity
+        const allIdentitiesQuery = identitiesByUser(userId);
+        const allIdentitiesView = zero.materialize(allIdentitiesQuery);
+        allIdentitiesView.addListener((allData: any) => {
+          const allIdentities = Array.from(allData);
+          const universalIdentity = allIdentities.find(
+            (id: any) => id.cupId === null && id.identityType === "hominio"
+          );
+          userIdentity = universalIdentity || null;
+          allIdentitiesView.destroy();
+        });
       }
       // Only set loading to false if cups are already loaded
       if (cups.length > 0) {
@@ -206,24 +242,48 @@
         matches = Array.from(data || []);
       });
 
-    return () => {
-      if (identityView) identityView.destroy();
+      return () => {
+        if (identityView) identityView.destroy();
         if (cupsView) cupsView.destroy();
         if (purchasesView) purchasesView.destroy();
         if (matchesView) matchesView.destroy();
-    };
+      };
     })();
   });
 
   function canUpgradeTo(packageType: string): boolean {
-    if (!selectedCupId) return false; // Must select a cup first
+    const pkg = packages.find((p) => p.packageType === packageType);
+    if (!pkg) return false;
+
+    // Universal packages (hominio) don't require a cupId
+    if (pkg.isUniversal) {
+      // Can purchase if no universal identity exists
+      if (!userIdentity || userIdentity.cupId !== null) {
+        return true;
+      }
+      // Already has this universal identity
+      if (
+        userIdentity.identityType === packageType &&
+        userIdentity.cupId === null
+      ) {
+        return false;
+      }
+      return true; // Can upgrade from one universal to another (shouldn't happen, but allow it)
+    }
+
+    // Cup-specific packages require a cupId
+    if (!selectedCupId) return false;
+
     if (!userIdentity) return true; // Can select any identity if none exists for this cup
 
     const currentType = userIdentity.identityType;
     if (currentType === packageType) return false; // Already has this identity
 
     // Valid upgrade paths
-    if (currentType === "hominio" && (packageType === "founder" || packageType === "angel")) {
+    if (
+      currentType === "hominio" &&
+      (packageType === "founder" || packageType === "angel")
+    ) {
       return true;
     }
     if (currentType === "founder" && packageType === "angel") {
@@ -233,7 +293,9 @@
     return false; // Cannot downgrade
   }
 
-  function getPackageStatus(packageType: string): "current" | "available" | "unavailable" {
+  function getPackageStatus(
+    packageType: string
+  ): "current" | "available" | "unavailable" {
     if (!userIdentity) return "available";
     if (userIdentity.identityType === packageType) return "current";
     if (canUpgradeTo(packageType)) return "available";
@@ -243,7 +305,18 @@
   async function purchasePackage(packageType: string) {
     if (purchasing) return;
 
-    if (!selectedCupId) {
+    // Find the package to check its properties
+    const pkg = packages.find((p) => p.packageType === packageType);
+    if (!pkg) {
+      errorMessage = "Invalid package type.";
+      setTimeout(() => {
+        errorMessage = "";
+      }, 3000);
+      return;
+    }
+
+    // Cup-specific packages require a cupId
+    if (!pkg.isUniversal && !selectedCupId) {
       errorMessage = "Please select a cup first.";
       setTimeout(() => {
         errorMessage = "";
@@ -262,13 +335,38 @@
     purchasing = true;
     successMessage = "";
     errorMessage = "";
-    
+
+    // Handle Polar checkout for "I am Hominio"
+    if (pkg.usesPolar) {
+      try {
+        // Redirect to Polar checkout using the configured slug
+        await authClient.checkout({
+          slug: "I-am-Hominio",
+        });
+        // Note: The checkout will redirect the user, so we won't reach here
+        // The webhook will handle the purchase completion
+        return;
+      } catch (error) {
+        console.error("Polar checkout failed:", error);
+        errorMessage =
+          error instanceof Error
+            ? error.message
+            : "Checkout failed. Please try again.";
+        setTimeout(() => {
+          errorMessage = "";
+        }, 5000);
+        purchasing = false;
+        return;
+      }
+    }
+
+    // Legacy purchase flow for cup-specific packages (founder, angel)
     // Calculate previous prize pool before purchase
-    const previousPoolAmount = getPrizePoolAmount(selectedCupId);
-    
-    // Find the package to get its price
-    const pkg = packages.find((p) => p.packageType === packageType);
-    const purchasePrice = pkg ? pkg.price * 100 : 0; // Price in cents
+    const previousPoolAmount = selectedCupId
+      ? getPrizePoolAmount(selectedCupId)
+      : 0;
+
+    const purchasePrice = pkg.priceCents || pkg.price * 100; // Price in cents
 
     try {
       const response = await fetch("/alpha/api/purchase-package", {
@@ -276,7 +374,10 @@
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ packageType, cupId: selectedCupId }),
+        body: JSON.stringify({
+          packageType,
+          cupId: pkg.isUniversal ? null : selectedCupId,
+        }),
       });
 
       if (!response.ok) {
@@ -287,14 +388,14 @@
       const result = await response.json();
       console.log("✅ Purchase successful:", result);
 
-      successMessage = result.message || `Selected`;
+      successMessage = result.message || `Successfully purchased`;
 
       // Immediately update userIdentity to reflect the purchase for instant UI state change
       if (result.identity) {
         userIdentity = {
           id: userIdentity?.id || `temp-${Date.now()}`,
           userId: $session.data?.user?.id || "",
-          cupId: selectedCupId,
+          cupId: result.identity.cupId, // Can be null for universal
           identityType: result.identity.identityType,
           votingWeight: result.identity.votingWeight,
           upgradedFrom: result.identity.upgradedFrom || null,
@@ -304,31 +405,33 @@
 
       // Also add the new purchase to the purchases array for prize pool calculation
       // This ensures the prize pool updates immediately in the UI
-      const newPurchase = {
-        id: `temp-${Date.now()}`,
-        userId: $session.data?.user?.id || "",
-        cupId: selectedCupId,
-        identityType: packageType,
-        price: purchasePrice,
-        purchasedAt: new Date().toISOString(),
-      };
-      purchases = [...purchases, newPurchase];
+      if (selectedCupId) {
+        const newPurchase = {
+          id: `temp-${Date.now()}`,
+          userId: $session.data?.user?.id || "",
+          cupId: selectedCupId,
+          identityType: packageType,
+          price: purchasePrice,
+          purchasedAt: new Date().toISOString(),
+        };
+        purchases = [...purchases, newPurchase];
 
-      // Get purchase price (increase amount)
-      const increase = purchasePrice;
-      
-      // Trigger purchase animation immediately with purchase price
-      purchaseAnimation = {
-        packageType,
-        previousPool: previousPoolAmount,
-        increase,
-        newPool: previousPoolAmount + increase, // Calculate expected new total
-      };
-      
-      // Clear animation after it completes (4 seconds total)
-      setTimeout(() => {
-        purchaseAnimation = null;
-      }, 4000);
+        // Get purchase price (increase amount)
+        const increase = purchasePrice;
+
+        // Trigger purchase animation immediately with purchase price
+        purchaseAnimation = {
+          packageType,
+          previousPool: previousPoolAmount,
+          increase,
+          newPool: previousPoolAmount + increase, // Calculate expected new total
+        };
+
+        // Clear animation after it completes (4 seconds total)
+        setTimeout(() => {
+          purchaseAnimation = null;
+        }, 4000);
+      }
 
       // Play purchase sound effect
       if (purchaseSound) {
@@ -351,7 +454,10 @@
       }, 5500); // Give user time to see animation
     } catch (error) {
       console.error("Purchase failed:", error);
-      errorMessage = error instanceof Error ? error.message : "Purchase failed. Please try again.";
+      errorMessage =
+        error instanceof Error
+          ? error.message
+          : "Purchase failed. Please try again.";
       setTimeout(() => {
         errorMessage = "";
       }, 5000);
@@ -372,13 +478,13 @@
     <div class="max-w-5xl mx-auto">
       <!-- Header -->
       <div class="header-section mb-8 md:mb-12">
-        <div>
-          <h1 class="text-6xl font-bold text-navy mb-3">Choose Your Voting Weight</h1>
-          {#if !userIdentity}
-            <p class="text-navy/70 text-lg">
-              Select your voting weight to participate.
-            </p>
-          {/if}
+        <div class="text-center mx-auto">
+          <h1 class="text-6xl font-bold text-navy mb-3 text-center">
+            Join Hominio
+          </h1>
+          <p class="text-navy/70 text-lg text-center">
+            Become part of our community and help shape the future.
+          </p>
         </div>
       </div>
 
@@ -408,81 +514,309 @@
 
         <!-- Options -->
         <div>
-          <div
-            class="package-grid mb-6 md:mb-8"
-          >
-            {#each packages as pkg}
-              {@const status = getPackageStatus(pkg.packageType)}
-              {@const isCurrent = status === "current"}
-              {@const isAvailable = status === "available"}
-              {@const isUnavailable = status === "unavailable"}
+          <!-- I am Hominio - Full Width Card -->
+          {#each packages.filter((p) => p.packageType === "hominio") as pkg}
+            {@const status = getPackageStatus(pkg.packageType)}
+            {@const isCurrent = status === "current"}
+            {@const isAvailable = status === "available"}
+            {@const isUnavailable = status === "unavailable"}
 
+            <div
+              class="bg-white border-2 rounded-3xl p-8 flex flex-col gap-8 transition-all relative overflow-hidden mb-8 shadow-[0_2px_12px_rgba(26,26,78,0.06)] {isCurrent
+                ? 'bg-gradient-to-br from-[rgba(244,208,63,0.15)] to-[rgba(78,205,196,0.15)] border-[#f4d03f] border-[3px]'
+                : 'border-[rgba(26,26,78,0.1)]'} {isUnavailable
+                ? 'opacity-60'
+                : ''}"
+            >
+              <!-- Main Card Content - CSS Grid Layout -->
               <div
-                class="package-card"
-                class:current-package={isCurrent}
-                class:unavailable-package={isUnavailable}
+                class="grid grid-cols-1 md:grid-cols-[1fr_2fr] gap-12 w-full overflow-hidden"
               >
-                  {#if purchaseAnimation && purchaseAnimation.packageType === pkg.packageType}
-                    <!-- Prize Pool Increase Overlay Animation -->
-                    <div class="purchase-overlay">
-                      <div class="purchase-overlay-content">
-                        <div class="purchase-overlay-section">
-                          <span class="purchase-overlay-label">Prize Pool:</span>
-                          <span class="purchase-overlay-amount previous">{formatPrizePoolAmount(purchaseAnimation.newPool)}</span>
-                        </div>
-                        <div class="purchase-overlay-section increase">
-                          <span class="purchase-overlay-plus">+</span>
-                          <span class="purchase-overlay-amount increase">{formatPrizePoolAmount(purchaseAnimation.increase)}</span>
-                        </div>
-                      </div>
+                <!-- Left Section (1/3) - Header & Key Info -->
+                <div
+                  class="flex flex-col items-center justify-center text-center md:pr-8 md:border-r-2 md:border-[rgba(26,26,78,0.08)] pb-8 md:pb-0 border-b-2 md:border-b-0 border-[rgba(26,26,78,0.08)]"
+                >
+                  <svg
+                    class="w-16 h-16 text-[#f4d03f] mb-4"
+                    viewBox="0 0 24 24"
+                    fill="currentColor"
+                  >
+                    <path
+                      d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"
+                    />
+                  </svg>
+                  <div class="flex items-baseline justify-center gap-2 mb-4">
+                    <div
+                      class="text-[3.5rem] font-black text-[#1a1a4e] leading-none"
+                    >
+                      {pkg.votingWeight}
                     </div>
-                  {/if}
-
-                <svg class="heart-icon" viewBox="0 0 24 24" fill="currentColor">
-                  <path
-                    d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"
-                  />
-                </svg>
-
-                <div class="heart-count-wrapper">
-                  <div class="heart-count">{pkg.votingWeight}</div>
-                  <div class="heart-label">
-                    vote{pkg.votingWeight > 1 ? "s" : ""}
+                    <div
+                      class="text-xl text-[rgba(26,26,78,0.6)] font-semibold"
+                    >
+                      vote{pkg.votingWeight > 1 ? "s" : ""}
+                    </div>
+                  </div>
+                  <h3 class="text-2xl font-bold text-[#1a1a4e] mt-2 mb-1">
+                    {pkg.name}
+                  </h3>
+                  <div
+                    class="text-xs font-medium text-[rgba(26,26,78,0.5)] uppercase tracking-wider mb-6"
+                  >
+                    Membership
+                  </div>
+                  <div class="flex flex-col items-center gap-1 mb-6">
+                    <div class="flex items-baseline gap-2">
+                      <span
+                        class="text-[2rem] font-extrabold text-[#f4d03f] leading-tight"
+                        >1€</span
+                      >
+                      <span
+                        class="text-xs font-normal text-[#4ecdc4] leading-tight"
+                        >per month</span
+                      >
+                    </div>
+                    <div
+                      class="text-sm font-normal text-[rgba(26,26,78,0.6)] leading-snug"
+                    >
+                      billed at 14$ / year excl. VAT
+                    </div>
                   </div>
                 </div>
 
-                <h3 class="package-name">{pkg.name}</h3>
+                <!-- Right Section (2/3) - Benefits -->
+                <div class="flex flex-col min-w-0 w-full overflow-hidden">
+                  <div class="mb-8 text-center">
+                    <h4
+                      class="text-2xl font-extrabold text-[#1a1a4e] mb-2 tracking-tight"
+                    >
+                      What you get
+                    </h4>
+                    <div
+                      class="text-[0.9375rem] text-[rgba(26,26,78,0.6)] font-normal"
+                    >
+                      Unlock these benefits with your membership
+                    </div>
+                  </div>
+                  <!-- Benefits Grid - Two Columns -->
+                  <div
+                    class="grid grid-cols-1 md:grid-cols-2 gap-8 w-full min-w-0 overflow-hidden px-1"
+                  >
+                    <!-- Left Column - Available Now -->
+                    <div class="flex flex-col min-w-0">
+                      <div
+                        class="flex items-center gap-3 mb-5 pb-3 border-b-2 border-[rgba(26,26,78,0.08)]"
+                      >
+                        <div
+                          class="w-3 h-3 rounded-full bg-[#4ecdc4] flex-shrink-0 shadow-[0_0_0_3px_rgba(78,205,196,0.2)]"
+                        ></div>
+                        <span
+                          class="text-sm font-bold text-[#1a1a4e] uppercase tracking-widest"
+                          >Available Now</span
+                        >
+                      </div>
+                      <ul class="flex flex-col gap-4 list-none p-0 m-0 w-full">
+                        <li
+                          class="flex items-start gap-3.5 text-[0.9375rem] text-[rgba(26,26,78,0.85)] leading-relaxed p-3 bg-[rgba(78,205,196,0.06)] rounded-2xl border-l-[3px] border-transparent transition-all duration-200 hover:bg-[rgba(78,205,196,0.09)] hover:border-l-[#4ecdc4] hover:translate-x-0.5 min-w-0 w-full max-w-full box-border m-0 break-words"
+                        >
+                          <div
+                            class="flex-1 min-w-0 max-w-full flex flex-col gap-0.5"
+                          >
+                            <span
+                              class="text-[0.75rem] text-[rgba(26,26,78,0.5)] font-medium uppercase tracking-wide"
+                              >Shape humanities future</span
+                            >
+                            <span
+                              class="text-[0.9375rem] text-[rgba(26,26,78,0.85)] leading-relaxed break-words"
+                              >Voting weight of 1 per Proposal</span
+                            >
+                          </div>
+                        </li>
+                        <li
+                          class="flex items-start gap-3.5 text-[0.9375rem] text-[rgba(26,26,78,0.85)] leading-relaxed p-3 bg-[rgba(78,205,196,0.06)] rounded-2xl border-l-[3px] border-transparent transition-all duration-200 hover:bg-[rgba(78,205,196,0.09)] hover:border-l-[#4ecdc4] hover:translate-x-0.5 min-w-0 w-full max-w-full box-border m-0 break-words"
+                        >
+                          <div
+                            class="flex-1 min-w-0 max-w-full flex flex-col gap-0.5"
+                          >
+                            <span
+                              class="text-[0.75rem] text-[rgba(26,26,78,0.5)] font-medium uppercase tracking-wide"
+                              >Exclusive profile label</span
+                            >
+                            <span
+                              class="text-[0.9375rem] text-[rgba(26,26,78,0.85)] leading-relaxed break-words"
+                              >Secure, I am "Hominio No X". There will only be 1
+                              Hominio No2, and No10 etc, forever</span
+                            >
+                          </div>
+                        </li>
+                        <li
+                          class="flex items-start gap-3.5 text-[0.9375rem] text-[rgba(26,26,78,0.85)] leading-relaxed p-3 bg-[rgba(78,205,196,0.06)] rounded-2xl border-l-[3px] border-transparent transition-all duration-200 hover:bg-[rgba(78,205,196,0.09)] hover:border-l-[#4ecdc4] hover:translate-x-0.5 min-w-0 w-full max-w-full box-border m-0 break-words"
+                        >
+                          <div
+                            class="flex-1 min-w-0 max-w-full flex flex-col gap-0.5"
+                          >
+                            <span
+                              class="text-[0.75rem] text-[rgba(26,26,78,0.5)] font-medium uppercase tracking-wide"
+                              >FOR NERDS ;)</span
+                            >
+                            <span
+                              class="text-[0.9375rem] text-[rgba(26,26,78,0.85)] leading-relaxed break-words"
+                              >We accept your pull requests in exchange for
+                              bounties</span
+                            >
+                          </div>
+                        </li>
+                        <li
+                          class="flex items-start gap-3.5 text-[0.9375rem] text-[rgba(26,26,78,0.85)] leading-relaxed p-3 bg-[rgba(78,205,196,0.06)] rounded-2xl border-l-[3px] border-transparent transition-all duration-200 hover:bg-[rgba(78,205,196,0.09)] hover:border-l-[#4ecdc4] hover:translate-x-0.5 min-w-0 w-full max-w-full box-border m-0 break-words"
+                        >
+                          <div
+                            class="flex-1 min-w-0 max-w-full flex flex-col gap-0.5"
+                          >
+                            <span
+                              class="text-[0.75rem] text-[rgba(26,26,78,0.5)] font-medium uppercase tracking-wide"
+                              >Early Adopter Alpha Community</span
+                            >
+                            <span
+                              class="text-[0.9375rem] text-[rgba(26,26,78,0.85)] leading-relaxed break-words"
+                              >Join the exclusive early adopter chat community</span
+                            >
+                          </div>
+                        </li>
+                      </ul>
+                    </div>
 
-                <div class="price">
-                  €{pkg.price}
+                    <!-- Right Column - Coming Soon -->
+                    <div class="flex flex-col min-w-0">
+                      <div
+                        class="flex items-center gap-3 mb-5 pb-3 border-b-2 border-[rgba(26,26,78,0.08)]"
+                      >
+                        <div
+                          class="w-3 h-3 rounded-full bg-[rgba(26,26,78,0.3)] flex-shrink-0 shadow-[0_0_0_3px_rgba(26,26,78,0.1)]"
+                        ></div>
+                        <span
+                          class="text-sm font-bold text-[#1a1a4e] uppercase tracking-widest"
+                          >Coming Soon</span
+                        >
+                      </div>
+                      <ul class="flex flex-col gap-4 list-none p-0 m-0 w-full">
+                        <li
+                          class="flex items-start gap-3.5 text-[0.9375rem] text-[rgba(26,26,78,0.85)] leading-relaxed p-3 bg-[rgba(26,26,78,0.04)] rounded-2xl border-l-[3px] border-transparent transition-all duration-200 hover:bg-[rgba(26,26,78,0.06)] hover:border-l-[rgba(26,26,78,0.2)] hover:translate-x-0.5 opacity-85 min-w-0 w-full max-w-full box-border m-0 break-words"
+                        >
+                          <div
+                            class="flex-1 min-w-0 max-w-full flex flex-col gap-0.5"
+                          >
+                            <div class="flex items-center gap-2 flex-wrap">
+                              <span
+                                class="text-[0.75rem] text-[rgba(26,26,78,0.5)] font-medium uppercase tracking-wide"
+                                >World Record Holder</span
+                              >
+                              <span
+                                class="inline-block text-[0.6875rem] font-semibold text-[rgba(26,26,78,0.6)] bg-[rgba(26,26,78,0.08)] px-1.5 py-0.5 rounded uppercase tracking-tight whitespace-nowrap flex-shrink-0"
+                                >Sept. 2026</span
+                              >
+                            </div>
+                            <span
+                              class="text-[0.9375rem] text-[rgba(26,26,78,0.85)] leading-relaxed break-words"
+                              >Write history on the Guinness World Record wall
+                              of fame</span
+                            >
+                          </div>
+                        </li>
+                        <li
+                          class="flex items-start gap-3.5 text-[0.9375rem] text-[rgba(26,26,78,0.85)] leading-relaxed p-3 bg-[rgba(26,26,78,0.04)] rounded-2xl border-l-[3px] border-transparent transition-all duration-200 hover:bg-[rgba(26,26,78,0.06)] hover:border-l-[rgba(26,26,78,0.2)] hover:translate-x-0.5 opacity-85 min-w-0 w-full max-w-full box-border m-0 break-words"
+                        >
+                          <div
+                            class="flex-1 min-w-0 max-w-full flex flex-col gap-0.5"
+                          >
+                            <div class="flex items-center gap-2 flex-wrap">
+                              <span
+                                class="text-[0.75rem] text-[rgba(26,26,78,0.5)] font-medium uppercase tracking-wide"
+                                >Get Sponsored</span
+                              >
+                              <span
+                                class="inline-block text-[0.6875rem] font-semibold text-[rgba(26,26,78,0.6)] bg-[rgba(26,26,78,0.08)] px-1.5 py-0.5 rounded uppercase tracking-tight whitespace-nowrap flex-shrink-0"
+                                >est. Dez/Jan</span
+                              >
+                            </div>
+                            <span
+                              class="text-[0.9375rem] text-[rgba(26,26,78,0.85)] leading-relaxed break-words"
+                              >Unlock your fair part of 50% revenue share</span
+                            >
+                          </div>
+                        </li>
+                        <li
+                          class="flex items-start gap-3.5 text-[0.9375rem] text-[rgba(26,26,78,0.85)] leading-relaxed p-3 bg-[rgba(26,26,78,0.04)] rounded-2xl border-l-[3px] border-transparent transition-all duration-200 hover:bg-[rgba(26,26,78,0.06)] hover:border-l-[rgba(26,26,78,0.2)] hover:translate-x-0.5 opacity-85 min-w-0 w-full max-w-full box-border m-0 break-words"
+                        >
+                          <div
+                            class="flex-1 min-w-0 max-w-full flex flex-col gap-0.5"
+                          >
+                            <div class="flex items-center gap-2 flex-wrap">
+                              <span
+                                class="text-[0.75rem] text-[rgba(26,26,78,0.5)] font-medium uppercase tracking-wide"
+                                >Submit Proposals</span
+                              >
+                              <span
+                                class="inline-block text-[0.6875rem] font-semibold text-[rgba(26,26,78,0.6)] bg-[rgba(26,26,78,0.08)] px-1.5 py-0.5 rounded uppercase tracking-tight whitespace-nowrap flex-shrink-0"
+                                >Nov</span
+                              >
+                            </div>
+                            <span
+                              class="text-[0.9375rem] text-[rgba(26,26,78,0.85)] leading-relaxed break-words"
+                              >Lead the way with your ideas</span
+                            >
+                          </div>
+                        </li>
+                        <li
+                          class="flex items-start gap-3.5 text-[0.9375rem] text-[rgba(26,26,78,0.85)] leading-relaxed p-3 bg-[rgba(26,26,78,0.04)] rounded-2xl border-l-[3px] border-transparent transition-all duration-200 hover:bg-[rgba(26,26,78,0.06)] hover:border-l-[rgba(26,26,78,0.2)] hover:translate-x-0.5 opacity-85 min-w-0 w-full max-w-full box-border m-0 break-words"
+                        >
+                          <div
+                            class="flex-1 min-w-0 max-w-full flex flex-col gap-0.5"
+                          >
+                            <div class="flex items-center gap-2 flex-wrap">
+                              <span
+                                class="text-[0.75rem] text-[rgba(26,26,78,0.5)] font-medium uppercase tracking-wide"
+                                >Summit Live-Stream</span
+                              >
+                              <span
+                                class="inline-block text-[0.6875rem] font-semibold text-[rgba(26,26,78,0.6)] bg-[rgba(26,26,78,0.08)] px-1.5 py-0.5 rounded uppercase tracking-tight whitespace-nowrap flex-shrink-0"
+                                >est. Sept. 26</span
+                              >
+                            </div>
+                            <span
+                              class="text-[0.9375rem] text-[rgba(26,26,78,0.85)] leading-relaxed break-words"
+                              >Follow along all speakers live online @ Hominio
+                              Summit No1</span
+                            >
+                          </div>
+                        </li>
+                      </ul>
+                    </div>
+                  </div>
                 </div>
+              </div>
 
-                <button
-                  onclick={() => purchasePackage(pkg.packageType)}
-                  disabled={purchasing || isCurrent || isUnavailable || !selectedCupId}
-                  class="buy-label"
-                  class:current-label={isCurrent}
-                  class:unavailable-label={isUnavailable}
-                >
+              <!-- Full Width Purchase Button -->
+              <button
+                onclick={() => purchasePackage(pkg.packageType)}
+                disabled={purchasing || isCurrent || isUnavailable}
+                class="text-sm font-semibold uppercase tracking-wider py-3.5 px-8 border-2 rounded-lg transition-all duration-200 cursor-pointer w-full mt-2 {isCurrent
+                  ? 'bg-[#f4d03f] text-[#1a1a4e] border-[#f4d03f] cursor-default'
+                  : isUnavailable
+                    ? 'bg-[rgba(26,26,78,0.1)] text-[rgba(26,26,78,0.5)] border-[rgba(26,26,78,0.2)] cursor-not-allowed opacity-60'
+                    : 'bg-[#f4d03f] text-[#1a1a4e] border-[#f4d03f] hover:bg-transparent hover:text-[#f4d03f]'} {purchasing
+                  ? 'opacity-60 cursor-not-allowed'
+                  : ''}"
+              >
                 {#if isCurrent}
-                    Current
+                  Current
                 {:else if isAvailable}
-                    Select
+                  {pkg.usesPolar ? "Purchase now" : "Select"}
                 {:else}
-                    Unavailable
+                  Unavailable
                 {/if}
               </button>
-              </div>
-            {/each}
-          </div>
-
-        </div>
-
-        <!-- Back to Cups -->
-        <div class="text-center">
-          <a href="/alpha/cups" class="btn-primary px-8 py-3">
-            ← Back to Cups
-          </a>
+            </div>
+          {/each}
         </div>
       </div>
     </div>
@@ -530,7 +864,6 @@
     justify-content: space-between;
     gap: 2rem;
   }
-
 
   /* Card */
   .card {
@@ -607,17 +940,379 @@
     align-items: center;
   }
 
-  /* Unused package-description style removed */
+  .package-description {
+    font-size: 0.875rem;
+    color: rgba(26, 26, 78, 0.7);
+    text-align: center;
+    margin: 0.25rem 0;
+    line-height: 1.4;
+  }
 
-  .price {
-    font-size: 2rem;
-    font-weight: 800;
-    color: #f4d03f;
+  .price-container {
     margin-top: auto;
     padding-top: 0.75rem;
     display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
+    gap: 0.25rem;
+  }
+
+  .price-main {
+    font-size: 2rem;
+    font-weight: 800;
+    color: #f4d03f;
+    line-height: 1.2;
+  }
+
+  .price-billing {
+    font-size: 0.75rem;
+    font-weight: 400;
+    color: rgba(26, 26, 78, 0.6);
+    line-height: 1.3;
+    text-align: center;
+    margin-top: 0.25rem;
+  }
+
+  /* I am Hominio Full-Width Card */
+  .hominio-full-card {
+    background: white;
+    border: 2px solid rgba(26, 26, 78, 0.1);
+    border-radius: 24px;
+    padding: 2rem;
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+    transition: all 0.3s;
+    position: relative;
+    overflow: hidden;
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+
+  .hominio-card-content {
+    display: flex;
+    gap: 3rem;
+    width: 100%;
+  }
+
+  .hominio-full-card.current-package {
+    background: linear-gradient(
+      135deg,
+      rgba(244, 208, 63, 0.15) 0%,
+      rgba(78, 205, 196, 0.15) 100%
+    );
+    border-color: #f4d03f;
+    border-width: 3px;
+  }
+
+  .hominio-full-card.unavailable-package {
+    opacity: 0.6;
+  }
+
+  .hominio-left {
+    flex: 0 0 33.333%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding-right: 2rem;
+    border-right: 2px solid rgba(26, 26, 78, 0.08);
+  }
+
+  .hominio-right {
+    flex: 0 0 66.666%;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    max-width: 66.666%;
+    overflow: hidden;
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .heart-icon-large {
+    width: 4rem;
+    height: 4rem;
+    color: #f4d03f;
+    margin-bottom: 1rem;
+  }
+
+  .heart-count-wrapper-large {
+    display: flex;
+    align-items: baseline;
+    justify-content: center;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+  }
+
+  .heart-count-large {
+    font-size: 3.5rem;
+    font-weight: 900;
+    color: #1a1a4e;
+    line-height: 1;
+  }
+
+  .heart-label-large {
+    font-size: 1.25rem;
+    color: rgba(26, 26, 78, 0.6);
+    font-weight: 600;
+  }
+
+  .hominio-name {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #1a1a4e;
+    margin: 0.5rem 0 0.25rem 0;
+  }
+
+  .hominio-membership-label {
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: rgba(26, 26, 78, 0.5);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 1.5rem;
+  }
+
+  .hominio-price-section {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.25rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .hominio-price-main {
+    font-size: 2rem;
+    font-weight: 800;
+    color: #f4d03f;
+    line-height: 1.2;
+    display: flex;
+    align-items: baseline;
+    gap: 0.5rem;
+  }
+
+  .hominio-price-period {
+    font-size: 0.75rem;
+    font-weight: 400;
+    color: #4ecdc4;
+    line-height: 1.2;
+  }
+
+  .hominio-price-billing {
+    font-size: 0.875rem;
+    font-weight: 400;
+    color: rgba(26, 26, 78, 0.6);
+    line-height: 1.3;
+  }
+
+  .hominio-buy-button-full {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #4ecdc4;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 0.875rem 2rem;
+    border: 2px solid #4ecdc4;
+    border-radius: 8px;
+    transition: all 0.2s;
+    cursor: pointer;
+    background: transparent;
+    width: 100%;
+    margin-top: 0.5rem;
+  }
+
+  .hominio-buy-button-full:hover:not(:disabled) {
+    background: #4ecdc4;
+    color: white;
+  }
+
+  .hominio-buy-button-full:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+  }
+
+  .hominio-buy-button-full.current-label {
+    background: #f4d03f;
+    color: #1a1a4e;
+    border-color: #f4d03f;
+    cursor: default;
+  }
+
+  .hominio-buy-button-full.unavailable-label {
+    background: rgba(26, 26, 78, 0.1);
+    color: rgba(26, 26, 78, 0.5);
+    border-color: rgba(26, 26, 78, 0.2);
+    cursor: not-allowed;
+  }
+
+  .benefits-header {
+    margin-bottom: 2rem;
+    padding: 0;
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .benefits-title {
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: #1a1a4e;
+    margin: 0 0 0.5rem 0;
+    letter-spacing: -0.02em;
+  }
+
+  .benefits-subtitle {
+    font-size: 0.9375rem;
+    color: rgba(26, 26, 78, 0.6);
+    font-weight: 400;
+  }
+
+  .benefits-columns-wrapper {
+    display: flex;
+    gap: 2rem;
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    overflow: hidden;
+    box-sizing: border-box;
+  }
+
+  .benefits-column {
+    flex: 1 1 0;
+    min-width: 0;
+    max-width: calc(50% - 1rem);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    box-sizing: border-box;
+  }
+
+  .column-header {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 1.25rem;
+    padding-bottom: 0.75rem;
+    padding-left: 0;
+    padding-right: 0;
+    border-bottom: 2px solid rgba(26, 26, 78, 0.08);
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .status-indicator {
+    width: 0.75rem;
+    height: 0.75rem;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  .status-indicator.available {
+    background: #4ecdc4;
+    box-shadow: 0 0 0 3px rgba(78, 205, 196, 0.2);
+  }
+
+  .status-indicator.coming-soon-indicator {
+    background: rgba(26, 26, 78, 0.3);
+    box-shadow: 0 0 0 3px rgba(26, 26, 78, 0.1);
+  }
+
+  .column-title {
+    font-size: 0.875rem;
+    font-weight: 700;
+    color: #1a1a4e;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+  }
+
+  .hominio-benefits-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .hominio-benefit-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.875rem;
+    font-size: 0.9375rem;
+    color: rgba(26, 26, 78, 0.85);
+    line-height: 1.6;
+    padding: 0.75rem;
+    background: rgba(78, 205, 196, 0.03);
+    border-radius: 8px;
+    border-left: 3px solid transparent;
+    transition: all 0.2s ease;
+    min-width: 0;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    margin: 0;
+    overflow-wrap: break-word;
+    word-wrap: break-word;
+  }
+
+  .hominio-benefit-item:hover {
+    background: rgba(78, 205, 196, 0.06);
+    border-left-color: #4ecdc4;
+    transform: translateX(2px);
+  }
+
+  .coming-soon-column .hominio-benefit-item {
+    background: rgba(26, 26, 78, 0.02);
+    opacity: 0.85;
+  }
+
+  .coming-soon-column .hominio-benefit-item:hover {
+    background: rgba(26, 26, 78, 0.04);
+    border-left-color: rgba(26, 26, 78, 0.2);
+  }
+
+  .benefit-text {
+    flex: 1;
+    min-width: 0;
+    max-width: 100%;
+    overflow-wrap: break-word;
+    word-break: break-word;
+    hyphens: auto;
+    line-height: 1.5;
+    display: inline;
+  }
+
+  .hominio-benefit-item .check-icon {
+    width: 1.375rem;
+    height: 1.375rem;
+    color: #4ecdc4;
+    flex-shrink: 0;
+    margin-top: 0.125rem;
+  }
+
+  .coming-soon-column .hominio-benefit-item .check-icon {
+    color: rgba(26, 26, 78, 0.4);
+  }
+
+  .est-badge {
+    display: inline-block;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    color: rgba(26, 26, 78, 0.6);
+    background: rgba(26, 26, 78, 0.08);
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    margin-left: 0.5rem;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+    font-style: normal;
+    white-space: nowrap;
+    flex-shrink: 0;
+    vertical-align: middle;
   }
 
   .buy-label {
@@ -702,8 +1397,14 @@
 
   @media (min-width: 768px) {
     .package-grid {
-      grid-template-columns: repeat(3, 1fr);
+      grid-template-columns: 1fr 1fr 1fr;
       gap: 1.5rem;
+    }
+    /* Prioritize "I am Hominio" - make it span full width on top */
+    .package-grid :nth-child(1) {
+      grid-column: 1 / -1;
+      max-width: 500px;
+      margin: 0 auto;
     }
   }
 
@@ -761,15 +1462,75 @@
       padding-right: 0.5rem;
     }
 
-    .package-card .price {
+    .package-card .price-container {
       order: 6;
       margin-top: 0;
       padding-top: 0;
       flex-direction: row;
       align-items: baseline;
       gap: 0.5rem;
-      font-size: 1.25rem;
       flex-shrink: 0;
+    }
+
+    .package-card .price-main {
+      font-size: 1.25rem;
+    }
+
+    .package-card .price-billing {
+      display: none; /* Hide billing text on mobile to save space */
+    }
+
+    /* I am Hominio Card Mobile */
+    .hominio-full-card {
+      flex-direction: column;
+      padding: 1.5rem;
+      gap: 2rem;
+    }
+
+    .hominio-left {
+      flex: 1;
+      padding-right: 0;
+      border-right: none;
+      border-bottom: 2px solid rgba(26, 26, 78, 0.08);
+      padding-bottom: 2rem;
+    }
+
+    .hominio-right {
+      flex: 1;
+      min-width: 0; /* Prevent overflow */
+      max-width: 100%;
+      overflow: hidden;
+    }
+
+    .benefits-columns-wrapper {
+      flex-direction: column;
+      gap: 2rem;
+    }
+
+    .benefits-column {
+      max-width: 100%;
+    }
+
+    .benefits-header {
+      margin-bottom: 1.5rem;
+    }
+
+    .benefits-title {
+      font-size: 1.25rem;
+    }
+
+    .benefits-subtitle {
+      font-size: 0.875rem;
+    }
+
+    .column-header {
+      margin-bottom: 1rem;
+      padding-bottom: 0.625rem;
+    }
+
+    .hominio-benefit-item {
+      padding: 0.625rem;
+      gap: 0.75rem;
     }
 
     .package-card .buy-label {
@@ -820,8 +1581,12 @@
       padding-right: 0.375rem;
     }
 
-    .package-card .price {
+    .package-card .price-main {
       font-size: 1.125rem;
+    }
+
+    .package-card .price-period {
+      font-size: 0.75rem;
     }
 
     .package-card .buy-label {
@@ -851,7 +1616,7 @@
     z-index: 100;
     pointer-events: none;
     animation: fadeInOutPurchaseOverlay 4s ease-in-out;
-    }
+  }
 
   .purchase-overlay-content {
     display: flex;
@@ -973,14 +1738,12 @@
   }
 
   @keyframes pulseIncrease {
-    0%, 100% {
+    0%,
+    100% {
       transform: scale(1);
     }
     50% {
       transform: scale(1.2);
     }
   }
-
-
 </style>
-

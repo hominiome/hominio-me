@@ -92,28 +92,44 @@ async function createTables() {
     console.log("✅ CupMatch table created\n");
 
     // 4. UserIdentities table
+    // cupId is nullable: null = universal identity (applies to all cups), otherwise cup-specific
     console.log("👤 Creating userIdentities table...");
     await db.schema
       .createTable("userIdentities")
       .ifNotExists()
       .addColumn("id", "text", (col) => col.primaryKey())
       .addColumn("userId", "text", (col) => col.notNull())
-      .addColumn("cupId", "text", (col) => col.notNull().defaultTo(""))
+      .addColumn("cupId", "text") // Nullable for universal identities (null = universal, otherwise cup-specific)
       .addColumn("identityType", "text", (col) => col.notNull())
       .addColumn("votingWeight", "integer", (col) => col.notNull())
       .addColumn("selectedAt", "text", (col) => col.notNull())
       .addColumn("upgradedFrom", "text", (col) => col.notNull().defaultTo(""))
       .execute();
+
+    // Create index for efficient lookups (universal or cup-specific)
+    await sql`
+      CREATE INDEX IF NOT EXISTS idx_userIdentities_user_cup 
+      ON "userIdentities"("userId", "cupId")
+    `.execute(db);
+
+    // Create index for universal identity lookups (cupId IS NULL)
+    await sql`
+      CREATE INDEX IF NOT EXISTS idx_userIdentities_user_universal 
+      ON "userIdentities"("userId") 
+      WHERE "cupId" IS NULL
+    `.execute(db);
+
     console.log("✅ UserIdentities table created\n");
 
     // 5. IdentityPurchase table
+    // cupId is nullable: null = universal identity purchase, otherwise cup-specific
     console.log("💰 Creating identityPurchase table...");
     await db.schema
       .createTable("identityPurchase")
       .ifNotExists()
       .addColumn("id", "text", (col) => col.primaryKey())
       .addColumn("userId", "text", (col) => col.notNull())
-      .addColumn("cupId", "text", (col) => col.notNull())
+      .addColumn("cupId", "text") // Nullable for universal identities (null = universal, otherwise cup-specific)
       .addColumn("identityType", "text", (col) => col.notNull())
       .addColumn("price", "integer", (col) => col.notNull())
       .addColumn("purchasedAt", "text", (col) => col.notNull())

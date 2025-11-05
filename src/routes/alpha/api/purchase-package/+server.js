@@ -9,20 +9,24 @@ const PACKAGES = {
   hominio: {
     packageType: "hominio",
     votingWeight: 1,
-    name: "I am Hominio",
-    price: 100, // Price in cents: 100 = 1.00€
+    name: "❤︎ I am Hominio",
+    price: 1200, // Price in cents: 1200 = 12.00€/year (~14$ incl. taxes + VAT)
+    isUniversal: true, // Universal identity - applies to all cups (cupId = null)
+    description: "Yearly Membership - Unlimited voting access to all cups",
   },
   founder: {
     packageType: "founder",
     votingWeight: 5,
     name: "Hominio Founder",
     price: 1000, // Price in cents: 1000 = 10.00€
+    isUniversal: false, // Cup-specific identity
   },
   angel: {
     packageType: "angel",
     votingWeight: 10,
     name: "Hominio Angel",
     price: 10000, // Price in cents: 10000 = 100.00€
+    isUniversal: false, // Cup-specific identity
   },
 };
 
@@ -50,50 +54,88 @@ export async function POST({ request }) {
     );
   }
 
-  if (!cupId) {
+  const userId = session.user.id;
+  const now = new Date().toISOString();
+  const selectedPackage = PACKAGES[packageType];
+  const isUniversal = selectedPackage.isUniversal === true;
+
+  // For universal identities (hominio), cupId is not required
+  // For cup-specific identities (founder, angel), cupId is required
+  if (!isUniversal && !cupId) {
     return json(
-      { error: "cupId is required" },
+      { error: "cupId is required for cup-specific identities" },
       { status: 400 }
     );
   }
 
-  const userId = session.user.id;
-  const now = new Date().toISOString();
-  const selectedPackage = PACKAGES[packageType];
-
   try {
-    // Validate cup exists
-    const cup = await zeroDb
-      .selectFrom("cup")
-      .selectAll()
-      .where("id", "=", cupId)
-      .executeTakeFirst();
+    let updatedCup = null;
+    
+    // For cup-specific identities, validate cup exists
+    if (!isUniversal) {
+      const cup = await zeroDb
+        .selectFrom("cup")
+        .selectAll()
+        .where("id", "=", cupId)
+        .executeTakeFirst();
 
-    if (!cup) {
-      return json(
-        { error: "Cup not found" },
-        { status: 404 }
-      );
+      if (!cup) {
+        return json(
+          { error: "Cup not found" },
+          { status: 404 }
+        );
+      }
+
+      // Check if cup has expired and close it if needed
+      const { checkAndCloseExpiredCups } = await import("$lib/expiry-checker.server.js");
+      await checkAndCloseExpiredCups([cup]);
+      
+      // Re-fetch cup in case it was just closed
+      updatedCup = await zeroDb
+        .selectFrom("cup")
+        .selectAll()
+        .where("id", "=", cupId)
+        .executeTakeFirst();
     }
 
-    // Check if cup has expired and close it if needed
-    const { checkAndCloseExpiredCups } = await import("$lib/expiry-checker.server.js");
-    await checkAndCloseExpiredCups([cup]);
+    // Check if user already has an identity
+    // For universal: check for universal identity (cupId IS NULL)
+    // For cup-specific: check for cup-specific identity OR universal identity
+    let existingIdentity = null;
     
-    // Re-fetch cup in case it was just closed
-    const updatedCup = await zeroDb
-      .selectFrom("cup")
-      .selectAll()
-      .where("id", "=", cupId)
-      .executeTakeFirst();
-
-    // Check if user already has an identity for this cup
-    const existingIdentity = await zeroDb
-      .selectFrom("userIdentities")
-      .selectAll()
-      .where("userId", "=", userId)
-      .where("cupId", "=", cupId)
-      .executeTakeFirst();
+    if (isUniversal) {
+      // Check for existing universal identity
+      existingIdentity = await zeroDb
+        .selectFrom("userIdentities")
+        .selectAll()
+        .where("userId", "=", userId)
+        .where("cupId", "is", null)
+        .where("identityType", "=", "hominio")
+        .executeTakeFirst();
+    } else {
+      // Check for cup-specific identity first
+      existingIdentity = await zeroDb
+        .selectFrom("userIdentities")
+        .selectAll()
+        .where("userId", "=", userId)
+        .where("cupId", "=", cupId)
+        .executeTakeFirst();
+      
+      // If no cup-specific identity, check for universal identity
+      if (!existingIdentity) {
+        const universalIdentity = await zeroDb
+          .selectFrom("userIdentities")
+          .selectAll()
+          .where("userId", "=", userId)
+          .where("cupId", "is", null)
+          .where("identityType", "=", "hominio")
+          .executeTakeFirst();
+        
+        // Universal identity grants access to all cups, so user can vote
+        // But they can still purchase cup-specific upgrade if they want
+        // For now, allow purchasing cup-specific even if they have universal
+      }
+    }
 
     if (existingIdentity) {
       // User already has an identity - check if this is a valid upgrade
@@ -119,7 +161,8 @@ export async function POST({ request }) {
       }
 
       // Update existing identity (upgrade)
-      await zeroDb
+      // Handle both universal (cupId IS NULL) and cup-specific identities
+      const updateQuery = zeroDb
         .updateTable("userIdentities")
         .set({
           identityType: selectedPackage.packageType,
@@ -128,8 +171,9 @@ export async function POST({ request }) {
           selectedAt: now, // Update selection time on upgrade
         })
         .where("userId", "=", userId)
-        .where("cupId", "=", cupId)
-        .execute();
+        .where("id", "=", existingIdentity.id);
+      
+      await updateQuery.execute();
 
       // Create purchase record for upgrade
       const purchaseId = nanoid();
@@ -138,7 +182,7 @@ export async function POST({ request }) {
         .values({
           id: purchaseId,
           userId,
-          cupId,
+          cupId: isUniversal ? null : cupId, // Null for universal identities
           identityType: selectedPackage.packageType,
           price: selectedPackage.price,
           purchasedAt: now,
@@ -148,7 +192,7 @@ export async function POST({ request }) {
 
       // Create notification for identity purchase
       const notificationId = nanoid();
-      const isHominio = selectedPackage.name === "I am Hominio";
+      const isHominio = selectedPackage.name.includes("I am Hominio");
       const isFounder = selectedPackage.packageType === "founder";
       const identityName = isHominio ? "Hominio" : selectedPackage.name.replace("Hominio ", "");
       
@@ -156,7 +200,7 @@ export async function POST({ request }) {
       const notificationSubtype = isHominio ? "hominio" : isFounder ? "founder" : "other";
       const notificationConfig = getNotificationConfig("identityPurchase", notificationSubtype, {
         identityName,
-        cupName: updatedCup.name,
+        cupName: updatedCup?.name || (isUniversal ? "All Cups" : ""),
       });
       
       await zeroDb
@@ -190,7 +234,7 @@ export async function POST({ request }) {
         message: `Successfully upgraded to ${selectedPackage.name}`,
       });
     } else {
-      // No existing identity for this cup - create new one
+      // No existing identity - create new one
       const identityId = nanoid();
 
       await zeroDb
@@ -198,7 +242,7 @@ export async function POST({ request }) {
         .values({
           id: identityId,
           userId,
-          cupId,
+          cupId: isUniversal ? null : cupId, // Null for universal identities
           identityType: selectedPackage.packageType,
           votingWeight: selectedPackage.votingWeight,
           selectedAt: now,
@@ -213,7 +257,7 @@ export async function POST({ request }) {
         .values({
           id: purchaseId,
           userId,
-          cupId,
+          cupId: isUniversal ? null : cupId, // Null for universal identities
           identityType: selectedPackage.packageType,
           price: selectedPackage.price,
           purchasedAt: now,
@@ -261,7 +305,7 @@ export async function POST({ request }) {
           votingWeight: selectedPackage.votingWeight,
           name: selectedPackage.name,
         },
-        message: `Successfully selected ${selectedPackage.name}`,
+        message: `Successfully purchased ${selectedPackage.name}`,
       });
     }
   } catch (error) {
