@@ -169,6 +169,33 @@
               }
             })();
 
+            // Create Instagram follow prompt notification for new users (immediately after signup)
+            // This should happen AFTER newsletter prompt, before onboarding
+            (async () => {
+              try {
+                // Small delay to ensure newsletter prompt is created first
+                await new Promise((resolve) => setTimeout(resolve, 500));
+                
+                // Check if user already has Instagram follow prompt
+                const response = await fetch("/alpha/api/create-instagram-follow-prompt", {
+                  method: "POST",
+                  headers: {
+                    "Content-Type": "application/json",
+                  },
+                });
+                // Silently handle - if it already exists, that's fine
+                if (response.ok) {
+                  const result = await response.json();
+                  if (result.success && !result.alreadyExists) {
+                    console.log("[Instagram] Instagram follow prompt notification created for new user");
+                  }
+                }
+              } catch (error) {
+                // Silently fail - don't interrupt user flow
+                console.warn("[Instagram] Failed to create Instagram follow prompt:", error);
+              }
+            })();
+
             // Query user identities to check for explorer identity
             const identitiesQuery = identitiesByUser(userId);
             userIdentitiesView = zero.materialize(identitiesQuery);
@@ -364,7 +391,8 @@
   }
 
   function handleNotificationClose() {
-    // Mark the current notification as read before closing
+    // Explicit close (from close button or action buttons) - mark as read
+    // Note: Backdrop clicks use handleNotificationBackdropClose instead
     if (notificationModal) {
       const notificationId = notificationModal.id;
 
@@ -373,6 +401,19 @@
 
       // Close modal - the notification listener will automatically show
       // the next priority notification from the queue if there is one
+      notificationModal = null;
+    } else {
+      notificationModal = null;
+    }
+  }
+
+  function handleNotificationBackdropClose() {
+    // Backdrop click (outside modal card) - mark as read and close
+    if (notificationModal) {
+      const notificationId = notificationModal.id;
+      // Mark as read (Zero handles optimistic updates)
+      handleNotificationMarkRead(notificationId);
+      // Close modal
       notificationModal = null;
     } else {
       notificationModal = null;
@@ -1231,6 +1272,7 @@
   showBack={showBackState}
   backUrl={backUrl()}
   canCloseModal={true}
+  hasExplorerIdentity={hasExplorerIdentity}
   onModalClose={() => {
     // Allow closing all modals - users can navigate to /me to update profile
     // Check for admin modals first (they're not URL-based)
@@ -1264,6 +1306,18 @@
 <div class="content-wrapper relative min-h-screen">
   <div class="mx-auto w-full max-w-7xl px-2 sm:px-4 lg:px-6">
     {@render children()}
+    
+    <!-- Footer -->
+    <div class="alpha-footer">
+      <a href="/legal-notice" class="footer-link">Site Notice</a>
+      <span class="footer-separator">·</span>
+      <a href="/privacy-policy" class="footer-link">Privacy Policy</a>
+      <span class="footer-separator">·</span>
+      <a href="/social-media-privacy-policy" class="footer-link"
+        >Social Media Policy</a
+      >
+    </div>
+    
     <!-- Spacer to ensure content can scroll properly behind navbar -->
     <div class="h-20"></div>
   </div>
@@ -1275,6 +1329,7 @@
   <NotificationModal
     notification={notificationModal}
     onClose={handleNotificationClose}
+    onBackdropClose={handleNotificationBackdropClose}
     onMarkRead={handleNotificationMarkRead}
     onNext={goToNextNotification}
     remainingCount={remainingUnreadCount()}
@@ -1301,9 +1356,41 @@
     min-height: 100vh;
   }
 
+  .alpha-footer {
+    margin-top: 3rem;
+    padding-top: 2rem;
+    padding-bottom: 6rem; /* Extra padding to ensure links aren't cut off by fixed bottom nav */
+    border-top: 1px solid #e5e7eb;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+  }
+
+  .footer-link {
+    font-size: 0.875rem;
+    color: #6b7280;
+    text-decoration: none;
+    transition: color 0.2s;
+  }
+
+  .footer-link:hover {
+    color: #111827;
+  }
+
+  .footer-separator {
+    color: #d1d5db;
+    font-size: 0.875rem;
+  }
+
   @media (max-width: 768px) {
     .content-wrapper {
       padding-bottom: 20px; /* Space for bottom navbar */
+    }
+    
+    .alpha-footer {
+      padding-bottom: 7rem; /* Even more padding on mobile for bottom nav */
     }
   }
 </style>

@@ -139,10 +139,10 @@
   class="notification-item"
   class:read={isRead}
   class:modal-mode={!showActions}
-  onclick={handleMarkRead}
-  onkeydown={handleKeydown}
-  role="button"
-  tabindex="0"
+  onclick={showActions ? handleMarkRead : undefined}
+  onkeydown={showActions ? handleKeydown : undefined}
+  role={showActions ? "button" : undefined}
+  tabindex={showActions ? 0 : undefined}
   aria-label={isRead ? "Notification (read)" : "Notification (unread)"}
 >
   <div class="notification-content">

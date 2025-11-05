@@ -426,21 +426,23 @@
 <div class="profile-container">
   <div class="profile-card">
     <div class="profile-header">
-      <div class="avatar">
-        {#if data.session?.image && !imageFailed}
-          <img
-            src={data.session.image}
-            alt={data.session.name}
-            onerror={() => (imageFailed = true)}
-          />
-        {:else}
-          <div class="avatar-placeholder">
-            {data.session?.name?.charAt(0).toUpperCase() || "U"}
-          </div>
-        {/if}
-      </div>
-      <h1 class="profile-name">{data.session?.name || "User"}</h1>
-      <p class="profile-email">{data.session?.email}</p>
+      {#if hasExplorerIdentity()}
+        <div class="avatar">
+          {#if data.session?.image && !imageFailed}
+            <img
+              src={data.session.image}
+              alt={data.session.name}
+              onerror={() => (imageFailed = true)}
+            />
+          {:else}
+            <div class="avatar-placeholder">
+              {data.session?.name?.charAt(0).toUpperCase() || "U"}
+            </div>
+          {/if}
+        </div>
+        <h1 class="profile-name">{data.session?.name || "User"}</h1>
+        <p class="profile-email">{data.session?.email}</p>
+      {/if}
 
       {#if !hasExplorerIdentity() && profileUrl}
         <!-- Invite section - shown when no explorer identity -->
@@ -449,7 +451,42 @@
           
           <div class="qr-section">
             <QRCodeDisplay data={profileUrl} />
-            <p class="qr-instruction">Get Early-Adopter alpha access</p>
+            
+            {#if inviteLink}
+              <div class="link-section">
+                <div class="link-container">
+                  <input 
+                    type="text" 
+                    value={inviteLink} 
+                    readonly 
+                    class="link-input"
+                    onclick={(e) => e.currentTarget.select()}
+                  />
+                  <button 
+                    onclick={copyToClipboard}
+                    class="copy-button"
+                    aria-label="Copy link to clipboard"
+                  >
+                    {copied ? "Copied!" : "Copy Link"}
+                  </button>
+                </div>
+              </div>
+            {/if}
+
+            <p class="qr-instruction">Get early adopter access</p>
+            
+                    <div class="info-section">
+                      <p class="info-text">
+                        When you are a founder and want to apply with your project for the first Cup, message me now.<br><br>
+                        Any other questions or requests, let me know too.
+                      </p>
+                    </div>
+
+                    <p class="cta-message">
+                      I am Samuel, HominioNo1<br>
+                      and I am looking forward to chat with you.
+                    </p>
+
             <a
               href="https://instagram.com/samuelandert"
               target="_blank"
@@ -461,91 +498,40 @@
                   d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"
                 />
               </svg>
-              <span>Message Me For Invite</span>
+              <span>Message Me</span>
             </a>
-          </div>
-
-          {#if inviteLink}
-            <div class="link-section">
-              <p class="link-label">Or share this link:</p>
-              <div class="link-container">
-                <input 
-                  type="text" 
-                  value={inviteLink} 
-                  readonly 
-                  class="link-input"
-                  onclick={(e) => e.currentTarget.select()}
-                />
-                <button 
-                  onclick={copyToClipboard}
-                  class="copy-button"
-                  aria-label="Copy link to clipboard"
-                >
-                  {copied ? "Copied!" : "Copy Link"}
-                </button>
-              </div>
-            </div>
-          {/if}
-
-          <div class="info-section">
-            <p class="info-text">
-              This is our first alpha MVP, held together with duct tape vibes. We're invite-only right now - get onboarded as an explorer to access the platform!
-            </p>
           </div>
         </div>
       {:else if hasExplorerIdentity()}
         <!-- Feedback button - shown when explorer identity exists -->
-        <div class="feedback-section">
-          <a
-            href="https://instagram.com/samuelandert"
-            target="_blank"
-            rel="noopener noreferrer"
-            class="feedback-button"
-          >
-            <svg class="instagram-icon" viewBox="0 0 24 24" fill="currentColor">
-              <path
-                d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"
-              />
-            </svg>
-            <span>Message Me For Feedback</span>
-          </a>
-        </div>
-      {/if}
-
-      <div class="sign-out-container">
-        <button
-          onclick={handleSignOut}
-          disabled={signingOut}
-          class="btn-sign-out"
+        <a
+          href="https://instagram.com/samuelandert"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="instagram-button-fullwidth"
         >
-          <svg
-            class="sign-out-icon"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
+          <svg class="instagram-icon" viewBox="0 0 24 24" fill="currentColor">
             <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
-              d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
+              d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"
             />
           </svg>
-          {signingOut ? "Signing out..." : "Sign Out"}
-        </button>
-      </div>
+          <span>Message Me For Feedback</span>
+        </a>
+      {/if}
     </div>
 
-    <div class="profile-section">
-      <h2 class="section-title">Account Details</h2>
-      <div class="details-grid">
-        <div class="detail-item">
-          <span class="detail-label">ID</span>
-          <span class="detail-value detail-mono">{data.session?.id || "—"}</span
-          >
+    {#if hasExplorerIdentity()}
+      <div class="profile-section">
+        <h2 class="section-title">Account Details</h2>
+        <div class="details-grid">
+          <div class="detail-item">
+            <span class="detail-label">ID</span>
+            <span class="detail-value detail-mono">{data.session?.id || "—"}</span
+            >
+          </div>
         </div>
       </div>
-    </div>
+    {/if}
 
     <div class="profile-section">
       <h2 class="section-title">Notification Preferences</h2>
@@ -567,6 +553,31 @@
           </button>
         </div>
       </div>
+    </div>
+
+    <div class="divider-line"></div>
+
+    <div class="sign-out-container">
+      <button
+        onclick={handleSignOut}
+        disabled={signingOut}
+        class="btn-sign-out"
+      >
+        <svg
+          class="sign-out-icon"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
+          />
+        </svg>
+        {signingOut ? "Signing out..." : "Sign Out"}
+      </button>
     </div>
 
     {#if loading}
@@ -592,8 +603,9 @@
           </div>
         </div>
       {/if}
-      <div class="profile-section">
-        <h2 class="section-title">My Active Identities</h2>
+      {#if hasExplorerIdentity()}
+        <div class="profile-section">
+          <h2 class="section-title">My Active Identities</h2>
         {#if userIdentities.length === 0}
           <div class="empty-state">
             <p>You don't have any active voting identities yet.</p>
@@ -670,10 +682,10 @@
             {/each}
           </div>
         {/if}
-      </div>
+        </div>
 
-      <div class="profile-section">
-        <h2 class="section-title">My Votes</h2>
+        <div class="profile-section">
+          <h2 class="section-title">My Votes</h2>
         {#if votes.length === 0}
           <div class="empty-state">
             <p>You haven't voted on any matches yet.</p>
@@ -741,10 +753,10 @@
             {/each}
           </div>
         {/if}
-      </div>
+        </div>
 
-      <div class="profile-section">
-        <h2 class="section-title">Purchase History</h2>
+        <div class="profile-section">
+          <h2 class="section-title">Purchase History</h2>
         {#if purchases.length === 0}
           <div class="empty-state">
             <p>No purchase history yet.</p>
@@ -779,7 +791,8 @@
             {/each}
           </div>
         {/if}
-      </div>
+        </div>
+      {/if}
     {/if}
   </div>
 </div>
@@ -911,11 +924,12 @@
   }
 
   .instagram-button {
-    display: flex;
+    display: inline-flex;
     align-items: center;
     justify-content: center;
     gap: 0.5rem;
-    padding: 0.75rem 1.5rem;
+    padding: 0.875rem 1.5rem;
+    margin: 1.5rem 0;
     background: linear-gradient(
       135deg,
       #f09433 0%,
@@ -939,6 +953,40 @@
   }
 
   .instagram-button:active {
+    transform: translateY(0);
+  }
+
+  .instagram-button-fullwidth {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    width: 100%;
+    padding: 0.875rem 1.5rem;
+    margin: 1.5rem 0;
+    background: linear-gradient(
+      135deg,
+      #f09433 0%,
+      #e6683c 25%,
+      #dc2743 50%,
+      #cc2366 75%,
+      #bc1888 100%
+    );
+    color: white;
+    text-decoration: none;
+    border-radius: 50px;
+    font-size: 0.875rem;
+    font-weight: 600;
+    transition: all 0.3s;
+    box-shadow: 0 2px 12px rgba(188, 24, 136, 0.3);
+  }
+
+  .instagram-button-fullwidth:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 20px rgba(188, 24, 136, 0.5);
+  }
+
+  .instagram-button-fullwidth:active {
     transform: translateY(0);
   }
 
@@ -977,50 +1025,20 @@
     text-align: center;
   }
 
+  .cta-message {
+    font-size: 0.875rem;
+    color: rgba(26, 26, 78, 0.7);
+    line-height: 1.5;
+    margin: 1rem 0;
+    text-align: center;
+  }
+
   .qr-section :global(.qr-container) {
     background: transparent;
     padding: 1rem;
     border-radius: 8px;
   }
 
-  .feedback-section {
-    margin: 1.5rem 0;
-    width: 100%;
-    display: flex;
-    justify-content: center;
-  }
-
-  .feedback-button {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.5rem;
-    padding: 0.75rem 1.5rem;
-    background: linear-gradient(
-      135deg,
-      #f09433 0%,
-      #e6683c 25%,
-      #dc2743 50%,
-      #cc2366 75%,
-      #bc1888 100%
-    );
-    color: white;
-    text-decoration: none;
-    border-radius: 50px;
-    font-size: 0.875rem;
-    font-weight: 600;
-    transition: all 0.3s;
-    box-shadow: 0 2px 12px rgba(188, 24, 136, 0.3);
-  }
-
-  .feedback-button:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 20px rgba(188, 24, 136, 0.5);
-  }
-
-  .feedback-button:active {
-    transform: translateY(0);
-  }
 
   .invite-link-section {
     width: 100%;
@@ -1085,7 +1103,7 @@
     }
 
     .instagram-button,
-    .feedback-button {
+    .instagram-button-fullwidth {
       padding: 0.625rem 1.25rem;
       font-size: 0.813rem;
     }
@@ -1161,8 +1179,15 @@
     color: #6b7280;
   }
 
+  .divider-line {
+    width: 100%;
+    height: 1px;
+    background: rgba(78, 205, 196, 0.2);
+    margin: 1.5rem 0;
+  }
+
   .sign-out-container {
-    margin-top: 1.5rem;
+    margin-top: 1rem;
     margin-bottom: 0;
   }
 

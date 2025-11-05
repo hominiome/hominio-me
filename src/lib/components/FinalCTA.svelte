@@ -29,12 +29,10 @@
     <div class="cta-final-question">
       <p class="cta-call">Will you answer the call?</p>
       <a 
-        href="https://instagram.com/samuelandert" 
-        target="_blank" 
-        rel="noopener noreferrer"
+        href="/signin" 
         class="cta-action-button"
       >
-        Message Me to Apply
+        Join Now to Apply
       </a>
     </div>
     

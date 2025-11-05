@@ -178,69 +178,6 @@
       </div>
     </div>
 
-    <!-- First Things First - Highlight Box -->
-    <div
-      class="mb-16 px-1.5 md:px-12 py-10 md:py-14 bg-gradient-to-br from-accent-50 via-primary-50 to-secondary-50 rounded-3xl border-l-4 border-accent-500"
-    >
-      <p
-        class="text-xs md:text-sm font-bold text-accent-700 uppercase tracking-wider mb-4"
-      >
-        First Things First
-      </p>
-      <h3 class="text-2xl md:text-3xl lg:text-4xl font-bold text-gray-900 mb-4">
-        We dog-feed everything ourselves
-      </h3>
-      <p class="text-xl md:text-2xl text-gray-700 leading-relaxed mb-4">
-        <span class="font-bold text-primary-600">°Hominio</span> itself is the first
-        of its kind Startup—proving our model works before we launch others.
-      </p>
-      <div class="space-y-6">
-        <p
-          class="text-xl md:text-2xl text-gray-900 leading-relaxed font-medium"
-        >
-          In the first year, it's all about kicking off
-        </p>
-
-        <p
-          class="text-2xl md:text-3xl lg:text-4xl font-bold text-primary-600 leading-tight mb-6"
-        >
-          °Hominio as a Vision Launchpad itself.
-        </p>
-
-        <div class="flex flex-col md:flex-row items-start gap-4 md:gap-6">
-          <p class="text-lg md:text-xl text-gray-700 leading-relaxed flex-1">
-            While we select in <span class="font-bold text-secondary-600"
-              >8 Cup rounds</span
-            >
-            <span class="font-bold text-accent-600">8 inspiring founders</span> to
-            become finalists
-          </p>
-          <div
-            class="hidden md:block w-px h-12 bg-gradient-to-b from-secondary-300 to-accent-300"
-          ></div>
-          <p class="text-lg md:text-xl text-gray-700 leading-relaxed flex-1">
-            of <span class="text-primary-600">Europe's first</span>
-            <span class="font-bold text-primary-600"
-              >purpose-driven Hominio-Summit No1</span
-            > in Sept 2026.
-          </p>
-        </div>
-
-        <div
-          class="bg-gradient-to-r from-accent-50 via-primary-50 to-secondary-50 rounded-2xl p-6 md:p-8 border-l-4 border-accent-500"
-        >
-          <p class="text-lg md:text-xl text-gray-900 leading-relaxed mb-3">
-            Where the winning startup receives
-          </p>
-          <p
-            class="text-2xl md:text-3xl lg:text-4xl font-bold text-accent-600 mb-3"
-          >
-            1 million € Seedfunding
-          </p>
-        </div>
-      </div>
-    </div>
-
     <!-- Timeline Section - Centered Axis -->
     <div class="mb-16">
       <h3

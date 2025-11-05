@@ -5,21 +5,34 @@
   let {
     open = $bindable(true),
     onClose,
+    onBackdropClick, // Optional separate handler for backdrop clicks (e.g., just close without marking as read)
     children,
     variant = "default",
     canClose = true, // Whether the modal can be closed by user interaction
   } = $props<{
     open?: boolean;
     onClose?: () => void;
+    onBackdropClick?: () => void; // Optional separate handler for backdrop clicks
     children?: Snippet;
     variant?: "default" | "danger";
     canClose?: boolean;
   }>();
 
   function handleBackdropClick(event: MouseEvent) {
-    if (canClose && onClose && event.target === event.currentTarget) {
-      onClose();
+    if (canClose && event.target === event.currentTarget) {
+      // Use onBackdropClick if provided, otherwise fall back to onClose
+      if (onBackdropClick) {
+        onBackdropClick();
+      } else if (onClose) {
+        onClose();
+      }
     }
+  }
+
+  function handleModalContentClick(event: MouseEvent) {
+    // Stop propagation to prevent backdrop click handler from firing
+    // when clicking inside the modal card content
+    event.stopPropagation();
   }
 
   function handleClose() {
@@ -29,14 +42,23 @@
   }
 
   function handleKeydown(e: KeyboardEvent) {
-    if (canClose && onClose) {
+    if (canClose) {
       if (e.key === "Escape") {
-        onClose();
+        // For Escape key, use onBackdropClick if provided, otherwise onClose
+        if (onBackdropClick) {
+          onBackdropClick();
+        } else if (onClose) {
+          onClose();
+        }
       } else if (e.key === "Enter" || e.key === " ") {
         // Handle Enter/Space for backdrop click accessibility
         if (e.target === e.currentTarget) {
           e.preventDefault();
-          onClose();
+          if (onBackdropClick) {
+            onBackdropClick();
+          } else if (onClose) {
+            onClose();
+          }
         }
       }
     }
@@ -103,6 +125,7 @@
       class:translate-y-0={open}
       class:modal-bottom={!canClose}
       style="max-height: calc(95vh - 72px); {canClose ? 'margin-top: 5vh;' : 'margin-top: auto;'} margin-bottom: 0; background-color: {modalBgColor};"
+      onclick={handleModalContentClick}
     >
       <!-- Content (Svelte 5: using snippet prop instead of slot) -->
       <div class="w-full flex-1 pb-6 @xs:pb-5 min-h-0">

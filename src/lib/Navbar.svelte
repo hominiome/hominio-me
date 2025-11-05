@@ -22,6 +22,7 @@
     modalLeftButtons = [],
     modalRightButtons = [],
     canCloseModal = true, // Whether the modal can be closed
+    hasExplorerIdentity = true, // Whether user has explorer identity (default true for backward compatibility)
   } = $props<{
     session: any;
     signInWithGoogle: () => Promise<void>;
@@ -32,6 +33,7 @@
     modalLeftButtons?: ModalButton[];
     modalRightButtons?: ModalButton[];
     canCloseModal?: boolean;
+    hasExplorerIdentity?: boolean;
   }>();
 
   // Track if user image failed to load
@@ -142,8 +144,8 @@
     {/if}
 
     <!-- Mobile Bottom Navigation -->
-    {#if session?.data?.user}
-      <!-- Signed in: Show full navigation bar -->
+    {#if session?.data?.user && hasExplorerIdentity}
+      <!-- Signed in: Show full navigation bar (only if user has explorer identity) -->
     <div class="mobile-bottom-nav" class:modal-mode={isModalOpen}>
       {#if isModalOpen}
         <!-- Modal Mode: Container constrained to modal max-width -->

@@ -179,6 +179,27 @@
           "position": "right"
         }
       ]
+    },
+    "instagramFollow": {
+      "title": "Follow Along",
+      "previewTitle": "Join us on this journey",
+      "message": "We are building Hominio day by day. Watch it evolve and follow along on Instagram to see behind the scenes, hear the stories, and be part of this adventure as it unfolds.",
+      "priority": true,
+      "icon": "mdi:instagram",
+      "displayComponent": null,
+      "actions": [
+        {
+          "label": "Never mind",
+          "action": "mark_read",
+          "position": "left"
+        },
+        {
+          "label": "Follow on Instagram",
+          "action": "navigate",
+          "url": "https://instagram.com/HominioMe",
+          "position": "right"
+        }
+      ]
     }
   }
 }
