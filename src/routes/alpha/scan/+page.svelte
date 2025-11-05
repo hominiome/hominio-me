@@ -1,51 +1,13 @@
 <script lang="ts">
-  import { onMount, onDestroy } from "svelte";
+  import { onMount } from "svelte";
   import { goto } from "$app/navigation";
   import { authClient } from "$lib/auth.client.js";
-  import { useZero } from "$lib/zero-utils";
   import QRCodeScanner from "$lib/QRCodeScanner.svelte";
-  import { allCups } from "$lib/synced-queries";
 
-  const zeroContext = useZero();
   const session = authClient.useSession();
   let isAdmin = $state(false);
   let checkingAdmin = $state(true);
-  let scannedUserId = $state<string | null>(null);
-  let scannedUserName = $state<string | null>(null);
-  let cups = $state<any[]>([]);
-  let selectedCupId = $state<string>("");
-  let purchasing = $state(false);
-  let successMessage = $state("");
   let errorMessage = $state("");
-  let loadingCups = $state(true);
-  let cupsView: any = $state(null);
-
-  // Package definitions
-  const packages = [
-    {
-      packageType: "hominio",
-      votingWeight: 1,
-      name: "I am Hominio",
-      price: 1,
-      description: "",
-    },
-    {
-      packageType: "founder",
-      votingWeight: 5,
-      name: "Hominio Founder",
-      price: 10,
-      description: "",
-    },
-    {
-      packageType: "angel",
-      votingWeight: 10,
-      name: "Hominio Angel",
-      price: 100,
-      description: "",
-    },
-  ];
-
-  let zero: any = null;
 
   onMount(async () => {
     // Wait for session to load
@@ -80,36 +42,6 @@
       return;
     }
 
-    // Initialize Zero and load cups
-    try {
-      loadingCups = true;
-      // Wait for Zero to be ready
-      while (!zeroContext.isReady() || !zeroContext.getInstance()) {
-        await new Promise((resolve) => setTimeout(resolve, 100));
-      }
-      zero = zeroContext.getInstance();
-
-      if (zero) {
-        // Load all cups using synced query
-        const cupsQuery = allCups();
-        cupsView = zero.materialize(cupsQuery);
-
-        cupsView.addListener((data: any) => {
-          // Sort by createdAt descending (newest first)
-          cups = Array.from(data || []).sort((a, b) => 
-            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-          );
-          if (cups.length > 0 && !selectedCupId) {
-            selectedCupId = cups[0].id;
-          }
-          loadingCups = false;
-        });
-      }
-    } catch (err) {
-      console.error("Failed to load cups:", err);
-      errorMessage = "Failed to load cups. Please refresh the page.";
-      loadingCups = false;
-    }
   });
 
   async function handleScanned(userIdOrEvent: string | CustomEvent<{ userId: string }>) {
@@ -128,88 +60,10 @@
       return;
     }
 
-    console.log("✅ Setting scannedUserId to:", userId);
-    scannedUserId = userId;
-
-    // Fetch user name
-    try {
-      console.log("📡 Fetching user data for:", userId);
-      const response = await fetch(`/alpha/api/user/${userId}`);
-      if (response.ok) {
-        const userData = await response.json();
-        scannedUserName = userData.name || "User";
-        console.log("✅ User name fetched:", scannedUserName);
-      } else {
-        console.warn("⚠️ Failed to fetch user, response not ok:", response.status);
-        scannedUserName = "User";
-      }
-    } catch (err) {
-      console.error("❌ Failed to fetch user:", err);
-      scannedUserName = "User";
-    }
-    
-    console.log("✅ handleScanned completed, scannedUserId:", scannedUserId);
+    // Redirect to invite route for onboarding
+    goto(`/alpha/invite/${userId}`);
   }
 
-  async function purchasePackageForUser(packageType: string) {
-    if (!scannedUserId || !selectedCupId) return;
-    if (purchasing) return;
-
-    purchasing = true;
-    successMessage = "";
-    errorMessage = "";
-
-    try {
-      const response = await fetch("/alpha/api/purchase-package-for-user", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          userId: scannedUserId,
-          packageType,
-          cupId: selectedCupId,
-        }),
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || "Purchase failed");
-      }
-
-      const result = await response.json();
-      successMessage = result.message || `Successfully assigned ${packages.find(p => p.packageType === packageType)?.name}`;
-
-      // Reset after 3 seconds
-      setTimeout(() => {
-        scannedUserId = null;
-        scannedUserName = null;
-        successMessage = "";
-      }, 3000);
-    } catch (error) {
-      console.error("Purchase failed:", error);
-      errorMessage = error instanceof Error ? error.message : "Purchase failed. Please try again.";
-      setTimeout(() => {
-        errorMessage = "";
-      }, 5000);
-    } finally {
-      purchasing = false;
-    }
-  }
-
-  function resetScan() {
-    scannedUserId = null;
-    scannedUserName = null;
-    successMessage = "";
-    errorMessage = "";
-  }
-
-  // Cleanup Zero view on destroy
-  onDestroy(() => {
-    if (cupsView && typeof cupsView.removeListener === "function") {
-      cupsView.removeListener();
-    }
-  });
 </script>
 
 {#if checkingAdmin}
@@ -218,82 +72,18 @@
   </div>
 {:else if isAdmin}
   <div class="container">
-    {#if !scannedUserId}
-      <div class="scan-page">
-        <h1 class="page-title">QR Code Scanner</h1>
-        <p class="page-description">
-          Select a cup and scan a user's QR code to assign an identity package.
-        </p>
-        
-        {#if loadingCups}
-          <div class="loading">Loading cups...</div>
-        {:else if cups.length > 0}
-          <div class="cup-selector">
-            <label for="cup-select">Select Cup:</label>
-            <select id="cup-select" bind:value={selectedCupId}>
-              {#each cups as cup}
-                <option value={cup.id}>
-                  {cup.name} {cup.status === "active" ? "(Active)" : `(${cup.status})`}
-                </option>
-              {/each}
-            </select>
-          </div>
-        {:else}
-          <div class="error-message">No cups available. Please create a cup first.</div>
-        {/if}
-        
-        {#if errorMessage}
-          <div class="error-message">{errorMessage}</div>
-        {/if}
-        
-        {#if cups.length > 0 && selectedCupId}
-          <QRCodeScanner onScanned={handleScanned} onscanned={handleScanned} />
-        {/if}
-      </div>
-    {:else}
-      <div class="package-selection">
-        <h1 class="page-title">Select Package for {scannedUserName || "User"}</h1>
-        {#if cups.length > 0}
-          <div class="cup-selector">
-            <label for="cup-select-after">Cup:</label>
-            <select id="cup-select-after" bind:value={selectedCupId}>
-              {#each cups as cup}
-                <option value={cup.id}>
-                  {cup.name} {cup.status === "active" ? "(Active)" : `(${cup.status})`}
-                </option>
-              {/each}
-            </select>
-          </div>
-        {:else}
-          <div class="error-message">No cups available. Please create a cup first.</div>
-        {/if}
-        
-        {#if successMessage}
-          <div class="success-message">{successMessage}</div>
-        {/if}
-        {#if errorMessage}
-          <div class="error-message">{errorMessage}</div>
-        {/if}
-
-        <div class="packages-grid">
-          {#each packages as pkg}
-            <button
-              class="package-card"
-              onclick={() => purchasePackageForUser(pkg.packageType)}
-              disabled={purchasing || !selectedCupId}
-            >
-              <h3 class="package-name">{pkg.name}</h3>
-              <p class="package-weight">Voting Weight: {pkg.votingWeight}x</p>
-              <p class="package-price">€{pkg.price}</p>
-            </button>
-          {/each}
-        </div>
-
-        <button class="back-button" onclick={resetScan} disabled={purchasing}>
-          Scan Another User
-        </button>
-      </div>
-    {/if}
+    <div class="scan-page">
+      <h1 class="page-title">QR Code Scanner</h1>
+      <p class="page-description">
+        Scan a user's QR code to onboard them as an explorer.
+      </p>
+      
+      {#if errorMessage}
+        <div class="error-message">{errorMessage}</div>
+      {/if}
+      
+      <QRCodeScanner onScanned={handleScanned} onscanned={handleScanned} />
+    </div>
   </div>
 {:else}
   <div class="container">

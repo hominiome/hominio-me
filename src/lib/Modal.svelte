@@ -7,31 +7,37 @@
     onClose,
     children,
     variant = "default",
+    canClose = true, // Whether the modal can be closed by user interaction
   } = $props<{
     open?: boolean;
-    onClose: () => void;
+    onClose?: () => void;
     children?: Snippet;
     variant?: "default" | "danger";
+    canClose?: boolean;
   }>();
 
   function handleBackdropClick(event: MouseEvent) {
-    if (event.target === event.currentTarget) {
+    if (canClose && onClose && event.target === event.currentTarget) {
       onClose();
     }
   }
 
   function handleClose() {
-    onClose();
+    if (canClose && onClose) {
+      onClose();
+    }
   }
 
   function handleKeydown(e: KeyboardEvent) {
-    if (e.key === "Escape") {
-      onClose();
-    } else if (e.key === "Enter" || e.key === " ") {
-      // Handle Enter/Space for backdrop click accessibility
-      if (e.target === e.currentTarget) {
-        e.preventDefault();
+    if (canClose && onClose) {
+      if (e.key === "Escape") {
         onClose();
+      } else if (e.key === "Enter" || e.key === " ") {
+        // Handle Enter/Space for backdrop click accessibility
+        if (e.target === e.currentTarget) {
+          e.preventDefault();
+          onClose();
+        }
       }
     }
   }
@@ -71,6 +77,13 @@
   );
 </script>
 
+<style>
+  .modal-bottom {
+    margin-top: auto !important;
+    margin-bottom: 0 !important;
+  }
+</style>
+
 {#if open}
   <div
     class="fixed inset-0 bottom-0 pb-[72px] bg-gradient-to-br from-white/10 to-white/5 backdrop-blur-[30px] backdrop-saturate-[200%] flex items-end justify-center z-[1000] overflow-visible transition-opacity duration-200 left-0 right-0"
@@ -85,10 +98,11 @@
     tabindex="-1"
   >
     <div
-      class="rounded-3xl pt-10 px-8 @md:px-12 pb-0 @xs:px-6 @xs:pt-7 w-full max-w-[700px] @md:max-w-[800px] relative shadow-[0_-4px_24px_rgba(0,0,0,0.15)] flex flex-col items-center mb-0 overflow-y-auto overflow-x-hidden transition-transform duration-300 ease-out mx-[6px] @md:mx-auto"
+      class="rounded-3xl pt-10 px-8 @md:px-12 pb-0 @xs:px-6 @xs:pt-7 w-full max-w-[700px] @md:max-w-[800px] relative shadow-[0_-4px_24px_rgba(0,0,0,0.15)] flex flex-col items-center overflow-y-auto overflow-x-hidden transition-transform duration-300 ease-out mx-[6px] @md:mx-auto"
       class:translate-y-full={!open}
       class:translate-y-0={open}
-      style="max-height: calc(95vh - 72px); margin-top: 5vh; margin-bottom: 0; background-color: {modalBgColor};"
+      class:modal-bottom={!canClose}
+      style="max-height: calc(95vh - 72px); {canClose ? 'margin-top: 5vh;' : 'margin-top: auto;'} margin-bottom: 0; background-color: {modalBgColor};"
     >
       <!-- Content (Svelte 5: using snippet prop instead of slot) -->
       <div class="w-full flex-1 pb-6 @xs:pb-5 min-h-0">

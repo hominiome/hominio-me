@@ -1,9 +1,12 @@
 import { json } from "@sveltejs/kit";
-import { getSession } from "$lib/api-helpers.server.js";
+import { getSession, requireExplorerIdentity } from "$lib/api-helpers.server.js";
 import { isAdmin } from "$lib/admin.server.js";
 import { zeroDb } from "$lib/db.server.js";
 
 export async function POST({ request }) {
+  // Require explorer identity
+  await requireExplorerIdentity(request);
+  
   const { projectId } = await request.json();
 
   if (!projectId) {

@@ -8,10 +8,10 @@
   let signingIn = $state(false);
 
   onMount(async () => {
-    // Check if user is already logged in and redirect to profile
+    // Check if user is already logged in and redirect to alpha
     const sessionData = await authClient.getSession();
     if (sessionData?.data?.user) {
-      goto("/alpha/me");
+      goto("/alpha");
       return;
     }
     loading = false;
@@ -22,7 +22,7 @@
     try {
       await authClient.signIn.social({
         provider: "google",
-        callbackURL: "/alpha/me", // Redirect to profile after login
+        callbackURL: "/alpha", // Redirect to alpha home after login
       });
     } catch (error) {
       console.error("Sign in error:", error);
@@ -31,13 +31,12 @@
   }
 </script>
 
-<div class="signup-container">
-  <div class="signup-card">
-    <div class="signup-header">
-      <h1 class="signup-title">Join Hominio</h1>
-      <p class="signup-subtitle">
-        Be part of the 1 million co-owners building the future of purpose-driven
-        startups.
+<div class="signin-container">
+  <div class="signin-card">
+    <div class="signin-header">
+      <h1 class="signin-title">Sign In to Hominio</h1>
+      <p class="signin-subtitle">
+        Join the alpha and help us build the future of purpose-driven startups.
       </p>
     </div>
 
@@ -50,7 +49,7 @@
         <button
           onclick={signInWithGoogle}
           disabled={signingIn}
-          class="google-btn"
+          class="google-btn rounded-full"
         >
           {#if signingIn}
             <div class="btn-spinner"></div>
@@ -84,7 +83,8 @@
 
         <p class="terms-text">
           By continuing, you agree to participate in the Hominio Alpha and help
-          us build the future of co-ownership.
+          us build the future of co-ownership. You also agree to our{" "}
+          <a href="/privacy-policy" class="terms-link">Privacy Policy</a>.
         </p>
       </div>
     {/if}
@@ -92,7 +92,7 @@
 </div>
 
 <style>
-  .signup-container {
+  .signin-container {
     min-height: 100vh;
     display: flex;
     align-items: center;
@@ -101,7 +101,7 @@
     background: linear-gradient(135deg, #f0fffe 0%, #fff9e6 100%);
   }
 
-  .signup-card {
+  .signin-card {
     width: 100%;
     max-width: 480px;
     background: white;
@@ -113,12 +113,12 @@
     border: 2px solid #4fc3c3;
   }
 
-  .signup-header {
+  .signin-header {
     text-align: center;
     margin-bottom: 2.5rem;
   }
 
-  .signup-title {
+  .signin-title {
     font-size: 2.5rem;
     font-weight: 900;
     color: #111827;
@@ -126,7 +126,7 @@
     letter-spacing: -0.02em;
   }
 
-  .signup-subtitle {
+  .signin-subtitle {
     font-size: 1.125rem;
     line-height: 1.6;
     color: #6b7280;
@@ -153,19 +153,21 @@
     gap: 1rem;
     width: 100%;
     padding: 1rem 1.5rem;
-    background: white;
-    border: 2px solid #e5e7eb;
-    border-radius: 12px;
+    background: var(--color-primary-500);
+    border: 2px solid var(--color-primary-500);
+    border-radius: 9999px;
     font-size: 1.063rem;
     font-weight: 600;
-    color: #374151;
+    color: var(--color-primary-100);
     cursor: pointer;
     transition: all 0.2s ease;
+    backdrop-filter: blur(4px);
   }
 
   .google-btn:hover:not(:disabled) {
-    border-color: #4fc3c3;
-    box-shadow: 0 4px 16px rgba(79, 195, 195, 0.15);
+    background: transparent;
+    border-color: var(--color-primary-500);
+    color: var(--color-primary-500);
     transform: translateY(-2px);
   }
 
@@ -187,6 +189,12 @@
     border-top-color: #4fc3c3;
     border-radius: 50%;
     animation: spin 1s linear infinite;
+  }
+
+  @keyframes spin {
+    to {
+      transform: rotate(360deg);
+    }
   }
 
   .divider {
@@ -232,20 +240,30 @@
     margin: 0;
   }
 
+  .terms-link {
+    color: #4fc3c3;
+    text-decoration: underline;
+    transition: color 0.2s ease;
+  }
+
+  .terms-link:hover {
+    color: #3db5ac;
+  }
+
   @media (max-width: 640px) {
-    .signup-container {
+    .signin-container {
       padding: 1rem;
     }
 
-    .signup-card {
+    .signin-card {
       padding: 2rem 1.5rem;
     }
 
-    .signup-title {
+    .signin-title {
       font-size: 2rem;
     }
 
-    .signup-subtitle {
+    .signin-subtitle {
       font-size: 1rem;
     }
   }

@@ -1,6 +1,9 @@
 import { json } from "@sveltejs/kit";
 import { nanoid } from "nanoid";
-import { getSession } from "$lib/api-helpers.server.js";
+import {
+  getSession,
+  requireExplorerIdentity,
+} from "$lib/api-helpers.server.js";
 import { zeroDb } from "$lib/db.server.js";
 import { getNotificationConfig } from "$lib/notification-helpers.server.js";
 
@@ -38,6 +41,9 @@ const UPGRADE_PATHS = {
 };
 
 export async function POST({ request }) {
+  // Require explorer identity
+  await requireExplorerIdentity(request);
+
   // Get session
   const session = await getSession(request);
 
@@ -49,7 +55,10 @@ export async function POST({ request }) {
 
   if (!packageType || !PACKAGES[packageType]) {
     return json(
-      { error: "Invalid identity type. Must be 'hominio', 'founder', or 'angel'" },
+      {
+        error:
+          "Invalid identity type. Must be 'hominio', 'founder', or 'angel'",
+      },
       { status: 400 }
     );
   }
@@ -70,7 +79,7 @@ export async function POST({ request }) {
 
   try {
     let updatedCup = null;
-    
+
     // For cup-specific identities, validate cup exists
     if (!isUniversal) {
       const cup = await zeroDb
@@ -80,16 +89,15 @@ export async function POST({ request }) {
         .executeTakeFirst();
 
       if (!cup) {
-        return json(
-          { error: "Cup not found" },
-          { status: 404 }
-        );
+        return json({ error: "Cup not found" }, { status: 404 });
       }
 
       // Check if cup has expired and close it if needed
-      const { checkAndCloseExpiredCups } = await import("$lib/expiry-checker.server.js");
+      const { checkAndCloseExpiredCups } = await import(
+        "$lib/expiry-checker.server.js"
+      );
       await checkAndCloseExpiredCups([cup]);
-      
+
       // Re-fetch cup in case it was just closed
       updatedCup = await zeroDb
         .selectFrom("cup")
@@ -102,7 +110,7 @@ export async function POST({ request }) {
     // For universal: check for universal identity (cupId IS NULL)
     // For cup-specific: check for cup-specific identity OR universal identity
     let existingIdentity = null;
-    
+
     if (isUniversal) {
       // Check for existing universal identity
       existingIdentity = await zeroDb
@@ -120,7 +128,7 @@ export async function POST({ request }) {
         .where("userId", "=", userId)
         .where("cupId", "=", cupId)
         .executeTakeFirst();
-      
+
       // If no cup-specific identity, check for universal identity
       if (!existingIdentity) {
         const universalIdentity = await zeroDb
@@ -130,7 +138,7 @@ export async function POST({ request }) {
           .where("cupId", "is", null)
           .where("identityType", "=", "hominio")
           .executeTakeFirst();
-        
+
         // Universal identity grants access to all cups, so user can vote
         // But they can still purchase cup-specific upgrade if they want
         // For now, allow purchasing cup-specific even if they have universal
@@ -172,7 +180,7 @@ export async function POST({ request }) {
         })
         .where("userId", "=", userId)
         .where("id", "=", existingIdentity.id);
-      
+
       await updateQuery.execute();
 
       // Create purchase record for upgrade
@@ -194,15 +202,25 @@ export async function POST({ request }) {
       const notificationId = nanoid();
       const isHominio = selectedPackage.name.includes("I am Hominio");
       const isFounder = selectedPackage.packageType === "founder";
-      const identityName = isHominio ? "Hominio" : selectedPackage.name.replace("Hominio ", "");
-      
+      const identityName = isHominio
+        ? "Hominio"
+        : selectedPackage.name.replace("Hominio ", "");
+
       // Get notification config based on identity type
-      const notificationSubtype = isHominio ? "hominio" : isFounder ? "founder" : "other";
-      const notificationConfig = getNotificationConfig("identityPurchase", notificationSubtype, {
-        identityName,
-        cupName: updatedCup?.name || (isUniversal ? "All Cups" : ""),
-      });
-      
+      const notificationSubtype = isHominio
+        ? "hominio"
+        : isFounder
+          ? "founder"
+          : "other";
+      const notificationConfig = getNotificationConfig(
+        "identityPurchase",
+        notificationSubtype,
+        {
+          identityName,
+          cupName: updatedCup?.name || (isUniversal ? "All Cups" : ""),
+        }
+      );
+
       await zeroDb
         .insertInto("notification")
         .values({
@@ -269,15 +287,25 @@ export async function POST({ request }) {
       const notificationId = nanoid();
       const isHominio = selectedPackage.name === "I am Hominio";
       const isFounder = selectedPackage.packageType === "founder";
-      const identityName = isHominio ? "Hominio" : selectedPackage.name.replace("Hominio ", "");
-      
+      const identityName = isHominio
+        ? "Hominio"
+        : selectedPackage.name.replace("Hominio ", "");
+
       // Get notification config based on identity type
-      const notificationSubtype = isHominio ? "hominio" : isFounder ? "founder" : "other";
-      const notificationConfig = getNotificationConfig("identityPurchase", notificationSubtype, {
-        identityName,
-        cupName: updatedCup.name,
-      });
-      
+      const notificationSubtype = isHominio
+        ? "hominio"
+        : isFounder
+          ? "founder"
+          : "other";
+      const notificationConfig = getNotificationConfig(
+        "identityPurchase",
+        notificationSubtype,
+        {
+          identityName,
+          cupName: updatedCup.name,
+        }
+      );
+
       await zeroDb
         .insertInto("notification")
         .values({
@@ -313,4 +341,3 @@ export async function POST({ request }) {
     return json({ error: "Purchase failed" }, { status: 500 });
   }
 }
-

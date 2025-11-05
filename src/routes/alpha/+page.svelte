@@ -378,14 +378,18 @@
       return;
     }
 
-    // Check if user has an identity for this cup
-    const hasIdentity = userIdentities.some((id) => id.cupId === match.cupId);
-    if (!hasIdentity) {
-      // Redirect to invite-only page (purchase is disabled, invite-only mode)
-      // Open invite modal on current route
-      const url = new URL($page.url);
-      url.searchParams.set("modal", "invite");
-      goto(url.pathname + url.search, { replaceState: false });
+    // Check if user has a voting identity for this cup (exclude explorer identity)
+    const hasVotingIdentity = userIdentities.some(
+      (id) => id.cupId === match.cupId && id.votingWeight > 0
+    );
+    // Also check for universal voting identity (hominio with cupId null)
+    const hasUniversalVotingIdentity = userIdentities.some(
+      (id) => id.cupId === null && id.identityType === "hominio" && id.votingWeight > 0
+    );
+    
+    if (!hasVotingIdentity && !hasUniversalVotingIdentity) {
+      // User has explorer identity but no voting identity - redirect to purchase page
+      goto(`/alpha/purchase?cupId=${match.cupId}&returnUrl=${encodeURIComponent($page.url.pathname + $page.url.search)}`, { replaceState: false });
       return;
     }
 

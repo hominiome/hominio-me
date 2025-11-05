@@ -1,11 +1,14 @@
 import { json } from "@sveltejs/kit";
 import { nanoid } from "nanoid";
-import { getSession } from "$lib/api-helpers.server.js";
+import { getSession, requireExplorerIdentity } from "$lib/api-helpers.server.js";
 import { zeroDb } from "$lib/db.server.js";
 import { getNotificationConfig } from "$lib/notification-helpers.server.js";
 import { getMatchEndDate } from "$lib/dateUtils.js";
 
 export async function POST({ request }) {
+  // Require explorer identity
+  await requireExplorerIdentity(request);
+  
   // Get session
   const session = await getSession(request);
 

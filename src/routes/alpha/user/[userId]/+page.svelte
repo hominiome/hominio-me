@@ -1,12 +1,30 @@
 <script lang="ts">
   import { browser } from "$app/environment";
+  import { onMount } from "svelte";
+  import { authClient } from "$lib/auth.client.js";
   import QRCodeDisplay from "$lib/QRCodeDisplay.svelte";
   
   let { data } = $props<{ data: { user: { id: string; name: string | null; image: string | null } } }>();
   let imageFailed = $state(false);
+  let isAdmin = $state(false);
+  
+  const session = authClient.useSession();
   
   // Get the public profile URL
   const profileUrl = $derived(browser ? `${window.location.origin}/alpha/user/${data.user.id}` : "");
+
+  onMount(async () => {
+    // Check if viewer is admin
+    try {
+      const response = await fetch("/alpha/api/is-admin");
+      if (response.ok) {
+        const adminData = await response.json();
+        isAdmin = adminData.isAdmin;
+      }
+    } catch (error) {
+      console.error("Failed to check admin status:", error);
+    }
+  });
 </script>
 
 <div class="container">
@@ -47,6 +65,9 @@
       </div>
 
       <div class="profile-actions">
+        {#if isAdmin}
+          <a href="/alpha/invite/{data.user.id}" class="btn-admin">Onboard User</a>
+        {/if}
         <a href="/alpha/projects" class="btn-secondary">View All Projects</a>
         <a href="/alpha" class="btn-primary">Back to Home</a>
       </div>
@@ -221,6 +242,25 @@
   .btn-secondary:hover {
     background: rgba(26, 26, 78, 0.05);
     border-color: rgba(26, 26, 78, 0.3);
+  }
+
+  .btn-admin {
+    background: linear-gradient(135deg, #f4d03f 0%, #4ecdc4 100%);
+    color: #1a1a4e;
+    display: inline-block;
+    padding: 0.875rem 2rem;
+    border-radius: 12px;
+    font-weight: 600;
+    font-size: 1rem;
+    text-decoration: none;
+    transition: all 0.2s;
+    cursor: pointer;
+    border: none;
+  }
+
+  .btn-admin:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(244, 208, 63, 0.3);
   }
 
   @media (max-width: 768px) {

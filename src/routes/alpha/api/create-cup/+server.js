@@ -1,9 +1,12 @@
 import { json } from "@sveltejs/kit";
 import { nanoid } from "nanoid";
-import { getSession } from "$lib/api-helpers.server.js";
+import { getSession, requireExplorerIdentity } from "$lib/api-helpers.server.js";
 import { zeroDb } from "$lib/db.server.js";
 
 export async function POST({ request }) {
+  // Require explorer identity
+  await requireExplorerIdentity(request);
+  
   // Require authentication (any authenticated user can create cups)
   const session = await getSession(request);
   if (!session?.user?.id) {

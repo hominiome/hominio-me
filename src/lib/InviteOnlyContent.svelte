@@ -11,6 +11,29 @@
       ? `${window.location.origin}/alpha/user/${$session.data.user.id}` 
       : ""
   );
+
+  // Get the invite link for admin onboarding
+  const inviteLink = $derived(
+    browser && $session.data?.user?.id 
+      ? `${window.location.origin}/alpha/invite/${$session.data.user.id}` 
+      : ""
+  );
+
+  let copied = $state(false);
+
+  async function copyToClipboard() {
+    if (!inviteLink) return;
+    
+    try {
+      await navigator.clipboard.writeText(inviteLink);
+      copied = true;
+      setTimeout(() => {
+        copied = false;
+      }, 2000);
+    } catch (err) {
+      console.error("Failed to copy link:", err);
+    }
+  }
 </script>
 
 <div class="invite-content">
@@ -21,13 +44,35 @@
   {#if profileUrl}
     <div class="qr-section">
       <QRCodeDisplay data={profileUrl} />
-      <p class="qr-instruction">Show this QR code to Samuel or Chuck to get your voting identity</p>
+      <p class="qr-instruction">Show this QR code to Samuel or Chuck to get your explorer identity</p>
+    </div>
+  {/if}
+
+  {#if inviteLink}
+    <div class="link-section">
+      <p class="link-label">Or share this link:</p>
+      <div class="link-container">
+        <input 
+          type="text" 
+          value={inviteLink} 
+          readonly 
+          class="link-input"
+          onclick={(e) => e.currentTarget.select()}
+        />
+        <button 
+          onclick={copyToClipboard}
+          class="copy-button"
+          aria-label="Copy link to clipboard"
+        >
+          {copied ? "Copied!" : "Copy Link"}
+        </button>
+      </div>
     </div>
   {/if}
 
   <div class="info-section">
     <p class="info-text">
-      This is our first alpha MVP, held together with duct tape vibes. We're invite-only right now - get set up and start voting!
+      This is our first alpha MVP, held together with duct tape vibes. We're invite-only right now - get onboarded as an explorer to access the platform!
     </p>
   </div>
 </div>
@@ -74,6 +119,74 @@
     width: 100%;
   }
 
+  .link-section {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.75rem;
+    width: 100%;
+    max-width: 500px;
+  }
+
+  .link-label {
+    font-size: 0.875rem;
+    color: rgba(26, 26, 78, 0.8);
+    text-align: center;
+    margin: 0;
+    font-weight: 500;
+  }
+
+  .link-container {
+    display: flex;
+    gap: 0.5rem;
+    width: 100%;
+    align-items: center;
+  }
+
+  .link-input {
+    flex: 1;
+    padding: 0.625rem 0.875rem;
+    border: 2px solid rgba(78, 205, 196, 0.3);
+    border-radius: 8px;
+    background: white;
+    color: #1a1a4e;
+    font-size: 0.875rem;
+    font-family: monospace;
+    cursor: text;
+  }
+
+  .link-input:focus {
+    outline: none;
+    border-color: #4ecdc4;
+    box-shadow: 0 0 0 3px rgba(78, 205, 196, 0.1);
+  }
+
+  .copy-button {
+    padding: 0.625rem 1.25rem;
+    background: #4ecdc4;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 0.875rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+  }
+
+  .copy-button:hover {
+    background: #3db5ac;
+    transform: translateY(-1px);
+  }
+
+  .copy-button:active {
+    transform: translateY(0);
+  }
+
+  .info-section {
+    width: 100%;
+  }
+
   .info-text {
     font-size: 0.875rem;
     color: rgba(26, 26, 78, 0.7);
@@ -90,6 +203,18 @@
 
     .title {
       font-size: 1.5rem;
+    }
+
+    .link-container {
+      flex-direction: column;
+    }
+
+    .link-input {
+      width: 100%;
+    }
+
+    .copy-button {
+      width: 100%;
     }
   }
 </style>

@@ -21,6 +21,7 @@
     onModalClose,
     modalLeftButtons = [],
     modalRightButtons = [],
+    canCloseModal = true, // Whether the modal can be closed
   } = $props<{
     session: any;
     signInWithGoogle: () => Promise<void>;
@@ -30,6 +31,7 @@
     onModalClose?: () => void;
     modalLeftButtons?: ModalButton[];
     modalRightButtons?: ModalButton[];
+    canCloseModal?: boolean;
   }>();
 
   // Track if user image failed to load
@@ -164,25 +166,27 @@
             </div>
           {/if}
 
-          <button
-            class="modal-close-button"
-            onclick={() => onModalClose?.()}
-            aria-label="Close"
-          >
-            <svg
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              class="modal-close-icon"
+          {#if canCloseModal}
+            <button
+              class="modal-close-button"
+              onclick={() => onModalClose?.()}
+              aria-label="Close"
             >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M6 18L18 6M6 6l12 12"
-              />
-            </svg>
-          </button>
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                class="modal-close-icon"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M6 18L18 6M6 6l12 12"
+                />
+              </svg>
+            </button>
+          {/if}
 
           {#if modalRightButtons.length > 0}
             <div class="modal-right-buttons">
@@ -194,7 +198,7 @@
                   disabled={button.disabled}
                   size="sm"
                     fullWidth={true}
-                  class="!rounded-full"
+                  class="!rounded-full {button.variant === 'primary' ? 'outline-primary-muted' : ''}"
                 >
                   {button.label}
                 </Button>
@@ -762,6 +766,14 @@
     position: relative;
     min-height: 60px;
     height: 60px;
+  }
+
+  .modal-nav-container:has(.modal-close-button:not(:only-child)) {
+    grid-template-columns: 1fr auto 1fr;
+  }
+
+  .modal-nav-container:not(:has(.modal-close-button)) {
+    grid-template-columns: 1fr 1fr;
   }
 
   @media (min-width: 768px) {

@@ -69,8 +69,8 @@ const userIdentities = table('userIdentities')
     id: string(),
     userId: string(), // User ID
     cupId: string(), // Cup ID (null for universal "I am Hominio" identity)
-    identityType: string(), // 'hominio' | 'founder' | 'angel'
-    votingWeight: number(), // 1 | 5 | 10
+    identityType: string(), // 'explorer' | 'hominio' | 'founder' | 'angel'
+    votingWeight: number(), // 0 (explorer) | 1 | 5 | 10
     selectedAt: string(), // ISO timestamp
     upgradedFrom: string(), // Previous identity type if upgraded
   })

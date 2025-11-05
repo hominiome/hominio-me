@@ -3,7 +3,7 @@
   import { nanoid } from "nanoid";
   import { schema } from "../../zero-schema";
   import { createMutators } from "$lib/mutators";
-  import { myNotifications } from "$lib/synced-queries";
+  import { myNotifications, identitiesByUser } from "$lib/synced-queries";
   import { onMount, setContext } from "svelte";
   import { authClient } from "$lib/auth.client.js";
   import { browser } from "$app/environment";
@@ -36,6 +36,8 @@
   let previousNotificationIds = $state<Set<string>>(new Set());
   let priorityNotificationQueue = $state<any[]>([]);
   let markingAsReadIds = $state<Set<string>>(new Set()); // Track notifications being marked as read
+  let userIdentities = $state<any[]>([]);
+  let userIdentitiesView: any = null;
 
   // Get Zero server URL using domain utility
   // Uses hominio.me (DNS-level redirect handles www → non-www)
@@ -139,10 +141,18 @@
         notificationSound = new Audio("/notification.mp3");
         notificationSound.preload = "auto";
 
-        // Load notifications if user is logged in
+        // Load notifications and identities if user is logged in
         if ($session.data?.user || data.session) {
           const userId = $session.data?.user?.id || data.session?.id;
           if (userId && zero) {
+            // Query user identities to check for explorer identity
+            const identitiesQuery = identitiesByUser(userId);
+            userIdentitiesView = zero.materialize(identitiesQuery);
+
+            userIdentitiesView.addListener((data: any) => {
+              userIdentities = Array.from(data || []);
+            });
+
             // Use synced query instead of legacy query
             const notificationsQuery = myNotifications(userId);
             notificationsView = zero.materialize(notificationsQuery);
@@ -294,6 +304,10 @@
     initZero();
 
     return () => {
+      // Clean up identity view
+      if (userIdentitiesView) {
+        userIdentitiesView.destroy();
+      }
       // Remove unhandled rejection handler
       window.removeEventListener(
         "unhandledrejection",
@@ -319,12 +333,9 @@
     getServerUrl: () => zeroServerUrl,
   });
 
-  // Sign in function - centralized here
+  // Sign in function - redirect to /signin route
   async function signInWithGoogle() {
-    await authClient.signIn.social({
-      provider: "google",
-      callbackURL: "/alpha/me",
-    });
+    goto("/signin");
   }
 
   function handleNotificationClose() {
@@ -580,11 +591,60 @@
     ).length;
   });
 
+  let isAdminUser = $state(false);
+
+  // Check if user is admin
+  $effect(() => {
+    if ($session.data?.user && browser) {
+      fetch("/alpha/api/is-admin")
+        .then((res) => res.json())
+        .then((data) => {
+          isAdminUser = data.isAdmin || false;
+        })
+        .catch(() => {
+          isAdminUser = false;
+        });
+    } else {
+      isAdminUser = false;
+    }
+  });
+
+  // Check if user has explorer identity
+  const hasExplorerIdentity = $derived(() => {
+    // Admins don't need explorer identity
+    if (isAdminUser) return true;
+    
+    if (!userIdentities.length) return false;
+    return userIdentities.some(
+      (id: any) => id.identityType === "explorer" && id.cupId === null
+    );
+  });
+
   // Generic modal system: detect modal param from URL search params
   const modalType = $derived($page.url.searchParams.get("modal"));
   const modalProjectId = $derived($page.url.searchParams.get("projectId"));
   const modalCupId = $derived($page.url.searchParams.get("cupId"));
-  const showInviteModal = $derived(modalType === "invite");
+  // Auto-show invite modal if user doesn't have explorer identity (but allow closing)
+  // Also add modal param to URL if not present (except on /me route)
+  $effect(() => {
+    if ($session.data?.user && !hasExplorerIdentity && zeroReady && !isAdminUser && browser) {
+      // Don't auto-show on /me route - let them access profile settings
+      if ($page.url.pathname === "/alpha/me") {
+        return;
+      }
+      const currentModal = $page.url.searchParams.get("modal");
+      if (currentModal !== "invite") {
+        const url = new URL($page.url);
+        url.searchParams.set("modal", "invite");
+        goto(url.pathname + url.search, { replaceState: true });
+      }
+    }
+  });
+
+  const showInviteModal = $derived(
+    modalType === "invite" || 
+    ($session.data?.user && !hasExplorerIdentity && zeroReady && !isAdminUser && $page.url.pathname !== "/alpha/me")
+  );
   const showCreateProjectModal = $derived(modalType === "create-project");
   const showEditProjectModal = $derived(
     modalType === "edit-project" && !!modalProjectId
@@ -818,6 +878,20 @@
 
   // Get modal right buttons - combine notification and project modal buttons
   const modalRightButtons = $derived(() => {
+    // Check for invite modal buttons
+    if (showInviteModal) {
+      return [
+        {
+          label: "Open Profile",
+          onClick: () => {
+            goto("/alpha/me");
+          },
+          ariaLabel: "Open profile settings",
+          variant: "primary" as const,
+        },
+      ];
+    }
+
     if (notificationModal && remainingUnreadCount() > 0) {
       return [
         {
@@ -1008,6 +1082,7 @@
   );
 
   function handleModalClose() {
+    // Allow closing invite modal - users can navigate to /me to update profile
     // Handle admin modals first - check window directly for latest state
     const adminActions = (window as any).__adminModalActions;
     if (adminActions) {
@@ -1083,7 +1158,9 @@
   isModalOpen={isModalOpenState}
   showBack={showBackState}
   backUrl={backUrl()}
+  canCloseModal={true}
   onModalClose={() => {
+    // Allow closing all modals - users can navigate to /me to update profile
     // Check for admin modals first (they're not URL-based)
     const adminActions = (window as any).__adminModalActions;
     if (
@@ -1133,7 +1210,7 @@
 {/if}
 
 {#if showInviteModal && $session.data?.user}
-  <Modal open={showInviteModal} onClose={handleModalClose}>
+  <Modal open={showInviteModal} onClose={handleModalClose} canClose={true}>
     <InviteOnlyContent />
   </Modal>
 {/if}

@@ -1,5 +1,5 @@
 import { json } from "@sveltejs/kit";
-import { getSession } from "$lib/api-helpers.server.js";
+import { getSession, requireExplorerIdentity } from "$lib/api-helpers.server.js";
 import { isAdmin } from "$lib/admin.server";
 import { zeroDb } from "$lib/db.server.js";
 import { uploadImage, getImageUrl, isTigrisConfigured } from "$lib/storage.server.js";
@@ -94,6 +94,9 @@ export async function POST({ request }) {
       return json({ error: message }, { status: 503 });
     }
 
+    // Require explorer identity
+    await requireExplorerIdentity(request);
+    
     // Authenticate user
     const session = await getSession(request);
     if (!session?.user?.id) {
