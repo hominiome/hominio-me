@@ -35,6 +35,7 @@
   );
 
   let copied = $state(false);
+  let qrCodeExpanded = $state(false);
 
   async function copyToClipboard() {
     if (!inviteLink) return;
@@ -48,6 +49,10 @@
     } catch (err) {
       console.error("Failed to copy link:", err);
     }
+  }
+
+  function toggleQrCode() {
+    qrCodeExpanded = !qrCodeExpanded;
   }
 
   const zeroContext = useZero();
@@ -387,33 +392,51 @@
       <p class="profile-email">{data.session?.email}</p>
 
       {#if profileUrl}
-        <div class="qr-code-section">
-          <QRCodeDisplay data={profileUrl} />
-          {#if inviteLink}
-            <div class="invite-link-section">
-              <div class="link-container">
-                <input 
-                  type="text" 
-                  value={inviteLink} 
-                  readonly 
-                  class="link-input"
-                  onclick={(e) => e.currentTarget.select()}
-                />
-                <button 
-                  onclick={copyToClipboard}
-                  class="copy-button"
-                  aria-label="Copy link to clipboard"
-                >
-                  {copied ? "Copied!" : "Copy Link"}
-                </button>
-              </div>
+        <div class="qr-code-toggle-section">
+          <button 
+            onclick={toggleQrCode}
+            class="qr-toggle-button"
+            aria-label={qrCodeExpanded ? "Hide invite link" : "Show invite link"}
+          >
+            <span>{qrCodeExpanded ? "Hide" : "Show"} Invite Link</span>
+            <svg 
+              class="toggle-icon" 
+              class:expanded={qrCodeExpanded}
+              fill="none" 
+              stroke="currentColor" 
+              viewBox="0 0 24 24"
+            >
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
+          {#if qrCodeExpanded}
+            <div class="qr-code-section">
+              <QRCodeDisplay data={profileUrl} />
+              {#if inviteLink}
+                <div class="invite-link-section">
+                  <div class="link-container">
+                    <input 
+                      type="text" 
+                      value={inviteLink} 
+                      readonly 
+                      class="link-input"
+                      onclick={(e) => e.currentTarget.select()}
+                    />
+                    <button 
+                      onclick={copyToClipboard}
+                      class="copy-button"
+                      aria-label="Copy link to clipboard"
+                    >
+                      {copied ? "Copied!" : "Copy Link"}
+                    </button>
+                  </div>
+                </div>
+              {/if}
             </div>
           {/if}
         </div>
       {/if}
-    </div>
 
-    <div class="profile-section">
       <div class="sign-out-container">
         <button
           onclick={handleSignOut}
@@ -436,6 +459,9 @@
           {signingOut ? "Signing out..." : "Sign Out"}
         </button>
       </div>
+    </div>
+
+    <div class="profile-section">
       <h2 class="section-title">Account Details</h2>
       <div class="details-grid">
         <div class="detail-item">
@@ -694,7 +720,7 @@
 
   .profile-card {
     width: 100%;
-    max-width: 600px;
+    max-width: 750px;
     background: white;
     border-radius: 24px;
     box-shadow:
@@ -752,8 +778,45 @@
     margin: 0 0 1.5rem 0;
   }
 
-  .qr-code-section {
+  .qr-code-toggle-section {
     margin: 1.5rem 0;
+    width: 100%;
+  }
+
+  .qr-toggle-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    width: 100%;
+    padding: 0.75rem 1rem;
+    background: rgba(240, 255, 254, 0.5);
+    border: 2px solid rgba(78, 205, 196, 0.3);
+    border-radius: 8px;
+    color: #1a1a4e;
+    font-size: 0.875rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .qr-toggle-button:hover {
+    background: rgba(240, 255, 254, 0.7);
+    border-color: rgba(78, 205, 196, 0.5);
+  }
+
+  .toggle-icon {
+    width: 16px;
+    height: 16px;
+    transition: transform 0.2s;
+  }
+
+  .toggle-icon.expanded {
+    transform: rotate(180deg);
+  }
+
+  .qr-code-section {
+    margin-top: 1rem;
     display: flex;
     flex-direction: column;
     justify-content: center;
@@ -898,7 +961,8 @@
   }
 
   .sign-out-container {
-    margin-bottom: 1.5rem;
+    margin-top: 1.5rem;
+    margin-bottom: 0;
   }
 
   .btn-sign-out {
@@ -906,10 +970,10 @@
     align-items: center;
     gap: 0.5rem;
     padding: 0.625rem 1rem;
-    background: white;
-    color: #dc2626;
-    border: 1px solid #dc2626;
-    border-radius: 6px;
+    background: #a3376a;
+    color: white;
+    border: 2px solid #a3376a;
+    border-radius: 12px;
     font-size: 0.875rem;
     font-weight: 500;
     cursor: pointer;
@@ -919,8 +983,8 @@
   }
 
   .btn-sign-out:hover:not(:disabled) {
-    background: #dc2626;
-    color: white;
+    background: #8d2d59;
+    border-color: #8d2d59;
   }
 
   .btn-sign-out:disabled {
