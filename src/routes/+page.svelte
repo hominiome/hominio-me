@@ -1,5 +1,6 @@
 <script>
   import Hero from "$lib/components/Hero.svelte";
+  import AgentTest from "$lib/components/AgentTest.svelte";
   import WorldRecord from "$lib/components/WorldRecord.svelte";
   import Vision from "$lib/components/Vision.svelte";
   import HominioTransformation from "$lib/components/HominioTransformation.svelte";
@@ -13,6 +14,7 @@
 <div class="page" style="margin-top: 0 !important; padding-top: 0 !important;">
   <Hero />
   <div class="container">
+    <AgentTest />
     <WorldRecord />
     <Vision />
     <HominioTransformation />
