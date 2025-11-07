@@ -34,7 +34,8 @@
             </div>
             <div>
               <p class="text-lg md:text-xl font-semibold text-gray-900 mb-1">
-                You build your personal brand (what you need to do anyway)
+                You build your personal brand<br />
+                (what you need to do anyway)
               </p>
               <p class="text-base text-gray-700">
                 Make video proposals. Share your founder journey. Rally for YOUR vision. Start storytelling about your vision. We pay you for doing it.

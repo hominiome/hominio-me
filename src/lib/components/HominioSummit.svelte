@@ -357,7 +357,7 @@
                 brings us together for the grand finale — selecting the most powerful
                 vision of the 8 finalists — and then launching together
                 <strong class="text-primary-600 font-bold"
-                  >°Hominio Startup No2</strong
+                  >°Hominio Startup No1</strong
                 > into the world.
               </p>
               <h4
