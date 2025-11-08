@@ -19,8 +19,8 @@
       <p
         class="text-2xl leading-relaxed text-[var(--color-secondary-500)] m-0 font-bold sm:text-3xl lg:text-[2rem] max-[480px]:text-[1.375rem]"
       >
-        Introducing Vibes - voice-native AI apps - that are the future of how we
-        interact with AI.
+        Introducing Vibes - voice-native AI apps - that connect your users
+        directly with your offers via simple voice.
       </p>
     </div>
     <p
