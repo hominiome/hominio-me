@@ -15,13 +15,10 @@
       <div class="offer-left">
         <h2 class="offer-title">
           We not only build vibes for you for FREE,
-          <span class="offer-emphasis">we even pay you.</span>
+          <span class="offer-emphasis">but we even pay you.</span>
         </h2>
         <p class="offer-text">
           Sign up to the waitlist now and drop us a short note about your business use case. We'll build a custom Vibe that connects your customers directly with your offers—no apps, no friction, just voice.
-        </p>
-        <p class="offer-cta">
-          Don't sleep on this hidden gem. Before everyone else discovers voice-native Vibes, be the first to excite your customers with the future of interaction.
         </p>
       </div>
 

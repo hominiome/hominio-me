@@ -16,6 +16,7 @@ import { env as publicEnv } from "$env/dynamic/public";
   import NotificationBell from "$lib/NotificationBell.svelte";
   import Modal from "$lib/Modal.svelte";
   import InviteOnlyContent from "$lib/InviteOnlyContent.svelte";
+  import VoiceCall from "$lib/components/VoiceCall.svelte";
   import { goto } from "$app/navigation";
 
   // Get session data from layout server and children snippet
@@ -1269,6 +1270,7 @@ import { env as publicEnv } from "$env/dynamic/public";
 {/if}
 
 {#if shouldShowNavbar}
+<VoiceCall />
 <Navbar
   session={$session}
   {signInWithGoogle}
