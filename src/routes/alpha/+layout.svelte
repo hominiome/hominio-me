@@ -8,7 +8,6 @@
 import { authClient } from "$lib/auth.client.js";
 import { browser } from "$app/environment";
 import { env as publicEnv } from "$env/dynamic/public";
-import Footer from "$lib/components/Footer.svelte";
   import { page } from "$app/stores";
   import { getZeroServerUrl, getMainDomainUrl } from "$lib/utils/domain";
   import Navbar from "$lib/Navbar.svelte";
@@ -17,7 +16,6 @@ import Footer from "$lib/components/Footer.svelte";
   import NotificationBell from "$lib/NotificationBell.svelte";
   import Modal from "$lib/Modal.svelte";
   import InviteOnlyContent from "$lib/InviteOnlyContent.svelte";
-  import ProjectDetailContent from "$lib/ProjectDetailContent.svelte";
   import { goto } from "$app/navigation";
 
   // Get session data from layout server and children snippet
@@ -718,9 +716,7 @@ import Footer from "$lib/components/Footer.svelte";
   const showEditProjectModal = $derived(
     modalType === "edit-project" && !!modalProjectId
   );
-  const showProjectDetailModal = $derived(
-    modalType === "project-detail" && !!modalProjectId
-  );
+  const showProjectDetailModal = $derived(false);
   const showCreateCupModal = $derived(modalType === "create-cup");
   const showEditCupModal = $derived(modalType === "edit-cup" && !!modalCupId);
   const showDeleteProjectModal = $derived(
@@ -1318,9 +1314,6 @@ import Footer from "$lib/components/Footer.svelte";
   <div class="mx-auto w-full max-w-7xl px-2 sm:px-4 lg:px-6">
     {@render children()}
     
-    <!-- Footer -->
-    <Footer />
-    
     <!-- Spacer to ensure content can scroll properly behind navbar - only if navbar should be visible -->
     {#if shouldShowNavbar}
     <div class="h-20"></div>
@@ -1347,14 +1340,6 @@ import Footer from "$lib/components/Footer.svelte";
   </Modal>
 {/if}
 
-{#if showProjectDetailModal && modalProjectId}
-  <Modal open={showProjectDetailModal} onClose={handleModalClose}>
-    <ProjectDetailContent
-      projectId={modalProjectId}
-      onClose={handleModalClose}
-    />
-  </Modal>
-{/if}
 
 <style>
   .content-wrapper {

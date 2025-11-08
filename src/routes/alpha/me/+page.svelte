@@ -4,17 +4,12 @@
   import { onMount } from "svelte";
   import { browser } from "$app/environment";
   import { useZero } from "$lib/zero-utils";
-  import { formatPrizePool } from "$lib/prizePoolUtils.js";
   import QRCodeDisplay from "$lib/QRCodeDisplay.svelte";
   import Modal from "$lib/Modal.svelte";
   import { page } from "$app/stores";
   import {
-    allProjects,
     purchasesByUser,
     identitiesByUser,
-    votesByUser,
-    allMatches,
-    allCups,
     userPreferencesByUser,
   } from "$lib/synced-queries";
 
@@ -67,10 +62,6 @@
   let zero = $state<any>(null);
   let userIdentities = $state<any[]>([]);
   let purchases = $state<any[]>([]);
-  let votes = $state<any[]>([]);
-  let matches = $state<any[]>([]);
-  let projects = $state<any[]>([]);
-  let cups = $state<any[]>([]);
   let userPreferences = $state<any[]>([]);
   let loading = $state(true);
 
@@ -238,57 +229,11 @@
     return () => clearInterval(interval);
   });
 
-  function getCupName(cupId: string) {
-    const cup = cups.find((c) => c.id === cupId);
-    return cup?.name || cupId;
-  }
 
-  function getProjectById(projectId: string) {
-    return projects.find((p) => p.id === projectId);
-  }
-
-  function getProjectName(projectId: string) {
-    const project = projects.find((p) => p.id === projectId);
-    return project?.title || "Unknown Project";
-  }
-
-  function getMatchRound(matchId: string) {
-    const match = matches.find((m) => m.id === matchId);
-    return match?.round || "unknown";
-  }
-
-  function getRoundLabel(round: string) {
-    switch (round) {
-      case "round_4":
-        return "Round of 4";
-      case "round_8":
-        return "Round of 8";
-      case "round_16":
-        return "Round of 16";
-      case "round_32":
-        return "Round of 32";
-      case "round_64":
-        return "Round of 64";
-      case "round_128":
-        return "Round of 128";
-      case "quarter":
-        return "Quarter Finals";
-      case "semi":
-        return "Semi Finals";
-      case "final":
-        return "Final";
-      default:
-        return round;
-    }
-  }
 
   onMount(() => {
     let identitiesView: any;
     let purchasesView: any;
-    let votesView: any;
-    let matchesView: any;
-    let projectsView: any;
-    let cupsView: any;
     let preferencesView: any;
 
     (async () => {
@@ -332,56 +277,19 @@
         purchases = Array.from(data || []);
       });
 
-      // Query user's votes using synced query
-      const votesQuery = votesByUser(userId);
-      votesView = zero.materialize(votesQuery);
-
-      votesView.addListener((data: any) => {
-        // Already sorted by createdAt desc from synced query
-        votes = Array.from(data || []);
-      });
-
-      // Query all matches using synced query
-      const matchesQuery = allMatches();
-      matchesView = zero.materialize(matchesQuery);
-
-      matchesView.addListener((data: any) => {
-        matches = Array.from(data || []);
-      });
-
-      // Query all projects using synced query
-      const projectsQuery = allProjects();
-      projectsView = zero.materialize(projectsQuery);
-
-      projectsView.addListener((data: any) => {
-        projects = Array.from(data || []);
-      });
-
-      // Query all cups to get names using synced query
-      const cupsQuery = allCups();
-      cupsView = zero.materialize(cupsQuery);
-
-      cupsView.addListener((data: any) => {
-        cups = Array.from(data || []);
-        loading = false;
-      });
-
       // Query user preferences using synced query
       const preferencesQuery = userPreferencesByUser(userId);
       preferencesView = zero.materialize(preferencesQuery);
 
       preferencesView.addListener((data: any) => {
         userPreferences = Array.from(data || []);
+        loading = false;
       });
     })();
 
     return () => {
       if (identitiesView) identitiesView.destroy();
       if (purchasesView) purchasesView.destroy();
-      if (votesView) votesView.destroy();
-      if (matchesView) matchesView.destroy();
-      if (projectsView) projectsView.destroy();
-      if (cupsView) cupsView.destroy();
       if (preferencesView) preferencesView.destroy();
     };
   });
@@ -642,7 +550,6 @@
                         d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"
                       />
                     </svg>
-                    <span class="heart-count">{identity.votingWeight}</span>
                   </div>
                   <div class="identity-info">
                     <span class="identity-name">
@@ -696,76 +603,6 @@
         {/if}
         </div>
 
-        <div class="profile-section">
-          <h2 class="section-title">My Votes</h2>
-        {#if votes.length === 0}
-          <div class="empty-state">
-            <p>You haven't voted on any matches yet.</p>
-          </div>
-        {:else}
-          <div class="votes-list">
-            {#each votes as vote}
-              {@const match = matches.find((m) => m.id === vote.matchId)}
-              {@const cup = match
-                ? cups.find((c) => c.id === match.cupId)
-                : null}
-              {@const votedProject =
-                vote.projectSide === "project1"
-                  ? getProjectById(match?.project1Id)
-                  : getProjectById(match?.project2Id)}
-              {@const opponentProject =
-                vote.projectSide === "project1"
-                  ? getProjectById(match?.project2Id)
-                  : getProjectById(match?.project1Id)}
-              <div class="vote-item">
-                <div class="vote-amount">
-                  <span class="vote-plus">+</span>
-                  <span class="vote-number">{vote.votingWeight || 1}</span>
-                </div>
-                <div class="vote-details">
-                  {#if votedProject?.id}
-                    <a
-                      href="/alpha/projects/{votedProject.id}"
-                      class="vote-project-link"
-                    >
-                      {getProjectName(votedProject.id)}
-                    </a>
-                  {:else}
-                    <span class="vote-project">
-                      {getProjectName(votedProject?.id || "")}
-                    </span>
-                  {/if}
-                  <span class="vote-meta">
-                    <span class="vote-cup">{cup?.name || "Unknown Cup"}</span>
-                    {#if match}
-                      <span class="vote-round">
-                        • {getRoundLabel(match.round)}</span
-                      >
-                    {/if}
-                    {#if opponentProject}
-                      <span class="vote-opponent">
-                        vs
-                        {#if opponentProject?.id}
-                          <a
-                            href="/alpha/projects/{opponentProject.id}"
-                            class="vote-opponent-link"
-                          >
-                            {getProjectName(opponentProject.id)}
-                          </a>
-                        {:else}
-                          {opponentProject
-                            ? getProjectName(opponentProject.id)
-                            : "Unknown"}
-                        {/if}
-                      </span>
-                    {/if}
-                  </span>
-                </div>
-              </div>
-            {/each}
-          </div>
-        {/if}
-        </div>
 
         <div class="profile-section">
           <h2 class="section-title">Purchase History</h2>
@@ -796,7 +633,7 @@
                     </span>
                   </div>
                   <div class="purchase-price">
-                    {formatPrizePool(purchase.price)}
+                    €{(purchase.price / 100).toFixed(2)}
                   </div>
                 </div>
               </div>
@@ -1339,16 +1176,14 @@
   }
 
   .identities-list,
-  .purchases-list,
-  .votes-list {
+  .purchases-list {
     display: flex;
     flex-direction: column;
     gap: 0.75rem;
   }
 
   .identity-item,
-  .purchase-item,
-  .vote-item {
+  .purchase-item {
     display: flex;
     align-items: center;
     gap: 1rem;
@@ -1358,33 +1193,6 @@
     border: 1px solid #e5e7eb;
   }
 
-  .vote-amount {
-    display: flex;
-    align-items: baseline;
-    gap: 0.125rem;
-    flex-shrink: 0;
-  }
-
-  .vote-plus {
-    font-size: 1.5rem;
-    font-weight: 700;
-    color: #4ecdc4;
-  }
-
-  .vote-number {
-    font-size: 1.75rem;
-    font-weight: 800;
-    color: #1a1a4e;
-    line-height: 1;
-  }
-
-  .vote-details {
-    display: flex;
-    flex-direction: column;
-    gap: 0.25rem;
-    flex: 1;
-    min-width: 0;
-  }
 
   .identity-main {
     display: flex;
@@ -1448,26 +1256,6 @@
     flex: 1;
   }
 
-  .vote-project-link,
-  .vote-opponent-link {
-    text-decoration: none;
-    font-size: 0.9375rem;
-    font-weight: 600;
-    color: #111827;
-    transition: color 0.2s;
-  }
-
-  .vote-project-link:hover,
-  .vote-opponent-link:hover {
-    color: #4ecdc4;
-    text-decoration: underline;
-  }
-
-  .vote-project {
-    font-size: 0.9375rem;
-    font-weight: 600;
-    color: #111827;
-  }
 
   .identity-name {
     font-size: 0.9375rem;
@@ -1479,28 +1267,6 @@
     color: #111827;
   }
 
-  .vote-meta {
-    font-size: 0.8125rem;
-    color: #6b7280;
-    display: flex;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 0.25rem;
-  }
-
-  .vote-cup {
-    font-weight: 500;
-  }
-
-  .vote-round {
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    font-size: 0.75rem;
-  }
-
-  .vote-opponent {
-    font-style: italic;
-  }
 
   .identity-upgrade {
     margin-top: 0.5rem;
@@ -1637,24 +1403,12 @@
       gap: 0.75rem;
     }
 
-    /* Keep identity-main in a single row on mobile - don't stack like votes */
+    /* Keep identity-main in a single row on mobile */
     .identity-main {
       gap: 0.75rem;
       /* Stay in row, don't change to column */
     }
 
-    .vote-item {
-      flex-direction: row;
-      gap: 0.75rem;
-    }
-
-    .vote-number {
-      font-size: 1.5rem;
-    }
-
-    .vote-plus {
-      font-size: 1.25rem;
-    }
 
     .identity-hearts {
       width: 56px;

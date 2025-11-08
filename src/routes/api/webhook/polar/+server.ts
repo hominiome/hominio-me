@@ -177,7 +177,6 @@ async function ensureExplorerIdentity(userId: string, upgradedFrom: string | nul
         id: explorerId,
         userId,
         identityType: "explorer",
-        votingWeight: 0,
         selectedAt: new Date().toISOString(),
         upgradedFrom: upgradedFrom,
       })
@@ -293,7 +292,6 @@ const webhookConfig = {
 
       const hominioPackage = {
         packageType: "hominio",
-        votingWeight: 1,
         name: "❤︎ I am Hominio",
         price: 1200,
       };
@@ -310,7 +308,6 @@ const webhookConfig = {
             id: identityId,
             userId,
             identityType: hominioPackage.packageType,
-            votingWeight: hominioPackage.votingWeight,
             selectedAt: now,
             upgradedFrom: null,
             expiresAt: null,
@@ -524,7 +521,6 @@ const webhookConfig = {
             id: identityId,
             userId,
             identityType: "hominio",
-            votingWeight: 1,
             selectedAt: now,
             upgradedFrom: null,
             expiresAt: null,

@@ -1,62 +1,30 @@
-<script>
-</script>
-
-<div class="footer">
-  <a href="/" class="footer-link">Home</a>
-  <span class="footer-separator">·</span>
-  <a href="/legal-notice" class="footer-link">Site Notice</a>
-  <span class="footer-separator">·</span>
-  <a href="/privacy-policy" class="footer-link">Privacy Policy</a>
-  <span class="footer-separator">·</span>
-  <a href="/social-media-privacy-policy" class="footer-link"
-    >Social Media Policy</a
+<div class="flex flex-col items-center px-6 max-w-[800px] mx-auto md:px-4">
+  <div
+    class="mt-12 pt-8 pb-8 border-t border-gray-200 flex justify-center items-center gap-3 flex-wrap w-full md:mt-8 md:pt-6 md:pb-6 md:gap-2"
   >
+    <a
+      href="/"
+      class="text-sm text-gray-500 no-underline transition-colors whitespace-nowrap shrink-0 hover:text-gray-900 md:text-xs"
+      >Home</a
+    >
+    <span class="text-gray-300 text-sm md:text-xs">·</span>
+    <a
+      href="/legal-notice"
+      class="text-sm text-gray-500 no-underline transition-colors whitespace-nowrap shrink-0 hover:text-gray-900 md:text-xs"
+      >Site Notice</a
+    >
+    <span class="text-gray-300 text-sm md:text-xs">·</span>
+    <a
+      href="/privacy-policy"
+      class="text-sm text-gray-500 no-underline transition-colors whitespace-nowrap shrink-0 hover:text-gray-900 md:text-xs"
+      >Privacy Policy</a
+    >
+    <span class="text-gray-300 text-sm md:text-xs">·</span>
+    <a
+      href="/social-media-privacy-policy"
+      class="text-sm text-gray-500 no-underline transition-colors whitespace-nowrap shrink-0 hover:text-gray-900 md:text-xs"
+      >Social Media Policy</a
+    >
+  </div>
+  <div class="h-20 w-full bg-transparent shrink-0"></div>
 </div>
-
-<style>
-  .footer {
-    margin-top: 3rem;
-    padding-top: 2rem;
-    padding-bottom: 2rem;
-    border-top: 1px solid #e5e7eb;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    gap: 0.75rem;
-    flex-wrap: wrap;
-  }
-
-  .footer-link {
-    font-size: 0.875rem;
-    color: #6b7280;
-    text-decoration: none;
-    transition: color 0.2s;
-  }
-
-  .footer-link:hover {
-    color: #111827;
-  }
-
-  .footer-separator {
-    color: #d1d5db;
-    font-size: 0.875rem;
-  }
-
-  @media (max-width: 768px) {
-    .footer {
-      margin-top: 2rem;
-      padding-top: 1.5rem;
-      padding-bottom: 1.5rem;
-      gap: 0.5rem;
-    }
-
-    .footer-link {
-      font-size: 0.75rem;
-    }
-
-    .footer-separator {
-      font-size: 0.75rem;
-    }
-  }
-</style>
-

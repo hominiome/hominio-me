@@ -1,6 +1,5 @@
 <script>
 	import TextWrap from '$lib/components/TextWrap.svelte';
-	import Footer from '$lib/components/Footer.svelte';
 </script>
 
 <TextWrap>
@@ -70,7 +69,4 @@
 	</p>
 	<p>The languages available for contact are: German, English.</p>
 </TextWrap>
-
-<!-- Footer -->
-<Footer />
 

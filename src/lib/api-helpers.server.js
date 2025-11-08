@@ -48,7 +48,7 @@ export async function requireAdmin(request) {
  */
 export async function checkAndCleanupExpiredIdentities(userId) {
   const now = new Date().toISOString();
-  
+
   // Get all user identities with expiration dates
   const identitiesWithExpiration = await zeroDb
     .selectFrom("userIdentities")
@@ -60,10 +60,10 @@ export async function checkAndCleanupExpiredIdentities(userId) {
   // Check each identity for expiration
   for (const identity of identitiesWithExpiration) {
     if (!identity.expiresAt) continue;
-    
+
     const expirationDate = new Date(identity.expiresAt);
     const nowDate = new Date();
-    
+
     // If expired, downgrade hominio to explorer
     if (nowDate >= expirationDate && identity.identityType === "hominio") {
       // Ensure explorer identity exists
@@ -83,7 +83,6 @@ export async function checkAndCleanupExpiredIdentities(userId) {
             id: explorerId,
             userId,
             identityType: "explorer",
-            votingWeight: 0,
             selectedAt: now,
             upgradedFrom: "hominio",
           })
@@ -110,15 +109,15 @@ export async function checkAndCleanupExpiredIdentities(userId) {
  */
 export async function requireExplorerIdentity(request) {
   const user = await requireAuth(request);
-  
+
   // Admins don't need explorer identity
   if (isAdmin(user.id)) {
     return user;
   }
-  
+
   // Check and clean up expired identities before checking explorer identity
   await checkAndCleanupExpiredIdentities(user.id);
-  
+
   // Check if user has explorer identity (all identities are universal)
   const explorerIdentity = await zeroDb
     .selectFrom("userIdentities")
@@ -128,9 +127,11 @@ export async function requireExplorerIdentity(request) {
     .executeTakeFirst();
 
   if (!explorerIdentity) {
-    throw json({ error: "Forbidden: Explorer identity required" }, { status: 403 });
+    throw json(
+      { error: "Forbidden: Explorer identity required" },
+      { status: 403 }
+    );
   }
 
   return user;
 }
-

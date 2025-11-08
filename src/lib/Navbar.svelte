@@ -77,21 +77,6 @@
 
     <!-- Navigation Links (Desktop) -->
     <div class="nav-links desktop-nav-links">
-      <a
-        href="/alpha/projects"
-        class="nav-link"
-        class:active={$page.url.pathname === "/alpha/projects"}
-      >
-        Projects
-      </a>
-
-      <a
-        href="/alpha/cups"
-        class="nav-link"
-        class:active={$page.url.pathname.startsWith("/alpha/cups")}
-      >
-        Cups
-      </a>
 
       {#if isAdmin}
         <a
@@ -223,26 +208,9 @@
               class:active={$page.url.pathname === "/alpha"}
             >
               <Icon name="mdi:check-circle" size={20} />
-              <span class="footer-nav-label">Live</span>
+              <span class="footer-nav-label">Vibes</span>
             </a>
 
-            <a
-              href="/alpha/cups"
-              class="footer-nav-link"
-              class:active={$page.url.pathname.startsWith("/alpha/cups")}
-            >
-              <Icon name="mdi:star" size={20} />
-              <span class="footer-nav-label">Cups</span>
-            </a>
-
-            <a
-              href="/alpha/projects"
-              class="footer-nav-link"
-              class:active={$page.url.pathname === "/alpha/projects"}
-            >
-              <Icon name="mdi:view-grid" size={20} />
-              <span class="footer-nav-label">Projects</span>
-            </a>
           </div>
 
           <!-- Right-aligned items -->

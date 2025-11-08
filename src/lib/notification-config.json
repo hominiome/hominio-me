@@ -3,14 +3,14 @@
     "hominio": {
       "title": "You are now Hominio",
       "previewTitle": "Something special just happened...",
-      "message": "May the wisdom be with you. You can now vote in the \"{cupName}\" competition matches.",
+      "message": "Welcome to Hominio! You've joined an exclusive community.",
       "priority": true,
       "icon": "mdi:account-check",
       "sound": "/purchase-effect.mp3",
-      "displayComponent": "PrizePoolDisplay",
+      "displayComponent": null,
       "actions": [
         {
-          "label": "Open Matches",
+          "label": "Explore",
           "url": "/alpha"
         }
       ]
@@ -18,129 +18,29 @@
     "founder": {
       "title": "You are now a Founder",
       "previewTitle": "Welcome to an exclusive circle...",
-      "message": "Welcome to the founder circle! You can now create and submit your project to compete in the competition.",
+      "message": "Welcome to the founder circle! You're part of an exclusive community.",
       "priority": true,
       "icon": "mdi:account-check",
       "sound": "/purchase-effect.mp3",
-      "displayComponent": "PrizePoolDisplay",
+      "displayComponent": null,
       "actions": [
         {
-          "label": "Create Project",
-          "url": "/alpha/projects?modal=create-project"
+          "label": "Explore",
+          "url": "/alpha"
         }
       ]
     },
     "other": {
       "title": "You are now an {identityName}",
       "previewTitle": "Your status has changed...",
-      "message": "May the wisdom be with you. You can now vote in the \"{cupName}\" competition matches.",
+      "message": "Welcome! You've upgraded your identity.",
       "priority": true,
       "icon": "mdi:account-check",
       "sound": "/purchase-effect.mp3",
-      "displayComponent": "PrizePoolDisplay",
-      "actions": [
-        {
-          "label": "Open Matches",
-          "url": "/alpha"
-        }
-      ]
-    }
-  },
-  "vote": {
-    "received": {
-      "title": "You got a new vote!",
-      "previewTitle": "New vote on your match",
-      "message": "{message}",
-      "priority": false,
-      "icon": "mdi:thumb-up",
-      "sound": "/vote-yipi-1.mp3",
-      "displayComponent": "VotingProgressDisplay",
-      "actions": [
-        {
-          "label": "View Match",
-          "url": "/alpha?matchId={matchId}"
-        }
-      ]
-    },
-    "opponentReceived": {
-      "title": "Your opponent got a vote",
-      "previewTitle": "New vote on your match",
-      "message": "{message}",
-      "priority": false,
-      "icon": "mdi:thumb-down",
-      "sound": "/vote-defeat.mp3",
-      "displayComponent": "VotingProgressDisplay",
-      "actions": [
-        {
-          "label": "View Match",
-          "url": "/alpha?matchId={matchId}"
-        }
-      ]
-    }
-  },
-  "roundWin": {
-    "won": {
-      "title": "Congratulations! You won the {roundName}!",
-      "previewTitle": "Round complete",
-      "message": "You've advanced to the next round! Get ready for your next match.",
-      "priority": true,
-      "icon": "mdi:trophy",
-      "sound": "/winning-round.mp3",
       "displayComponent": null,
       "actions": [
         {
-          "label": "View Matches",
-          "url": "/alpha"
-        }
-      ]
-    }
-  },
-  "opponentReveal": {
-    "revealed": {
-      "title": "Your next opponent has been revealed!",
-      "previewTitle": "Opponent revealed",
-      "message": "Time to prepare for your next match. May the best project win!",
-      "priority": true,
-      "icon": "mdi:eye",
-      "sound": "/reveal.mp3",
-      "displayComponent": "OpponentReveal",
-      "actions": [
-        {
-          "label": "View Match",
-          "url": "/alpha?matchId={matchId}"
-        }
-      ]
-    }
-  },
-  "cupWin": {
-    "champion": {
-      "title": "Congratulations! You are the Champion!",
-      "previewTitle": "Victory!",
-      "message": "You've won the entire competition! Your project has been recognized as the best. Celebrate this incredible achievement!",
-      "priority": true,
-      "icon": "mdi:trophy",
-      "sound": "/victory.mp3",
-      "displayComponent": "VictoryCelebration",
-      "actions": [
-        {
-          "label": "View Matches",
-          "url": "/alpha"
-        }
-      ]
-    }
-  },
-  "matchLoss": {
-    "eliminated": {
-      "title": "Never give up - go all in next time",
-      "previewTitle": "Match ended",
-      "message": "{message}",
-      "priority": true,
-      "icon": "mdi:heart",
-      "sound": "/runner-up.mp3",
-      "displayComponent": null,
-      "actions": [
-        {
-          "label": "View Matches",
+          "label": "Explore",
           "url": "/alpha"
         }
       ]

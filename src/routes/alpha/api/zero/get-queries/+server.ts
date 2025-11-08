@@ -48,7 +48,48 @@ function getQuery(name: string, args: readonly ReadonlyJSONValue[]) {
   }
 
   // ========================================
-  // PROJECT QUERIES
+  // IDENTITY PURCHASE QUERIES
+  // ========================================
+  
+  if (name === 'allPurchases') {
+    z.tuple([]).parse(args);
+    return {
+      query: builder.identityPurchase.orderBy('purchasedAt', 'desc'),
+    };
+  }
+  
+  if (name === 'purchasesByUser') {
+    z.tuple([z.string()]).parse(args);
+    const [userId] = args as [string];
+    return {
+      query: builder.identityPurchase
+        .where('userId', '=', userId)
+        .orderBy('purchasedAt', 'desc'),
+    };
+  }
+  
+  if (name === 'purchaseById') {
+    z.tuple([z.string()]).parse(args);
+    const [purchaseId] = args as [string];
+    return {
+      query: builder.identityPurchase.where('id', '=', purchaseId),
+    };
+  }
+
+  // ========================================
+  // USER IDENTITIES QUERIES
+  // ========================================
+  
+  if (name === 'identitiesByUser') {
+    z.tuple([z.string()]).parse(args);
+    const [userId] = args as [string];
+    return {
+      query: builder.userIdentities.where('userId', '=', userId),
+    };
+  }
+
+  // ========================================
+  // PROJECT QUERIES (Reference Implementation)
   // ========================================
   
   if (name === 'allProjects') {
@@ -75,128 +116,7 @@ function getQuery(name: string, args: readonly ReadonlyJSONValue[]) {
         .orderBy('createdAt', 'desc'),
     };
   }
-
-  // ========================================
-  // IDENTITY PURCHASE QUERIES
-  // ========================================
   
-  if (name === 'allPurchases') {
-    z.tuple([]).parse(args);
-    return {
-      query: builder.identityPurchase.orderBy('purchasedAt', 'desc'),
-    };
-  }
-  
-  if (name === 'purchasesByUser') {
-    z.tuple([z.string()]).parse(args);
-    const [userId] = args as [string];
-    return {
-      query: builder.identityPurchase
-        .where('userId', '=', userId)
-        .orderBy('purchasedAt', 'desc'),
-    };
-  }
-  
-  if (name === 'purchasesByCup') {
-    z.tuple([z.string()]).parse(args);
-    const [cupId] = args as [string];
-    return {
-      query: builder.identityPurchase
-        .where('cupId', '=', cupId)
-        .orderBy('purchasedAt', 'desc'),
-    };
-  }
-  
-  if (name === 'purchaseById') {
-    z.tuple([z.string()]).parse(args);
-    const [purchaseId] = args as [string];
-    return {
-      query: builder.identityPurchase.where('id', '=', purchaseId),
-    };
-  }
-
-  // ========================================
-  // USER IDENTITIES QUERIES
-  // ========================================
-  
-  if (name === 'identitiesByUser') {
-    z.tuple([z.string()]).parse(args);
-    const [userId] = args as [string];
-    return {
-      query: builder.userIdentities.where('userId', '=', userId),
-    };
-  }
-  
-  // Removed: identityByUserAndCup and identitiesByCup - all identities are now universal
-
-  // ========================================
-  // VOTE QUERIES
-  // ========================================
-  
-  if (name === 'allVotes') {
-    z.tuple([]).parse(args);
-    return {
-      query: builder.vote.orderBy('createdAt', 'desc'),
-    };
-  }
-  
-  if (name === 'votesByUser') {
-    z.tuple([z.string()]).parse(args);
-    const [userId] = args as [string];
-    return {
-      query: builder.vote
-        .where('userId', '=', userId)
-        .orderBy('createdAt', 'desc'),
-    };
-  }
-  
-  if (name === 'votesByMatch') {
-    z.tuple([z.string()]).parse(args);
-    const [matchId] = args as [string];
-    return {
-      query: builder.vote.where('matchId', '=', matchId),
-    };
-  }
-
-  // ========================================
-  // CUP MATCH QUERIES
-  // ========================================
-  
-  if (name === 'allMatches') {
-    z.tuple([]).parse(args);
-    return {
-      query: builder.cupMatch.orderBy('position', 'asc'),
-    };
-  }
-  
-  if (name === 'matchesByCup') {
-    z.tuple([z.string()]).parse(args);
-    const [cupId] = args as [string];
-    return {
-      query: builder.cupMatch
-        .where('cupId', '=', cupId)
-        .orderBy('position', 'asc'),
-    };
-  }
-
-  // ========================================
-  // CUP QUERIES
-  // ========================================
-  
-  if (name === 'allCups') {
-    z.tuple([]).parse(args);
-    return {
-      query: builder.cup,
-    };
-  }
-  
-  if (name === 'cupById') {
-    z.tuple([z.string()]).parse(args);
-    const [cupId] = args as [string];
-    return {
-      query: builder.cup.where('id', '=', cupId),
-    };
-  }
   
   throw new Error(`No such query: ${name}`);
 }

@@ -8,62 +8,7 @@ import {
   ANYONE_CAN,
 } from '@rocicorp/zero';
 
-// Define the project table
-const project = table('project')
-  .columns({
-    id: string(),
-    title: string(),
-    description: string(),
-    country: string(),
-    city: string(),
-    userId: string(), // Reference to user
-    videoUrl: string(), // YouTube URL for project pitch video (optional)
-    bannerImage: string(), // Custom banner image URL (optional)
-    profileImageUrl: string(), // Custom project profile image URL (optional)
-    sdgs: string(), // JSON string array of SDG goals
-    createdAt: string(), // ISO timestamp
-  })
-  .primaryKey('id');
-
-// Cup tournament container
-const cup = table('cup')
-  .columns({
-    id: string(),
-    name: string(),
-    description: string(),
-    creatorId: string(), // Reference to user
-    logoImageUrl: string(), // Cup logo image URL (optional)
-    size: number(), // Cup size: 4, 8, 16, 32, 64, or 128
-    selectedProjectIds: string(), // JSON array of selected project IDs
-    status: string(), // 'draft' | 'active' | 'completed'
-    currentRound: string(), // Current round identifier
-    winnerId: string(), // Project ID of winner
-    createdAt: string(),
-    startedAt: string(),
-    completedAt: string(),
-    updatedAt: string(),
-    endDate: string(), // ISO timestamp for cup end date/time
-  })
-  .primaryKey('id');
-
-// Individual match in tournament bracket
-const cupMatch = table('cupMatch')
-  .columns({
-    id: string(),
-    cupId: string(),
-    round: string(), // Round identifier
-    position: number(), // Position in bracket
-    project1Id: string(), // First project
-    project2Id: string(), // Second project
-    winnerId: string(), // Project ID of winner
-    status: string(), // 'pending' | 'voting' | 'completed'
-    completedAt: string(),
-    endDate: string(), // ISO timestamp for match end date/time
-  })
-  .primaryKey('id');
-
-// User identities - tracks which voting weight identity a user has selected
-// All identities are universal (apply to all cups)
+// User identities - tracks which identity a user has selected
 // expiresAt is nullable: null = no expiration, otherwise ISO timestamp when identity expires
 // subscriptionId is nullable: Polar subscription ID for subscription-based identities (hominio)
 const userIdentities = table('userIdentities')
@@ -71,7 +16,6 @@ const userIdentities = table('userIdentities')
     id: string(),
     userId: string(), // User ID
     identityType: string(), // 'explorer' | 'hominio' | 'founder' | 'angel'
-    votingWeight: number(), // 0 (explorer) | 1 | 5 | 10
     selectedAt: string(), // ISO timestamp
     upgradedFrom: string(), // Previous identity type if upgraded
     expiresAt: string(), // ISO timestamp when identity expires (null = no expiration)
@@ -79,8 +23,7 @@ const userIdentities = table('userIdentities')
   })
   .primaryKey('id');
 
-// Identity purchases - tracks purchases of voting identities
-// All purchases are universal (apply to all cups)
+// Identity purchases - tracks purchases of identities
 const identityPurchase = table('identityPurchase')
   .columns({
     id: string(),
@@ -89,18 +32,6 @@ const identityPurchase = table('identityPurchase')
     price: number(), // Price in cents
     purchasedAt: string(), // ISO timestamp
     userIdentityId: string(), // Reference to userIdentities.id
-  })
-  .primaryKey('id');
-
-// Vote record - tracks individual votes on matches
-const vote = table('vote')
-  .columns({
-    id: string(),
-    userId: string(), // User ID
-    matchId: string(), // Match ID
-    projectSide: string(), // 'project1' | 'project2'
-    votingWeight: number(), // Weight used for this vote
-    createdAt: string(), // ISO timestamp
   })
   .primaryKey('id');
 
@@ -135,8 +66,25 @@ const userPreferences = table('userPreferences')
   })
   .primaryKey('id');
 
+// Projects - reference implementation for future entity management
+const project = table('project')
+  .columns({
+    id: string(),
+    title: string(),
+    description: string(),
+    country: string(),
+    city: string(),
+    userId: string(), // Reference to user
+    videoUrl: string(), // YouTube URL for project pitch video (optional)
+    bannerImage: string(), // Custom banner image URL (optional)
+    profileImageUrl: string(), // Custom project profile image URL (optional)
+    sdgs: string(), // JSON string array of SDG goals
+    createdAt: string(), // ISO timestamp
+  })
+  .primaryKey('id');
+
 export const schema = createSchema({
-  tables: [project, cup, cupMatch, userIdentities, identityPurchase, vote, notification, userPreferences],
+  tables: [userIdentities, identityPurchase, notification, userPreferences, project],
   // Disable legacy queries - we use synced queries instead
   enableLegacyQueries: false,
   // Disable legacy CRUD mutators - we use custom mutators instead
