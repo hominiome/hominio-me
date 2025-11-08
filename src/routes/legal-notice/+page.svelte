@@ -24,7 +24,7 @@
 	<h2>Contact</h2>
 	<p>
 		Phone: +49 89 38466851<br />
-		E-mail: hello@hominio.me
+		E-mail: architects@visioncreator.earth
 	</p>
 
 	<h2>VAT ID</h2>
@@ -64,7 +64,7 @@
 		DSA as follows:
 	</p>
 	<p>
-		E-mail: hello@hominio.me<br />
+		E-mail: architects@visioncreator.earth<br />
 		Phone: +49 89 38466851
 	</p>
 	<p>The languages available for contact are: German, English.</p>

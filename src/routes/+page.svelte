@@ -1,17 +1,16 @@
 <script>
   import Hero from "$lib/components/Hero.svelte";
+  import Offer from "$lib/components/Offer.svelte";
 </script>
 
 <div class="page" style="margin-top: 0 !important; padding-top: 0 !important;">
   <Hero />
+  <Offer />
 </div>
 
 <!-- Fixed CTA Buttons -->
 <div class="cta-fixed">
-  <a
-    href="/signin"
-    class="cta-button cta-apply"
-  >
+  <a href="/signin" class="cta-button cta-apply">
     <span class="cta-text-full">Signup to Waitlist</span>
     <span class="cta-text-short">Signup to Waitlist</span>
   </a>
