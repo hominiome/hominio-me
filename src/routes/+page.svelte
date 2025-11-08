@@ -1,29 +1,9 @@
 <script>
   import Hero from "$lib/components/Hero.svelte";
-  import WorldRecord from "$lib/components/WorldRecord.svelte";
-  import Vision from "$lib/components/Vision.svelte";
-  import HominioTransformation from "$lib/components/HominioTransformation.svelte";
-  import HominioSummit from "$lib/components/HominioSummit.svelte";
-  import CompetitionPhases from "$lib/components/CompetitionPhases.svelte";
-  import HominioFounder from "$lib/components/HominioFounder.svelte";
-  import FinalCTA from "$lib/components/FinalCTA.svelte";
-  import Footer from "$lib/components/Footer.svelte";
 </script>
 
 <div class="page" style="margin-top: 0 !important; padding-top: 0 !important;">
   <Hero />
-  <div class="container">
-    <WorldRecord />
-    <Vision />
-    <HominioTransformation />
-
-    <HominioSummit />
-    <HominioFounder />
-    <FinalCTA />
-
-    <!-- Footer -->
-    <Footer />
-  </div>
 </div>
 
 <!-- Fixed CTA Buttons -->
@@ -32,8 +12,8 @@
     href="/signin"
     class="cta-button cta-apply"
   >
-    <span class="cta-text-full">Get early access now</span>
-    <span class="cta-text-short">Get early access now</span>
+    <span class="cta-text-full">Signup to Waitlist</span>
+    <span class="cta-text-short">Signup to Waitlist</span>
   </a>
 </div>
 
@@ -49,22 +29,6 @@
     position: relative;
     margin-top: 0 !important;
     padding-top: 0 !important;
-  }
-
-  .container {
-    max-width: 1024px;
-    width: 100%;
-    margin: 0 auto;
-    text-align: center;
-    padding: 0 0.375rem 5rem 0.375rem; /* 6px = 0.375rem */
-    overflow-x: hidden;
-    position: relative;
-  }
-
-  @media (min-width: 640px) {
-    .container {
-      padding: 0 1.5rem 5rem 1.5rem;
-    }
   }
 
   .cta-fixed {
@@ -100,18 +64,18 @@
 
   .cta-apply {
     width: auto;
-    background: var(--color-accent-500);
+    background: var(--color-primary-500);
     border: 2px solid var(--color-primary-500);
-    color: var(--color-primary-500);
-    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.2);
+    color: var(--color-primary-100);
+    box-shadow: 0 6px 32px rgba(0, 0, 0, 0.15);
   }
 
   .cta-apply:hover {
-    background: var(--color-primary-500);
+    background: var(--color-accent-500);
     border-color: var(--color-primary-500);
-    color: var(--color-primary-100);
+    color: var(--color-primary-500);
     transform: translateY(-2px);
-    box-shadow: 0 6px 32px rgba(0, 0, 0, 0.15);
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.2);
   }
 
   .cta-icon {
@@ -127,8 +91,6 @@
   .cta-text-full {
     display: inline;
   }
-
-  /* Footer styles are now in Footer component */
 
   @media (max-width: 768px) {
     .cta-fixed {
@@ -158,10 +120,6 @@
     .cta-text-short {
       display: inline;
     }
-
-    .page {
-      padding: 2rem 1rem;
-    }
   }
 
   @media (max-width: 480px) {
@@ -179,10 +137,6 @@
     .cta-icon {
       width: 16px;
       height: 16px;
-    }
-
-    .page {
-      padding: 1.5rem 1rem;
     }
   }
 </style>
