@@ -60,11 +60,11 @@
   }
 
   .hero-description {
-    font-size: 1.25rem;
+    font-size: 1.5rem;
     line-height: 1.7;
     color: var(--color-secondary-500);
     margin: 0;
-    font-weight: 500;
+    font-weight: 700;
   }
 
   .hero-subdescription {
@@ -88,7 +88,7 @@
     }
 
     .hero-description {
-      font-size: 1.375rem;
+      font-size: 1.75rem;
     }
 
     .hero-subdescription {
@@ -99,10 +99,6 @@
       width: 100px;
       margin-bottom: 2.5rem;
     }
-
-    .hero-description {
-      font-size: 1.25rem;
-    }
   }
 
   @media (min-width: 1024px) {
@@ -111,7 +107,7 @@
     }
 
     .hero-description {
-      font-size: 1.5rem;
+      font-size: 2rem;
     }
 
     .hero-subdescription {
@@ -122,10 +118,6 @@
       width: 120px;
       margin-bottom: 3rem;
     }
-
-    .hero-description {
-      font-size: 1.375rem;
-    }
   }
 
   @media (max-width: 480px) {
@@ -134,7 +126,7 @@
     }
 
     .hero-description {
-      font-size: 1.125rem;
+      font-size: 1.375rem;
     }
 
     .hero-subdescription {
@@ -144,10 +136,6 @@
     .hero-logo {
       width: 70px;
       margin-bottom: 1.5rem;
-    }
-
-    .hero-description {
-      font-size: 1rem;
     }
   }
 </style>
