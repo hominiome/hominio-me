@@ -10,9 +10,12 @@
   } from 'hume';
   import { browser } from '$app/environment';
   import { env } from '$env/dynamic/public';
+  import { callMCPTool } from '$lib/voice/core-tools';
+  import { addActivity } from '$lib/stores/activity-stream';
 
   // Hume configuration from environment variable
   const HUME_CONFIG_ID = env.PUBLIC_HUME_CONFIG_ID || '';
+
 
   // State
   let isRecording = $state(false);
@@ -40,6 +43,115 @@
       if (message.name === 'getName' || message.name.toLowerCase() === 'getname') {
         sendToolResponse(message.toolCallId, 'Hominio');
         console.log('✅ getName tool executed: Hominio');
+      }
+      // Handle call_mcp_tool - standardized tool for calling MCP endpoints
+      else if (message.name === 'call_mcp_tool' || message.name === 'callMCPTool') {
+        const { vibeId, userRequest, toolName, params: toolParams } = params;
+
+        console.log(`🔧 [DEBUG] call_mcp_tool params:`, { vibeId, userRequest, toolName, toolParams });
+
+        // Backward compatibility: support both old format (toolName + params) and new format (userRequest)
+        if (!vibeId) {
+          console.error('❌ [DEBUG] Missing vibeId');
+          sendToolError(
+            message.toolCallId,
+            'call_mcp_tool requires vibeId parameter'
+          );
+          return;
+        }
+
+        // If using new format (userRequest), use AI-powered tool selection
+        if (userRequest) {
+          console.log(`🔄 Calling MCP with user request: ${vibeId}`, userRequest);
+
+          try {
+            const mcpResult = await callMCPTool(vibeId, userRequest);
+            
+            // Extract toolName and result from structuredContent
+            const structuredContent = mcpResult.structuredContent || mcpResult.result;
+            const resolvedToolName = structuredContent?.toolName || 'handle_user_request';
+            const result = structuredContent?.result || mcpResult.result;
+            const ui = structuredContent?.ui || mcpResult.ui;
+            
+            // Send result back to Hume
+            sendToolResponse(
+              message.toolCallId,
+              JSON.stringify({
+                success: true,
+                result,
+                message: `Successfully processed request: ${userRequest}`
+              })
+            );
+
+            // Add to activity stream
+            console.log(`📊 [DEBUG] Adding to activity stream:`, { vibeId, toolName: resolvedToolName, result, ui });
+            addActivity({
+              vibeId,
+              toolName: resolvedToolName,
+              result,
+              ui
+            });
+
+            console.log('✅ MCP tool call successful:', { toolName: resolvedToolName, result });
+          } catch (mcpError: any) {
+            console.error('❌ MCP tool call failed:', mcpError);
+            sendToolError(message.toolCallId, `MCP tool call failed: ${mcpError.message}`);
+          }
+        }
+        // Old format: direct tool call (for backward compatibility until Hume tool is updated)
+        else if (toolName) {
+          console.log(`🔄 [DEBUG] Using legacy format, toolName: ${toolName}`);
+          console.log(`🔄 Calling MCP tool directly (legacy): ${vibeId}/${toolName}`, toolParams);
+
+          try {
+            // For now, construct a userRequest from the toolName and params
+            // This allows the old format to work until Hume tool is updated
+            const legacyUserRequest = toolName === 'list_todos' 
+              ? 'show me my todos'
+              : toolName === 'create_todo' && toolParams?.title
+              ? `create a todo: ${toolParams.title}`
+              : `use ${toolName} tool`;
+
+            const mcpResult = await callMCPTool(vibeId, legacyUserRequest);
+            
+            // Extract toolName and result from structuredContent
+            const structuredContent = mcpResult.structuredContent || mcpResult.result;
+            const resolvedToolName = structuredContent?.toolName || toolName;
+            const result = structuredContent?.result || mcpResult.result;
+            const ui = structuredContent?.ui || mcpResult.ui;
+            
+            // Send result back to Hume
+            sendToolResponse(
+              message.toolCallId,
+              JSON.stringify({
+                success: true,
+                result,
+                message: `Successfully called ${toolName} on ${vibeId}`
+              })
+            );
+
+            // Add to activity stream
+            console.log(`📊 [DEBUG] Adding to activity stream (legacy):`, { vibeId, toolName: resolvedToolName, result, ui });
+            addActivity({
+              vibeId,
+              toolName: resolvedToolName,
+              result,
+              ui
+            });
+
+            console.log('✅ MCP tool call successful (legacy):', { toolName: resolvedToolName, result });
+          } catch (mcpError: any) {
+            console.error('❌ MCP tool call failed:', mcpError);
+            sendToolError(message.toolCallId, `MCP tool call failed: ${mcpError.message}`);
+          }
+        } else {
+          console.error('❌ [DEBUG] Neither userRequest nor toolName provided');
+          console.error('❌ [DEBUG] Full params:', JSON.stringify(params, null, 2));
+          sendToolError(
+            message.toolCallId,
+            'call_mcp_tool requires either userRequest (new format) or toolName (legacy format)'
+          );
+        }
       } else {
         // Unknown tool
         sendToolError(message.toolCallId, `Tool "${message.name}" not supported`);
@@ -122,41 +234,55 @@
       });
 
       socket.on('message', async (message: any) => {
-        // Handle audio output - use EVIWebAudioPlayer for smooth playback
-        if (message.type === 'audio_output' && audioPlayer) {
-          await audioPlayer.enqueue(message);
-        }
+        try {
+          // Handle audio output - use EVIWebAudioPlayer for smooth playback
+          if (message.type === 'audio_output' && audioPlayer) {
+            await audioPlayer.enqueue(message);
+          }
 
-        // Handle assistant messages
-        if (message.type === 'assistant_message' && message.message?.content) {
-          lastResponse = message.message.content;
-          console.log('🤖 Assistant:', message.message.content);
-        }
+          // Handle assistant messages
+          if (message.type === 'assistant_message' && message.message?.content) {
+            lastResponse = message.message.content;
+            console.log('🤖 Assistant:', message.message.content);
+          }
 
-        // Handle user messages
-        if (message.type === 'user_message' && message.message?.content) {
-          console.log('🎤 User:', message.message.content);
-        }
+          // Handle user messages
+          if (message.type === 'user_message' && message.message?.content) {
+            console.log('🎤 User:', message.message.content);
+          }
 
-        // Handle tool calls
-        if (message.type === 'tool_call') {
-          console.log('🔧 Tool call received:', message.name);
-          await handleToolCall(message);
+          // Handle tool calls
+          if (message.type === 'tool_call') {
+            console.log('🔧 Tool call received:', message.name);
+            await handleToolCall(message);
+          }
+        } catch (err: any) {
+          console.error('❌ Error handling message:', err);
+          // Don't let message handler errors close the socket
         }
       });
 
       socket.on('error', (error: Error) => {
         console.error('❌ Hume error:', error);
+        console.error('Error details:', error.message, error.stack);
         cleanupCall();
       });
 
-      socket.on('close', () => {
+      socket.on('close', (event: any) => {
         console.log('🔌 Hume connection closed');
-        cleanupCall();
+        console.log('Close event details:', event);
+        console.log('Close code:', event.code, 'Reason:', event.reason);
+        // Only cleanup if it's not a reconnection attempt
+        if (!event.willReconnect) {
+          cleanupCall();
+        } else {
+          console.log('🔄 Socket will reconnect, not cleaning up');
+        }
       });
 
-      // Wait for connection to open
+      // Wait for connection to open (as per Hume docs)
       await socket.tillSocketOpen();
+      console.log('✅ Socket connection ready');
 
       // Start audio capture
       await startAudioCapture();
@@ -188,12 +314,27 @@
       mediaRecorder = new MediaRecorder(audioStream, { mimeType });
 
       mediaRecorder.ondataavailable = async (event) => {
-        if (event.data.size > 0 && socket && isConnected) {
-          try {
-            const encodedAudioData = await convertBlobToBase64(event.data);
-            socket.sendAudioInput({ data: encodedAudioData });
-          } catch (err) {
-            console.error('Error sending audio:', err);
+        if (event.data.size < 1) return;
+        
+        // Check socket is actually open (as per Hume docs)
+        // @ts-ignore - readyState exists on the socket
+        if (!socket || socket.readyState !== 1) { // WebSocket.OPEN = 1
+          console.warn('⚠️ Socket not open, skipping audio chunk');
+          return;
+        }
+        
+        try {
+          const encodedAudioData = await convertBlobToBase64(event.data);
+          socket.sendAudioInput({ data: encodedAudioData });
+        } catch (err: any) {
+          console.error('Error sending audio:', err);
+          // If socket error, stop trying to send
+          if (err.message?.includes('not open') || err.message?.includes('Socket')) {
+            console.warn('⚠️ Socket closed, stopping audio capture');
+            isConnected = false;
+            if (mediaRecorder && mediaRecorder.state === 'recording') {
+              mediaRecorder.stop();
+            }
           }
         }
       };

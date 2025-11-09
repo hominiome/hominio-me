@@ -35,7 +35,7 @@
         }
       }
     </style>
-    <img
+    <img 
       src="/logo.png"
       alt="Vibes Logo"
       class="w-20 h-auto mx-auto mb-8 block sm:w-[100px] sm:mb-10 lg:w-[120px] lg:mb-12 max-[480px]:w-[70px] max-[480px]:mb-6"
@@ -46,8 +46,8 @@
         class="text-5xl font-extrabold text-[var(--color-primary-500)] mb-8 tracking-tight leading-tight sm:text-6xl lg:text-7xl max-[480px]:text-4xl"
       >
         apps are oldschool
-      </h1>
-    </div>
+    </h1>
+  </div>
     <div class="text-[var(--color-secondary-500)] mb-6 max-w-[700px] mx-auto">
       <p
         class="text-2xl leading-relaxed text-[var(--color-secondary-500)] m-0 font-bold sm:text-3xl lg:text-[2rem] max-[480px]:text-[1.375rem]"
