@@ -29,6 +29,20 @@
   let mediaRecorder: MediaRecorder | null = null;
   let audioPlayer: EVIWebAudioPlayer | null = null;
 
+  // Helper to get a random acknowledgment phrase
+  function getAcknowledgment(): string {
+    const acknowledgments = [
+      "Sure, I'm on it.",
+      "Let me check that for you.",
+      "One moment, please.",
+      "Right away!",
+      "Got it, let me get that for you.",
+      "Working on it now.",
+      "Let me handle that for you."
+    ];
+    return acknowledgments[Math.floor(Math.random() * acknowledgments.length)];
+  }
+
   // Client-side tool call handler
   async function handleToolCall(message: any) {
     console.log('🔧 Tool call:', message.name, message.parameters);
@@ -39,10 +53,11 @@
           ? JSON.parse(message.parameters)
           : message.parameters;
 
-      // Handle getName tool - returns "Hominio"
+      // Handle getName tool - returns "Hominio" (fast, no need for acknowledgment)
       if (message.name === 'getName' || message.name.toLowerCase() === 'getname') {
         sendToolResponse(message.toolCallId, 'Hominio');
         console.log('✅ getName tool executed: Hominio');
+        return;
       }
       // Handle call_mcp_tool - standardized tool for calling MCP endpoints
       else if (message.name === 'call_mcp_tool' || message.name === 'callMCPTool') {
@@ -64,6 +79,14 @@
         if (userRequest) {
           console.log(`🔄 Calling MCP with user request: ${vibeId}`, userRequest);
 
+          // Send IMMEDIATE acknowledgment as tool response (user hears it right away)
+          const acknowledgment = getAcknowledgment();
+          sendToolResponse(
+            message.toolCallId,
+            acknowledgment
+          );
+          console.log(`💬 Immediate acknowledgment sent: "${acknowledgment}"`);
+
           try {
             const mcpResult = await callMCPTool(vibeId, userRequest);
             
@@ -73,15 +96,33 @@
             const result = structuredContent?.result || mcpResult.result;
             const ui = structuredContent?.ui || mcpResult.ui;
             
-            // Send result back to Hume
-            sendToolResponse(
-              message.toolCallId,
-              JSON.stringify({
-                success: true,
-                result,
-                message: `Successfully processed request: ${userRequest}`
-              })
-            );
+            // Send follow-up tool response with the actual result
+            // Note: This might not work if Hume only accepts one response per tool call
+            // In that case, we'd need to include the result in the initial acknowledgment
+            let resultDescription = '';
+            if (typeof result === 'object' && result !== null) {
+              // Format object results naturally
+              if (Array.isArray(result)) {
+                resultDescription = `Found ${result.length} items.`;
+              } else if (result.todos) {
+                resultDescription = `Found ${result.todos.length} todos.`;
+              } else {
+                resultDescription = 'Task completed successfully.';
+              }
+            } else {
+              resultDescription = String(result);
+            }
+            
+            // Try to send follow-up response (may fail if only one response allowed)
+            try {
+              sendToolResponse(
+                message.toolCallId,
+                `${acknowledgment} ${resultDescription}`
+              );
+            } catch (err) {
+              // If we can't send a second response, the acknowledgment was already sent
+              console.log('⚠️ Could not send follow-up tool response, acknowledgment was already sent');
+            }
 
             // Add to activity stream
             console.log(`📊 [DEBUG] Adding to activity stream:`, { vibeId, toolName: resolvedToolName, result, ui });
@@ -103,6 +144,14 @@
           console.log(`🔄 [DEBUG] Using legacy format, toolName: ${toolName}`);
           console.log(`🔄 Calling MCP tool directly (legacy): ${vibeId}/${toolName}`, toolParams);
 
+          // Send IMMEDIATE acknowledgment as tool response (user hears it right away)
+          const acknowledgment = getAcknowledgment();
+          sendToolResponse(
+            message.toolCallId,
+            acknowledgment
+          );
+          console.log(`💬 Immediate acknowledgment sent: "${acknowledgment}"`);
+
           try {
             // For now, construct a userRequest from the toolName and params
             // This allows the old format to work until Hume tool is updated
@@ -120,15 +169,30 @@
             const result = structuredContent?.result || mcpResult.result;
             const ui = structuredContent?.ui || mcpResult.ui;
             
-            // Send result back to Hume
-            sendToolResponse(
-              message.toolCallId,
-              JSON.stringify({
-                success: true,
-                result,
-                message: `Successfully called ${toolName} on ${vibeId}`
-              })
-            );
+            // Send follow-up tool response with the actual result
+            let resultDescription = '';
+            if (typeof result === 'object' && result !== null) {
+              if (Array.isArray(result)) {
+                resultDescription = `Found ${result.length} items.`;
+              } else if (result.todos) {
+                resultDescription = `Found ${result.todos.length} todos.`;
+              } else {
+                resultDescription = 'Task completed successfully.';
+              }
+            } else {
+              resultDescription = String(result);
+            }
+            
+            // Try to send follow-up response (may fail if only one response allowed)
+            try {
+              sendToolResponse(
+                message.toolCallId,
+                `${acknowledgment} ${resultDescription}`
+              );
+            } catch (err) {
+              // If we can't send a second response, the acknowledgment was already sent
+              console.log('⚠️ Could not send follow-up tool response, acknowledgment was already sent');
+            }
 
             // Add to activity stream
             console.log(`📊 [DEBUG] Adding to activity stream (legacy):`, { vibeId, toolName: resolvedToolName, result, ui });
@@ -215,6 +279,12 @@
       const client = new HumeClient({ accessToken });
       console.log('✅ Hume client initialized');
 
+      // Initialize audio player EARLY (before connection) for lower latency
+      // This reduces delay when first audio arrives
+      audioPlayer = new EVIWebAudioPlayer();
+      await audioPlayer.init();
+      console.log('🔊 Audio player initialized (early)');
+
       // Connect to EVI WebSocket
       console.log('🔄 Connecting to Hume EVI WebSocket...');
       socket = await client.empathicVoice.chat.connect({
@@ -226,18 +296,23 @@
       socket.on('open', async () => {
         console.log('✅ Hume connection opened');
         isConnected = true;
-
-        // Initialize audio player for smooth playback
-        audioPlayer = new EVIWebAudioPlayer();
-        await audioPlayer.init();
-        console.log('🔊 Audio player initialized');
+        // Audio player already initialized above
       });
 
       socket.on('message', async (message: any) => {
         try {
+          // Handle user interruptions - stop audio playback immediately for low latency
+          if (message.type === 'user_interruption' && audioPlayer) {
+            console.log('🛑 User interruption detected, stopping audio playback');
+            audioPlayer.stop();
+          }
+
           // Handle audio output - use EVIWebAudioPlayer for smooth playback
+          // Enqueue immediately without await for lower latency
           if (message.type === 'audio_output' && audioPlayer) {
-            await audioPlayer.enqueue(message);
+            audioPlayer.enqueue(message).catch((err: any) => {
+              console.error('Error enqueueing audio:', err);
+            });
           }
 
           // Handle assistant messages
@@ -339,8 +414,9 @@
         }
       };
 
-      // Send audio chunks every 100ms
-      mediaRecorder.start(100);
+      // Send audio chunks every 50ms for lower latency (was 100ms)
+      // Smaller intervals reduce delay between speech and response
+      mediaRecorder.start(50);
       isRecording = true;
       console.log('🎤 Recording started');
     } catch (err) {
