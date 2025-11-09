@@ -1,0 +1,15 @@
+{
+  "type": "object",
+  "properties": {
+    "action": {
+      "type": "string",
+      "description": "The name of the action to execute. Extract from the user's request intelligently. Examples: 'list_todos' for listing todos, 'create_todo' for creating todos, 'send_email' for sending emails, 'schedule_meeting' for scheduling meetings, etc. Use snake_case format."
+    },
+    "params": {
+      "type": "object",
+      "description": "Dynamic parameters for the action. Extract all relevant parameters from the user's request based on the action being executed. For example: for 'create_todo', extract 'title' and optionally 'dueDate'; for 'send_email', extract 'to', 'subject', 'body'; for 'schedule_meeting', extract 'title', 'date', 'time', 'attendees', etc. Convert dates to ISO 8601 format when mentioned. This object accepts any properties dynamically."
+    }
+  },
+  "required": ["action"]
+}
+

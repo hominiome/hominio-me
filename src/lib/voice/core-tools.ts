@@ -1,112 +1,52 @@
 /**
- * Core standardized voice tools that forward to MCP endpoints
- * These tools are registered with Hume and can interact with any vibe
+ * Core standardized voice tools - direct action execution
+ * Simple, clean tool calling without MCP protocol overhead
  */
 
-export interface MCPToolCallParams {
-  vibeId: string;
-  userRequest: string;
-}
-
-export interface MCPToolResponse {
+export interface ActionResponse {
+  success: boolean;
+  action: string;
   result: any;
   ui?: any; // Mitosis JSON UI definition
 }
 
 /**
- * Call an MCP tool on a vibe
- * This is the standardized tool that Hume will call
- * The MCP server uses AI to determine which tool to call based on the user's request
+ * Execute an action directly
+ * This is the universal tool that Hume will call
+ * 
+ * Hume's LLM automatically extracts action and params from user's natural language.
+ * Fully generic - can handle any action type with any parameters.
+ * @param action - Action name (extracted by Hume's LLM)
+ * @param params - Parameters object with any dynamic parameters (extracted by Hume's LLM)
  */
-export async function callMCPTool(
-  vibeId: string,
-  userRequest: string
-): Promise<MCPToolResponse> {
+export async function executeAction(
+  action: string,
+  params: Record<string, any> = {}
+): Promise<ActionResponse> {
   try {
-    // The route is /alpha/api/vibes/{vibeId} (POST endpoint)
-    const response = await fetch(`/alpha/api/vibes/${vibeId}`, {
+    const body = {
+      action,
+      params  // Any dynamic parameters - already extracted by Hume's LLM
+    };
+
+    const response = await fetch('/alpha/api/execute-action', {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json, text/event-stream'
+        'Content-Type': 'application/json'
       },
-      body: JSON.stringify({
-        jsonrpc: '2.0',
-        method: 'tools/call',
-        params: {
-          name: 'handle_user_request',
-          arguments: {
-            userRequest
-          }
-        },
-        id: `call_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
-      })
+      body: JSON.stringify(body)
     });
 
     if (!response.ok) {
-      const contentType = response.headers.get('content-type');
-      if (contentType?.includes('application/json')) {
-        const error = await response.json();
-        throw new Error(error.error?.message || `HTTP ${response.status}`);
-      } else {
-        const text = await response.text();
-        throw new Error(`HTTP ${response.status}: ${text.substring(0, 100)}`);
-      }
-    }
-
-    const contentType = response.headers.get('content-type');
-    if (!contentType?.includes('application/json')) {
-      const text = await response.text();
-      throw new Error(`Expected JSON but got ${contentType}: ${text.substring(0, 100)}`);
+      const error = await response.json();
+      throw new Error(error.message || `HTTP ${response.status}`);
     }
 
     const data = await response.json();
-
-    if (data.error) {
-      throw new Error(data.error.message || 'MCP tool call failed');
-    }
-
-    return data.result as MCPToolResponse;
+    return data as ActionResponse;
   } catch (error: any) {
-    console.error('[Core Tools] MCP tool call failed:', error);
+    console.error('[Core Tools] Action execution failed:', error);
     throw error;
-  }
-}
-
-/**
- * Get available tools for a vibe
- */
-export async function listMCPTools(vibeId: string): Promise<any[]> {
-  try {
-    // The route is /alpha/api/vibes/{vibeId} (POST endpoint)
-    const response = await fetch(`/alpha/api/vibes/${vibeId}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json, text/event-stream'
-      },
-      body: JSON.stringify({
-        jsonrpc: '2.0',
-        method: 'tools/list',
-        params: {},
-        id: `list_${Date.now()}`
-      })
-    });
-
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`);
-    }
-
-    const data = await response.json();
-
-    if (data.error) {
-      throw new Error(data.error.message || 'Failed to list tools');
-    }
-
-    return data.result?.tools || [];
-  } catch (error: any) {
-    console.error('[Core Tools] Failed to list tools:', error);
-    return [];
   }
 }
 

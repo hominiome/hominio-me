@@ -1,27 +1,26 @@
 <script lang="ts">
-  import { onDestroy } from 'svelte';
+  import { onDestroy } from "svelte";
   import {
     HumeClient,
     getBrowserSupportedMimeType,
     getAudioStream,
     ensureSingleValidAudioTrack,
     convertBlobToBase64,
-    EVIWebAudioPlayer
-  } from 'hume';
-  import { browser } from '$app/environment';
-  import { env } from '$env/dynamic/public';
-  import { callMCPTool } from '$lib/voice/core-tools';
-  import { addActivity } from '$lib/stores/activity-stream';
+    EVIWebAudioPlayer,
+  } from "hume";
+  import { browser } from "$app/environment";
+  import { env } from "$env/dynamic/public";
+  import { executeAction } from "$lib/voice/core-tools";
+  import { addActivity } from "$lib/stores/activity-stream";
 
   // Hume configuration from environment variable
-  const HUME_CONFIG_ID = env.PUBLIC_HUME_CONFIG_ID || '';
-
+  const HUME_CONFIG_ID = env.PUBLIC_HUME_CONFIG_ID || "";
 
   // State
   let isRecording = $state(false);
   let isConnected = $state(false);
   let isExpanded = $state(false);
-  let lastResponse = $state('');
+  let lastResponse = $state("");
 
   // Hume instances
   let socket: any = null;
@@ -29,200 +28,97 @@
   let mediaRecorder: MediaRecorder | null = null;
   let audioPlayer: EVIWebAudioPlayer | null = null;
 
-  // Helper to get a random acknowledgment phrase
-  function getAcknowledgment(): string {
-    const acknowledgments = [
-      "Sure, I'm on it.",
-      "Let me check that for you.",
-      "One moment, please.",
-      "Right away!",
-      "Got it, let me get that for you.",
-      "Working on it now.",
-      "Let me handle that for you."
-    ];
-    return acknowledgments[Math.floor(Math.random() * acknowledgments.length)];
-  }
-
   // Client-side tool call handler
   async function handleToolCall(message: any) {
-    console.log('🔧 Tool call:', message.name, message.parameters);
+    console.log("🔧 Tool call:", message.name, message.parameters);
 
     try {
       const params =
-        typeof message.parameters === 'string'
+        typeof message.parameters === "string"
           ? JSON.parse(message.parameters)
           : message.parameters;
 
-      // Handle getName tool - returns "Hominio" (fast, no need for acknowledgment)
-      if (message.name === 'getName' || message.name.toLowerCase() === 'getname') {
-        sendToolResponse(message.toolCallId, 'Hominio');
-        console.log('✅ getName tool executed: Hominio');
+      // Handle getName tool - returns "Hominio"
+      if (
+        message.name === "getName" ||
+        message.name.toLowerCase() === "getname"
+      ) {
+        sendToolResponse(message.toolCallId, "Hominio");
+        console.log("✅ getName tool executed: Hominio");
         return;
       }
-      // Handle call_mcp_tool - standardized tool for calling MCP endpoints
-      else if (message.name === 'call_mcp_tool' || message.name === 'callMCPTool') {
-        const { vibeId, userRequest, toolName, params: toolParams } = params;
+      // Handle execute_action - universal tool for executing any action
+      else if (
+        message.name === "execute_action" ||
+        message.name === "executeAction"
+      ) {
+        // Hume's LLM extracts action and params from user request
+        const { action, params: actionParams = {} } = params;
 
-        console.log(`🔧 [DEBUG] call_mcp_tool params:`, { vibeId, userRequest, toolName, toolParams });
-
-        // Backward compatibility: support both old format (toolName + params) and new format (userRequest)
-        if (!vibeId) {
-          console.error('❌ [DEBUG] Missing vibeId');
+        if (!action) {
           sendToolError(
             message.toolCallId,
-            'call_mcp_tool requires vibeId parameter'
+            "execute_action requires 'action' parameter"
           );
           return;
         }
 
-        // If using new format (userRequest), use AI-powered tool selection
-        if (userRequest) {
-          console.log(`🔄 Calling MCP with user request: ${vibeId}`, userRequest);
+        console.log(`🔄 Executing action: ${action}`, actionParams);
 
-          // Send IMMEDIATE acknowledgment as tool response (user hears it right away)
-          const acknowledgment = getAcknowledgment();
-          sendToolResponse(
-            message.toolCallId,
-            acknowledgment
-          );
-          console.log(`💬 Immediate acknowledgment sent: "${acknowledgment}"`);
+        try {
+          // Execute the action - Hume's LLM has already extracted the parameters
+          const result = await executeAction(action, actionParams);
 
-          try {
-            const mcpResult = await callMCPTool(vibeId, userRequest);
-            
-            // Extract toolName and result from structuredContent
-            const structuredContent = mcpResult.structuredContent || mcpResult.result;
-            const resolvedToolName = structuredContent?.toolName || 'handle_user_request';
-            const result = structuredContent?.result || mcpResult.result;
-            const ui = structuredContent?.ui || mcpResult.ui;
-            
-            // Send follow-up tool response with the actual result
-            // Note: This might not work if Hume only accepts one response per tool call
-            // In that case, we'd need to include the result in the initial acknowledgment
-            let resultDescription = '';
-            if (typeof result === 'object' && result !== null) {
-              // Format object results naturally
-              if (Array.isArray(result)) {
-                resultDescription = `Found ${result.length} items.`;
-              } else if (result.todos) {
-                resultDescription = `Found ${result.todos.length} todos.`;
+          // Format response for Hume
+          let responseText = "";
+          if (result.result) {
+            if (typeof result.result === "object") {
+              if (Array.isArray(result.result.todos)) {
+                const count = result.result.todos.length;
+                responseText =
+                  count === 0
+                    ? "You have no todos."
+                    : `You have ${count} todo${count === 1 ? "" : "s"}.`;
+              } else if (result.result.todo) {
+                responseText = `Created todo: ${result.result.todo.title}`;
               } else {
-                resultDescription = 'Task completed successfully.';
+                responseText = "Task completed successfully.";
               }
             } else {
-              resultDescription = String(result);
+              responseText = String(result.result);
             }
-            
-            // Try to send follow-up response (may fail if only one response allowed)
-            try {
-              sendToolResponse(
-                message.toolCallId,
-                `${acknowledgment} ${resultDescription}`
-              );
-            } catch (err) {
-              // If we can't send a second response, the acknowledgment was already sent
-              console.log('⚠️ Could not send follow-up tool response, acknowledgment was already sent');
-            }
-
-            // Add to activity stream
-            console.log(`📊 [DEBUG] Adding to activity stream:`, { vibeId, toolName: resolvedToolName, result, ui });
-            addActivity({
-              vibeId,
-              toolName: resolvedToolName,
-              result,
-              ui
-            });
-
-            console.log('✅ MCP tool call successful:', { toolName: resolvedToolName, result });
-          } catch (mcpError: any) {
-            console.error('❌ MCP tool call failed:', mcpError);
-            sendToolError(message.toolCallId, `MCP tool call failed: ${mcpError.message}`);
+          } else {
+            responseText = "Action completed.";
           }
-        }
-        // Old format: direct tool call (for backward compatibility until Hume tool is updated)
-        else if (toolName) {
-          console.log(`🔄 [DEBUG] Using legacy format, toolName: ${toolName}`);
-          console.log(`🔄 Calling MCP tool directly (legacy): ${vibeId}/${toolName}`, toolParams);
 
-          // Send IMMEDIATE acknowledgment as tool response (user hears it right away)
-          const acknowledgment = getAcknowledgment();
-          sendToolResponse(
-            message.toolCallId,
-            acknowledgment
-          );
-          console.log(`💬 Immediate acknowledgment sent: "${acknowledgment}"`);
+          sendToolResponse(message.toolCallId, responseText);
 
-          try {
-            // For now, construct a userRequest from the toolName and params
-            // This allows the old format to work until Hume tool is updated
-            const legacyUserRequest = toolName === 'list_todos' 
-              ? 'show me my todos'
-              : toolName === 'create_todo' && toolParams?.title
-              ? `create a todo: ${toolParams.title}`
-              : `use ${toolName} tool`;
+          // Add to activity stream
+          addActivity({
+            vibeId: "todos", // Default vibe for now
+            toolName: action,
+            result: result.result,
+            ui: result.ui,
+          });
 
-            const mcpResult = await callMCPTool(vibeId, legacyUserRequest);
-            
-            // Extract toolName and result from structuredContent
-            const structuredContent = mcpResult.structuredContent || mcpResult.result;
-            const resolvedToolName = structuredContent?.toolName || toolName;
-            const result = structuredContent?.result || mcpResult.result;
-            const ui = structuredContent?.ui || mcpResult.ui;
-            
-            // Send follow-up tool response with the actual result
-            let resultDescription = '';
-            if (typeof result === 'object' && result !== null) {
-              if (Array.isArray(result)) {
-                resultDescription = `Found ${result.length} items.`;
-              } else if (result.todos) {
-                resultDescription = `Found ${result.todos.length} todos.`;
-              } else {
-                resultDescription = 'Task completed successfully.';
-              }
-            } else {
-              resultDescription = String(result);
-            }
-            
-            // Try to send follow-up response (may fail if only one response allowed)
-            try {
-              sendToolResponse(
-                message.toolCallId,
-                `${acknowledgment} ${resultDescription}`
-              );
-            } catch (err) {
-              // If we can't send a second response, the acknowledgment was already sent
-              console.log('⚠️ Could not send follow-up tool response, acknowledgment was already sent');
-            }
-
-            // Add to activity stream
-            console.log(`📊 [DEBUG] Adding to activity stream (legacy):`, { vibeId, toolName: resolvedToolName, result, ui });
-            addActivity({
-              vibeId,
-              toolName: resolvedToolName,
-              result,
-              ui
-            });
-
-            console.log('✅ MCP tool call successful (legacy):', { toolName: resolvedToolName, result });
-          } catch (mcpError: any) {
-            console.error('❌ MCP tool call failed:', mcpError);
-            sendToolError(message.toolCallId, `MCP tool call failed: ${mcpError.message}`);
-          }
-        } else {
-          console.error('❌ [DEBUG] Neither userRequest nor toolName provided');
-          console.error('❌ [DEBUG] Full params:', JSON.stringify(params, null, 2));
+          console.log("✅ Action executed successfully:", action);
+        } catch (actionError: any) {
+          console.error("❌ Action execution failed:", actionError);
           sendToolError(
             message.toolCallId,
-            'call_mcp_tool requires either userRequest (new format) or toolName (legacy format)'
+            `Action failed: ${actionError.message}`
           );
         }
       } else {
         // Unknown tool
-        sendToolError(message.toolCallId, `Tool "${message.name}" not supported`);
+        sendToolError(
+          message.toolCallId,
+          `Tool "${message.name}" not supported`
+        );
       }
     } catch (err: any) {
-      console.error('❌ Tool call failed:', err);
-      sendToolError(message.toolCallId, err.message || 'Tool execution error');
+      console.error("❌ Tool call failed:", err);
+      sendToolError(message.toolCallId, err.message || "Tool execution error");
     }
   }
 
@@ -230,9 +126,9 @@
   function sendToolResponse(toolCallId: string, content: string) {
     // @ts-ignore - sendJson exists but not in types
     socket?.sendJson({
-      type: 'tool_response',
+      type: "tool_response",
       toolCallId,
-      content
+      content,
     });
   }
 
@@ -240,132 +136,172 @@
   function sendToolError(toolCallId: string, errorMessage: string) {
     // @ts-ignore - sendJson exists but not in types
     socket?.sendJson({
-      type: 'tool_error',
+      type: "tool_error",
       toolCallId,
       error: errorMessage,
-      code: 'tool_error',
-      level: 'warn',
-      content: errorMessage
+      code: "tool_error",
+      level: "warn",
+      content: errorMessage,
     });
+  }
+
+  // Helper to send text input directly to Hume (without speaking)
+  async function sendTextInput(text: string) {
+    // If not connected, start the call first
+    if (!socket || !isConnected) {
+      console.log("📞 Auto-starting call to send text input...");
+      await startCall();
+
+      // Wait for connection to be established (poll with timeout)
+      let attempts = 0;
+      while ((!socket || !isConnected) && attempts < 50) {
+        await new Promise((resolve) => setTimeout(resolve, 100));
+        attempts++;
+      }
+
+      if (!socket || !isConnected) {
+        console.error("❌ Failed to establish connection for text input");
+        return;
+      }
+    }
+
+    // Send the text input
+    // @ts-ignore - sendJson exists but not in types
+    socket.sendJson({
+      type: "user_input",
+      text,
+    });
+    console.log(`📝 Text input sent: "${text}"`);
   }
 
   async function startCall() {
     if (!browser) return;
-    
+
     try {
       isExpanded = true;
-      lastResponse = '';
+      lastResponse = "";
 
-      console.log('🎙️ Starting Hume voice conversation...');
+      console.log("🎙️ Starting Hume voice conversation...");
 
       if (!HUME_CONFIG_ID) {
-        console.error('❌ HUME_CONFIG_ID not configured');
-        lastResponse = 'Error: Voice configuration not set up. Please configure HUME_CONFIG_ID.';
+        console.error("❌ HUME_CONFIG_ID not configured");
+        lastResponse =
+          "Error: Voice configuration not set up. Please configure HUME_CONFIG_ID.";
         return;
       }
 
       // Get access token from server
-      const accessTokenResponse = await fetch('/alpha/api/hume/access-token');
+      const accessTokenResponse = await fetch("/alpha/api/hume/access-token");
       if (!accessTokenResponse.ok) {
         const errorData = await accessTokenResponse.json();
-        throw new Error(errorData.error || 'Failed to get access token');
+        throw new Error(errorData.error || "Failed to get access token");
       }
-      
+
       const { accessToken } = await accessTokenResponse.json();
-      console.log('✅ Access token received');
+      console.log("✅ Access token received");
 
       // Initialize Hume client
-      console.log('🔄 Initializing Hume client...');
+      console.log("🔄 Initializing Hume client...");
       const client = new HumeClient({ accessToken });
-      console.log('✅ Hume client initialized');
+      console.log("✅ Hume client initialized");
 
       // Initialize audio player EARLY (before connection) for lower latency
       // This reduces delay when first audio arrives
       audioPlayer = new EVIWebAudioPlayer();
       await audioPlayer.init();
-      console.log('🔊 Audio player initialized (early)');
+      console.log("🔊 Audio player initialized (early)");
 
       // Connect to EVI WebSocket
-      console.log('🔄 Connecting to Hume EVI WebSocket...');
+      console.log("🔄 Connecting to Hume EVI WebSocket...");
       socket = await client.empathicVoice.chat.connect({
-        configId: HUME_CONFIG_ID
+        configId: HUME_CONFIG_ID,
       });
-      console.log('✅ Socket created, waiting for open event...');
+      console.log("✅ Socket created, waiting for open event...");
 
       // Set up event listeners
-      socket.on('open', async () => {
-        console.log('✅ Hume connection opened');
+      socket.on("open", async () => {
+        console.log("✅ Hume connection opened");
         isConnected = true;
         // Audio player already initialized above
       });
 
-      socket.on('message', async (message: any) => {
+      socket.on("message", async (message: any) => {
         try {
           // Handle user interruptions - stop audio playback immediately for low latency
-          if (message.type === 'user_interruption' && audioPlayer) {
-            console.log('🛑 User interruption detected, stopping audio playback');
+          // According to Hume docs: EVI "stops rapidly whenever users interject"
+          // https://dev.hume.ai/docs/speech-to-speech-evi/overview
+          if (message.type === "user_interruption" && audioPlayer) {
+            console.log(
+              "🛑 User interruption detected, stopping audio playback immediately"
+            );
+            // Stop audio playback immediately for responsive interruption handling
             audioPlayer.stop();
+            // Clear any queued audio to prevent delayed playback after interruption
+            // This ensures EVI can respond immediately to the user's interjection
           }
 
           // Handle audio output - use EVIWebAudioPlayer for smooth playback
           // Enqueue immediately without await for lower latency
-          if (message.type === 'audio_output' && audioPlayer) {
+          if (message.type === "audio_output" && audioPlayer) {
             audioPlayer.enqueue(message).catch((err: any) => {
-              console.error('Error enqueueing audio:', err);
+              console.error("Error enqueueing audio:", err);
             });
           }
 
           // Handle assistant messages
-          if (message.type === 'assistant_message' && message.message?.content) {
+          if (
+            message.type === "assistant_message" &&
+            message.message?.content
+          ) {
             lastResponse = message.message.content;
-            console.log('🤖 Assistant:', message.message.content);
+            console.log("🤖 Assistant:", message.message.content);
           }
 
           // Handle user messages
-          if (message.type === 'user_message' && message.message?.content) {
-            console.log('🎤 User:', message.message.content);
+          if (message.type === "user_message" && message.message?.content) {
+            console.log("🎤 User:", message.message.content);
           }
 
           // Handle tool calls
-          if (message.type === 'tool_call') {
-            console.log('🔧 Tool call received:', message.name);
+          if (message.type === "tool_call") {
+            console.log("🔧 Tool call received:", message.name);
             await handleToolCall(message);
           }
         } catch (err: any) {
-          console.error('❌ Error handling message:', err);
+          console.error("❌ Error handling message:", err);
           // Don't let message handler errors close the socket
         }
       });
 
-      socket.on('error', (error: Error) => {
-        console.error('❌ Hume error:', error);
-        console.error('Error details:', error.message, error.stack);
+      socket.on("error", (error: Error) => {
+        console.error("❌ Hume error:", error);
+        console.error("Error details:", error.message, error.stack);
         cleanupCall();
       });
 
-      socket.on('close', (event: any) => {
-        console.log('🔌 Hume connection closed');
-        console.log('Close event details:', event);
-        console.log('Close code:', event.code, 'Reason:', event.reason);
+      socket.on("close", (event: any) => {
+        console.log("🔌 Hume connection closed");
+        console.log("Close event details:", event);
+        console.log("Close code:", event.code, "Reason:", event.reason);
         // Only cleanup if it's not a reconnection attempt
         if (!event.willReconnect) {
           cleanupCall();
         } else {
-          console.log('🔄 Socket will reconnect, not cleaning up');
+          console.log("🔄 Socket will reconnect, not cleaning up");
         }
       });
 
       // Wait for connection to open (as per Hume docs)
       await socket.tillSocketOpen();
-      console.log('✅ Socket connection ready');
+      console.log("✅ Socket connection ready");
 
       // Start audio capture
       await startAudioCapture();
 
-      console.log('🎙️ Hume voice call started');
+      console.log("🎙️ Hume voice call started");
     } catch (err: any) {
-      console.error('Failed to start Hume voice:', err);
-      lastResponse = `Error: ${err.message || 'Failed to start voice call'}`;
+      console.error("Failed to start Hume voice:", err);
+      lastResponse = `Error: ${err.message || "Failed to start voice call"}`;
       isExpanded = false;
       isConnected = false;
     }
@@ -373,7 +309,7 @@
 
   async function startAudioCapture() {
     if (!browser) return;
-    
+
     try {
       // Get audio stream
       audioStream = await getAudioStream();
@@ -381,33 +317,39 @@
 
       // Determine supported MIME type
       const mimeTypeResult = getBrowserSupportedMimeType();
-      const mimeType = mimeTypeResult.success ? mimeTypeResult.mimeType : 'audio/webm';
+      const mimeType = mimeTypeResult.success
+        ? mimeTypeResult.mimeType
+        : "audio/webm";
 
-      console.log('🎤 Using MIME type:', mimeType);
+      console.log("🎤 Using MIME type:", mimeType);
 
       // Create media recorder
       mediaRecorder = new MediaRecorder(audioStream, { mimeType });
 
       mediaRecorder.ondataavailable = async (event) => {
         if (event.data.size < 1) return;
-        
+
         // Check socket is actually open (as per Hume docs)
         // @ts-ignore - readyState exists on the socket
-        if (!socket || socket.readyState !== 1) { // WebSocket.OPEN = 1
-          console.warn('⚠️ Socket not open, skipping audio chunk');
+        if (!socket || socket.readyState !== 1) {
+          // WebSocket.OPEN = 1
+          console.warn("⚠️ Socket not open, skipping audio chunk");
           return;
         }
-        
+
         try {
           const encodedAudioData = await convertBlobToBase64(event.data);
           socket.sendAudioInput({ data: encodedAudioData });
         } catch (err: any) {
-          console.error('Error sending audio:', err);
+          console.error("Error sending audio:", err);
           // If socket error, stop trying to send
-          if (err.message?.includes('not open') || err.message?.includes('Socket')) {
-            console.warn('⚠️ Socket closed, stopping audio capture');
+          if (
+            err.message?.includes("not open") ||
+            err.message?.includes("Socket")
+          ) {
+            console.warn("⚠️ Socket closed, stopping audio capture");
             isConnected = false;
-            if (mediaRecorder && mediaRecorder.state === 'recording') {
+            if (mediaRecorder && mediaRecorder.state === "recording") {
               mediaRecorder.stop();
             }
           }
@@ -418,9 +360,9 @@
       // Smaller intervals reduce delay between speech and response
       mediaRecorder.start(50);
       isRecording = true;
-      console.log('🎤 Recording started');
+      console.log("🎤 Recording started");
     } catch (err) {
-      console.error('Failed to start audio capture:', err);
+      console.error("Failed to start audio capture:", err);
       isRecording = false;
     }
   }
@@ -431,11 +373,11 @@
    */
   function cleanupCall() {
     // Stop media recorder
-    if (mediaRecorder && mediaRecorder.state === 'recording') {
+    if (mediaRecorder && mediaRecorder.state === "recording") {
       try {
         mediaRecorder.stop();
       } catch (err) {
-        console.error('Error stopping media recorder:', err);
+        console.error("Error stopping media recorder:", err);
       }
     }
 
@@ -449,7 +391,7 @@
       try {
         audioPlayer.stop();
       } catch (err) {
-        console.error('Error stopping audio player:', err);
+        console.error("Error stopping audio player:", err);
       }
       audioPlayer = null;
     }
@@ -458,9 +400,9 @@
     isRecording = false;
     isConnected = false;
     isExpanded = false;
-    lastResponse = '';
+    lastResponse = "";
 
-    console.log('🧹 Call cleaned up');
+    console.log("🧹 Call cleaned up");
   }
 
   async function stopCall() {
@@ -472,9 +414,9 @@
         // No socket, clean up directly
         cleanupCall();
       }
-      console.log('⏹️ Hume voice call stopped by user');
+      console.log("⏹️ Hume voice call stopped by user");
     } catch (err) {
-      console.error('Failed to stop Hume voice:', err);
+      console.error("Failed to stop Hume voice:", err);
       // Ensure cleanup even on error
       cleanupCall();
     }
@@ -529,7 +471,7 @@
   {:else}
     <!-- Collapsed - Active Indicator -->
     <button class="voice-pill active" onclick={toggleExpand}>
-      <div class="pulse-indicator"></div>
+      <div class="pulse-indicator" />
       <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
         <path
           d="M12,2A3,3 0 0,1 15,5V11A3,3 0 0,1 12,14A3,3 0 0,1 9,11V5A3,3 0 0,1 12,2M19,11C19,14.53 16.39,17.44 13,17.93V21H11V17.93C7.61,17.44 5,14.53 5,11H7A5,5 0 0,0 12,16A5,5 0 0,0 17,11H19Z"
@@ -550,11 +492,14 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 1rem;
   }
 
   .voice-pill {
-    background: linear-gradient(135deg, var(--color-primary-500) 0%, var(--color-secondary-500) 100%);
+    background: linear-gradient(
+      135deg,
+      var(--color-primary-500) 0%,
+      var(--color-secondary-500) 100%
+    );
     color: white;
     border: none;
     padding: 1rem 2rem;
@@ -570,9 +515,12 @@
     white-space: nowrap;
   }
 
-
   .voice-pill.active {
-    background: linear-gradient(135deg, var(--color-secondary-500) 0%, var(--color-accent-500) 100%);
+    background: linear-gradient(
+      135deg,
+      var(--color-secondary-500) 0%,
+      var(--color-accent-500) 100%
+    );
     animation: glow 2s ease-in-out infinite;
   }
 
@@ -694,4 +642,3 @@
     }
   }
 </style>
-

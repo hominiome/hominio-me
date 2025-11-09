@@ -101,9 +101,9 @@ export function createServerMutators(
 
         // Only founder users or admins can create projects
         if (!userIsAdmin && !userIsFounder) {
-          throw new Error(
-            'Forbidden: Only founders and admins can create projects. Purchase a founder identity first.'
-          );
+            throw new Error(
+              'Forbidden: Only founders and admins can create projects. Purchase a founder identity first.'
+            );
         }
 
         // If not admin, ensure user is creating project for themselves
