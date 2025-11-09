@@ -817,39 +817,6 @@
     transform: translateY(0);
   }
 
-  .instagram-button-fullwidth {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.5rem;
-    width: 100%;
-    padding: 0.875rem 1.5rem;
-    margin: 1.5rem 0;
-    background: linear-gradient(
-      135deg,
-      #f09433 0%,
-      #e6683c 25%,
-      #dc2743 50%,
-      #cc2366 75%,
-      #bc1888 100%
-    );
-    color: white;
-    text-decoration: none;
-    border-radius: 50px;
-    font-size: 0.875rem;
-    font-weight: 600;
-    transition: all 0.3s;
-    box-shadow: 0 2px 12px rgba(188, 24, 136, 0.3);
-  }
-
-  .instagram-button-fullwidth:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 20px rgba(188, 24, 136, 0.5);
-  }
-
-  .instagram-button-fullwidth:active {
-    transform: translateY(0);
-  }
 
   .instagram-icon {
     width: 18px;
@@ -866,13 +833,6 @@
     max-width: 500px;
   }
 
-  .link-label {
-    font-size: 0.875rem;
-    color: rgba(26, 26, 78, 0.8);
-    text-align: center;
-    margin: 0;
-    font-weight: 500;
-  }
 
   .info-section {
     width: 100%;
@@ -958,10 +918,6 @@
   }
 
 
-  .invite-link-section {
-    width: 100%;
-    max-width: 500px;
-  }
 
   .link-container {
     display: flex;
@@ -1023,8 +979,7 @@
       font-size: 1.5rem;
     }
 
-    .instagram-button,
-    .instagram-button-fullwidth {
+    .instagram-button {
       padding: 0.625rem 1.25rem;
       font-size: 0.813rem;
     }
@@ -1052,12 +1007,6 @@
     }
   }
 
-  @media (max-width: 480px) {
-    .qr-code-section {
-      padding: 0.5rem;
-      margin: 0.75rem 0;
-    }
-  }
 
   .profile-section {
     margin-bottom: 2rem;
@@ -1070,40 +1019,6 @@
     margin: 0 0 1rem 0;
   }
 
-  .details-grid {
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-  }
-
-  .detail-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 1rem;
-    background: #f9fafb;
-    border-radius: 8px;
-  }
-
-  .detail-label {
-    font-size: 0.875rem;
-    font-weight: 600;
-    color: #6b7280;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-  }
-
-  .detail-value {
-    font-size: 1rem;
-    font-weight: 600;
-    color: #111827;
-  }
-
-  .detail-mono {
-    font-family: monospace;
-    font-size: 0.875rem;
-    color: #6b7280;
-  }
 
   .divider-line {
     width: 100%;
@@ -1163,17 +1078,6 @@
     color: #6b7280;
   }
 
-  .empty-state-link {
-    display: inline-block;
-    margin-top: 0.5rem;
-    color: #4fc3c3;
-    font-weight: 600;
-    text-decoration: none;
-  }
-
-  .empty-state-link:hover {
-    text-decoration: underline;
-  }
 
   .identities-list,
   .purchases-list {
@@ -1220,18 +1124,6 @@
     flex-shrink: 0;
   }
 
-  .heart-count {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    font-size: 1.25rem;
-    font-weight: 800;
-    color: #fff8dc;
-    text-shadow: 0 1px 2px rgba(244, 208, 63, 0.3);
-    line-height: 1;
-  }
-
   .identity-info {
     display: flex;
     flex-direction: column;
@@ -1273,18 +1165,6 @@
     font-size: 0.75rem;
     color: #9ca3af;
     font-style: italic;
-  }
-
-  .heart-count {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    font-size: 1.25rem;
-    font-weight: 800;
-    color: #fff8dc;
-    text-shadow: 0 1px 2px rgba(244, 208, 63, 0.3);
-    line-height: 1;
   }
 
   .purchase-date {
@@ -1420,10 +1300,6 @@
     .heart-icon-large {
       width: 40px;
       height: 40px;
-    }
-
-    .heart-count {
-      font-size: 1.125rem;
     }
   }
 </style>
