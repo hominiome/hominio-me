@@ -1,6 +1,7 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import { decideToolCall } from '$lib/ai/redpill-client.js';
+import { loadView } from '$lib/mitosis/view-loader';
 
 // In-memory storage for MVP (no auth/user isolation)
 const todosStore: Array<{
@@ -10,138 +11,6 @@ const todosStore: Array<{
   createdAt: string;
   dueDate?: string;
 }> = [];
-
-// Generate Mitosis JSON UI for list_todos (using official Mitosis JSON format)
-function generateListTodosUI(todos: typeof todosStore) {
-  const heading = {
-    name: 'Heading',
-    attributes: {
-      level: 2
-    },
-    children: [
-      {
-        name: 'text',
-        bindings: {
-          text: "'Your Todos'"
-        }
-      }
-    ]
-  };
-  
-  const content = todos.length === 0
-    ? [
-        {
-          name: 'div',
-          attributes: {
-            class: 'empty-state'
-          },
-          children: [
-            {
-              name: 'Text',
-              bindings: {
-                text: "'No todos yet. Create one with your voice!'"
-              }
-            }
-          ]
-        }
-      ]
-    : [
-        {
-          name: 'List',
-          bindings: {
-            items: '{{state.todos}}'
-          },
-          children: [
-            {
-              name: 'Card',
-              bindings: {
-                key: '{{item.id}}'
-              },
-              children: [
-                {
-                  name: 'div',
-                  attributes: {
-                    class: 'todo-item'
-                  },
-                  children: [
-                    {
-                      name: 'Text',
-                      bindings: {
-                        text: '{{item.title}}'
-                      }
-                    },
-                    {
-                      name: 'Text',
-                      attributes: {
-                        class: 'todo-status'
-                      },
-                      bindings: {
-                        text: "{{item.completed ? '✓ Completed' : '○ Pending'}}"
-                      }
-                    }
-                  ]
-                }
-              ]
-            }
-          ]
-        }
-      ];
-  
-  return {
-    '@type': '@builder.io/mitosis/component',
-    name: 'TodoList',
-    state: {
-      todos: todos
-    },
-    nodes: [
-      {
-        name: 'div',
-        attributes: {
-          class: 'todo-list-container'
-        },
-        children: [heading, ...content]
-      }
-    ]
-  };
-}
-
-// Generate Mitosis JSON UI for create_todo response (using official Mitosis JSON format)
-function generateCreateTodoUI(todo: typeof todosStore[0]) {
-  return {
-    '@type': '@builder.io/mitosis/component',
-    name: 'TodoCreated',
-    state: {
-      todo: todo
-    },
-    nodes: [
-      {
-        name: 'div',
-        attributes: {
-          class: 'todo-created'
-        },
-        children: [
-          {
-            name: 'Text',
-            bindings: {
-              text: "'✓ Todo created successfully!'"
-            }
-          },
-          {
-            name: 'Card',
-            children: [
-              {
-                name: 'Text',
-                bindings: {
-                  text: '{{state.todo.title}}'
-                }
-              }
-            ]
-          }
-        ]
-      }
-    ]
-  };
-}
 
 /**
  * Creates and configures the Todos MCP server
@@ -195,7 +64,7 @@ export function createMcpServer(): McpServer {
 
       if (decision.toolName === 'list_todos') {
         const output = { todos: todosStore };
-        ui = generateListTodosUI(todosStore);
+        ui = loadView('todo-list', { todos: todosStore });
         result = { ...output, ui };
       } else if (decision.toolName === 'create_todo') {
         const { title, dueDate } = decision.arguments;
@@ -208,7 +77,7 @@ export function createMcpServer(): McpServer {
         };
         todosStore.push(newTodo);
         const output = { todo: newTodo, success: true };
-        ui = generateCreateTodoUI(newTodo);
+        ui = loadView('todo-created', { todo: newTodo });
         result = { ...output, ui };
       } else {
         throw new Error(`Unknown tool: ${decision.toolName}`);
@@ -246,7 +115,7 @@ export function createMcpServer(): McpServer {
     },
     async () => {
       const output = { todos: todosStore };
-      const ui = generateListTodosUI(todosStore);
+      const ui = loadView('todo-list', { todos: todosStore });
       return {
         content: [{ type: 'text', text: JSON.stringify(output) }],
         structuredContent: { ...output, ui }
@@ -287,7 +156,7 @@ export function createMcpServer(): McpServer {
       todosStore.push(newTodo);
 
       const output = { todo: newTodo, success: true };
-      const ui = generateCreateTodoUI(newTodo);
+      const ui = loadView('todo-created', { todo: newTodo });
       return {
         content: [{ type: 'text', text: JSON.stringify(output) }],
         structuredContent: { ...output, ui }

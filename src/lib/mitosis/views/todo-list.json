@@ -1,0 +1,74 @@
+{
+  "@type": "@builder.io/mitosis/component",
+  "name": "TodoList",
+  "state": {
+    "todos": []
+  },
+  "nodes": [
+    {
+      "name": "div",
+      "attributes": {
+        "class": "space-y-4"
+      },
+      "children": [
+        {
+          "name": "Heading",
+          "attributes": {
+            "level": 2
+          },
+          "children": [
+            {
+              "name": "text",
+              "bindings": {
+                "text": "'Your Todos'"
+              }
+            }
+          ]
+        },
+        {
+          "name": "List",
+          "bindings": {
+            "items": "{{state.todos}}"
+          },
+          "children": [
+            {
+              "name": "Card",
+              "bindings": {
+                "key": "{{item.id}}"
+              },
+              "children": [
+                {
+                  "name": "div",
+                  "attributes": {
+                    "class": "flex items-center justify-between"
+                  },
+                  "children": [
+                    {
+                      "name": "Text",
+                      "attributes": {
+                        "class": "font-medium text-primary-700"
+                      },
+                      "bindings": {
+                        "text": "{{item.title}}"
+                      }
+                    },
+                    {
+                      "name": "Text",
+                      "attributes": {
+                        "class": "text-sm text-gray-500"
+                      },
+                      "bindings": {
+                        "text": "{{item.completed ? '✓ Completed' : '○ Pending'}}"
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
+

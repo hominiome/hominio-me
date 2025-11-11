@@ -1,5 +1,4 @@
-// Safe Mitosis JSON Schema Types
-// Only allows safe operations - no code execution
+// Mitosis JSON Schema Types
 
 export interface MitosisTextNode {
   name: 'text';
@@ -37,8 +36,7 @@ export interface MitosisConfig {
   children?: MitosisNode[];
 }
 
-// Allowed component names (whitelist)
-// With sandboxing, we can allow more Mitosis features
+// Allowed component names
 export const ALLOWED_COMPONENTS = [
   // HTML elements
   'div',
@@ -94,19 +92,5 @@ export type AllowedBinding =
   | { type: 'data_binding'; path: string } // {{path}}
   | { type: 'static'; value: string | number | boolean }
   | { type: 'mcp_tool_call'; tool: string; params?: Record<string, any> }
-  | { type: 'code'; code: string }; // Only for static strings in text nodes
-
-// Forbidden operations
-export const FORBIDDEN_PATTERNS = [
-  'eval',
-  'Function',
-  'window',
-  'document',
-  'require',
-  'import(',
-  'innerHTML',
-  'outerHTML',
-  '__proto__',
-  'constructor'
-];
+  | { type: 'code'; code: string };
 

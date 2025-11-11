@@ -1,5 +1,6 @@
 import { json, error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
+import { loadView } from '$lib/mitosis/view-loader';
 
 // In-memory storage for MVP (no auth/user isolation)
 const todosStore: Array<{
@@ -10,151 +11,24 @@ const todosStore: Array<{
   dueDate?: string;
 }> = [];
 
-// Generate Mitosis JSON UI for list_todos
-function generateListTodosUI(todos: typeof todosStore) {
-  const heading = {
-    name: 'Heading',
-    attributes: {
-      level: 2
-    },
-    children: [
-      {
-        name: 'text',
-        bindings: {
-          text: "'Your Todos'"
-        }
-      }
-    ]
-  };
-  
-  const content = todos.length === 0
-    ? [
-        {
-          name: 'div',
-          attributes: {
-            class: 'empty-state'
-          },
-          children: [
-            {
-              name: 'Text',
-              bindings: {
-                text: "'No todos yet. Create one with your voice!'"
-              }
-            }
-          ]
-        }
-      ]
-    : [
-        {
-          name: 'List',
-          bindings: {
-            items: '{{state.todos}}'
-          },
-          children: [
-            {
-              name: 'Card',
-              bindings: {
-                key: '{{item.id}}'
-              },
-              children: [
-                {
-                  name: 'div',
-                  attributes: {
-                    class: 'todo-item'
-                  },
-                  children: [
-                    {
-                      name: 'Text',
-                      bindings: {
-                        text: '{{item.title}}'
-                      }
-                    },
-                    {
-                      name: 'Text',
-                      attributes: {
-                        class: 'todo-status'
-                      },
-                      bindings: {
-                        text: "{{item.completed ? '✓ Completed' : '○ Pending'}}"
-                      }
-                    }
-                  ]
-                }
-              ]
-            }
-          ]
-        }
-      ];
-  
-  return {
-    '@type': '@builder.io/mitosis/component',
-    name: 'TodoList',
-    state: {
-      todos: todos
-    },
-    nodes: [
-      {
-        name: 'div',
-        attributes: {
-          class: 'todo-list-container'
-        },
-        children: [heading, ...content]
-      }
-    ]
-  };
-}
-
-// Generate Mitosis JSON UI for create_todo response
-function generateCreateTodoUI(todo: typeof todosStore[0]) {
-  return {
-    '@type': '@builder.io/mitosis/component',
-    name: 'TodoCreated',
-    state: {
-      todo: todo
-    },
-    nodes: [
-      {
-        name: 'div',
-        attributes: {
-          class: 'todo-created'
-        },
-        children: [
-          {
-            name: 'Text',
-            bindings: {
-              text: "'✓ Todo created successfully!'"
-            }
-          },
-          {
-            name: 'Card',
-            children: [
-              {
-                name: 'Text',
-                bindings: {
-                  text: '{{state.todo.title}}'
-                }
-              }
-            ]
-          }
-        ]
-      }
-    ]
-  };
-}
-
 // Action handlers registry
-const actionHandlers: Record<string, (params: any) => Promise<{ result: any; ui?: any }>> = {
-  async list_todos() {
+const actionHandlers: Record<string, (params: any) => Promise<{ result: any; ui?: any; view?: string }>> = {
+  async list_todos(params: { view?: string } = {}) {
     const output = { todos: todosStore };
-    const ui = generateListTodosUI(todosStore);
+    
+    // Load view by view-id (defaults to 'todo-list' if not specified)
+    const viewId = params.view || 'todo-list';
+    const ui = loadView(viewId, { todos: todosStore });
+    
     return {
       result: output,
-      ui
+      ui,
+      view: viewId
     };
   },
 
-  async create_todo(params: { title: string; dueDate?: string }) {
-    const { title, dueDate } = params;
+  async create_todo(params: { title: string; dueDate?: string; view?: string }) {
+    const { title, dueDate, view } = params;
     if (!title) {
       throw new Error('Title is required');
     }
@@ -170,12 +44,17 @@ const actionHandlers: Record<string, (params: any) => Promise<{ result: any; ui?
     todosStore.push(newTodo);
 
     const output = { todo: newTodo, success: true };
-    const ui = generateCreateTodoUI(newTodo);
+    
+    // Load view by view-id (defaults to 'todo-created' if not specified)
+    const viewId = view || 'todo-created';
+    const ui = loadView(viewId, { todo: newTodo });
+    
     return {
       result: output,
-      ui
+      ui,
+      view: viewId
     };
-  }
+  },
 };
 
 /**

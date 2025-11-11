@@ -1,0 +1,49 @@
+{
+  "@type": "@builder.io/mitosis/component",
+  "name": "TodoCreated",
+  "state": {
+    "todo": null
+  },
+  "nodes": [
+    {
+      "name": "div",
+      "attributes": {
+        "class": "space-y-4"
+      },
+      "children": [
+        {
+          "name": "div",
+          "attributes": {
+            "class": "p-4 bg-success-50 border border-success-200 rounded-lg"
+          },
+          "children": [
+            {
+              "name": "Text",
+              "attributes": {
+                "class": "text-success-700 font-semibold"
+              },
+              "bindings": {
+                "text": "'✓ Todo created successfully!'"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Card",
+          "children": [
+            {
+              "name": "Text",
+              "attributes": {
+                "class": "text-primary-700 font-medium"
+              },
+              "bindings": {
+                "text": "{{state.todo.title}}"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
+

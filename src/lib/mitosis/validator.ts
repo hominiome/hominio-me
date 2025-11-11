@@ -4,7 +4,7 @@ import type {
   MitosisComponent,
   AllowedComponent
 } from './types';
-import { ALLOWED_COMPONENTS, FORBIDDEN_PATTERNS } from './types';
+import { ALLOWED_COMPONENTS } from './types';
 
 export class MitosisValidationError extends Error {
   constructor(message: string) {
@@ -14,7 +14,7 @@ export class MitosisValidationError extends Error {
 }
 
 /**
- * Validates Mitosis JSON config against safe schema
+ * Validates Mitosis JSON config structure
  */
 export function validateMitosisConfig(config: any): MitosisConfig {
   // Check top-level structure
@@ -101,18 +101,6 @@ function validateNode(node: any, path: string): void {
     if (typeof node.attributes !== 'object') {
       throw new MitosisValidationError(`${path}: attributes must be an object`);
     }
-
-    // Check for forbidden patterns in attribute values
-    for (const [key, value] of Object.entries(node.attributes)) {
-      const valueStr = String(value);
-      for (const pattern of FORBIDDEN_PATTERNS) {
-        if (valueStr.includes(pattern)) {
-          throw new MitosisValidationError(
-            `${path}.attributes.${key}: Contains forbidden pattern "${pattern}"`
-          );
-        }
-      }
-    }
   }
 
   // Validate bindings (if present)
@@ -148,54 +136,11 @@ function validateBinding(binding: any, path: string): void {
 
   // String bindings (data binding or static)
   if (typeof binding === 'string') {
-    // Check for forbidden patterns
-    for (const pattern of FORBIDDEN_PATTERNS) {
-      if (binding.includes(pattern)) {
-        throw new MitosisValidationError(
-          `${path}: Contains forbidden pattern "${pattern}"`
-        );
-      }
-    }
     return;
   }
 
   // Object bindings
   if (typeof binding === 'object') {
-    // Check for code bindings (only allowed in text nodes for static strings)
-    if (binding.code) {
-      const codeStr = String(binding.code);
-      
-      // Check for forbidden patterns
-      for (const pattern of FORBIDDEN_PATTERNS) {
-        if (codeStr.includes(pattern)) {
-          throw new MitosisValidationError(
-            `${path}.code: Contains forbidden pattern "${pattern}"`
-          );
-        }
-      }
-
-      // Check for dangerous code patterns
-      // Note: With iframe sandboxing, window/document are already blocked by browser
-      // But we still block eval/Function/require as defense-in-depth
-      const dangerousPatterns = [
-        /\beval\s*\(/,
-        /\bFunction\s*\(/,
-        /\brequire\s*\(/,
-        /\bimport\s*\(/,
-        /\.__proto__/,
-        /\.constructor\s*\(/
-        // window/document/innerHTML/outerHTML are safe in sandbox (isolated context)
-      ];
-
-      for (const pattern of dangerousPatterns) {
-        if (pattern.test(codeStr)) {
-          throw new MitosisValidationError(
-            `${path}.code: Contains dangerous code pattern`
-          );
-        }
-      }
-    }
-
     // MCP tool call bindings
     if (binding.type === 'mcp_tool_call') {
       if (!binding.tool || typeof binding.tool !== 'string') {

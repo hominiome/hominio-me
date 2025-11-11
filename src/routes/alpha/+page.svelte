@@ -174,7 +174,6 @@
                   config={selectedActivity.ui}
                   onMCPToolCall={(tool, params) =>
                     handleMCPToolCall(tool, params)}
-                  useSandbox={true}
                 />
               {:else}
                 <pre class="activity-result">{JSON.stringify(
