@@ -14,12 +14,15 @@ const viewRegistry: Record<string, MitosisConfig> = {
  */
 export function loadView(viewId: string, state?: Record<string, any>): MitosisConfig | null {
   try {
+    console.log(`[View Loader] Loading view "${viewId}", available views:`, Object.keys(viewRegistry));
     const view = viewRegistry[viewId];
     
     if (!view) {
       console.error(`[View Loader] View "${viewId}" not found. Available views: ${Object.keys(viewRegistry).join(', ')}`);
       return null;
     }
+    
+    console.log(`[View Loader] Found view "${viewId}":`, view);
     
     // Deep clone the view to avoid mutating the original
     const clonedView: MitosisConfig = JSON.parse(JSON.stringify(view));
@@ -31,6 +34,7 @@ export function loadView(viewId: string, state?: Record<string, any>): MitosisCo
       clonedView.state = state;
     }
     
+    console.log(`[View Loader] Returning cloned view "${viewId}" with state:`, clonedView.state);
     return clonedView;
   } catch (err) {
     console.error(`[View Loader] Failed to load view "${viewId}":`, err);

@@ -237,27 +237,85 @@
   {:else if node.name === 'Text'}
     {@const textBinding = node.bindings?.text}
     {@const text = textBinding ? resolveBinding(textBinding, state) : ''}
-    <p class="my-2 text-base text-primary-700">{text}</p>
+    {@const className = String(node.attributes?.class || node.attributes?.className || '')}
+    <p class="my-2 text-base text-primary-700 leading-relaxed {className}">
+      {#if text}
+        {text}
+      {:else if 'children' in node && node.children}
+        {#each node.children as child}
+          {@render renderNode(child, state)}
+        {/each}
+      {/if}
+    </p>
   {:else if node.name === 'Heading'}
     {@const level = node.attributes?.level || 2}
     {@const textBinding = node.bindings?.text}
     {@const text = textBinding ? resolveBinding(textBinding, state) : ''}
+    {@const className = String(node.attributes?.class || node.attributes?.className || '')}
     {#if level === 1}
-      <h1 class="my-4 text-3xl font-bold text-primary-500">{text}</h1>
+      <h1 class="my-4 text-3xl md:text-4xl font-bold text-primary-500 leading-tight tracking-tight {className}">
+        {#if text}
+          {text}
+        {:else if 'children' in node && node.children}
+          {#each node.children as child}
+            {@render renderNode(child, state)}
+          {/each}
+        {/if}
+      </h1>
     {:else if level === 2}
-      <h2 class="my-3 text-2xl font-semibold text-primary-500">{text}</h2>
+      <h2 class="my-3 text-2xl md:text-3xl font-bold text-primary-500 leading-tight tracking-tight {className}">
+        {#if text}
+          {text}
+        {:else if 'children' in node && node.children}
+          {#each node.children as child}
+            {@render renderNode(child, state)}
+          {/each}
+        {/if}
+      </h2>
     {:else if level === 3}
-      <h3 class="my-2 text-xl font-semibold text-primary-500">{text}</h3>
+      <h3 class="my-2 text-xl md:text-2xl font-semibold text-primary-500 leading-tight {className}">
+        {#if text}
+          {text}
+        {:else if 'children' in node && node.children}
+          {#each node.children as child}
+            {@render renderNode(child, state)}
+          {/each}
+        {/if}
+      </h3>
     {:else if level === 4}
-      <h4 class="my-2 text-lg font-semibold text-primary-500">{text}</h4>
+      <h4 class="my-2 text-lg md:text-xl font-semibold text-primary-500 leading-tight {className}">
+        {#if text}
+          {text}
+        {:else if 'children' in node && node.children}
+          {#each node.children as child}
+            {@render renderNode(child, state)}
+          {/each}
+        {/if}
+      </h4>
     {:else if level === 5}
-      <h5 class="my-2 text-base font-semibold text-primary-500">{text}</h5>
+      <h5 class="my-2 text-base md:text-lg font-semibold text-primary-500 {className}">
+        {#if text}
+          {text}
+        {:else if 'children' in node && node.children}
+          {#each node.children as child}
+            {@render renderNode(child, state)}
+          {/each}
+        {/if}
+      </h5>
     {:else}
-      <h6 class="my-2 text-sm font-semibold text-primary-500">{text}</h6>
+      <h6 class="my-2 text-sm md:text-base font-semibold text-primary-500 {className}">
+        {#if text}
+          {text}
+        {:else if 'children' in node && node.children}
+          {#each node.children as child}
+            {@render renderNode(child, state)}
+          {/each}
+        {/if}
+      </h6>
     {/if}
   {:else if node.name === 'Card'}
     {@const className = String(node.attributes?.class || node.attributes?.className || '')}
-    <div class="p-4 bg-white border border-primary-200 rounded-lg shadow-sm my-2 {className}">
+    <div class="mitosis-card p-4 md:p-6 bg-white border-2 border-primary-500/6 rounded-2xl transition-all duration-300 overflow-hidden my-2 hover:border-secondary-500/40 hover:-translate-y-0.5 hover:shadow-[0_8px_24px_rgba(45,166,180,0.15)] {className}">
       {#if 'children' in node && node.children}
         {#each node.children as child}
           {@render renderNode(child, state)}
@@ -282,7 +340,7 @@
   {:else if node.name === 'List'}
     {@const itemsBinding = node.bindings?.items}
     {@const items = itemsBinding ? resolveBinding(itemsBinding, state) : []}
-    <div class="flex flex-col gap-2">
+    <div class="flex flex-col gap-3">
       {#if Array.isArray(items) && items.length > 0}
         {#each items as item, index}
           {#if 'children' in node && node.children}
@@ -293,7 +351,7 @@
           {/if}
         {/each}
       {:else}
-        <div class="p-4 text-center text-gray-500 italic">No items</div>
+        <div class="p-6 text-center text-gray-500 italic bg-gray-50 rounded-xl border border-gray-200">No items</div>
       {/if}
     </div>
   {:else if node.name === 'Show'}

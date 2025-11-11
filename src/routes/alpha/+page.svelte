@@ -170,6 +170,8 @@
             </div>
             <div class="activity-content">
               {#if selectedActivity.ui}
+                {@const uiDebug = selectedActivity.ui}
+                {console.log('[Activity Page] Rendering UI:', uiDebug)}
                 <MitosisRenderer
                   config={selectedActivity.ui}
                   onMCPToolCall={(tool, params) =>
@@ -181,6 +183,7 @@
                     null,
                     2
                   )}</pre>
+                {console.log('[Activity Page] No UI, showing result:', selectedActivity.result)}
               {/if}
             </div>
           </div>
@@ -218,18 +221,22 @@
   }
 
   .clear-btn {
-    padding: 0.5rem 1rem;
-    background: var(--color-accent-500);
+    padding: 0.5rem 1.25rem;
+    background: linear-gradient(135deg, #2da6b4 0%, #2399a8 100%);
     color: white;
-    border: none;
-    border-radius: 0.5rem;
+    border: 2px solid rgba(45, 166, 180, 0.3);
+    border-radius: 12px;
     cursor: pointer;
     font-size: 0.875rem;
-    font-weight: 600;
+    font-weight: 700;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 8px rgba(45, 166, 180, 0.25);
   }
 
   .clear-btn:hover {
-    background: var(--color-accent-600);
+    background: linear-gradient(135deg, #2399a8 0%, #1c8a98 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(45, 166, 180, 0.35);
   }
 
   .empty-state {
@@ -251,19 +258,20 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 0.5rem 1rem;
+    padding: 0.75rem 1.25rem;
     background: white;
-    border: 1px solid #e5e5e5;
-    border-radius: 0.5rem 0.5rem 0 0;
+    border: 2px solid rgba(26, 26, 78, 0.08);
+    border-radius: 16px 16px 0 0;
     cursor: pointer;
-    transition: all 0.2s;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 8px rgba(26, 26, 78, 0.08);
   }
 
   .collapsed-bar:hover {
-    background: #fafafa;
-    border-color: var(--color-primary-300);
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+    background: white;
+    border-color: rgba(78, 205, 196, 0.3);
+    box-shadow: 0 4px 16px rgba(78, 205, 196, 0.15);
+    transform: translateY(-2px);
   }
 
   .collapsed-bar-title {
@@ -348,15 +356,17 @@
 
   .activity-item {
     background: white;
-    border-radius: 0.75rem;
+    border-radius: 20px;
     padding: 1.5rem;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-    border: 1px solid #e5e5e5;
+    box-shadow: 0 2px 8px rgba(26, 26, 78, 0.08);
+    border: 2px solid rgba(26, 26, 78, 0.08);
+    transition: all 0.3s ease;
   }
 
   .activity-item.expanded {
-    border: 2px solid var(--color-primary-300);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    border: 2px solid rgba(78, 205, 196, 0.3);
+    box-shadow: 0 8px 24px rgba(78, 205, 196, 0.15);
+    transform: translateY(-2px);
   }
 
   .activity-header {
@@ -369,13 +379,15 @@
   }
 
   .vibe-badge {
-    background: var(--color-primary-500);
+    background: linear-gradient(135deg, #2da6b4 0%, #2399a8 100%);
     color: white;
-    padding: 0.25rem 0.75rem;
-    border-radius: 1rem;
-    font-size: 0.875rem;
-    font-weight: 600;
-    text-transform: capitalize;
+    padding: 0.375rem 0.875rem;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    box-shadow: 0 2px 8px rgba(45, 166, 180, 0.25);
   }
 
   .tool-name {
@@ -407,11 +419,12 @@
   .empty-selection {
     text-align: center;
     padding: 4rem 2rem;
-    color: var(--color-primary-600);
+    color: rgba(8, 27, 71, 0.6);
     font-size: 1.125rem;
     background: white;
-    border-radius: 0.75rem;
-    border: 1px solid #e5e5e5;
+    border-radius: 20px;
+    border: 2px solid rgba(26, 26, 78, 0.08);
+    box-shadow: 0 2px 8px rgba(26, 26, 78, 0.08);
   }
 
   @media (max-width: 768px) {

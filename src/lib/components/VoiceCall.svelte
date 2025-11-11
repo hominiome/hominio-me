@@ -94,6 +94,7 @@
           sendToolResponse(message.toolCallId, responseText);
 
           // Add to activity stream
+          console.log("[VoiceCall] Adding activity with UI:", result.ui ? 'present' : 'missing', result);
           addActivity({
             vibeId: "todos", // Default vibe for now
             toolName: action,

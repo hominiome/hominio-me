@@ -46,20 +46,25 @@
                     {
                       "name": "Text",
                       "attributes": {
-                        "class": "font-medium text-primary-700"
+                        "class": "font-semibold text-lg text-primary-500"
                       },
                       "bindings": {
                         "text": "{{item.title}}"
                       }
                     },
                     {
-                      "name": "Text",
+                      "name": "span",
                       "attributes": {
-                        "class": "text-sm text-gray-500"
+                        "class": "px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide bg-secondary-100 text-secondary-700 border border-secondary-300"
                       },
-                      "bindings": {
-                        "text": "{{item.completed ? '✓ Completed' : '○ Pending'}}"
-                      }
+                      "children": [
+                        {
+                          "name": "Text",
+                          "bindings": {
+                            "text": "{{item.completed ? '✓ Completed' : '○ Pending'}}"
+                          }
+                        }
+                      ]
                     }
                   ]
                 }

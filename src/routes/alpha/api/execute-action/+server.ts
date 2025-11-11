@@ -83,6 +83,8 @@ export const POST: RequestHandler = async ({ request }) => {
     // Execute the action with the extracted params
     const { result, ui } = await handler(params);
 
+    console.log('[Execute Action] Action:', action, 'UI:', ui ? 'present' : 'missing', 'Result:', result);
+
     return json({
       success: true,
       action,
