@@ -18,6 +18,27 @@ import { env as publicEnv } from "$env/dynamic/public";
   import InviteOnlyContent from "$lib/InviteOnlyContent.svelte";
   import VoiceCall from "$lib/components/VoiceCall.svelte";
   import { goto } from "$app/navigation";
+  import { voiceCallState } from "$lib/stores/voice-call";
+  
+  // Voice call component reference
+  let voiceCallComponent: VoiceCall | null = $state(null);
+  
+  // Reactive derived state - uses Svelte's native reactivity with store
+  // Use $ prefix to auto-subscribe to store
+  const isCallActive = $derived($voiceCallState.isRecording || $voiceCallState.isConnected);
+  
+  // Call handlers
+  async function handleStartCall() {
+    if (voiceCallComponent) {
+      await voiceCallComponent.startCall();
+    }
+  }
+  
+  async function handleStopCall() {
+    if (voiceCallComponent) {
+      await voiceCallComponent.stopCall();
+    }
+  }
 
   // Get session data from layout server and children snippet
   let { data, children } = $props<{
@@ -1270,7 +1291,7 @@ import { env as publicEnv } from "$env/dynamic/public";
 {/if}
 
 {#if shouldShowNavbar}
-<VoiceCall />
+<VoiceCall bind:this={voiceCallComponent} />
 <Navbar
   session={$session}
   {signInWithGoogle}
@@ -1298,6 +1319,9 @@ import { env as publicEnv } from "$env/dynamic/public";
   }}
   modalLeftButtons={modalLeftButtons()}
   modalRightButtons={modalRightButtons()}
+  isCallActive={isCallActive}
+  onStartCall={handleStartCall}
+  onStopCall={handleStopCall}
 />
 {/if}
 

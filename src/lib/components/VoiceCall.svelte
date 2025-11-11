@@ -12,15 +12,24 @@
   import { env } from "$env/dynamic/public";
   import { executeAction } from "$lib/voice/core-tools";
   import { addActivity } from "$lib/stores/activity-stream";
+  import { updateVoiceCallState, resetVoiceCallState } from "$lib/stores/voice-call";
 
   // Hume configuration from environment variable
   const HUME_CONFIG_ID = env.PUBLIC_HUME_CONFIG_ID || "";
 
-  // State
+  // State - using $state for reactivity
   let isRecording = $state(false);
   let isConnected = $state(false);
   let isExpanded = $state(false);
   let lastResponse = $state("");
+  
+  // Sync state to store for reactive access from parent
+  $effect(() => {
+    updateVoiceCallState({ isRecording, isConnected, isExpanded, lastResponse });
+  });
+  
+  // Expose functions via component API
+  export { startCall, stopCall };
 
   // Hume instances
   let socket: any = null;
@@ -223,6 +232,7 @@
       socket.on("open", async () => {
         console.log("✅ Hume connection opened");
         isConnected = true;
+        isExpanded = true; // Auto-expand when connected
         // Audio player already initialized above
       });
 
@@ -361,6 +371,7 @@
       // Smaller intervals reduce delay between speech and response
       mediaRecorder.start(50);
       isRecording = true;
+      isExpanded = true; // Auto-expand when recording starts
       console.log("🎤 Recording started");
     } catch (err) {
       console.error("Failed to start audio capture:", err);
@@ -402,6 +413,9 @@
     isConnected = false;
     isExpanded = false;
     lastResponse = "";
+    
+    // Reset store state
+    resetVoiceCallState();
 
     console.log("🧹 Call cleaned up");
   }
@@ -437,134 +451,33 @@
   });
 </script>
 
-<div class="voice-pill-container">
-  {#if isExpanded}
-    <!-- Expanded Voice Interface -->
-    <div class="voice-compact">
-      <div class="transcript-area">
-        {#if lastResponse}
-          <p>{lastResponse}</p>
-        {:else}
-          <p class="placeholder">Speak now...</p>
-        {/if}
-      </div>
-
-      {#if isRecording}
-        <button class="close-btn" onclick={stopCall} aria-label="End call">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-            <path
-              d="M19,6.41L17.59,5L12,10.59L6.41,5L5,6.41L10.59,12L5,17.59L6.41,19L12,13.41L17.59,19L19,17.59L13.41,12L19,6.41Z"
-            />
-          </svg>
-        </button>
+<!-- Transcript Mini-Modal - Only shown when expanded, positioned above navbar -->
+{#if isExpanded}
+  <div class="voice-transcript-modal">
+    <div class="transcript-area">
+      {#if lastResponse}
+        <p>{lastResponse}</p>
+      {:else}
+        <p class="placeholder">Speak now...</p>
       {/if}
     </div>
-  {:else if !isRecording}
-    <!-- Collapsed - Start Button -->
-    <button class="voice-pill start" onclick={startCall}>
-      <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-        <path
-          d="M12,2A3,3 0 0,1 15,5V11A3,3 0 0,1 12,14A3,3 0 0,1 9,11V5A3,3 0 0,1 12,2M19,11C19,14.53 16.39,17.44 13,17.93V21H11V17.93C7.61,17.44 5,14.53 5,11H7A5,5 0 0,0 12,16A5,5 0 0,0 17,11H19Z"
-        />
-      </svg>
-      <span>Start Voice Call</span>
-    </button>
-  {:else}
-    <!-- Collapsed - Active Indicator -->
-    <button class="voice-pill active" onclick={toggleExpand}>
-      <div class="pulse-indicator" />
-      <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-        <path
-          d="M12,2A3,3 0 0,1 15,5V11A3,3 0 0,1 12,14A3,3 0 0,1 9,11V5A3,3 0 0,1 12,2M19,11C19,14.53 16.39,17.44 13,17.93V21H11V17.93C7.61,17.44 5,14.53 5,11H7A5,5 0 0,0 12,16A5,5 0 0,0 17,11H19Z"
-        />
-      </svg>
-      <span>Listening...</span>
-    </button>
-  {/if}
-</div>
+  </div>
+{/if}
 
 <style>
-  .voice-pill-container {
+  /* Transcript Mini-Modal - positioned above navbar */
+  .voice-transcript-modal {
     position: fixed;
-    bottom: 5.5rem; /* Above navbar (which is ~4rem) + some spacing */
+    bottom: calc(56px + 0.375rem + 0.5rem); /* Navbar height + margin + gap */
     left: 50%;
     transform: translateX(-50%);
-    z-index: 1000;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-  }
-
-  .voice-pill {
-    background: linear-gradient(
-      135deg,
-      var(--color-primary-500) 0%,
-      var(--color-secondary-500) 100%
-    );
-    color: white;
-    border: none;
-    padding: 1rem 2rem;
-    border-radius: 50px;
-    cursor: pointer;
-    font-size: 1.125rem;
-    font-weight: 600;
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
-    transition: all 0.3s ease;
-    white-space: nowrap;
-  }
-
-  .voice-pill.active {
-    background: linear-gradient(
-      135deg,
-      var(--color-secondary-500) 0%,
-      var(--color-accent-500) 100%
-    );
-    animation: glow 2s ease-in-out infinite;
-  }
-
-  @keyframes glow {
-    0%,
-    100% {
-      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
-    }
-    50% {
-      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
-    }
-  }
-
-  .pulse-indicator {
-    width: 8px;
-    height: 8px;
-    background: white;
-    border-radius: 50%;
-    animation: pulse 1.5s ease-in-out infinite;
-  }
-
-  @keyframes pulse {
-    0%,
-    100% {
-      opacity: 1;
-      transform: scale(1);
-    }
-    50% {
-      opacity: 0.5;
-      transform: scale(1.2);
-    }
-  }
-
-  .voice-compact {
-    position: relative;
+    z-index: 10001; /* Above navbar */
     background: var(--color-primary-500);
     color: white;
     border-radius: 16px;
     box-shadow: 0 4px 24px rgba(0, 0, 0, 0.3);
     max-width: 500px;
-    min-height: 120px;
-    display: flex;
-    flex-direction: column;
+    width: calc(100vw - 2rem);
     animation: slideUp 0.3s ease-out;
     overflow: hidden;
   }
@@ -572,19 +485,18 @@
   @keyframes slideUp {
     from {
       opacity: 0;
-      transform: translateY(20px);
+      transform: translateX(-50%) translateY(20px);
     }
     to {
       opacity: 1;
-      transform: translateY(0);
+      transform: translateX(-50%) translateY(0);
     }
   }
 
   .transcript-area {
-    flex: 1;
-    padding: 1.5rem 1.5rem 4rem 1.5rem;
+    padding: 1.5rem;
     overflow-y: auto;
-    max-height: 300px;
+    max-height: 200px;
   }
 
   .transcript-area p {
@@ -599,47 +511,10 @@
     font-style: italic;
   }
 
-  .close-btn {
-    position: absolute;
-    bottom: 1rem;
-    left: 50%;
-    transform: translateX(-50%);
-    background: var(--color-accent-500);
-    border: none;
-    color: white;
-    width: 44px;
-    height: 44px;
-    border-radius: 50%;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: all 0.2s ease;
-    padding: 0;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-  }
-
-  .close-btn:hover {
-    transform: translateX(-50%) scale(1.1);
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
-  }
-
-  .close-btn:active {
-    transform: translateX(-50%) scale(0.95);
-  }
-
   @media (max-width: 640px) {
-    .voice-pill-container {
-      bottom: 5rem;
-    }
-
-    .voice-compact {
-      max-width: calc(100vw - 4rem);
-    }
-
-    .voice-pill {
-      font-size: 1rem;
-      padding: 0.875rem 1.5rem;
+    .voice-transcript-modal {
+      width: calc(100vw - 1rem);
+      max-width: none;
     }
   }
 </style>
