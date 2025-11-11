@@ -1,11 +1,9 @@
 <script>
-  import HelloEarth from "$lib/components/HelloEarth.svelte";
   import Hero from "$lib/components/Hero.svelte";
   import Offer from "$lib/components/Offer.svelte";
 </script>
 
 <div class="page" style="margin-top: 0 !important; padding-top: 0 !important;">
-  <HelloEarth />
   <Hero />
   <Offer />
 </div>
