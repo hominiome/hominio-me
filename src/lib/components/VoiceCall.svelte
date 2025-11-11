@@ -11,7 +11,7 @@
   import { browser } from "$app/environment";
   import { env } from "$env/dynamic/public";
   import { executeAction } from "$lib/voice/core-tools";
-  import { addActivity } from "$lib/stores/activity-stream";
+  import { addActivity, updateListTodosActivity } from "$lib/stores/activity-stream";
   import { updateVoiceCallState, resetVoiceCallState } from "$lib/stores/voice-call";
 
   // Hume configuration from environment variable
@@ -22,11 +22,36 @@
   let isConnected = $state(false);
   let isExpanded = $state(false);
   let lastResponse = $state("");
+  let actionMessage = $state<string | null>(null); // For action tool calls (create/edit/delete)
+  let actionMessageTimeout: ReturnType<typeof setTimeout> | null = null; // Track timeout to cancel if new action comes
   
   // Sync state to store for reactive access from parent
   $effect(() => {
     updateVoiceCallState({ isRecording, isConnected, isExpanded, lastResponse });
   });
+
+  // Helper to determine if action is a view tool (shows UI) or action tool (shows compact message)
+  function isViewTool(action: string): boolean {
+    return action === 'list_todos';
+  }
+
+  // Helper to format action message for mini-modal display
+  function formatActionMessage(action: string, result: any): string {
+    if (action === 'create_todo' && result.todo) {
+      return `Created todo: ${result.todo.title}`;
+    } else if (action === 'edit_todo' && result.todo) {
+      if (result.todo.completed) {
+        return `Completed todo: ${result.todo.title}`;
+      } else if (result.todo.title) {
+        return `Updated todo: ${result.todo.title}`;
+      }
+      return `Updated todo`;
+    } else if (action === 'delete_todo' && result.deleted) {
+      return `Deleted todo: ${result.deleted.title || result.deleted.id}`;
+    }
+    return 'Action completed';
+  }
+
   
   // Expose functions via component API
   export { startCall, stopCall };
@@ -99,7 +124,7 @@
                 if (action === 'edit_todo') {
                   responseText = `Updated todo: ${result.result.todo.title}${result.result.todo.completed ? ' (marked as completed)' : ''}`;
                 } else {
-                  responseText = `Created todo: ${result.result.todo.title}`;
+                responseText = `Created todo: ${result.result.todo.title}`;
                 }
               } else if (result.result.deleted) {
                 responseText = `Deleted todo: ${result.result.deleted.title || result.result.deleted.id}`;
@@ -115,14 +140,48 @@
 
           sendToolResponse(message.toolCallId, responseText);
 
-          // Add to activity stream
-          console.log("[VoiceCall] Adding activity with UI:", result.ui ? 'present' : 'missing', result);
-          addActivity({
-            vibeId: "todos", // Default vibe for now
-            toolName: action,
-            result: result.result,
-            ui: result.ui,
-          });
+          // Distinguish between action tools (create/edit/delete) and view tools (list)
+          if (isViewTool(action)) {
+            // View tools: Show UI in main area, don't show action message
+            // Cancel any pending action message timeout
+            if (actionMessageTimeout) {
+              clearTimeout(actionMessageTimeout);
+              actionMessageTimeout = null;
+            }
+            actionMessage = null;
+            console.log("[VoiceCall] View tool - showing UI in main area");
+            
+            // Add to activity stream (only for view tools)
+            console.log("[VoiceCall] Adding view tool to activity stream:", result.ui ? 'present' : 'missing', result);
+            addActivity({
+              vibeId: "todos", // Default vibe for now
+              toolName: action,
+              result: result.result,
+              ui: result.ui,
+            });
+          } else {
+            // Action tools: Show compact message in mini-modal, DON'T add to activity stream
+            // Cancel any existing timeout (toast behavior: replace immediately)
+            if (actionMessageTimeout) {
+              clearTimeout(actionMessageTimeout);
+              actionMessageTimeout = null;
+            }
+            
+            // Set new action message (replaces previous one immediately)
+            actionMessage = formatActionMessage(action, result.result);
+            console.log("[VoiceCall] Action tool - showing compact message:", actionMessage);
+            
+            // Auto-clear action message after 3 seconds (or until new action replaces it)
+            actionMessageTimeout = setTimeout(() => {
+              actionMessage = null;
+              actionMessageTimeout = null;
+            }, 3000);
+            
+            // Update existing list_todos activity if it exists (reactive update)
+            // Get todos from result - action tools return todos in result.result.todos
+            const todos = result.result?.todos || [];
+            updateListTodosActivity(todos);
+          }
 
           console.log("✅ Action executed successfully:", action);
         } catch (actionError: any) {
@@ -421,11 +480,18 @@
       audioPlayer = null;
     }
 
+    // Cancel any pending action message timeout
+    if (actionMessageTimeout) {
+      clearTimeout(actionMessageTimeout);
+      actionMessageTimeout = null;
+    }
+    
     // Reset state
     isRecording = false;
     isConnected = false;
     isExpanded = false;
     lastResponse = "";
+    actionMessage = null;
     
     // Reset store state
     resetVoiceCallState();
@@ -464,18 +530,20 @@
   });
 </script>
 
-<!-- Transcript Mini-Modal - Only shown when expanded, positioned above navbar -->
-{#if isExpanded}
+<!-- Action Mini-Modal - Only shown when expanded, positioned above navbar -->
+  {#if isExpanded}
   <div class="voice-transcript-modal">
-    <div class="transcript-area">
-      {#if lastResponse}
-        <p>{lastResponse}</p>
-      {:else}
-        <p class="placeholder">Speak now...</p>
-      {/if}
+      <div class="transcript-area">
+        {#if actionMessage}
+          <p class="action-message">{actionMessage}</p>
+        {:else if lastResponse}
+          <p class="assistant-response">{lastResponse}</p>
+        {:else}
+          <p class="placeholder">Speak now...</p>
+        {/if}
+      </div>
     </div>
-  </div>
-{/if}
+  {/if}
 
 <style>
   /* Transcript Mini-Modal - positioned above navbar */
@@ -507,7 +575,7 @@
   }
 
   .transcript-area {
-    padding: 1.5rem;
+    padding: 1rem 1.5rem;
     overflow-y: auto;
     max-height: 200px;
   }
@@ -522,6 +590,23 @@
   .transcript-area p.placeholder {
     color: rgba(255, 255, 255, 0.5);
     font-style: italic;
+    text-align: center;
+  }
+
+  .transcript-area p.action-message {
+    font-weight: 600;
+    font-size: 0.875rem;
+    color: var(--color-success-50);
+    background: rgba(255, 255, 255, 0.15);
+    text-align: center;
+    padding: 0.5rem 1rem;
+    border-radius: 8px;
+    letter-spacing: 0.02em;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+  }
+
+  .transcript-area p.assistant-response {
+    color: rgba(255, 255, 255, 0.9);
   }
 
   @media (max-width: 640px) {

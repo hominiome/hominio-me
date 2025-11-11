@@ -1,4 +1,5 @@
 import { writable } from 'svelte/store';
+import { loadView } from '$lib/mitosis/view-loader';
 
 export interface ActivityItem {
   id: string;
@@ -24,5 +25,21 @@ export function addActivity(item: Omit<ActivityItem, 'id' | 'timestamp'>) {
 
 export function clearActivityStream() {
   activityStream.set([]);
+}
+
+/**
+ * Update the list_todos activity when action tools modify todos
+ * This ensures the todo list view stays reactive and up-to-date
+ */
+export function updateListTodosActivity(todos: any[]) {
+  activityStream.update((activities) => {
+    const listTodosActivity = activities.find(a => a.toolName === 'list_todos');
+    if (listTodosActivity) {
+      listTodosActivity.result = { todos };
+      // Reload the UI with updated todos
+      listTodosActivity.ui = loadView('todo-list', { todos });
+    }
+    return activities;
+  });
 }
 

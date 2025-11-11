@@ -66,7 +66,7 @@ const actionHandlers: Record<string, (params: any) => Promise<{ result: any; ui?
     if (params.id) {
       todoToEdit = todosStore.find(t => t.id === params.id);
     }
-    
+
     // If not found by ID, try to find by title
     if (!todoToEdit && params.title) {
       todoToEdit = todosStore.find(t => 
@@ -94,7 +94,7 @@ const actionHandlers: Record<string, (params: any) => Promise<{ result: any; ui?
     }
 
     const output = { todo: todoToEdit, success: true, todos: todosStore };
-    
+
     // Load view by view-id (defaults to 'todo-list' to show updated list)
     const viewId = params.view || 'todo-list';
     const ui = loadView(viewId, { todos: todosStore });
@@ -122,7 +122,7 @@ const actionHandlers: Record<string, (params: any) => Promise<{ result: any; ui?
       todoToDelete = todosStore.find(t => 
         t.title.toLowerCase().includes(params.title!.toLowerCase())
       );
-    }
+        }
     
     if (!todoToDelete) {
       // Provide context of available todos to help AI identify the right one
@@ -130,7 +130,7 @@ const actionHandlers: Record<string, (params: any) => Promise<{ result: any; ui?
         ? `Available todos:\n${currentTodos.map((t, i) => `${i + 1}. ${t.title} (ID: ${t.id})`).join('\n')}`
         : 'No todos available to delete.';
       throw new Error(`Todo not found. ${todosContext}`);
-    }
+      }
 
     // Remove from store
     const index = todosStore.findIndex(t => t.id === todoToDelete!.id);
