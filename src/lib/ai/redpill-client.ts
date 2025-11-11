@@ -74,7 +74,10 @@ Respond with ONLY a JSON object in this exact format:
 Examples:
 - User: "show me my todos" -> {"toolName": "list_todos", "arguments": {}}
 - User: "create a todo to buy groceries" -> {"toolName": "create_todo", "arguments": {"title": "buy groceries"}}
-- User: "add a task to call mom tomorrow" -> {"toolName": "create_todo", "arguments": {"title": "call mom", "dueDate": "2024-01-15"}}`;
+- User: "add a task to call mom tomorrow" -> {"toolName": "create_todo", "arguments": {"title": "call mom", "dueDate": "2024-01-15"}}
+- User: "mark buy groceries as completed" -> {"toolName": "edit_todo", "arguments": {"title": "buy groceries", "completed": true}}
+- User: "update buy groceries to buy bananas" -> {"toolName": "edit_todo", "arguments": {"title": "buy groceries", "newTitle": "buy bananas"}}
+- User: "delete buy groceries" -> {"toolName": "delete_todo", "arguments": {"title": "buy groceries"}}`;
 
   const messages: RedPillMessage[] = [
     { role: 'system', content: systemPrompt },

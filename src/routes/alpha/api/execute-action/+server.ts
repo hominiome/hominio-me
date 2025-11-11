@@ -55,6 +55,101 @@ const actionHandlers: Record<string, (params: any) => Promise<{ result: any; ui?
       view: viewId
     };
   },
+
+  async edit_todo(params: { id?: string; title?: string; newTitle?: string; completed?: boolean; dueDate?: string; view?: string }) {
+    // Get latest todo list for context
+    const currentTodos = [...todosStore];
+    
+    let todoToEdit: typeof todosStore[0] | undefined;
+    
+    // Try to find by ID first
+    if (params.id) {
+      todoToEdit = todosStore.find(t => t.id === params.id);
+    }
+    
+    // If not found by ID, try to find by title
+    if (!todoToEdit && params.title) {
+      todoToEdit = todosStore.find(t => 
+        t.title.toLowerCase().includes(params.title!.toLowerCase())
+      );
+    }
+    
+    if (!todoToEdit) {
+      // Provide context of available todos to help AI identify the right one
+      const todosContext = currentTodos.length > 0
+        ? `Available todos:\n${currentTodos.map((t, i) => `${i + 1}. ${t.title} (ID: ${t.id})`).join('\n')}`
+        : 'No todos available to edit.';
+      throw new Error(`Todo not found. ${todosContext}`);
+    }
+
+    // Update todo fields
+    if (params.newTitle !== undefined) {
+      todoToEdit.title = params.newTitle;
+    }
+    if (params.completed !== undefined) {
+      todoToEdit.completed = params.completed;
+    }
+    if (params.dueDate !== undefined) {
+      todoToEdit.dueDate = params.dueDate;
+    }
+
+    const output = { todo: todoToEdit, success: true, todos: todosStore };
+    
+    // Load view by view-id (defaults to 'todo-list' to show updated list)
+    const viewId = params.view || 'todo-list';
+    const ui = loadView(viewId, { todos: todosStore });
+    
+    return {
+      result: output,
+      ui,
+      view: viewId
+    };
+  },
+
+  async delete_todo(params: { id?: string; title?: string; view?: string }) {
+    // Get latest todo list for context
+    const currentTodos = [...todosStore];
+    
+    let todoToDelete: typeof todosStore[0] | undefined;
+    
+    // Try to find by ID first
+    if (params.id) {
+      todoToDelete = todosStore.find(t => t.id === params.id);
+    }
+    
+    // If not found by ID, try to find by title
+    if (!todoToDelete && params.title) {
+      todoToDelete = todosStore.find(t => 
+        t.title.toLowerCase().includes(params.title!.toLowerCase())
+      );
+    }
+    
+    if (!todoToDelete) {
+      // Provide context of available todos to help AI identify the right one
+      const todosContext = currentTodos.length > 0
+        ? `Available todos:\n${currentTodos.map((t, i) => `${i + 1}. ${t.title} (ID: ${t.id})`).join('\n')}`
+        : 'No todos available to delete.';
+      throw new Error(`Todo not found. ${todosContext}`);
+    }
+
+    // Remove from store
+    const index = todosStore.findIndex(t => t.id === todoToDelete!.id);
+    if (index !== -1) {
+      todosStore.splice(index, 1);
+    }
+
+    const output = { deleted: todoToDelete, success: true, todos: todosStore };
+    
+    // Load view by view-id (defaults to 'todo-list' to show updated list)
+    const viewId = params.view || 'todo-list';
+    const ui = loadView(viewId, { todos: todosStore });
+    
+    return {
+      result: output,
+      ui,
+      view: viewId
+    };
+  },
 };
 
 /**

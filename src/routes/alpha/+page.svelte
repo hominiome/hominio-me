@@ -53,10 +53,9 @@
     activities.find((a) => a.id === selectedActivityId) || null
   );
 
-  // Get latest 3 activities for top collapsed bars (excluding the selected one)
-  const latestCollapsedActivities = $derived(() => {
-    const filtered = activities.filter((a) => a.id !== selectedActivityId);
-    return filtered.slice(-3).reverse(); // Latest 3, newest first
+  // Get all activities for left sidebar (show all, newest first)
+  const sidebarActivities = $derived(() => {
+    return [...activities].reverse(); // All activities, newest first
   });
 
   // Handle selecting an activity
@@ -94,6 +93,14 @@
   function getActivityTitle(activity: (typeof activities)[0]): string {
     return `${activity.vibeId} • ${activity.toolName}`;
   }
+
+  function formatActionName(toolName: string): string {
+    // Convert snake_case to readable format
+    return toolName
+      .split('_')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+      .join(' ');
+  }
 </script>
 
 <div class="activity-stream-container">
@@ -121,44 +128,28 @@
     </div>
   {:else}
     <div class="activity-main-layout">
-      <!-- Left sidebar: History stepper with dots (full height) -->
-      <aside class="history-stepper">
-        <div class="stepper-dots">
-          {#each activities as activity, index (activity.id)}
+      <!-- Left sidebar: Compact activity list -->
+      <aside class="activity-sidebar">
+        <div class="sidebar-activities">
+          {#each sidebarActivities() as activity, index (activity.id)}
             <button
-              class="stepper-dot"
-              class:active={activity.id === selectedActivityId}
+              class="sidebar-activity-item"
+              class:selected={activity.id === selectedActivityId}
               onclick={() => selectActivity(activity.id)}
-              title={getActivityTitle(activity)}
               aria-label={`Activity ${index + 1}: ${getActivityTitle(activity)}`}
             >
-              <span class="dot-inner"></span>
+              <div class="sidebar-activity-dot"></div>
+              <div class="sidebar-activity-content">
+                <div class="sidebar-schema">{activity.vibeId}</div>
+                <div class="sidebar-action">{formatActionName(activity.toolName)}</div>
+              </div>
             </button>
           {/each}
         </div>
       </aside>
 
-      <!-- Main content area: Collapsed bars + Opened item (aligned vertically) -->
+      <!-- Main content area: Only the selected activity -->
       <main class="activity-main-content">
-        <!-- Top collapsed bars (latest 3, excluding selected) -->
-        {#if latestCollapsedActivities().length > 0}
-          <div class="collapsed-bars-container">
-            {#each latestCollapsedActivities() as activity (activity.id)}
-              <button
-                class="collapsed-bar"
-                onclick={() => selectActivity(activity.id)}
-              >
-                <span class="collapsed-bar-title">{getActivityTitle(activity)}</span
-                >
-                <span class="collapsed-bar-time"
-                  >{formatTimestamp(activity.timestamp)}</span
-                >
-              </button>
-            {/each}
-          </div>
-        {/if}
-
-        <!-- Currently selected activity -->
         {#if selectedActivity}
           <div class="activity-item expanded">
             <div class="activity-header">
@@ -170,8 +161,6 @@
             </div>
             <div class="activity-content">
               {#if selectedActivity.ui}
-                {@const uiDebug = selectedActivity.ui}
-                {console.log('[Activity Page] Rendering UI:', uiDebug)}
                 <MitosisRenderer
                   config={selectedActivity.ui}
                   onMCPToolCall={(tool, params) =>
@@ -183,7 +172,6 @@
                     null,
                     2
                   )}</pre>
-                {console.log('[Activity Page] No UI, showing result:', selectedActivity.result)}
               {/if}
             </div>
           </div>
@@ -246,44 +234,93 @@
     font-size: 1.125rem;
   }
 
-  /* Collapsed bars at top (now inside main content area) */
-  .collapsed-bars-container {
+  /* Left sidebar: Compact activity list */
+  .activity-sidebar {
+    flex-shrink: 0;
+    width: 240px;
+    position: sticky;
+    top: 2rem;
+    align-self: flex-start;
+    max-height: calc(100vh - 4rem);
+    overflow-y: auto;
+  }
+
+  .sidebar-activities {
     display: flex;
     flex-direction: column;
-    gap: 0.25rem;
-    margin-bottom: 1.5rem;
+    gap: 0.5rem;
+    position: relative;
   }
 
-  .collapsed-bar {
+  .sidebar-activity-item {
     display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 0.75rem 1.25rem;
+    align-items: flex-start;
+    gap: 0.75rem;
+    padding: 0.625rem 0.875rem;
     background: white;
-    border: 2px solid rgba(26, 26, 78, 0.08);
-    border-radius: 16px 16px 0 0;
+    border: 1px solid rgba(26, 26, 78, 0.08);
+    border-radius: 0.75rem;
     cursor: pointer;
-    transition: all 0.3s ease;
-    box-shadow: 0 2px 8px rgba(26, 26, 78, 0.08);
+    transition: all 0.2s ease;
+    text-align: left;
+    width: 100%;
+    position: relative;
   }
 
-  .collapsed-bar:hover {
-    background: white;
-    border-color: rgba(78, 205, 196, 0.3);
-    box-shadow: 0 4px 16px rgba(78, 205, 196, 0.15);
-    transform: translateY(-2px);
+  .sidebar-activity-item:hover {
+    background: rgba(78, 205, 196, 0.05);
+    border-color: rgba(78, 205, 196, 0.2);
+    transform: translateX(2px);
   }
 
-  .collapsed-bar-title {
-    font-size: 0.875rem;
+  .sidebar-activity-item.selected {
+    background: rgba(78, 205, 196, 0.1);
+    border-color: var(--color-secondary-500);
+    border-left-width: 3px;
+    padding-left: calc(0.875rem - 2px);
+  }
+
+  .sidebar-activity-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: rgba(26, 26, 78, 0.2);
+    margin-top: 0.375rem;
+    flex-shrink: 0;
+    transition: all 0.2s ease;
+  }
+
+  .sidebar-activity-item:hover .sidebar-activity-dot,
+  .sidebar-activity-item.selected .sidebar-activity-dot {
+    background: var(--color-secondary-500);
+    transform: scale(1.2);
+  }
+
+  .sidebar-activity-content {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.125rem;
+  }
+
+  .sidebar-schema {
+    font-size: 0.625rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--color-secondary-500);
+    background: rgba(45, 166, 180, 0.1);
+    padding: 0.125rem 0.375rem;
+    border-radius: 0.25rem;
+    width: fit-content;
+  }
+
+  .sidebar-action {
+    font-size: 0.75rem;
     font-weight: 600;
     color: var(--color-primary-600);
-    text-transform: capitalize;
-  }
-
-  .collapsed-bar-time {
-    font-size: 0.75rem;
-    color: #999;
+    line-height: 1.2;
   }
 
   /* Main layout: sidebar + content */
@@ -291,61 +328,6 @@
     display: flex;
     gap: 2rem;
     align-items: flex-start;
-  }
-
-  /* Left sidebar: History stepper (full height) */
-  .history-stepper {
-    flex-shrink: 0;
-    width: 60px;
-    position: sticky;
-    top: 2rem;
-    align-self: stretch;
-    display: flex;
-    align-items: flex-start;
-  }
-
-  .stepper-dots {
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-    align-items: center;
-    padding: 1rem 0;
-    height: 100%;
-    justify-content: flex-start;
-  }
-
-  .stepper-dot {
-    width: 12px;
-    height: 12px;
-    border-radius: 50%;
-    border: 2px solid #ddd;
-    background: white;
-    cursor: pointer;
-    padding: 0;
-    transition: all 0.2s;
-    position: relative;
-  }
-
-  .stepper-dot:hover {
-    border-color: var(--color-primary-400);
-    transform: scale(1.2);
-  }
-
-  .stepper-dot.active {
-    border-color: var(--color-primary-500);
-    background: var(--color-primary-500);
-  }
-
-  .stepper-dot.active .dot-inner {
-    display: block;
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-    background: white;
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
   }
 
   /* Main content area */
@@ -445,16 +427,10 @@
       gap: 1rem;
     }
 
-    .history-stepper {
+    .activity-sidebar {
       width: 100%;
       position: static;
-    }
-
-    .stepper-dots {
-      flex-direction: row;
-      justify-content: center;
-      flex-wrap: wrap;
-      gap: 0.75rem;
+      max-height: none;
     }
 
     .activity-header {

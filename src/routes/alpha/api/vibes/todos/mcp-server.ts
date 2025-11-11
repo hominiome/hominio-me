@@ -52,6 +52,25 @@ export function createMcpServer(): McpServer {
             title: z.string().describe('The title of the todo'),
             dueDate: z.string().optional().describe('Optional due date (ISO format)')
           }
+        },
+        {
+          name: 'edit_todo',
+          description: 'Edit or update an existing todo. Can update title, completed status, or due date. Use id or title to identify the todo.',
+          inputSchema: {
+            id: z.string().optional().describe('The ID of the todo to edit'),
+            title: z.string().optional().describe('The current title of the todo to identify it (if ID not provided)'),
+            newTitle: z.string().optional().describe('New title for the todo'),
+            completed: z.boolean().optional().describe('Mark todo as completed (true) or not completed (false)'),
+            dueDate: z.string().optional().describe('New due date (ISO format)')
+          }
+        },
+        {
+          name: 'delete_todo',
+          description: 'Delete an existing todo. Use id or title to identify the todo to delete.',
+          inputSchema: {
+            id: z.string().optional().describe('The ID of the todo to delete'),
+            title: z.string().optional().describe('The title of the todo to delete (if ID not provided)')
+          }
         }
       ];
 
@@ -78,6 +97,51 @@ export function createMcpServer(): McpServer {
         todosStore.push(newTodo);
         const output = { todo: newTodo, success: true };
         ui = loadView('todo-created', { todo: newTodo });
+        result = { ...output, ui };
+      } else if (decision.toolName === 'edit_todo') {
+        const { id, title, newTitle, completed, dueDate } = decision.arguments;
+        const currentTodos = [...todosStore];
+        
+        let todoToEdit = id ? todosStore.find(t => t.id === id) : undefined;
+        if (!todoToEdit && title) {
+          todoToEdit = todosStore.find(t => t.title.toLowerCase().includes(title.toLowerCase()));
+        }
+        
+        if (!todoToEdit) {
+          const todosContext = currentTodos.length > 0
+            ? `Available todos:\n${currentTodos.map((t, i) => `${i + 1}. ${t.title} (ID: ${t.id})`).join('\n')}`
+            : 'No todos available to edit.';
+          throw new Error(`Todo not found. ${todosContext}`);
+        }
+
+        if (newTitle !== undefined) todoToEdit.title = newTitle;
+        if (completed !== undefined) todoToEdit.completed = completed;
+        if (dueDate !== undefined) todoToEdit.dueDate = dueDate;
+
+        const output = { todo: todoToEdit, success: true, todos: todosStore };
+        ui = loadView('todo-list', { todos: todosStore });
+        result = { ...output, ui };
+      } else if (decision.toolName === 'delete_todo') {
+        const { id, title } = decision.arguments;
+        const currentTodos = [...todosStore];
+        
+        let todoToDelete = id ? todosStore.find(t => t.id === id) : undefined;
+        if (!todoToDelete && title) {
+          todoToDelete = todosStore.find(t => t.title.toLowerCase().includes(title.toLowerCase()));
+        }
+        
+        if (!todoToDelete) {
+          const todosContext = currentTodos.length > 0
+            ? `Available todos:\n${currentTodos.map((t, i) => `${i + 1}. ${t.title} (ID: ${t.id})`).join('\n')}`
+            : 'No todos available to delete.';
+          throw new Error(`Todo not found. ${todosContext}`);
+        }
+
+        const index = todosStore.findIndex(t => t.id === todoToDelete!.id);
+        if (index !== -1) todosStore.splice(index, 1);
+
+        const output = { deleted: todoToDelete, success: true, todos: todosStore };
+        ui = loadView('todo-list', { todos: todosStore });
         result = { ...output, ui };
       } else {
         throw new Error(`Unknown tool: ${decision.toolName}`);

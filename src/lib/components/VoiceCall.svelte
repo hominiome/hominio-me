@@ -83,13 +83,26 @@
           if (result.result) {
             if (typeof result.result === "object") {
               if (Array.isArray(result.result.todos)) {
-                const count = result.result.todos.length;
-                responseText =
-                  count === 0
-                    ? "You have no todos."
-                    : `You have ${count} todo${count === 1 ? "" : "s"}.`;
+                // Include full todo list data for AI context
+                if (result.result.todos.length === 0) {
+                  responseText = "You have no todos.";
+                } else {
+                  const todosList = result.result.todos
+                    .map((todo: any, index: number) => 
+                      `${index + 1}. ${todo.title}${todo.completed ? ' (completed)' : ''}`
+                    )
+                    .join('\n');
+                  responseText = `You have ${result.result.todos.length} todo${result.result.todos.length === 1 ? "" : "s"}:\n${todosList}`;
+                }
               } else if (result.result.todo) {
-                responseText = `Created todo: ${result.result.todo.title}`;
+                // Check if it's an edit or create by checking if action is edit_todo
+                if (action === 'edit_todo') {
+                  responseText = `Updated todo: ${result.result.todo.title}${result.result.todo.completed ? ' (marked as completed)' : ''}`;
+                } else {
+                  responseText = `Created todo: ${result.result.todo.title}`;
+                }
+              } else if (result.result.deleted) {
+                responseText = `Deleted todo: ${result.result.deleted.title || result.result.deleted.id}`;
               } else {
                 responseText = "Task completed successfully.";
               }
