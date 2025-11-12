@@ -1,8 +1,18 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
+import { requireExplorerIdentity } from '$lib/api-helpers.server.js';
 
-export const GET: RequestHandler = async () => {
+/**
+ * GET /alpha/api/hume/access-token
+ * Fetches Hume EVI access token for voice calls
+ * 
+ * Protected: Requires explorer identity (or admin)
+ */
+export const GET: RequestHandler = async ({ request }) => {
   try {
+    // Require explorer identity (or admin) - throws 403 if not authorized
+    await requireExplorerIdentity(request);
+
     const HUME_API_KEY = process.env.HUME_API_KEY;
     const HUME_SECRET_KEY = process.env.HUME_SECRET_KEY;
 

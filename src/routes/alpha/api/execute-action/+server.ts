@@ -1,6 +1,7 @@
 import { json, error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { loadView } from '$lib/mitosis/view-loader';
+import { requireExplorerIdentity } from '$lib/api-helpers.server.js';
 import menuData from '$lib/data/menu.json';
 import spaBeautyData from '$lib/data/spa-beauty.json';
 import taxiData from '$lib/data/taxi.json';
@@ -671,9 +672,14 @@ function getDeliveryDate(availableUntil: string): string {
  * Hume's LLM automatically extracts action and params from user's natural language request.
  * The tool schema guides Hume's LLM to intelligently parse the request.
  * This endpoint is fully generic and can handle any action type.
+ * 
+ * Protected: Requires explorer identity (or admin)
  */
 export const POST: RequestHandler = async ({ request }) => {
   try {
+    // Require explorer identity (or admin) - throws 403 if not authorized
+    await requireExplorerIdentity(request);
+
     const body = await request.json();
     const { action, params = {} } = body;
 
