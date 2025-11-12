@@ -1,0 +1,29 @@
+{
+  "services": [
+    {
+      "id": "taxi-standard",
+      "name": "Standard Taxi",
+      "description": "Standard Taxi für bis zu 4 Personen",
+      "basePrice": 15.00,
+      "pricePerKm": 1.50,
+      "unit": "pro Fahrt"
+    },
+    {
+      "id": "taxi-premium",
+      "name": "Premium Taxi",
+      "description": "Premium Taxi mit Komfort für bis zu 4 Personen",
+      "basePrice": 25.00,
+      "pricePerKm": 2.00,
+      "unit": "pro Fahrt"
+    },
+    {
+      "id": "taxi-van",
+      "name": "Van Taxi",
+      "description": "Großes Taxi für bis zu 8 Personen",
+      "basePrice": 30.00,
+      "pricePerKm": 2.50,
+      "unit": "pro Fahrt"
+    }
+  ]
+}
+

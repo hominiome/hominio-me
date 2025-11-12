@@ -1,0 +1,133 @@
+{
+  "@type": "@builder.io/mitosis/component",
+  "name": "OrderConfirmation",
+  "state": {
+    "order": {
+      "items": [],
+      "total": 0
+    }
+  },
+  "nodes": [
+    {
+      "name": "div",
+      "attributes": {
+        "class": "order-confirmation-container"
+      },
+      "children": [
+        {
+          "name": "div",
+          "attributes": {
+            "class": "order-confirmation-header"
+          },
+          "children": [
+            {
+              "name": "Text",
+              "attributes": {
+                "class": "order-confirmation-title"
+              },
+              "bindings": {
+                "text": "'Bestellung'"
+              }
+            }
+          ]
+        },
+        {
+          "name": "div",
+          "attributes": {
+            "class": "order-items-list"
+          },
+          "children": [
+            {
+              "name": "List",
+              "bindings": {
+                "items": "{{state.order.items}}"
+              },
+              "children": [
+                {
+                  "name": "div",
+                  "attributes": {
+                    "class": "order-item"
+                  },
+                  "children": [
+                    {
+                      "name": "div",
+                      "attributes": {
+                        "class": "order-item-name"
+                      },
+                      "children": [
+                        {
+                          "name": "Text",
+                          "bindings": {
+                            "text": "{{item.displayText}}"
+                          }
+                        },
+                        {
+                          "name": "Show",
+                          "bindings": {
+                            "when": "{{item.timeSlot}}"
+                          },
+                          "children": [
+                            {
+                              "name": "Text",
+                              "attributes": {
+                                "class": "order-item-time-slot"
+                              },
+                              "bindings": {
+                                "text": "{{' um ' + item.timeSlot + ' Uhr'}}"
+                              }
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "name": "div",
+                      "attributes": {
+                        "class": "order-item-price"
+                      },
+                      "children": [
+                        {
+                          "name": "Text",
+                          "bindings": {
+                            "text": "{{item.totalPriceFormatted}}"
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "div",
+          "attributes": {
+            "class": "order-total"
+          },
+          "children": [
+            {
+              "name": "Text",
+              "attributes": {
+                "class": "order-total-label"
+              },
+              "bindings": {
+                "text": "'Gesamt:'"
+              }
+            },
+            {
+              "name": "Text",
+              "attributes": {
+                "class": "order-total-amount"
+              },
+              "bindings": {
+                "text": "{{state.order.totalFormatted}}"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
+

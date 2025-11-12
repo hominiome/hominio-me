@@ -1,14 +1,14 @@
 {
   "@type": "@builder.io/mitosis/component",
-  "name": "TodoList",
+  "name": "TaxiList",
   "state": {
-    "todos": []
+    "services": []
   },
   "nodes": [
     {
       "name": "div",
       "attributes": {
-        "class": "todo-list-container"
+        "class": "taxi-list-container"
       },
       "children": [
         {
@@ -20,7 +20,7 @@
             {
               "name": "text",
               "bindings": {
-                "text": "'Your Todos'"
+                "text": "'Taxi Services'"
               }
             }
           ]
@@ -28,13 +28,13 @@
         {
           "name": "div",
           "attributes": {
-            "class": "todo-items-grid"
+            "class": "taxi-services-list"
           },
           "children": [
             {
               "name": "List",
               "bindings": {
-                "items": "{{state.todos}}"
+                "items": "{{state.services}}"
               },
               "children": [
                 {
@@ -43,43 +43,60 @@
                     "key": "{{item.id}}"
                   },
                   "attributes": {
-                    "class": "todo-item-card"
+                    "class": "taxi-service-card"
                   },
                   "children": [
                     {
                       "name": "div",
                       "attributes": {
-                        "class": "todo-item-header"
+                        "class": "taxi-service-header"
                       },
                       "children": [
                         {
                           "name": "div",
                           "attributes": {
-                            "class": "todo-item-title-section"
+                            "class": "taxi-service-title-section"
                           },
                           "children": [
                             {
                               "name": "Text",
                               "attributes": {
-                                "class": "todo-item-name"
+                                "class": "taxi-service-name"
                               },
                               "bindings": {
-                                "text": "{{item.title}}"
+                                "text": "{{item.name}}"
+                              }
+                            },
+                            {
+                              "name": "Text",
+                              "attributes": {
+                                "class": "taxi-service-description"
+                              },
+                              "bindings": {
+                                "text": "{{item.description}}"
                               }
                             }
                           ]
                         },
                         {
-                          "name": "span",
+                          "name": "div",
                           "attributes": {
-                            "class": "todo-status-badge"
+                            "class": "taxi-service-pricing"
                           },
                           "children": [
                             {
-                              "name": "Text",
-                              "bindings": {
-                                "text": "{{item.completed ? 'Completed' : 'Pending'}}"
-                              }
+                              "name": "div",
+                              "attributes": {
+                                "class": "taxi-service-price"
+                              },
+                              "children": [
+                                {
+                                  "name": "Text",
+                                  "bindings": {
+                                    "text": "{{item.basePriceFormatted + ' + ' + item.pricePerKmFormatted + '/km'}}"
+                                  }
+                                }
+                              ]
                             }
                           ]
                         }

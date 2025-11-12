@@ -1,11 +1,21 @@
 import type { MitosisConfig } from './types';
-import todoListView from './views/todo-list.json';
-import todoCreatedView from './views/todo-created.json';
+import menuListView from './views/menu-list.json';
+import orderConfirmationView from './views/order-confirmation.json';
+import cartView from './views/cart.json';
+import spaBeautyListView from './views/spa-beauty-list.json';
+import timeSlotSelectionView from './views/time-slot-selection.json';
+import taxiListView from './views/taxi-list.json';
+import roomServiceListView from './views/room-service-list.json';
 
 // View registry - maps view-id to view config
 const viewRegistry: Record<string, MitosisConfig> = {
-  'todo-list': todoListView as MitosisConfig,
-  'todo-created': todoCreatedView as MitosisConfig,
+  'menu-list': menuListView as MitosisConfig,
+  'order-confirmation': orderConfirmationView as MitosisConfig,
+  'cart': cartView as MitosisConfig,
+  'spa-beauty-list': spaBeautyListView as MitosisConfig,
+  'time-slot-selection': timeSlotSelectionView as MitosisConfig,
+  'taxi-list': taxiListView as MitosisConfig,
+  'room-service-list': roomServiceListView as MitosisConfig,
 };
 
 /**

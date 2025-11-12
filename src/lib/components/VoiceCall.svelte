@@ -11,8 +11,9 @@
   import { browser } from "$app/environment";
   import { env } from "$env/dynamic/public";
   import { executeAction } from "$lib/voice/core-tools";
-  import { addActivity, updateListTodosActivity } from "$lib/stores/activity-stream";
+  import { addActivity } from "$lib/stores/activity-stream";
   import { updateVoiceCallState, resetVoiceCallState } from "$lib/stores/voice-call";
+  import MitosisRenderer from "$lib/mitosis/renderer.svelte";
 
   // Hume configuration from environment variable
   const HUME_CONFIG_ID = env.PUBLIC_HUME_CONFIG_ID || "";
@@ -23,6 +24,9 @@
   let isExpanded = $state(false);
   let lastResponse = $state("");
   let actionMessage = $state<string | null>(null); // For action tool calls (create/edit/delete)
+  let orderConfirmationUI = $state<any>(null); // For confirm_order UI display in mini-modal
+  let cartUI = $state<any>(null); // For cart UI display in mini-modal (add_to_cart, get_cart)
+  let timeSlotSelectionUI = $state<any>(null); // For time slot selection UI display in mini-modal
   let actionMessageTimeout: ReturnType<typeof setTimeout> | null = null; // Track timeout to cancel if new action comes
   
   // Sync state to store for reactive access from parent
@@ -32,24 +36,21 @@
 
   // Helper to determine if action is a view tool (shows UI) or action tool (shows compact message)
   function isViewTool(action: string): boolean {
-    return action === 'list_todos';
+    return action === 'list_menu' || action === 'list_spa_beauty' || action === 'list_taxi' || action === 'list_room_service';
+  }
+
+  function isCartTool(action: string): boolean {
+    return action === 'add_to_cart' || action === 'get_cart';
+  }
+
+  function isTimeSlotTool(action: string): boolean {
+    return action === 'select_time_slot';
   }
 
   // Helper to format action message for mini-modal display
   function formatActionMessage(action: string, result: any): string {
-    if (action === 'create_todo' && result.todo) {
-      return `Created todo: ${result.todo.title}`;
-    } else if (action === 'edit_todo' && result.todo) {
-      if (result.todo.completed) {
-        return `Completed todo: ${result.todo.title}`;
-      } else if (result.todo.title) {
-        return `Updated todo: ${result.todo.title}`;
-      }
-      return `Updated todo`;
-    } else if (action === 'delete_todo' && result.deleted) {
-      return `Deleted todo: ${result.deleted.title || result.deleted.id}`;
-    }
-    return 'Action completed';
+    // No action messages needed for current actions (cart/order show UI)
+    return null;
   }
 
   
@@ -107,27 +108,60 @@
           let responseText = "";
           if (result.result) {
             if (typeof result.result === "object") {
-              if (Array.isArray(result.result.todos)) {
-                // Include full todo list data for AI context
-                if (result.result.todos.length === 0) {
-                  responseText = "You have no todos.";
+              if (result.result.menuItems && Array.isArray(result.result.menuItems)) {
+                // Include menu context for AI - format as name -> id -> price mapping
+                // Prices ARE included in context for UI display and AI knowledge, but NOT automatically mentioned in spoken response
+                // Only mention prices in spoken response if user explicitly asks
+                const menuContext = result.result.menuItems
+                  .map((item: any) => `${item.name} -> ID: ${item.id}, Preis: ${item.priceFormatted || `€${item.price.toFixed(2)}`}${item.unitFormatted || ''}`)
+                  .join('; ');
+                const category = result.result.category ? ` in category ${result.result.category}` : '';
+                responseText = `Menu${category}: ${menuContext}. Remember these name-to-ID-to-price mappings for future orders and price questions. Do NOT mention prices automatically in your spoken responses, only if the user explicitly asks.`;
+              } else if (result.result.services && Array.isArray(result.result.services)) {
+                // Check if it's SPA/Beauty services (have availableSlots)
+                if (result.result.services.length > 0 && result.result.services[0].availableSlots) {
+                  // Include SPA/Beauty services context for AI - format as name -> id -> price -> available slots mapping
+                  const servicesContext = result.result.services
+                    .map((service: any) => {
+                      const availableSlots = service.availableSlots
+                        .filter((slot: any) => slot.available)
+                        .map((slot: any) => slot.time)
+                        .join(', ');
+                      return `${service.name} -> ID: ${service.id}, Preis: ${service.priceFormatted || `€${service.price.toFixed(2)}`}${service.unitFormatted || ''}, Dauer: ${service.duration} Min, Verfügbare Slots: ${availableSlots}`;
+                    })
+                    .join('; ');
+                  const category = result.result.category ? ` in category ${result.result.category}` : '';
+                  responseText = `SPA & Beauty Services${category}: ${servicesContext}. Remember these name-to-ID-to-price-to-slots mappings for future bookings. Do NOT mention prices automatically in your spoken responses, only if the user explicitly asks. For SPA/Beauty services, guide the user to select an available time slot.`;
+                } else if (result.result.services.length > 0 && result.result.services[0].basePrice) {
+                  // Taxi services (have basePrice and pricePerKm)
+                  const servicesContext = result.result.services
+                    .map((service: any) => `${service.name} -> ID: ${service.id}, Grundpreis: ${service.basePriceFormatted}, Preis pro km: ${service.pricePerKmFormatted}`)
+                    .join('; ');
+                  responseText = `Taxi Services: ${servicesContext}. Remember these name-to-ID-to-price mappings for future bookings. Do NOT mention prices automatically in your spoken responses, only if the user explicitly asks. For Taxi bookings, ask for pickup time (specific time, not slot), pickup address, and destination address.`;
                 } else {
-                  const todosList = result.result.todos
-                    .map((todo: any, index: number) => 
-                      `${index + 1}. ${todo.title}${todo.completed ? ' (completed)' : ''}`
-                    )
-                    .join('\n');
-                  responseText = `You have ${result.result.todos.length} todo${result.result.todos.length === 1 ? "" : "s"}:\n${todosList}`;
+                  // Room Service (have price and availableUntil)
+                  const servicesContext = result.result.services
+                    .map((service: any) => `${service.name} -> ID: ${service.id}, Preis: ${service.priceFormatted || `€${service.price.toFixed(2)}`}${service.unitFormatted || ''}, Verfügbar bis: ${service.availableUntil}`)
+                    .join('; ');
+                  const category = result.result.category ? ` in category ${result.result.category}` : '';
+                  responseText = `Room Service${category}: ${servicesContext}. Remember these name-to-ID-to-price mappings for future orders. Do NOT mention prices automatically in your spoken responses, only if the user explicitly asks. For Room Service, check if it's still before 11:00 AM for same-day delivery, otherwise schedule for tomorrow. Ask for delivery time if not specified.`;
                 }
-              } else if (result.result.todo) {
-                // Check if it's an edit or create by checking if action is edit_todo
-                if (action === 'edit_todo') {
-                  responseText = `Updated todo: ${result.result.todo.title}${result.result.todo.completed ? ' (marked as completed)' : ''}`;
-                } else {
-                responseText = `Created todo: ${result.result.todo.title}`;
-                }
-              } else if (result.result.deleted) {
-                responseText = `Deleted todo: ${result.result.deleted.title || result.result.deleted.id}`;
+              } else if (result.result.needsTimeSlot && result.result.service) {
+                // Service needs time slot selection
+                const availableSlots = result.result.service.availableSlots
+                  .filter((slot: any) => slot.available)
+                  .map((slot: any) => slot.time)
+                  .join(', ');
+                responseText = `Please select a time slot for ${result.result.service.name}. Available slots: ${availableSlots}.`;
+              } else if (result.result.serviceId && result.result.timeSlot) {
+                // Time slot selected - show updated cart
+                responseText = `Time slot ${result.result.timeSlot} selected for ${result.result.serviceName}.`;
+              } else if (result.result.order) {
+                // Order confirmation - don't mention price unless user asks
+                const orderItems = result.result.order.items
+                  .map((item: any) => `${item.quantity}x ${item.name}${item.timeSlot ? ` um ${item.timeSlot} Uhr` : ''}`)
+                  .join(', ');
+                responseText = `Order placed: ${orderItems}.`;
               } else {
                 responseText = "Task completed successfully.";
               }
@@ -153,34 +187,100 @@
             
             // Add to activity stream (only for view tools)
             console.log("[VoiceCall] Adding view tool to activity stream:", result.ui ? 'present' : 'missing', result);
+            // Determine vibeId based on action
+            let vibeId = 'menu';
+            if (action === 'list_spa_beauty') vibeId = 'spa-beauty';
+            else if (action === 'list_taxi') vibeId = 'taxi';
+            else if (action === 'list_room_service') vibeId = 'room-service';
             addActivity({
-              vibeId: "todos", // Default vibe for now
+              vibeId: vibeId,
               toolName: action,
               result: result.result,
               ui: result.ui,
             });
-          } else {
-            // Action tools: Show compact message in mini-modal, DON'T add to activity stream
-            // Cancel any existing timeout (toast behavior: replace immediately)
+          } else if (isCartTool(action)) {
+            // Cart tools: Show cart UI or time slot selection UI in mini-modal
+            // Cancel any existing timeout
             if (actionMessageTimeout) {
               clearTimeout(actionMessageTimeout);
               actionMessageTimeout = null;
             }
             
-            // Set new action message (replaces previous one immediately)
-            actionMessage = formatActionMessage(action, result.result);
-            console.log("[VoiceCall] Action tool - showing compact message:", actionMessage);
-            
-            // Auto-clear action message after 3 seconds (or until new action replaces it)
-            actionMessageTimeout = setTimeout(() => {
+            // Check if time slot selection is needed
+            if (result.result.needsTimeSlot && result.ui) {
+              // Show time slot selection UI in mini-modal
               actionMessage = null;
+              orderConfirmationUI = null;
+              cartUI = null;
+              timeSlotSelectionUI = result.ui;
+              console.log("[VoiceCall] Cart tool - showing time slot selection UI in mini-modal");
+            } else {
+              // Show cart UI in mini-modal
+              actionMessage = null;
+              orderConfirmationUI = null;
+              timeSlotSelectionUI = null;
+              cartUI = result.ui;
+              console.log("[VoiceCall] Cart tool - showing cart UI in mini-modal");
+            }
+          } else if (isTimeSlotTool(action)) {
+            // Time slot tool: Show updated cart UI in mini-modal after slot selection
+            // Cancel any existing timeout
+            if (actionMessageTimeout) {
+              clearTimeout(actionMessageTimeout);
               actionMessageTimeout = null;
-            }, 3000);
+            }
             
-            // Update existing list_todos activity if it exists (reactive update)
-            // Get todos from result - action tools return todos in result.result.todos
-            const todos = result.result?.todos || [];
-            updateListTodosActivity(todos);
+            // Show updated cart UI in mini-modal
+            actionMessage = null;
+            orderConfirmationUI = null;
+            timeSlotSelectionUI = null;
+            cartUI = result.ui; // Updated cart with time slot
+            console.log("[VoiceCall] Time slot tool - showing updated cart UI in mini-modal");
+          } else {
+            // Action tools: Show compact message in mini-modal, DON'T add to activity stream
+            // Special case: confirm_order shows UI in mini-modal instead of text message
+            if (action === 'confirm_order' && result.ui) {
+              // Cancel any existing timeout
+              if (actionMessageTimeout) {
+                clearTimeout(actionMessageTimeout);
+                actionMessageTimeout = null;
+              }
+              
+              // Show order confirmation UI in mini-modal
+              actionMessage = null; // Clear text message
+              cartUI = null; // Clear cart UI
+              orderConfirmationUI = result.ui; // Set UI for mini-modal
+              
+              // Auto-clear order UI after 5 seconds
+              actionMessageTimeout = setTimeout(() => {
+                orderConfirmationUI = null;
+                actionMessageTimeout = null;
+              }, 5000);
+            } else {
+              // Cancel any existing timeout (toast behavior: replace immediately)
+              if (actionMessageTimeout) {
+                clearTimeout(actionMessageTimeout);
+                actionMessageTimeout = null;
+              }
+              
+              // Set new action message (replaces previous one immediately)
+              const message = formatActionMessage(action, result.result);
+              if (message) {
+                actionMessage = message;
+                orderConfirmationUI = null; // Clear any order UI
+                cartUI = null; // Clear cart UI
+                timeSlotSelectionUI = null; // Clear time slot selection UI
+                console.log("[VoiceCall] Action tool - showing compact message:", actionMessage);
+                
+                // Auto-clear action message after 3 seconds (or until new action replaces it)
+                actionMessageTimeout = setTimeout(() => {
+                  actionMessage = null;
+                  actionMessageTimeout = null;
+                }, 3000);
+              }
+            }
+            
+            // No todo-related updates needed - todos functionality removed
           }
 
           console.log("✅ Action executed successfully:", action);
@@ -530,33 +630,47 @@
   });
 </script>
 
-<!-- Action Mini-Modal - Only shown when expanded, positioned above navbar -->
-  {#if isExpanded}
+<!-- Action Mini-Modal - Only shown when expanded, positioned directly above navbar -->
+{#if isExpanded}
   <div class="voice-transcript-modal">
-      <div class="transcript-area">
-        {#if actionMessage}
-          <p class="action-message">{actionMessage}</p>
-        {:else if lastResponse}
-          <p class="assistant-response">{lastResponse}</p>
-        {:else}
-          <p class="placeholder">Speak now...</p>
-        {/if}
-      </div>
+    <div class="transcript-area">
+      {#if orderConfirmationUI}
+        <div class="order-confirmation-wrapper">
+          <MitosisRenderer config={orderConfirmationUI} />
+        </div>
+      {:else if timeSlotSelectionUI}
+        <div class="time-slot-selection-wrapper">
+          <MitosisRenderer config={timeSlotSelectionUI} />
+        </div>
+      {:else if cartUI}
+        <div class="cart-wrapper">
+          <MitosisRenderer config={cartUI} />
+        </div>
+      {:else if actionMessage}
+        <p class="action-message">{actionMessage}</p>
+      {:else if lastResponse}
+        <p class="assistant-response">{lastResponse}</p>
+      {:else}
+        <p class="placeholder">Speak now...</p>
+      {/if}
     </div>
-  {/if}
+  </div>
+{/if}
 
 <style>
-  /* Transcript Mini-Modal - positioned above navbar */
+  /* Transcript Mini-Modal - DIONYS content-area style positioned directly above navbar */
   .voice-transcript-modal {
     position: fixed;
-    bottom: calc(56px + 0.375rem + 0.5rem); /* Navbar height + margin + gap */
+    /* Position directly above navbar: navbar height (56px) + margin-bottom (0.375rem) + gap (0.5rem) */
+    bottom: calc(56px + 0.375rem + 0.5rem);
     left: 50%;
     transform: translateX(-50%);
-    z-index: 10001; /* Above navbar */
-    background: var(--color-primary-500);
-    color: white;
+    z-index: 10001; /* Above navbar (z-index: 10000) */
+    /* DIONYS content-area style - exact match */
+    background: white;
+    border: 1px solid #e2e8f0;
     border-radius: 16px;
-    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
     max-width: 500px;
     width: calc(100vw - 2rem);
     animation: slideUp 0.3s ease-out;
@@ -577,36 +691,56 @@
   .transcript-area {
     padding: 1rem 1.5rem;
     overflow-y: auto;
-    max-height: 200px;
+    /* Auto-grow based on content, max-height for very long content */
+    max-height: 400px;
+    min-height: auto;
   }
 
   .transcript-area p {
     margin: 0;
-    line-height: 1.5;
     font-size: 1rem;
-    color: white;
+    font-weight: 400;
+    line-height: 1.5;
+    color: #6b7280; /* DIONYS body text color */
+  }
+
+  @media (min-width: 640px) {
+    .transcript-area p {
+      font-size: 1.0625rem;
+    }
   }
 
   .transcript-area p.placeholder {
-    color: rgba(255, 255, 255, 0.5);
+    color: #9ca3af; /* DIONYS gray text */
     font-style: italic;
     text-align: center;
   }
 
   .transcript-area p.action-message {
     font-weight: 600;
-    font-size: 0.875rem;
-    color: var(--color-success-50);
-    background: rgba(255, 255, 255, 0.15);
+    font-size: 0.75rem;
+    color: var(--color-accent-900); /* Dark yellow for text */
+    /* DIONYS badge style with yellow accent */
+    background: var(--color-accent-500); /* Yellow accent background */
     text-align: center;
     padding: 0.5rem 1rem;
-    border-radius: 8px;
-    letter-spacing: 0.02em;
-    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 10px;
+    letter-spacing: 0.05em;
+    line-height: 1.4;
+    border: 1px solid var(--color-accent-500);
+    box-shadow: 0 1px 2px rgba(244, 208, 63, 0.2);
+    text-transform: uppercase;
   }
 
   .transcript-area p.assistant-response {
-    color: rgba(255, 255, 255, 0.9);
+    color: #1f2937; /* DIONYS dark text */
+  }
+
+  .order-confirmation-wrapper,
+  .cart-wrapper,
+  .time-slot-selection-wrapper {
+    width: 100%;
+    padding: 0.5rem 0;
   }
 
   @media (max-width: 640px) {

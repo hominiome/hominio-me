@@ -1332,19 +1332,31 @@ import { env as publicEnv } from "$env/dynamic/public";
 {#if shouldShowNavbar}
 <div
   class="fixed bottom-0 left-0 right-0 z-[9999] pointer-events-none"
-  style="height: 80px; background: linear-gradient(to bottom, transparent 0%, rgba(250, 249, 246, 0.75) 50%, rgba(250, 249, 246, 1) 100%); backdrop-filter: blur(28px) saturate(200%); -webkit-backdrop-filter: blur(28px) saturate(200%); mask-image: linear-gradient(to bottom, transparent 0%, rgba(0,0,0,0.75) 50%, black 100%); -webkit-mask-image: linear-gradient(to bottom, transparent 0%, rgba(0,0,0,0.75) 50%, black 100%); border-top: 1px solid rgba(255, 255, 255, 0.2); box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.12), inset 0 -1px 0 rgba(255, 255, 255, 0.2);"
+  style="height: 80px; background: linear-gradient(to bottom, transparent 0%, rgba(8, 27, 71, 0.6) 50%, rgba(8, 27, 71, 0.85) 100%); backdrop-filter: blur(28px) saturate(200%); -webkit-backdrop-filter: blur(28px) saturate(200%); mask-image: linear-gradient(to bottom, transparent 0%, rgba(0,0,0,0.75) 50%, black 100%); -webkit-mask-image: linear-gradient(to bottom, transparent 0%, rgba(0,0,0,0.75) 50%, black 100%); border-top: 1px solid rgba(255, 255, 255, 0.2); box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.2), inset 0 -1px 0 rgba(255, 255, 255, 0.15);"
 ></div>
 {/if}
 
 <div class="content-wrapper relative min-h-screen">
-  <div class="mx-auto w-full max-w-7xl px-2 sm:px-4 lg:px-6">
+  <!-- Conditional wrapper: full-width for activity page, constrained for others -->
+  {#if $page.url.pathname === '/alpha'}
+    <!-- Full-width for activity stream to show background image -->
     {@render children()}
     
     <!-- Spacer to ensure content can scroll properly behind navbar - only if navbar should be visible -->
     {#if shouldShowNavbar}
     <div class="h-20"></div>
     {/if}
-  </div>
+  {:else}
+    <!-- Constrained width for other pages -->
+    <div class="mx-auto w-full max-w-7xl px-2 sm:px-4 lg:px-6">
+      {@render children()}
+      
+      <!-- Spacer to ensure content can scroll properly behind navbar - only if navbar should be visible -->
+      {#if shouldShowNavbar}
+      <div class="h-20"></div>
+      {/if}
+    </div>
+  {/if}
 </div>
 
 <ToastContainer />

@@ -1,0 +1,144 @@
+{
+  "@type": "@builder.io/mitosis/component",
+  "name": "SpaBeautyList",
+  "state": {
+    "services": [],
+    "category": null
+  },
+  "nodes": [
+    {
+      "name": "div",
+      "attributes": {
+        "class": "spa-beauty-list-container"
+      },
+      "children": [
+        {
+          "name": "Heading",
+          "attributes": {
+            "level": 2
+          },
+          "children": [
+            {
+              "name": "text",
+              "bindings": {
+                "text": "{{state.category ? state.category + ' Services' : 'SPA & Beauty Services'}}"
+              }
+            }
+          ]
+        },
+        {
+          "name": "div",
+          "attributes": {
+            "class": "spa-beauty-services-grid"
+          },
+          "children": [
+            {
+              "name": "List",
+              "bindings": {
+                "items": "{{state.services}}"
+              },
+              "children": [
+                {
+                  "name": "Card",
+                  "bindings": {
+                    "key": "{{item.id}}"
+                  },
+                  "attributes": {
+                    "class": "spa-beauty-service-card"
+                  },
+                  "children": [
+                    {
+                      "name": "div",
+                      "attributes": {
+                        "class": "spa-beauty-service-header"
+                      },
+                      "children": [
+                        {
+                          "name": "div",
+                          "attributes": {
+                            "class": "spa-beauty-service-title-section"
+                          },
+                          "children": [
+                            {
+                              "name": "Text",
+                              "attributes": {
+                                "class": "spa-beauty-service-name"
+                              },
+                              "bindings": {
+                                "text": "{{item.name}}"
+                              }
+                            },
+                            {
+                              "name": "Text",
+                              "attributes": {
+                                "class": "spa-beauty-service-description"
+                              },
+                              "bindings": {
+                                "text": "{{item.description}}"
+                              }
+                            }
+                          ]
+                        },
+                        {
+                          "name": "div",
+                          "attributes": {
+                            "class": "spa-beauty-service-pricing"
+                          },
+                          "children": [
+                            {
+                              "name": "div",
+                              "attributes": {
+                                "class": "spa-beauty-service-price"
+                              },
+                              "children": [
+                                {
+                                  "name": "Text",
+                                  "bindings": {
+                                    "text": "{{item.priceFormatted}}"
+                                  }
+                                },
+                                {
+                                  "name": "span",
+                                  "attributes": {
+                                    "class": "spa-beauty-service-unit"
+                                  },
+                                  "children": [
+                                    {
+                                      "name": "Text",
+                                      "bindings": {
+                                        "text": "{{item.unitFormatted}}"
+                                      }
+                                    }
+                                  ]
+                                }
+                              ]
+                            },
+                            {
+                              "name": "div",
+                              "attributes": {
+                                "class": "spa-beauty-service-duration"
+                              },
+                              "children": [
+                                {
+                                  "name": "Text",
+                                  "bindings": {
+                                    "text": "{{item.duration + ' Min'}}"
+                                  }
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
+

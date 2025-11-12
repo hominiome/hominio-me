@@ -1,0 +1,167 @@
+{
+  "categories": {
+    "getraenke": [
+      {
+        "id": "drink-1",
+        "name": "Mineralwasser",
+        "description": "Still oder Sprudel",
+        "price": 3.50,
+        "unit": "pro Flasche"
+      },
+      {
+        "id": "drink-2",
+        "name": "Cola",
+        "description": "Coca-Cola oder Pepsi",
+        "price": 4.00,
+        "unit": "pro Flasche"
+      },
+      {
+        "id": "drink-3",
+        "name": "Orangensaft",
+        "description": "Frisch gepresst",
+        "price": 5.50,
+        "unit": "pro Glas"
+      },
+      {
+        "id": "drink-4",
+        "name": "Kaffee",
+        "description": "Espresso, Cappuccino oder Filterkaffee",
+        "price": 4.50,
+        "unit": "pro Tasse"
+      },
+      {
+        "id": "drink-5",
+        "name": "Tee",
+        "description": "Grüner, schwarzer oder Kräutertee",
+        "price": 4.00,
+        "unit": "pro Tasse"
+      },
+      {
+        "id": "drink-6",
+        "name": "Bier",
+        "description": "Helles oder Dunkles",
+        "price": 5.00,
+        "unit": "pro Flasche"
+      },
+      {
+        "id": "drink-7",
+        "name": "Wein",
+        "description": "Rot- oder Weißwein",
+        "price": 8.00,
+        "unit": "pro Glas"
+      }
+    ],
+    "vorspeisen": [
+      {
+        "id": "starter-1",
+        "name": "Gemischter Salat",
+        "description": "Frischer Salat mit verschiedenen Gemüsesorten",
+        "price": 8.50,
+        "unit": "pro Portion"
+      },
+      {
+        "id": "starter-2",
+        "name": "Tomaten-Mozzarella",
+        "description": "Frische Tomaten mit Mozzarella und Basilikum",
+        "price": 9.50,
+        "unit": "pro Portion"
+      },
+      {
+        "id": "starter-3",
+        "name": "Suppe des Tages",
+        "description": "Täglich wechselnde Suppe",
+        "price": 7.50,
+        "unit": "pro Portion"
+      },
+      {
+        "id": "starter-4",
+        "name": "Bruschetta",
+        "description": "Geröstetes Brot mit Tomaten und Knoblauch",
+        "price": 8.00,
+        "unit": "pro Portion"
+      }
+    ],
+    "hauptgerichte": [
+      {
+        "id": "main-1",
+        "name": "Wiener Schnitzel",
+        "description": "Mit Pommes und Salat",
+        "price": 18.50,
+        "unit": "pro Portion"
+      },
+      {
+        "id": "main-2",
+        "name": "Spaghetti Carbonara",
+        "description": "Mit Speck, Sahne und Parmesan",
+        "price": 14.50,
+        "unit": "pro Portion"
+      },
+      {
+        "id": "main-3",
+        "name": "Lachsfilet",
+        "description": "Mit Gemüse und Kartoffeln",
+        "price": 22.00,
+        "unit": "pro Portion"
+      },
+      {
+        "id": "main-4",
+        "name": "Rindersteak",
+        "description": "Mit Beilagen nach Wahl",
+        "price": 24.50,
+        "unit": "pro Portion"
+      },
+      {
+        "id": "main-5",
+        "name": "Vegetarisches Curry",
+        "description": "Mit Reis und Naan-Brot",
+        "price": 13.50,
+        "unit": "pro Portion"
+      },
+      {
+        "id": "main-6",
+        "name": "Burger",
+        "description": "Mit Pommes und Salat",
+        "price": 15.50,
+        "unit": "pro Portion"
+      }
+    ],
+    "nachspeisen": [
+      {
+        "id": "dessert-1",
+        "name": "Tiramisu",
+        "description": "Klassisches italienisches Dessert",
+        "price": 7.50,
+        "unit": "pro Portion"
+      },
+      {
+        "id": "dessert-2",
+        "name": "Schokoladenkuchen",
+        "description": "Mit Vanilleeis",
+        "price": 8.00,
+        "unit": "pro Portion"
+      },
+      {
+        "id": "dessert-3",
+        "name": "Eiscreme",
+        "description": "3 Kugeln, verschiedene Sorten",
+        "price": 6.50,
+        "unit": "pro Portion"
+      },
+      {
+        "id": "dessert-4",
+        "name": "Apfelstrudel",
+        "description": "Warm mit Vanillesauce",
+        "price": 7.00,
+        "unit": "pro Portion"
+      },
+      {
+        "id": "dessert-5",
+        "name": "Käsekuchen",
+        "description": "Hausgemacht",
+        "price": 7.50,
+        "unit": "pro Portion"
+      }
+    ]
+  }
+}
+

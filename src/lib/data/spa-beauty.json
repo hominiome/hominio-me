@@ -1,0 +1,122 @@
+{
+  "categories": {
+    "massage": [
+      {
+        "id": "massage-1",
+        "name": "Entspannungsmassage",
+        "description": "Ganzkörper-Entspannungsmassage mit Aromatherapie",
+        "duration": 60,
+        "price": 89.00,
+        "unit": "pro Behandlung",
+        "availableSlots": [
+          { "time": "09:00", "available": true },
+          { "time": "10:00", "available": true },
+          { "time": "11:00", "available": false },
+          { "time": "14:00", "available": true },
+          { "time": "15:00", "available": true },
+          { "time": "16:00", "available": true },
+          { "time": "17:00", "available": false }
+        ]
+      },
+      {
+        "id": "massage-2",
+        "name": "Sportmassage",
+        "description": "Intensive Massage für Sportler zur Regeneration",
+        "duration": 90,
+        "price": 120.00,
+        "unit": "pro Behandlung",
+        "availableSlots": [
+          { "time": "09:00", "available": true },
+          { "time": "11:00", "available": true },
+          { "time": "13:00", "available": false },
+          { "time": "15:00", "available": true },
+          { "time": "17:00", "available": true }
+        ]
+      },
+      {
+        "id": "massage-3",
+        "name": "Hot Stone Massage",
+        "description": "Massage mit warmen Steinen für tiefe Entspannung",
+        "duration": 75,
+        "price": 110.00,
+        "unit": "pro Behandlung",
+        "availableSlots": [
+          { "time": "10:00", "available": true },
+          { "time": "12:00", "available": true },
+          { "time": "14:00", "available": false },
+          { "time": "16:00", "available": true }
+        ]
+      }
+    ],
+    "facial": [
+      {
+        "id": "facial-1",
+        "name": "Klassische Gesichtsbehandlung",
+        "description": "Reinigende und pflegende Gesichtsbehandlung",
+        "duration": 60,
+        "price": 75.00,
+        "unit": "pro Behandlung",
+        "availableSlots": [
+          { "time": "09:00", "available": true },
+          { "time": "10:00", "available": true },
+          { "time": "11:00", "available": true },
+          { "time": "14:00", "available": false },
+          { "time": "15:00", "available": true },
+          { "time": "16:00", "available": true }
+        ]
+      },
+      {
+        "id": "facial-2",
+        "name": "Anti-Aging Behandlung",
+        "description": "Intensive Anti-Aging Gesichtsbehandlung mit Premium-Produkten",
+        "duration": 90,
+        "price": 140.00,
+        "unit": "pro Behandlung",
+        "availableSlots": [
+          { "time": "10:00", "available": true },
+          { "time": "12:00", "available": false },
+          { "time": "14:00", "available": true },
+          { "time": "16:00", "available": true }
+        ]
+      }
+    ],
+    "wellness": [
+      {
+        "id": "wellness-1",
+        "name": "Sauna Session",
+        "description": "Entspannung in unserer Premium-Sauna",
+        "duration": 60,
+        "price": 35.00,
+        "unit": "pro Person",
+        "availableSlots": [
+          { "time": "08:00", "available": true },
+          { "time": "09:00", "available": true },
+          { "time": "10:00", "available": true },
+          { "time": "11:00", "available": true },
+          { "time": "14:00", "available": true },
+          { "time": "15:00", "available": false },
+          { "time": "16:00", "available": true },
+          { "time": "17:00", "available": true }
+        ]
+      },
+      {
+        "id": "wellness-2",
+        "name": "Dampfbad",
+        "description": "Entspannung im Dampfbad",
+        "duration": 45,
+        "price": 25.00,
+        "unit": "pro Person",
+        "availableSlots": [
+          { "time": "09:00", "available": true },
+          { "time": "10:00", "available": true },
+          { "time": "11:00", "available": true },
+          { "time": "14:00", "available": true },
+          { "time": "15:00", "available": true },
+          { "time": "16:00", "available": false },
+          { "time": "17:00", "available": true }
+        ]
+      }
+    ]
+  }
+}
+
