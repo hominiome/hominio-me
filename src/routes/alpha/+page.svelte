@@ -129,8 +129,8 @@
               <div class="p-4 sm:p-5 bg-[var(--color-brand-cream-50)] border border-[rgba(8,27,71,0.1)] rounded-2xl transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] cursor-default shadow-[0_1px_3px_rgba(8,27,71,0.04)] hover:bg-white hover:border-[rgba(45,166,180,0.3)] hover:-translate-y-0.5 hover:shadow-[0_8px_24px_rgba(45,166,180,0.12),0_2px_8px_rgba(45,166,180,0.08)]">
                 <p class="text-[0.9375rem] sm:text-base text-gray-700 m-0 leading-relaxed">
                   Zeig mir die SPA Services
-                </p>
-              </div>
+        </p>
+      </div>
               <div class="p-4 sm:p-5 bg-[var(--color-brand-cream-50)] border border-[rgba(8,27,71,0.1)] rounded-2xl transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] cursor-default shadow-[0_1px_3px_rgba(8,27,71,0.04)] hover:bg-white hover:border-[rgba(45,166,180,0.3)] hover:-translate-y-0.5 hover:shadow-[0_8px_24px_rgba(45,166,180,0.12),0_2px_8px_rgba(45,166,180,0.08)]">
                 <p class="text-[0.9375rem] sm:text-base text-gray-700 m-0 leading-relaxed">
                   Was für Massagen habt ihr?
@@ -140,7 +140,7 @@
                 <p class="text-[0.9375rem] sm:text-base text-gray-700 m-0 leading-relaxed">
                   Bestelle mir zwei Cola und ein Tiramisu
                 </p>
-              </div>
+        </div>
             </div>
           </div>
         </div>
@@ -160,16 +160,16 @@
           {#if latestActivity.ui}
             <ComponentRenderer
               component={latestActivity.ui}
-            />
-          {:else}
+                />
+              {:else}
             <pre class="bg-gray-100 p-4 rounded-lg overflow-x-auto text-sm m-0">{JSON.stringify(
                 latestActivity.result,
-                null,
-                2
-              )}</pre>
-          {/if}
-        </div>
-      </div>
+                    null,
+                    2
+                  )}</pre>
+              {/if}
+            </div>
+    </div>
     {/if}
   </div>
 </div>

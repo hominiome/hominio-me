@@ -471,44 +471,6 @@
         lastResponse =
           "Error: Voice configuration not set up. Please configure HUME_CONFIG_ID.";
         isConnecting = false;
-        try {
-          const AudioContextConstructor =
-            (window as any).AudioContext || (window as any).webkitAudioContext;
-          if (!micAudioContext && AudioContextConstructor) {
-            micAudioContext = new AudioContextConstructor();
-          }
-
-          if (micAudioContext) {
-            if (micAudioContext.state === "suspended") {
-              await micAudioContext.resume();
-            }
-
-            // Disconnect previous nodes if they exist
-            try {
-              if (micSourceNode) {
-                micSourceNode.disconnect();
-              }
-              if (micGainNode) {
-                micGainNode.disconnect();
-              }
-            } catch (disconnectErr) {
-              console.warn(
-                "⚠️ Failed to disconnect previous mic nodes:",
-                (disconnectErr as Error).message
-              );
-            }
-
-            micSourceNode = micAudioContext.createMediaStreamSource(audioStream);
-            micGainNode = micAudioContext.createGain();
-            micGainNode.gain.value = 0.0001; // effectively silent but keeps stream active
-
-            micSourceNode.connect(micGainNode);
-            micGainNode.connect(micAudioContext.destination);
-          }
-        } catch (audioCtxErr: any) {
-          console.warn("⚠️ Failed to initialize mic AudioContext:", audioCtxErr?.message);
-        }
-
         isWaitingForPermission = false;
         return;
       }
@@ -588,6 +550,72 @@
         } catch (recorderErr: any) {
           console.error("❌ Failed to start MediaRecorder immediately:", recorderErr);
           // Continue anyway - we'll try again in startAudioCapture
+        }
+
+        // CRITICAL for iOS: Keep the microphone stream alive by piping it into a muted audio element
+        // AND by creating an AudioContext pipeline (belt and suspenders approach)
+        try {
+          if (!micMonitor) {
+            micMonitor = document.createElement("audio");
+            micMonitor.setAttribute("playsinline", "true");
+            micMonitor.muted = true;
+            micMonitor.autoplay = true;
+            micMonitor.style.display = "none";
+            document.body.appendChild(micMonitor);
+          }
+
+          if (micMonitor && audioStream) {
+            micMonitor.srcObject = audioStream;
+            const playPromise = micMonitor.play();
+            if (playPromise && typeof playPromise.catch === "function") {
+              playPromise.catch((err: any) => {
+                console.warn("⚠️ mic monitor play() rejected:", err?.message);
+              });
+            }
+            console.log("✅ Mic monitor element started to keep stream alive");
+          }
+        } catch (monitorErr: any) {
+          console.warn("⚠️ Failed to start mic monitor element:", monitorErr?.message);
+        }
+
+        // Also create an AudioContext pipeline to keep the stream active
+        try {
+          const AudioContextConstructor =
+            (window as any).AudioContext || (window as any).webkitAudioContext;
+          if (!micAudioContext && AudioContextConstructor && audioStream) {
+            micAudioContext = new AudioContextConstructor();
+          }
+
+          if (micAudioContext && audioStream) {
+            if (micAudioContext.state === "suspended") {
+              await micAudioContext.resume();
+            }
+
+            // Disconnect previous nodes if they exist
+            try {
+              if (micSourceNode) {
+                micSourceNode.disconnect();
+              }
+              if (micGainNode) {
+                micGainNode.disconnect();
+              }
+            } catch (disconnectErr) {
+              console.warn(
+                "⚠️ Failed to disconnect previous mic nodes:",
+                (disconnectErr as Error).message
+              );
+            }
+
+            micSourceNode = micAudioContext.createMediaStreamSource(audioStream);
+            micGainNode = micAudioContext.createGain();
+            micGainNode.gain.value = 0.0001; // effectively silent but keeps stream active
+
+            micSourceNode.connect(micGainNode);
+            micGainNode.connect(micAudioContext.destination);
+            console.log("✅ AudioContext pipeline created to keep stream alive");
+          }
+        } catch (audioCtxErr: any) {
+          console.warn("⚠️ Failed to initialize mic AudioContext:", audioCtxErr?.message);
         }
 
         isWaitingForPermission = false;
