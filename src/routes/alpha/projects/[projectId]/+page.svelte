@@ -173,7 +173,7 @@ import EditProjectContent from "$lib/EditProjectContent.svelte";
     <div
       class="bg-white rounded-2xl border-2 border-brand-navy-500/6 shadow-md p-12 text-center"
     >
-      <h1 class="text-3xl font-bold text-brand-navy-500 mb-4">
+      <h1 class="text-3xl font-bold text-brand-navy-700 mb-4">
         Project Not Found
       </h1>
       <p class="text-brand-navy-700/60 mb-6">
@@ -338,7 +338,7 @@ import EditProjectContent from "$lib/EditProjectContent.svelte";
       <div
         class="bg-white rounded-2xl border-2 border-brand-navy-500/6 shadow-md p-6 md:p-8 mb-6"
       >
-        <h2 class="text-xl font-bold text-brand-navy-500 mb-4">
+        <h2 class="text-xl font-bold text-brand-navy-700 mb-4">
           Sustainable Development Goals
         </h2>
         <div class="grid grid-cols-[repeat(auto-fill,minmax(80px,1fr))] gap-4">
