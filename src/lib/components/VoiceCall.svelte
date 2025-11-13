@@ -1360,7 +1360,7 @@
 {/if}
 
 <style>
-  /* Transcript Mini-Modal - DIONYS content-area style positioned directly above navbar */
+  /* Transcript Mini-Modal - Inverted dark style positioned directly above navbar */
   .voice-transcript-modal {
     position: fixed;
     /* Position directly above navbar: navbar height (56px) + margin-bottom (0.375rem) + gap (0.5rem) */
@@ -1368,11 +1368,11 @@
     left: 50%;
     transform: translateX(-50%);
     z-index: 10001; /* Above navbar (z-index: 10000) */
-    /* DIONYS content-area style - exact match */
-    background: white;
-    border: 1px solid #e2e8f0;
+    /* Inverted style with dark bg-500 */
+    background: var(--color-brand-navy-500);
+    border: 1px solid rgba(255, 255, 255, 0.15);
     border-radius: 16px;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+    box-shadow: 0 4px 20px rgba(8, 27, 71, 0.3), 0 1px 4px rgba(8, 27, 71, 0.2);
     max-width: 500px;
     width: calc(100vw - 2rem);
     animation: slideUp 0.3s ease-out;
@@ -1403,7 +1403,7 @@
     font-size: 1rem;
     font-weight: 400;
     line-height: 1.5;
-    color: #6b7280; /* DIONYS body text color */
+    color: rgba(255, 255, 255, 0.85); /* Light text on dark bg */
   }
 
   @media (min-width: 640px) {
@@ -1413,7 +1413,7 @@
   }
 
   .transcript-area p.placeholder {
-    color: #9ca3af; /* DIONYS gray text */
+    color: rgba(255, 255, 255, 0.5); /* Light gray text on dark bg */
     font-style: italic;
     text-align: center;
   }
@@ -1421,21 +1421,21 @@
   .transcript-area p.action-message {
     font-weight: 600;
     font-size: 0.75rem;
-    color: var(--color-accent-900); /* Dark yellow for text */
-    /* DIONYS badge style with yellow accent */
+    color: var(--color-accent-900); /* Dark yellow text */
+    /* Inverted badge style with yellow accent */
     background: var(--color-accent-500); /* Yellow accent background */
     text-align: center;
     padding: 0.5rem 1rem;
     border-radius: 10px;
     letter-spacing: 0.05em;
     line-height: 1.4;
-    border: 1px solid var(--color-accent-500);
-    box-shadow: 0 1px 2px rgba(244, 208, 63, 0.2);
+    border: 1px solid var(--color-accent-600);
+    box-shadow: 0 2px 8px rgba(244, 208, 63, 0.3);
     text-transform: uppercase;
   }
 
   .transcript-area p.assistant-response {
-    color: #1f2937; /* DIONYS dark text */
+    color: rgba(255, 255, 255, 0.95); /* Bright white text on dark bg */
   }
 
   .order-confirmation-wrapper,
