@@ -487,6 +487,8 @@
 
       // Initialize audio player EARLY (before connection) for lower latency
       // This reduces delay when first audio arrives
+      // Note: In iOS PWAs, audio context initialization can hang without user interaction
+      // We'll initialize it with a timeout and continue if it hangs
       console.log("🔄 Initializing audio player...");
       console.log("📊 Before audio player creation");
       try {
@@ -494,15 +496,25 @@
         audioPlayer = new EVIWebAudioPlayer();
         console.log("✅ EVIWebAudioPlayer instance created");
         
-        console.log("📊 Calling audioPlayer.init()...");
-        await audioPlayer.init();
+        console.log("📊 Calling audioPlayer.init() with timeout...");
+        // Use Promise.race to add a timeout for iOS PWA compatibility
+        const initPromise = audioPlayer.init();
+        const timeoutPromise = new Promise((_, reject) => {
+          setTimeout(() => {
+            reject(new Error("Audio player init timeout (iOS PWA may require user interaction)"));
+          }, 3000); // 3 second timeout
+        });
+        
+        await Promise.race([initPromise, timeoutPromise]);
         console.log("🔊 Audio player initialized (early)");
         console.log("📊 After audio player initialization");
       } catch (audioPlayerErr: any) {
         console.error("❌ Failed to initialize audio player:", audioPlayerErr);
         console.error("Audio player error details:", audioPlayerErr.message, audioPlayerErr.stack);
         // Don't throw - continue without audio player (audio output won't work, but we can still try)
-        console.warn("⚠️ Continuing without audio player - audio output may not work");
+        // We'll try to initialize it later when audio actually arrives (after user interaction)
+        console.warn("⚠️ Continuing without audio player - will retry when audio arrives");
+        audioPlayer = null; // Clear the failed instance
         console.log("📊 Continuing after audio player error");
       }
       console.log("📊 After audio player try-catch block");
@@ -606,7 +618,21 @@
 
           // Handle audio output - use EVIWebAudioPlayer for smooth playback
           // Enqueue immediately without await for lower latency
-          if (message.type === "audio_output" && audioPlayer) {
+          if (message.type === "audio_output") {
+            // Lazy initialize audio player if it wasn't initialized earlier (iOS PWA workaround)
+            if (!audioPlayer) {
+              console.log("🔄 Lazy initializing audio player (iOS PWA workaround)...");
+              try {
+                audioPlayer = new EVIWebAudioPlayer();
+                await audioPlayer.init();
+                console.log("✅ Audio player initialized lazily");
+              } catch (lazyInitErr: any) {
+                console.error("❌ Failed to lazy initialize audio player:", lazyInitErr);
+                // Continue without audio player - user won't hear audio but call can continue
+                return;
+              }
+            }
+            
             console.log("🔊 Received audio output from AI");
             audioPlayer.enqueue(message).catch((err: any) => {
               console.error("❌ Error enqueueing audio:", err);
