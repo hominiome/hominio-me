@@ -3,12 +3,16 @@ import { writable } from 'svelte/store';
 export interface VoiceCallState {
   isRecording: boolean;
   isConnected: boolean;
+  isConnecting: boolean;
+  isWaitingForPermission: boolean;
   lastResponse: string;
 }
 
 const initialState: VoiceCallState = {
   isRecording: false,
   isConnected: false,
+  isConnecting: false,
+  isWaitingForPermission: false,
   lastResponse: '',
 };
 

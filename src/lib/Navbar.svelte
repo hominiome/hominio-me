@@ -25,6 +25,8 @@
     hasExplorerIdentity = true, // Whether user has explorer identity (default true for backward compatibility)
     // Voice call props
     isCallActive = false,
+    isConnecting = false,
+    isWaitingForPermission = false,
     onStartCall,
     onStopCall,
   } = $props<{
@@ -39,6 +41,8 @@
     canCloseModal?: boolean;
     hasExplorerIdentity?: boolean;
     isCallActive?: boolean;
+    isConnecting?: boolean;
+    isWaitingForPermission?: boolean;
     onStartCall?: () => Promise<void>;
     onStopCall?: () => Promise<void>;
   }>();
@@ -230,22 +234,36 @@
                 aria-label="Stop call"
                 size="sm"
                 class="!rounded-full call-button"
+                disabled={isConnecting}
               >
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M19,6.41L17.59,5L12,10.59L6.41,5L5,6.41L10.59,12L5,17.59L6.41,19L12,13.41L17.59,19L19,17.59L13.41,12L19,6.41Z" />
-                </svg>
+                {#if isConnecting}
+                  <svg class="animate-spin" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" stroke-linecap="round"/>
+                  </svg>
+                {:else}
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M19,6.41L17.59,5L12,10.59L6.41,5L5,6.41L10.59,12L5,17.59L6.41,19L12,13.41L17.59,19L19,17.59L13.41,12L19,6.41Z" />
+                  </svg>
+                {/if}
               </Button>
             {:else}
               <Button
                 variant="success"
                 onclick={() => onStartCall?.()}
-                aria-label="Start call"
+                aria-label={isWaitingForPermission ? "Waiting for permission" : isConnecting ? "Connecting" : "Start call"}
                 size="sm"
                 class="!rounded-full call-button"
+                disabled={isConnecting || isWaitingForPermission}
               >
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M12,2A3,3 0 0,1 15,5V11A3,3 0 0,1 12,14A3,3 0 0,1 9,11V5A3,3 0 0,1 12,2M19,11C19,14.53 16.39,17.44 13,17.93V21H11V17.93C7.61,17.44 5,14.53 5,11H7A5,5 0 0,0 12,16A5,5 0 0,0 17,11H19Z" />
-                </svg>
+                {#if isConnecting || isWaitingForPermission}
+                  <svg class="animate-spin" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" stroke-linecap="round"/>
+                  </svg>
+                {:else}
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M12,2A3,3 0 0,1 15,5V11A3,3 0 0,1 12,14A3,3 0 0,1 9,11V5A3,3 0 0,1 12,2M19,11C19,14.53 16.39,17.44 13,17.93V21H11V17.93C7.61,17.44 5,14.53 5,11H7A5,5 0 0,0 12,16A5,5 0 0,0 17,11H19Z" />
+                  </svg>
+                {/if}
               </Button>
             {/if}
           </div>

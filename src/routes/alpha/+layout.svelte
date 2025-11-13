@@ -26,6 +26,8 @@ import { env as publicEnv } from "$env/dynamic/public";
   // Reactive derived state - uses Svelte's native reactivity with store
   // Use $ prefix to auto-subscribe to store
   const isCallActive = $derived($voiceCallState.isRecording || $voiceCallState.isConnected);
+  const isConnecting = $derived($voiceCallState.isConnecting);
+  const isWaitingForPermission = $derived($voiceCallState.isWaitingForPermission);
   
   // Call handlers
   async function handleStartCall() {
@@ -1354,6 +1356,8 @@ import { env as publicEnv } from "$env/dynamic/public";
   modalLeftButtons={modalLeftButtons()}
   modalRightButtons={modalRightButtons()}
   isCallActive={isCallActive}
+  isConnecting={isConnecting}
+  isWaitingForPermission={isWaitingForPermission}
   onStartCall={handleStartCall}
   onStopCall={handleStopCall}
 />
