@@ -104,47 +104,42 @@
 </script>
 
 <div class="activity-stream-container">
-  <!-- Full-width header -->
-  <div class="activity-stream-header">
-    <div class="activity-stream-header-content">
-      <h1>How can I help you?</h1>
-      {#if activities.length > 0}
-        <button
-          class="clear-btn"
-          onclick={() => {
-            activityStream.set([]);
-            selectedActivityId = null;
-            previousActivitiesLength = 0;
-          }}
-        >
-          Clear
-        </button>
-      {/if}
-    </div>
-  </div>
-
   <!-- Override layout padding for full-width background -->
   <div class="activity-stream-content activity-stream-content-full-width">
     {#if activities.length === 0}
       <div class="empty-state">
-        <p>
-          <strong>Ich bin Hominio, dein persönlicher Concierge.</strong><br>
-          Drücke einfach den Mikrofon-Button und beginne mit mir zu sprechen.<br><br>
-          <strong>Beispiele:</strong><br>
-          • "Zeig mir das Menü"<br>
-          • "Was für Getränke habt ihr?"<br>
-          • "Ich möchte ein Wiener Schnitzel bestellen"<br>
-          • "Zeig mir die Nachspeisen"<br>
-          • "Bestelle mir zwei Cola und ein Tiramisu"<br>
-          • "Zeig mir die SPA Services"<br>
-          • "Was für Massagen habt ihr?"<br>
-          • "Ich möchte eine Sauna Session buchen"<br>
-          • "Buch mir eine Entspannungsmassage um 10 Uhr"<br>
-          • "Zeig mir die Taxi Services"<br>
-          • "Ich brauche ein Taxi um 14:30 Uhr"<br>
-          • "Zeig mir Room Service"<br>
-          • "Ich möchte ein Frühstück aufs Zimmer"
-        </p>
+        <div class="empty-state-card">
+          <div class="empty-state-intro">
+            <h2 class="empty-state-title">Ich bin Hominio, dein persönlicher Concierge.</h2>
+            <p class="empty-state-description">
+              Drücke einfach den <strong>Mikrofon-Button</strong> und beginne mit mir zu sprechen.
+            </p>
+          </div>
+          
+          <div class="empty-state-examples">
+            <h3 class="examples-title">Beispiele</h3>
+            <div class="examples-grid">
+              <div class="example-card">
+                <p class="example-text">Zeig mir das Menü</p>
+              </div>
+              <div class="example-card">
+                <p class="example-text">Was für Getränke habt ihr?</p>
+              </div>
+              <div class="example-card">
+                <p class="example-text">Ich möchte ein Wiener Schnitzel bestellen</p>
+              </div>
+              <div class="example-card">
+                <p class="example-text">Zeig mir die SPA Services</p>
+              </div>
+              <div class="example-card">
+                <p class="example-text">Was für Massagen habt ihr?</p>
+              </div>
+              <div class="example-card">
+                <p class="example-text">Bestelle mir zwei Cola und ein Tiramisu</p>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     {:else}
     <div class="activity-main-layout">
@@ -220,8 +215,7 @@
   .activity-stream-content {
     max-width: 72rem; /* max-w-6xl */
     margin: 0 auto;
-    padding: 1.5rem;
-    padding-top: 2rem; /* Add top padding since header is now outside */
+    padding: 2rem 1.5rem;
     position: relative;
     z-index: 1;
     width: 100%;
@@ -230,117 +224,137 @@
 
   /* Override layout padding for full-width background */
   .activity-stream-content-full-width {
-    padding-left: 1.5rem !important;
-    padding-right: 1.5rem !important;
+    padding-left: 6px !important;
+    padding-right: 6px !important;
     width: 100% !important;
   }
 
-  .activity-stream-header {
-    width: 100%;
-    /* DIONYS FlowStateMachine header style - dark blue background */
-    background: var(--color-primary-500); /* #081b47 / #000957 equivalent */
-    border-bottom: 1px solid #e2e8f0;
-    position: relative;
-    z-index: 1;
-    margin: 0;
-    padding: 0;
-  }
-
-  .activity-stream-header-content {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    max-width: 72rem; /* max-w-6xl */
-    margin: 0 auto;
-    padding: 0.75rem 2rem;
-    width: 100%;
-    box-sizing: border-box;
-  }
-
-  .activity-stream-header h1 {
-    font-size: 1.5rem;
-    font-weight: 500;
-    color: white;
-    margin: 0;
-    line-height: 1.3;
-    letter-spacing: 0.5px;
-    text-shadow: none; /* Remove shadow */
-  }
-
   @media (min-width: 768px) {
-    .activity-stream-header h1 {
-      font-size: 1.75rem;
+    .activity-stream-content-full-width {
+      padding-left: 1.5rem !important;
+      padding-right: 1.5rem !important;
+    }
+  }
+
+
+  .empty-state {
+    padding: 2rem 0;
+    position: relative;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    width: 100%;
+    min-height: calc(100vh - 200px);
+  }
+
+  .empty-state-card {
+    background: white;
+    border: 1px solid #e2e8f0;
+    border-radius: 20px;
+    padding: 2rem;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+    max-width: 48rem;
+    width: 100%;
+  }
+
+  .empty-state-intro {
+    margin-bottom: 2.5rem;
+    text-align: center;
+  }
+
+  .empty-state-title {
+    font-size: 1.75rem;
+    font-weight: 600;
+    color: #1f2937;
+    margin: 0 0 1rem 0;
+    line-height: 1.3;
+  }
+
+  .empty-state-description {
+    font-size: 1rem;
+    color: #6b7280;
+    line-height: 1.6;
+    margin: 0;
+  }
+
+  .empty-state-description strong {
+    color: #1f2937;
+    font-weight: 600;
+  }
+
+  .empty-state-examples {
+    margin-top: 2rem;
+  }
+
+  .examples-title {
+    font-size: 0.875rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #6b7280;
+    margin: 0 0 1.25rem 0;
+  }
+
+  .examples-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0.875rem;
+  }
+
+  .example-card {
+    padding: 1rem 1.25rem;
+    background: #f9fafb;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    transition: all 0.2s ease;
+    cursor: default;
+  }
+
+  .example-card:hover {
+    background: #f3f4f6;
+    border-color: #d1d5db;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  }
+
+  .example-text {
+    font-size: 0.9375rem;
+    color: #374151;
+    margin: 0;
+    line-height: 1.5;
+    font-weight: 400;
+  }
+
+  @media (min-width: 640px) {
+    .empty-state-card {
+      padding: 2.5rem;
+    }
+
+    .empty-state-title {
+      font-size: 2rem;
+    }
+
+    .empty-state-description {
+      font-size: 1.125rem;
+    }
+
+    .examples-grid {
+      grid-template-columns: repeat(2, 1fr);
+      gap: 1rem;
+    }
+
+    .example-text {
+      font-size: 1rem;
     }
   }
 
   @media (min-width: 1024px) {
-    .activity-stream-header h1 {
-      font-size: 2rem;
+    .empty-state-card {
+      padding: 3rem;
     }
-  }
 
-  .clear-btn {
-    padding: 0.5rem 1rem;
-    /* DIONYS FlowStateMachine clear-btn style */
-    background: transparent;
-    color: white;
-    border: 1px solid rgba(255, 255, 255, 0.3);
-    border-radius: 6px;
-    font-size: 0.875rem;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-  }
-
-  .clear-btn:hover {
-    background: rgba(255, 255, 255, 0.1);
-    border-color: rgba(255, 255, 255, 0.5);
-    transform: translateY(-1px);
-  }
-
-  .clear-btn:active {
-    transform: translateY(0);
-  }
-
-  .empty-state {
-    text-align: center;
-    padding: 4rem 2rem;
-    position: relative;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    width: 100%;
-  }
-
-  .empty-state p {
-    /* DIONYS content-area style */
-    background: white;
-    border: 1px solid #e2e8f0;
-    border-radius: 16px;
-    padding: 2rem 3rem;
-    display: inline-block;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-    color: #6b7280; /* DIONYS body text color */
-    font-size: 1rem;
-    font-weight: 400;
-    line-height: 1.8;
-    margin: 0 auto;
-    position: relative;
-    max-width: 72rem; /* max-w-6xl */
-    text-align: left;
-  }
-
-  .empty-state p strong {
-    color: #1f2937; /* DIONYS dark text */
-    font-weight: 600;
-  }
-
-  @media (min-width: 768px) {
-    .empty-state p {
-      font-size: 1.125rem;
+    .empty-state-title {
+      font-size: 2.25rem;
     }
   }
 
