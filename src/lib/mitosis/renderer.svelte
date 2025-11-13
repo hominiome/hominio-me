@@ -503,39 +503,17 @@
     gap: 1rem;
   }
 
-  /* Menu item card - beautiful organic design with secondary teal accent */
+  /* Menu item card - compact, clean design with top teal accent */
   :global(.menu-item-card) {
     background: white;
-    border: 2px solid rgba(45, 166, 180, 0.15);
-    border-radius: 20px;
-    padding: 1.75rem;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    box-shadow: 0 2px 12px rgba(45, 166, 180, 0.08), 0 1px 4px rgba(45, 166, 180, 0.04);
+    border-top: 3px solid var(--color-secondary-500);
+    border-left: 1px solid rgba(45, 166, 180, 0.2);
+    border-right: 1px solid rgba(45, 166, 180, 0.2);
+    border-bottom: 1px solid rgba(45, 166, 180, 0.2);
+    border-radius: 16px;
+    padding: 1.25rem 1.5rem;
+    box-shadow: 0 1px 6px rgba(45, 166, 180, 0.08);
     position: relative;
-    overflow: hidden;
-  }
-
-  :global(.menu-item-card::before) {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 4px;
-    background: linear-gradient(90deg, var(--color-secondary-400), var(--color-secondary-500));
-    opacity: 0;
-    transition: opacity 0.3s ease;
-  }
-
-  :global(.menu-item-card:hover) {
-    background: white;
-    border-color: var(--color-secondary-400);
-    transform: translateY(-4px);
-    box-shadow: 0 12px 32px rgba(45, 166, 180, 0.16), 0 4px 12px rgba(45, 166, 180, 0.12);
-  }
-
-  :global(.menu-item-card:hover::before) {
-    opacity: 1;
   }
 
   /* Menu item header - matches DIONYS item-header */
@@ -556,28 +534,28 @@
     min-width: 0;
   }
 
-  /* Menu item name - beautiful typography with teal accent */
+  /* Menu item name - large, bold title */
   :global(.menu-item-name) {
     display: block;
     margin: 0;
-    font-size: 1.125rem;
+    font-size: 1.25rem;
     font-weight: 700;
     color: var(--color-brand-navy-700);
     flex: 1;
     min-width: 0;
-    line-height: 1.4;
+    line-height: 1.3;
     letter-spacing: -0.01em;
   }
 
-  /* Menu item description - softer, more readable */
+  /* Menu item description - smaller, subtle */
   :global(.menu-item-description) {
     display: block;
     margin: 0;
-    font-size: 0.9375rem;
+    font-size: 0.875rem;
     font-weight: 400;
     color: #64748b;
-    line-height: 1.6;
-    margin-top: 0.375rem;
+    line-height: 1.5;
+    margin-top: 0.25rem;
   }
 
   /* Menu item pricing - matches DIONYS item-pricing */
@@ -589,23 +567,23 @@
     flex-shrink: 0;
   }
 
-  /* Menu item price - prominent teal accent */
+  /* Menu item price - huge, bold teal price */
   :global(.menu-item-price) {
-    font-weight: 700;
+    font-weight: 800;
     color: var(--color-secondary-600);
-    font-size: 1.25rem;
+    font-size: 1.75rem;
     text-align: right;
     min-width: fit-content;
     flex-shrink: 0;
     display: flex;
     align-items: baseline;
-    gap: 0.25rem;
-    letter-spacing: -0.02em;
+    gap: 0.375rem;
+    letter-spacing: -0.03em;
   }
 
-  /* Menu item unit - subtle teal */
+  /* Menu item unit - tiny, subtle label */
   :global(.menu-item-unit) {
-    font-size: 0.8125rem;
+    font-size: 0.6875rem;
     font-weight: 500;
     color: var(--color-secondary-500);
   }
