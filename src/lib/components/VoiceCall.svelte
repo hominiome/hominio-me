@@ -466,14 +466,41 @@
           },
         });
 
-        // CRITICAL for iOS PWA: Start AudioWorklet using the SAME MediaStream as MediaRecorder
-        // iOS PWA will close the stream if we create a second one via getUserMedia()
-        // By passing the existing stream, both MediaRecorder and AudioWorklet use the same stream
-        audioRecorder = new AudioRecorder(16000);
-        await audioRecorder.start(mediaStream); // Pass the same stream!
-        console.log("✅ AudioWorklet started with same MediaStream as MediaRecorder (iOS PWA fix)");
+        // CRITICAL FOR iOS PWA: Create AudioContext and connect to stream IMMEDIATELY
+        // iOS PWA closes the stream if it's not consumed within milliseconds
+        // We create a minimal AudioContext source node FIRST to consume the stream instantly
+        // This prevents iOS from closing it before MediaRecorder can start
+        let immediateAudioContext: AudioContext | null = null;
+        let immediateSource: MediaStreamAudioSourceNode | null = null;
+        let immediateGain: GainNode | null = null;
+        try {
+          immediateAudioContext = new (window.AudioContext || (window as any).webkitAudioContext)({
+            sampleRate: 16000,
+          });
+          
+          // CRITICAL for iOS PWA: Ensure AudioContext is in "running" state
+          // iOS PWA may suspend AudioContext, which can cause stream closure
+          if (immediateAudioContext.state === "suspended") {
+            await immediateAudioContext.resume();
+            console.log("✅ Immediate AudioContext resumed (was suspended)");
+          }
+          
+          immediateSource = immediateAudioContext.createMediaStreamSource(mediaStream);
+          // Create a gain node set to 0 (silent) and connect to prevent audio feedback
+          immediateGain = immediateAudioContext.createGain();
+          immediateGain.gain.value = 0; // Silent - just consuming the stream
+          immediateSource.connect(immediateGain);
+          immediateGain.connect(immediateAudioContext.destination);
+          console.log(`✅ Immediate AudioContext created and connected (iOS PWA - stream now consumed instantly, silent, state: ${immediateAudioContext.state})`);
+        } catch (err) {
+          console.warn("⚠️ Failed to create immediate AudioContext (non-critical):", err);
+        }
 
-        // Get browser-supported MIME type (same as MediaRecorder)
+        // CRITICAL FOR iOS PWA: MediaRecorder MUST start IMMEDIATELY after getUserMedia()
+        // iOS PWA closes the stream if it's not actively consumed within milliseconds
+        // We must start MediaRecorder BEFORE AudioRecorder to ensure immediate consumption
+        
+        // Get browser-supported MIME type
         const mimeTypes = [
           "audio/webm;codecs=opus",
           "audio/webm",
@@ -494,7 +521,7 @@
           selectedMimeType
         );
 
-        // Create MediaRecorder on the mic stream (WebM/Opus format - same as before!)
+        // Create MediaRecorder on the mic stream (WebM/Opus format)
         mediaRecorder = new MediaRecorder(mediaStream, {
           mimeType: selectedMimeType,
         });
@@ -618,15 +645,43 @@
           isRecording = false;
         };
 
-        // Start recording with 100ms timeslice (Hume recommendation)
+        // CRITICAL: Start MediaRecorder IMMEDIATELY (synchronous) to prevent iOS PWA from closing stream
+        // This must happen before AudioRecorder to ensure the stream is consumed instantly
         mediaRecorder.start(100);
         console.log(
-          "✅ MediaRecorder started with 100ms timeslice (WebM/Opus format)"
+          "✅ MediaRecorder started IMMEDIATELY with 100ms timeslice (iOS PWA critical - stream now actively consumed)"
         );
+
+        // Monitor track state to detect iOS PWA stream closure
+        const audioTrack = mediaStream.getAudioTracks()[0];
+        if (audioTrack) {
+          audioTrack.addEventListener("ended", () => {
+            console.error("❌ CRITICAL: Audio track ended unexpectedly! iOS PWA may have closed the stream.");
+            console.error("Track state:", {
+              readyState: audioTrack.readyState,
+              enabled: audioTrack.enabled,
+              muted: audioTrack.muted,
+              label: audioTrack.label,
+            });
+          });
+          console.log("✅ Track monitor attached - readyState:", audioTrack.readyState);
+        }
+
+        // NOW start AudioRecorder in parallel (async) - stream is already being consumed by MediaRecorder
+        // This keeps the stream alive in iOS PWA standalone mode
+        audioRecorder = new AudioRecorder(16000);
+        // Don't await - start in parallel, but stream is already safe
+        audioRecorder.start(mediaStream).catch((err) => {
+          console.error("⚠️ AudioRecorder start failed (non-critical):", err);
+        });
+        console.log("✅ AudioRecorder starting in parallel (stream already consumed by MediaRecorder)");
 
         // Store references for cleanup
         (window as any).__mediaRecorder = mediaRecorder;
         (window as any).__mediaStream = mediaStream;
+        (window as any).__immediateAudioContext = immediateAudioContext;
+        (window as any).__immediateSource = immediateSource;
+        (window as any).__immediateGain = immediateGain;
 
         // Store function to send queued chunks when socket opens
         (window as any).__sendQueuedAudioChunks = async () => {
@@ -1336,6 +1391,36 @@
       }
       delete (window as any).__mediaRecorder;
     }
+    // Clean up immediate AudioContext (iOS PWA stream consumer)
+    const immediateAudioContext = (window as any).__immediateAudioContext;
+    const immediateSource = (window as any).__immediateSource;
+    const immediateGain = (window as any).__immediateGain;
+    if (immediateSource) {
+      try {
+        immediateSource.disconnect();
+      } catch (err) {
+        console.error("Error disconnecting immediate source:", err);
+      }
+      delete (window as any).__immediateSource;
+    }
+    if (immediateGain) {
+      try {
+        immediateGain.disconnect();
+      } catch (err) {
+        console.error("Error disconnecting immediate gain:", err);
+      }
+      delete (window as any).__immediateGain;
+    }
+    if (immediateAudioContext) {
+      try {
+        immediateAudioContext.close();
+        console.log("✅ Immediate AudioContext closed");
+      } catch (err) {
+        console.error("Error closing immediate AudioContext:", err);
+      }
+      delete (window as any).__immediateAudioContext;
+    }
+
     if (mediaStream) {
       try {
         mediaStream.getTracks().forEach((track: MediaStreamTrack) => {
