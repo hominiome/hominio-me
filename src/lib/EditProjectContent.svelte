@@ -248,7 +248,7 @@
 </script>
 
 <div class="edit-project-content">
-  <h2 class="text-3xl font-bold text-brand-navy-700 mb-6">Edit Project</h2>
+  <h2 class="text-3xl font-bold text-brand-navy-500 mb-6">Edit Project</h2>
 
   {#if loading || checking}
     <div class="text-center py-8">

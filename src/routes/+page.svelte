@@ -37,7 +37,7 @@
   .coming-soon-text {
     font-size: 2.5rem; /* 40px */
     font-weight: 500;
-    color: var(--color-brand-navy-700);
+    color: var(--color-brand-navy-500);
     margin: 0;
     line-height: 1.3;
     letter-spacing: 0.5px;
