@@ -13,20 +13,12 @@
   font-display: swap;
 }
 
-/* Archivo - Title Font */
+/* Shrikhand - Title Font */
 @font-face {
-  font-family: 'Archivo';
-  src: url('/fonts/Archivo/Archivo-VariableFont_wdth,wght.ttf') format('truetype-variations');
-  font-weight: 100 900;
+  font-family: 'Shrikhand';
+  src: url('/fonts/Shrikhand/Shrikhand-Regular.ttf') format('truetype');
+  font-weight: 400;
   font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: 'Archivo';
-  src: url('/fonts/Archivo/Archivo-Italic-VariableFont_wdth,wght.ttf') format('truetype-variations');
-  font-weight: 100 900;
-  font-style: italic;
   font-display: swap;
 }
 
@@ -216,7 +208,7 @@
   --glass-border-opacity-heavy: 0.4;
 
       /* Font Families */
-      --font-family-title: 'Archivo', sans-serif;
+      --font-family-title: 'Shrikhand', cursive;
       --font-family-body: 'Manrope', sans-serif;
       
       --font-title: var(--font-family-title);
@@ -274,28 +266,24 @@ body > div {
   top: 0 !important;
 }
 
-/* Headings - Archivo */
+/* Headings - Shrikhand */
 h1, h2 {
   font-family: var(--font-family-title);
-  font-weight: 700; /* Archivo Bold for h1, h2 */
+  font-weight: 400; /* Shrikhand Regular */
   line-height: 1.2;
-  text-transform: uppercase;
 }
 
 h3, h4, h5, h6 {
   font-family: var(--font-family-title);
-  font-weight: 500; /* Archivo Medium for h3-h6 */
+  font-weight: 400; /* Shrikhand Regular */
   line-height: 1.2;
-  text-transform: uppercase;
 }
 
 h1 span, h2 span, h3 span, h4 span, h5 span, h6 span {
   font-family: inherit;
   font-weight: inherit;
-  text-transform: inherit;
 }
 
-/* Montserrat has better baseline metrics - no special alignment hacks needed */
 /* Base font settings */
 p, span, div, button, a, label, input, textarea, select {
   font-family: var(--font-family-body);
