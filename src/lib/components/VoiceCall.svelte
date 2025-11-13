@@ -44,7 +44,7 @@
   function isViewTool(action: string): boolean {
     return (
       action === "list_menu" ||
-      action === "list_spa_beauty" ||
+      action === "list_wellness" ||
       action === "list_taxi" ||
       action === "list_room_service"
     );
@@ -329,7 +329,7 @@
             );
             // Determine vibeId based on action
             let vibeId = "menu";
-            if (action === "list_spa_beauty") vibeId = "spa-beauty";
+            if (action === "list_wellness") vibeId = "spa-beauty";
             else if (action === "list_taxi") vibeId = "taxi";
             else if (action === "list_room_service") vibeId = "room-service";
             addActivity({

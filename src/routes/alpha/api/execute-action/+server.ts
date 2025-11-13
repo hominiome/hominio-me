@@ -161,11 +161,6 @@ const actionHandlers: Record<string, (params: any) => Promise<{ result: any; ui?
     };
   },
 
-  // Alias for backward compatibility - redirect to list_wellness
-  async list_spa_beauty(params: { category?: string; view?: string } = {}) {
-    // Redirect to list_wellness (ignore category parameter)
-    return this.list_wellness(params);
-  },
 
   async add_to_cart(params: { items: Array<{ id: string; quantity?: number; timeSlot?: string; pickupTime?: string; pickupAddress?: string; destinationAddress?: string; estimatedDistance?: number; deliveryTime?: string }>; view?: string }) {
     const { items } = params;

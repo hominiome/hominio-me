@@ -66,9 +66,6 @@
       
       // Wellness tools
       'list_wellness': 'Wellness Angebote',
-      'list_spa_beauty': 'Wellness Angebote',
-      'list_massages': 'Wellness Angebote',
-      'list_beauty': 'Wellness Angebote',
       
       // Taxi tools
       'list_taxi': 'Taxi Services',
