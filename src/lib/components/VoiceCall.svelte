@@ -478,61 +478,13 @@
         "🔄 Initializing audio player (while user interaction is active)..."
       );
 
-      // For iOS PWAs: Play a silent audio element to unlock audio playback
-      // This is required for iOS PWAs to allow AudioContext creation
-      const isIOSPWA =
-        browser &&
-        (navigator.standalone === true ||
-          (window.matchMedia &&
-            window.matchMedia("(display-mode: standalone)").matches));
-
-      if (isIOSPWA) {
-        console.log("📱 iOS PWA detected - unlocking audio playback...");
-        try {
-          // Create a silent audio element and try to play it to unlock audio
-          const audio = new Audio();
-          audio.src =
-            "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=";
-          audio.volume = 0;
-          audio.muted = true;
-          audio.setAttribute("playsinline", "true");
-          
-          // Add timeout to prevent hanging forever in iOS PWA
-          const playPromise = audio.play();
-          if (playPromise?.then) {
-            const timeoutPromise = new Promise((_, reject) => 
-              setTimeout(() => reject(new Error("Audio unlock timeout")), 1000)
-            );
-            
-            try {
-              await Promise.race([playPromise, timeoutPromise]);
-              console.log("✅ Audio unlocked for iOS PWA");
-              audio.pause();
-              audio.removeAttribute("src");
-            } catch (unlockErr: any) {
-              console.log(
-                "ℹ️ Silent audio unlock failed/timeout (proceeding anyway):",
-                unlockErr?.message || unlockErr
-              );
-              // Clean up audio element even on failure
-              try {
-                audio.pause();
-                audio.removeAttribute("src");
-              } catch (e) {
-                // Ignore cleanup errors
-              }
-            }
-          } else {
-            console.log(
-              "ℹ️ Silent audio play() returned no promise (already unlocked?)"
-            );
-          }
-        } catch (unlockErr: any) {
-          console.log(
-            "ℹ️ Could not initialize silent audio unlock (proceeding anyway):",
-            unlockErr?.message || unlockErr
-          );
-        }
+      // For iOS: We're already in a user gesture context from getUserMedia()
+      // AudioContext initialization should work directly without needing silent audio
+      // Silent audio unlock causes hangs in iOS PWA, so we skip it entirely
+      const isIOS = browser && /iPad|iPhone|iPod/.test(navigator.userAgent);
+      
+      if (isIOS) {
+        console.log("📱 iOS detected - relying on getUserMedia() gesture for AudioContext unlock");
       }
 
       try {
