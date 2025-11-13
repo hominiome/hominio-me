@@ -259,8 +259,8 @@
     {@const text = textBinding ? resolveBinding(textBinding, state) : ''}
     {@const className = String(node.attributes?.class || node.attributes?.className || '')}
     {#if level === 1}
-      <!-- Apple HIG: Large title, bold, clear hierarchy, darker color for contrast -->
-      <h1 class="my-4 text-3xl md:text-4xl font-bold text-primary-700 leading-tight tracking-tight {className}" style="line-height: 1.3; letter-spacing: -0.01em;">
+      <!-- Large title with brand navy color -->
+      <h1 class="my-4 text-3xl md:text-4xl font-bold text-brand-navy-700 leading-tight tracking-tight {className}" style="line-height: 1.3; letter-spacing: -0.01em;">
         {#if text}
           {text}
         {:else if 'children' in node && node.children}
@@ -270,8 +270,8 @@
         {/if}
       </h1>
     {:else if level === 2}
-      <!-- DIONYS heading style -->
-      <h2 class="my-3 text-xl md:text-2xl font-semibold leading-tight {className}" style="line-height: 1.3; color: #000957;">
+      <!-- Heading with brand navy color -->
+      <h2 class="my-3 text-xl md:text-2xl font-semibold text-brand-navy-700 leading-tight {className}" style="line-height: 1.3;">
         {#if text}
           {text}
         {:else if 'children' in node && node.children}
@@ -281,8 +281,8 @@
         {/if}
       </h2>
     {:else if level === 3}
-      <!-- Apple HIG: Smaller headings, semibold, darker for contrast -->
-      <h3 class="my-2 text-xl md:text-2xl font-semibold text-primary-700 leading-tight {className}" style="line-height: 1.4;">
+      <!-- Smaller headings with brand navy color -->
+      <h3 class="my-2 text-xl md:text-2xl font-semibold text-brand-navy-700 leading-tight {className}" style="line-height: 1.4;">
         {#if text}
           {text}
         {:else if 'children' in node && node.children}
@@ -292,7 +292,7 @@
         {/if}
       </h3>
     {:else if level === 4}
-      <h4 class="my-2 text-lg md:text-xl font-semibold text-primary-700 leading-tight {className}" style="line-height: 1.4;">
+      <h4 class="my-2 text-lg md:text-xl font-semibold text-brand-navy-700 leading-tight {className}" style="line-height: 1.4;">
         {#if text}
           {text}
         {:else if 'children' in node && node.children}
@@ -302,7 +302,7 @@
         {/if}
       </h4>
     {:else if level === 5}
-      <h5 class="my-2 text-base md:text-lg font-semibold text-primary-700 {className}" style="line-height: 1.4;">
+      <h5 class="my-2 text-base md:text-lg font-semibold text-brand-navy-700 {className}" style="line-height: 1.4;">
         {#if text}
           {text}
         {:else if 'children' in node && node.children}
@@ -312,7 +312,7 @@
         {/if}
       </h5>
     {:else}
-      <h6 class="my-2 text-sm md:text-base font-semibold text-primary-700 {className}" style="line-height: 1.4;">
+      <h6 class="my-2 text-sm md:text-base font-semibold text-brand-navy-700 {className}" style="line-height: 1.4;">
         {#if text}
           {text}
         {:else if 'children' in node && node.children}

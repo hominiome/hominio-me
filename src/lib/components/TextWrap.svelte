@@ -39,47 +39,47 @@
 
 	:global(.text-wrap-content h1) {
 		font-size: 2.5rem;
-		font-weight: 700;
+		font-weight: 500;
     margin-top: 0;
 		margin-bottom: 2rem;
 		line-height: 1.3;
-		color: #111827;
+		color: var(--color-brand-navy-700);
 	}
 
 	:global(.text-wrap-content h2) {
 		font-size: 1.75rem;
-		font-weight: 700;
+		font-weight: 500;
 		margin-top: 3rem;
 		margin-bottom: 1rem;
 		line-height: 1.3;
-		color: #111827;
+		color: var(--color-brand-navy-700);
 	}
 
 	:global(.text-wrap-content h3) {
 		font-size: 1.4rem;
-		font-weight: 600;
+		font-weight: 500;
 		margin-top: 2rem;
 		margin-bottom: 0.75rem;
 		line-height: 1.3;
-		color: #111827;
+		color: var(--color-brand-navy-700);
 	}
 
 	:global(.text-wrap-content h4) {
 		font-size: 1.2rem;
-		font-weight: 600;
+		font-weight: 500;
 		margin-top: 1.5rem;
 		margin-bottom: 0.5rem;
 		line-height: 1.3;
-		color: #374151;
+		color: var(--color-brand-navy-700);
 	}
 
 	:global(.text-wrap-content h5) {
 		font-size: 1.1rem;
-		font-weight: 600;
+		font-weight: 500;
 		margin-top: 1.3rem;
 		margin-bottom: 0.5rem;
 		line-height: 1.3;
-		color: #374151;
+		color: var(--color-brand-navy-700);
 	}
 
 	:global(.text-wrap-content p) {
