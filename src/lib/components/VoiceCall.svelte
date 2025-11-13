@@ -628,18 +628,34 @@
         // CRITICAL iOS PWA FIX: Initialize AudioContext NOW (same user gesture as getUserMedia)
         // iOS PWA won't allow AudioContext creation later if microphone is already active
         // Safari allows lazy init, but iOS PWA requires both in same user gesture
+        console.log(`🔊 Checking AudioStreamer state: ${audioStreamer ? 'already initialized' : 'needs initialization'}`);
         if (!audioStreamer) {
           console.log("🔊 Pre-initializing AudioStreamer (iOS PWA requires same user gesture as mic)");
           try {
             const ctx = await audioContext({
               id: "voice-call-playback",
             });
+            console.log(`✅ AudioContext created: sampleRate=${ctx.sampleRate}Hz, state=${ctx.state}`);
+            
+            // Resume context if suspended (iOS requirement)
+            if (ctx.state === 'suspended') {
+              await ctx.resume();
+              console.log(`✅ AudioContext resumed: state=${ctx.state}`);
+            }
+            
             audioStreamer = new AudioStreamer(ctx);
-            console.log(`✅ AudioStreamer pre-initialized with sample rate: ${ctx.sampleRate}Hz`);
+            console.log(`✅ AudioStreamer pre-initialized successfully with sample rate: ${ctx.sampleRate}Hz`);
           } catch (streamerErr: any) {
             console.error("❌ Failed to pre-initialize AudioStreamer:", streamerErr);
+            console.error("Error details:", {
+              name: streamerErr?.name,
+              message: streamerErr?.message,
+              stack: streamerErr?.stack
+            });
             // Continue - will try again later if needed
           }
+        } else {
+          console.log("✅ AudioStreamer already initialized, skipping pre-init");
         }
 
         // Store references for cleanup
@@ -692,7 +708,8 @@
 
       // Initialize AudioStreamer for playback (lazy initialization when audio arrives)
       // AudioStreamer uses the same AudioContext pattern as AudioRecorder, compatible with iOS PWA
-      audioStreamer = null; // Will be initialized when first audio arrives
+      // Don't reset audioStreamer - it should be pre-initialized during getUserMedia
+      // If it's null, it will be initialized during the call setup
 
       // Get access token from server (still connecting)
       const accessTokenResponse = await fetch("/alpha/api/hume/access-token");
