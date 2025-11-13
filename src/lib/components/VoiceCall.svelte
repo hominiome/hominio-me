@@ -448,26 +448,24 @@
 
       // Request microphone permission FIRST (before anything else)
       // This is critical for iOS PWAs - permission must be requested early
-      // The function returns a stream if it's still active, or null if we need a fresh one
+      // AND we must start using it immediately or iOS will close it!
       console.log("🎤 Requesting microphone permission...");
-      permissionStream = await requestMicrophonePermission();
-      isWaitingForPermission = false;
-      if (permissionStream === null) {
-        // Check if permission was actually denied or just needs a fresh stream
-        const permissionStatus = await checkMicrophonePermission();
-        if (!permissionStatus) {
-          console.error("❌ Microphone permission not granted - aborting call");
-          lastResponse =
-            "Microphone permission is required to start a voice call.";
-          isConnecting = false;
-          return;
-        }
-        // Permission is granted but stream was ended - we'll get a fresh one in startAudioCapture
-        console.log(
-          "✅ Microphone permission granted - will get fresh stream for capture"
-        );
-      } else {
-        console.log("✅ Microphone permission granted - reusing active stream");
+      
+      // Get a fresh stream every time - don't try to reuse old streams
+      // iOS PWA requires active usage to keep permission alive
+      try {
+        audioStream = await navigator.mediaDevices.getUserMedia({
+          audio: true,
+        });
+        console.log("✅ Microphone permission granted - stream active");
+        isWaitingForPermission = false;
+      } catch (permissionErr: any) {
+        console.error("❌ Microphone permission denied:", permissionErr);
+        isWaitingForPermission = false;
+        lastResponse =
+          "Microphone permission is required to start a voice call.";
+        isConnecting = false;
+        return;
       }
 
       // Initialize audio player IMMEDIATELY after getUserMedia() 
@@ -1054,30 +1052,26 @@
         throw new Error("MediaDevices API not available");
       }
 
-      // Use the stream from permission request if it's still active, otherwise get a fresh one
-      if (permissionStream && permissionStream.active) {
-        const tracks = permissionStream.getAudioTracks();
+      // Check if we already have an active stream from startCall
+      if (audioStream && audioStream.active) {
+        const tracks = audioStream.getAudioTracks();
         const hasActiveTrack = tracks.some(
           (t) => t.readyState === "live" && !t.muted
         );
 
         if (hasActiveTrack) {
-          console.log("✅ Reusing active stream from permission request");
-          audioStream = permissionStream;
-          permissionStream = null; // Clear reference - we own it now
+          console.log("✅ Using existing active audio stream (keeping mic alive)");
+          // Stream is already set - just continue to use it
         } else {
-          console.log(
-            "⚠️ Permission stream no longer active - getting fresh stream"
-          );
-          permissionStream = null;
+          console.log("⚠️ Existing stream no longer active - getting fresh stream");
           audioStream = await getAudioStream();
         }
       } else {
-        console.log("🔄 Getting fresh audio stream...");
+        console.log("🔄 No active stream found - getting fresh audio stream...");
         audioStream = await getAudioStream();
       }
 
-      console.log("✅ Audio stream obtained");
+      console.log("✅ Audio stream ready for capture");
 
       // Validate the stream has a valid audio track
       ensureSingleValidAudioTrack(audioStream);
