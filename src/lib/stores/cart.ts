@@ -21,7 +21,7 @@ export interface CartItem {
   // For Room Service
   deliveryDate?: string; // ISO date string (today or tomorrow)
   deliveryTime?: string; // Specific time (e.g., "09:00")
-  type?: 'menu' | 'spa-beauty' | 'taxi' | 'room-service';
+  type?: 'menu' | 'wellness' | 'taxi' | 'room-service';
 }
 
 export interface Cart {

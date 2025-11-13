@@ -64,10 +64,11 @@
       'list_beverages': 'Getränkekarte',
       'list_desserts': 'Dessertkarte',
       
-      // SPA tools
-      'list_spa_services': 'SPA Services',
-      'list_massages': 'Massage Angebote',
-      'list_beauty': 'Beauty Services',
+      // Wellness tools
+      'list_wellness': 'Wellness Angebote',
+      'list_spa_beauty': 'Wellness Angebote',
+      'list_massages': 'Wellness Angebote',
+      'list_beauty': 'Wellness Angebote',
       
       // Taxi tools
       'list_taxi': 'Taxi Services',
@@ -128,7 +129,7 @@
               </div>
               <div class="p-4 sm:p-5 bg-[var(--color-brand-cream-50)] border border-[rgba(8,27,71,0.1)] rounded-2xl transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] cursor-default shadow-[0_1px_3px_rgba(8,27,71,0.04)] hover:bg-white hover:border-[rgba(45,166,180,0.3)] hover:-translate-y-0.5 hover:shadow-[0_8px_24px_rgba(45,166,180,0.12),0_2px_8px_rgba(45,166,180,0.08)]">
                 <p class="text-[0.9375rem] sm:text-base text-gray-700 m-0 leading-relaxed">
-                  Zeig mir die SPA Services
+                  Zeig mir die Wellness Angebote
         </p>
       </div>
               <div class="p-4 sm:p-5 bg-[var(--color-brand-cream-50)] border border-[rgba(8,27,71,0.1)] rounded-2xl transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] cursor-default shadow-[0_1px_3px_rgba(8,27,71,0.04)] hover:bg-white hover:border-[rgba(45,166,180,0.3)] hover:-translate-y-0.5 hover:shadow-[0_8px_24px_rgba(45,166,180,0.12),0_2px_8px_rgba(45,166,180,0.08)]">
