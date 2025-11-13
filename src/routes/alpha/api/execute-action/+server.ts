@@ -367,7 +367,7 @@ const actionHandlers: Record<string, (params: any) => Promise<{ result: any; ui?
       unit: item.unit,
       timeSlot: item.timeSlot
     }));
-    const ui = createCartComponent(cartItems);
+    const ui = createCartComponent(cartItemsForUI);
     
     return {
       result: output,

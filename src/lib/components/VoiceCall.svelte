@@ -1064,16 +1064,7 @@
           const encodedAudioData = await convertBlobToBase64(event.data);
           socket.sendAudioInput({ data: encodedAudioData });
           audioChunksSent++;
-          if (audioChunksSent % 20 === 0) {
-            // Log every 20 chunks (roughly every second) to confirm audio is being sent
-            console.log(
-              "📤 Audio chunks sent:",
-              audioChunksSent,
-              "chunk size:",
-              event.data.size,
-              "bytes"
-            );
-          }
+          // Removed excessive logging - audio chunks are being sent successfully
         } catch (err: any) {
           console.error("❌ Error sending audio:", err);
           // If socket error, stop trying to send
