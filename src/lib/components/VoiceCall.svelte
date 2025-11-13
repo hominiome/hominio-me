@@ -64,6 +64,84 @@
     return null;
   }
 
+  // iOS PWA audio playback queue handler (HTMLAudioElement fallback)
+  // Based on Hume docs: Audio chunks should be queued and played sequentially
+  // https://dev.hume.ai/docs/speech-to-speech-evi/guides/audio
+  let currentIOSPWAAudio: HTMLAudioElement | null = null;
+  
+  async function playIOSPWAAudioQueue() {
+    if (iosPWAAudioPlaying || iosPWAAudioQueue.length === 0) {
+      return;
+    }
+    
+    iosPWAAudioPlaying = true;
+    
+    while (iosPWAAudioQueue.length > 0) {
+      // Check if we should stop (e.g., user interruption)
+      if (!iosPWAAudioPlaying) {
+        break;
+      }
+      
+      const blob = iosPWAAudioQueue.shift();
+      if (!blob) break;
+      
+      try {
+        const audioUrl = URL.createObjectURL(blob);
+        currentIOSPWAAudio = new Audio(audioUrl);
+        
+        // Wait for this chunk to finish before playing next
+        await new Promise<void>((resolve) => {
+          const handleEnded = () => {
+            URL.revokeObjectURL(audioUrl);
+            currentIOSPWAAudio = null;
+            resolve();
+          };
+          
+          const handleError = (err: any) => {
+            URL.revokeObjectURL(audioUrl);
+            currentIOSPWAAudio = null;
+            console.error("❌ Error playing iOS PWA audio chunk:", err);
+            resolve(); // Continue with next chunk even on error
+          };
+          
+          currentIOSPWAAudio.addEventListener('ended', handleEnded, { once: true });
+          currentIOSPWAAudio.addEventListener('error', handleError, { once: true });
+          
+          currentIOSPWAAudio.play().catch((err: any) => {
+            URL.revokeObjectURL(audioUrl);
+            currentIOSPWAAudio = null;
+            console.error("❌ Error starting iOS PWA audio playback:", err);
+            resolve(); // Continue with next chunk even on error
+          });
+        });
+      } catch (err: any) {
+        console.error("❌ Error processing iOS PWA audio chunk:", err);
+        currentIOSPWAAudio = null;
+      }
+    }
+    
+    iosPWAAudioPlaying = false;
+    currentIOSPWAAudio = null;
+    if (iosPWAAudioQueue.length === 0) {
+      console.log("✅ iOS PWA audio queue finished");
+    }
+  }
+  
+  function stopIOSPWAAudio() {
+    iosPWAAudioPlaying = false;
+    iosPWAAudioQueue = [];
+    if (currentIOSPWAAudio) {
+      try {
+        currentIOSPWAAudio.pause();
+        currentIOSPWAAudio.currentTime = 0;
+      } catch (err) {
+        console.error("Error stopping iOS PWA audio:", err);
+      }
+      currentIOSPWAAudio = null;
+    }
+    console.log("🛑 iOS PWA audio stopped (user interruption)");
+  }
+
   // Expose functions via component API
   export { startCall, stopCall };
 
@@ -73,6 +151,10 @@
   let audioStreamer: AudioStreamer | null = null;
   let audioChunkQueue: string[] = []; // Queue for base64 audio chunks until socket is ready
   let humeReady: boolean = false; // Track if Hume has sent a ready/setup_complete message
+  
+  // iOS PWA audio playback queue (HTMLAudioElement fallback)
+  let iosPWAAudioQueue: Blob[] = [];
+  let iosPWAAudioPlaying: boolean = false;
 
   // Client-side tool call handler
   async function handleToolCall(message: any) {
@@ -454,13 +536,23 @@
       let mediaStream: MediaStream | null = null;
 
       try {
+        // CRITICAL iOS PWA FIX: DON'T initialize AudioContext before getUserMedia
+        // iOS PWA kills the mic stream if AudioContext exists at all (even before getUserMedia)
+        // Solution: Skip AudioContext initialization in iOS PWA - will use HTMLAudioElement fallback
+        const isIOSPWA = (window.navigator as any).standalone === true;
+        console.log(`📱 iOS PWA mode: ${isIOSPWA}`);
+        
+        // iOS PWA: Skip AudioContext - it conflicts with getUserMedia
+        // We'll use HTMLAudioElement fallback for playback instead
+        if (isIOSPWA) {
+          console.log("⚠️ iOS PWA: Skipping AudioContext initialization (conflicts with getUserMedia)");
+          console.log("💡 Will use HTMLAudioElement fallback for audio playback");
+        }
+        
         // Get microphone stream
         // CRITICAL iOS PWA FIX: Request AUDIO ONLY with minimal constraints
         // The video workaround doesn't work in iOS PWA standalone mode (WKWebView)
         // Based on Chad Phillips' Safari WebRTC guide: use simple constraints
-        const isIOSPWA = (window.navigator as any).standalone === true;
-        console.log(`📱 iOS PWA mode: ${isIOSPWA}`);
-        
         const mediaConstraints = isIOSPWA
           ? {
               // iOS PWA: Minimal audio-only constraints (WKWebView requirement)
@@ -625,37 +717,21 @@
         mediaRecorder.start(100);
         console.log("✅ MediaRecorder started with 100ms timeslice");
 
-        // CRITICAL iOS PWA FIX: Initialize AudioContext NOW (same user gesture as getUserMedia)
-        // iOS PWA won't allow AudioContext creation later if microphone is already active
-        // Safari allows lazy init, but iOS PWA requires both in same user gesture
-        console.log(`🔊 Checking AudioStreamer state: ${audioStreamer ? 'already initialized' : 'needs initialization'}`);
-        if (!audioStreamer) {
-          console.log("🔊 Pre-initializing AudioStreamer (iOS PWA requires same user gesture as mic)");
+        // For non-iOS PWA: Initialize AudioContext after MediaRecorder (lazy init works in Safari)
+        if (!isIOSPWA && !audioStreamer) {
+          console.log("🔊 Initializing AudioStreamer (non-PWA mode - lazy init OK)");
           try {
             const ctx = await audioContext({
               id: "voice-call-playback",
             });
-            console.log(`✅ AudioContext created: sampleRate=${ctx.sampleRate}Hz, state=${ctx.state}`);
-            
-            // Resume context if suspended (iOS requirement)
-            if (ctx.state === 'suspended') {
-              await ctx.resume();
-              console.log(`✅ AudioContext resumed: state=${ctx.state}`);
-            }
-            
             audioStreamer = new AudioStreamer(ctx);
-            console.log(`✅ AudioStreamer pre-initialized successfully with sample rate: ${ctx.sampleRate}Hz`);
+            console.log(`✅ AudioStreamer initialized with sample rate: ${ctx.sampleRate}Hz`);
           } catch (streamerErr: any) {
-            console.error("❌ Failed to pre-initialize AudioStreamer:", streamerErr);
-            console.error("Error details:", {
-              name: streamerErr?.name,
-              message: streamerErr?.message,
-              stack: streamerErr?.stack
-            });
-            // Continue - will try again later if needed
+            console.error("❌ Failed to initialize AudioStreamer:", streamerErr);
+            // Continue - will try again when audio arrives
           }
-        } else {
-          console.log("✅ AudioStreamer already initialized, skipping pre-init");
+        } else if (isIOSPWA) {
+          console.log(`✅ AudioStreamer state: ${audioStreamer ? 'pre-initialized (iOS PWA)' : 'failed to pre-initialize'}`);
         }
 
         // Store references for cleanup
@@ -918,23 +994,75 @@
           // Handle user interruptions - stop audio playback immediately for low latency
           // According to Hume docs: EVI "stops rapidly whenever users interject"
           // https://dev.hume.ai/docs/speech-to-speech-evi/overview
-          if (message.type === "user_interruption" && audioStreamer) {
-            console.log(
-              "🛑 User interruption detected, stopping audio playback immediately"
-            );
-            // Stop audio playback immediately for responsive interruption handling
-            audioStreamer.stop();
+          if (message.type === "user_interruption") {
+            console.log("🛑 User interruption detected, stopping audio playback immediately");
+            
+            const isIOSPWA = (window.navigator as any).standalone === true;
+            
+            // Stop iOS PWA audio queue
+            if (isIOSPWA) {
+              stopIOSPWAAudio();
+            }
+            
+            // Stop AudioStreamer (non-PWA)
+            if (audioStreamer) {
+              audioStreamer.stop();
+            }
+            
             // Clear any queued audio to prevent delayed playback after interruption
             // This ensures EVI can respond immediately to the user's interjection
           }
 
-          // Handle audio output - use AudioStreamer for smooth playback
-          // AudioStreamer uses AudioWorklet and is compatible with iOS PWA
+          // Handle audio output
           if (message.type === "audio_output") {
-            // Lazy initialize AudioStreamer if it wasn't initialized earlier
+            const isIOSPWA = (window.navigator as any).standalone === true;
+            
+            // iOS PWA: Use HTMLAudioElement fallback (AudioContext conflicts with getUserMedia)
+            if (isIOSPWA && !audioStreamer) {
+              const audioData = message.data || message.audio || message.payload;
+              if (!audioData) {
+                console.warn("⚠️ No audio data found in message");
+                return;
+              }
+              
+              try {
+                // Convert to Blob and queue for sequential playback
+                let blob: Blob;
+                if (audioData instanceof Blob) {
+                  blob = audioData;
+                } else if (typeof audioData === "string") {
+                  const binaryString = atob(audioData);
+                  const bytes = new Uint8Array(binaryString.length);
+                  for (let i = 0; i < binaryString.length; i++) {
+                    bytes[i] = binaryString.charCodeAt(i);
+                  }
+                  blob = new Blob([bytes], { type: "audio/webm;codecs=opus" });
+                } else if (audioData instanceof ArrayBuffer) {
+                  blob = new Blob([audioData], { type: "audio/webm;codecs=opus" });
+                } else {
+                  console.warn("⚠️ Unknown audio format");
+                  return;
+                }
+                
+                // Add to queue
+                iosPWAAudioQueue.push(blob);
+                console.log(`🔊 iOS PWA: Queued audio chunk (queue length: ${iosPWAAudioQueue.length})`);
+                
+                // Start playing if not already playing
+                if (!iosPWAAudioPlaying) {
+                  playIOSPWAAudioQueue();
+                }
+                
+                return;
+              } catch (err: any) {
+                console.error("❌ Error queuing audio for iOS PWA:", err);
+                return;
+              }
+            }
+            
+            // Non-iOS PWA: Use AudioStreamer (AudioContext works fine)
             if (!audioStreamer) {
               console.error("❌ AudioStreamer not initialized - audio playback unavailable");
-              console.log("💡 Tip: AudioStreamer must be pre-initialized in same user gesture as mic (iOS PWA requirement)");
               // Continue without audio streamer - user won't hear audio but call can continue
               return;
             }
@@ -1388,6 +1516,9 @@
       }
       audioStreamer = null;
     }
+    
+    // Clear iOS PWA audio queue
+    stopIOSPWAAudio();
 
     // Cancel any pending action message timeout
     if (actionMessageTimeout) {
