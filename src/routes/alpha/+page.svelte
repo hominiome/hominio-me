@@ -149,13 +149,10 @@
       <!-- Latest Activity Content -->
       <div class="bg-white rounded-2xl p-6 md:p-8 shadow-[0_4px_20px_rgba(0,0,0,0.08)] border-t-4 border-t-[var(--color-secondary-500)] border-l border-r border-b border-gray-200 max-w-6xl mx-auto transition-all duration-200">
         <!-- Activity Header - Centered Beautiful Title -->
-        <div class="flex flex-col items-center justify-center mb-6 pb-4 border-b border-gray-200 gap-2">
+        <div class="flex flex-col items-center justify-center mb-6 pb-4 border-b border-gray-200">
           <h2 class="text-2xl font-bold text-[var(--color-secondary-700)] text-center">
             {getHumanReadableTitle(latestActivity.vibeId, latestActivity.toolName)}
           </h2>
-          <span class="text-gray-400 text-xs">
-            {formatTimestamp(latestActivity.timestamp)}
-          </span>
         </div>
         
         <!-- Activity Content -->
