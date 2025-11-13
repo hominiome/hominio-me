@@ -44,7 +44,7 @@
   function isViewTool(action: string): boolean {
     return (
       action === "list_menu" ||
-      action === "list_spa_beauty" ||
+      action === "list_wellness" ||
       action === "list_taxi" ||
       action === "list_room_service"
     );
@@ -89,6 +89,23 @@
         const audioUrl = URL.createObjectURL(blob);
         currentIOSPWAAudio = new Audio(audioUrl);
         
+        // CRITICAL iOS PWA: Ensure audio is unlocked before playing
+        // If not unlocked yet, try to unlock now (may fail, but worth trying)
+        if (!iosPWAAudioUnlocked) {
+          console.log("⚠️ iOS PWA: Audio not unlocked yet, attempting unlock...");
+          try {
+            const unlockAudio = new Audio();
+            unlockAudio.src = 'data:audio/wav;base64,UklGRigAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=';
+            unlockAudio.volume = 0;
+            await unlockAudio.play();
+            iosPWAAudioUnlocked = true;
+            console.log("✅ iOS PWA: Audio unlocked on-demand");
+          } catch (unlockErr: any) {
+            console.warn("⚠️ iOS PWA: Failed to unlock audio on-demand:", unlockErr);
+            // Continue anyway - might work if user interacts
+          }
+        }
+        
         // Wait for this chunk to finish before playing next
         await new Promise<void>((resolve) => {
           const handleEnded = () => {
@@ -107,10 +124,15 @@
           currentIOSPWAAudio.addEventListener('ended', handleEnded, { once: true });
           currentIOSPWAAudio.addEventListener('error', handleError, { once: true });
           
+          // Try to play - if it fails due to not being in user gesture, log it
           currentIOSPWAAudio.play().catch((err: any) => {
             URL.revokeObjectURL(audioUrl);
             currentIOSPWAAudio = null;
-            console.error("❌ Error starting iOS PWA audio playback:", err);
+            if (err.name === 'NotAllowedError') {
+              console.error("❌ iOS PWA: Audio playback blocked - not in user gesture context. Audio unlock may have failed.");
+            } else {
+              console.error("❌ Error starting iOS PWA audio playback:", err);
+            }
             resolve(); // Continue with next chunk even on error
           });
         });
@@ -139,6 +161,8 @@
       }
       currentIOSPWAAudio = null;
     }
+    // Reset unlock flag on stop (will re-unlock on next call start)
+    iosPWAAudioUnlocked = false;
     console.log("🛑 iOS PWA audio stopped (user interruption)");
   }
 
@@ -155,6 +179,7 @@
   // iOS PWA audio playback queue (HTMLAudioElement fallback)
   let iosPWAAudioQueue: Blob[] = [];
   let iosPWAAudioPlaying: boolean = false;
+  let iosPWAAudioUnlocked: boolean = false; // Track if audio context is unlocked
 
   // Client-side tool call handler
   async function handleToolCall(message: any) {
@@ -329,7 +354,7 @@
             );
             // Determine vibeId based on action
             let vibeId = "menu";
-            if (action === "list_spa_beauty") vibeId = "spa-beauty";
+            if (action === "list_wellness") vibeId = "spa-beauty";
             else if (action === "list_taxi") vibeId = "taxi";
             else if (action === "list_room_service") vibeId = "room-service";
             addActivity({
@@ -549,7 +574,28 @@
           console.log("💡 Will use HTMLAudioElement fallback for audio playback");
         }
         
-        // Get microphone stream
+        // CRITICAL iOS PWA: Unlock audio playback BEFORE getUserMedia in same user gesture
+        // iOS allows both audio.play() and getUserMedia() in the same user gesture
+        // We unlock audio first, then get microphone - both in same gesture context
+        let audioUnlockPromise: Promise<void> | null = null;
+        if (isIOSPWA) {
+          try {
+            const unlockAudio = new Audio();
+            unlockAudio.src = 'data:audio/wav;base64,UklGRigAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=';
+            unlockAudio.volume = 0;
+            audioUnlockPromise = unlockAudio.play().then(() => {
+              iosPWAAudioUnlocked = true;
+              console.log("✅ iOS PWA: Audio playback unlocked (silent audio played in user gesture context)");
+            }).catch((err: any) => {
+              console.warn("⚠️ iOS PWA: Failed to unlock audio playback:", err);
+              // Continue anyway - will try again when audio arrives
+            });
+          } catch (err: any) {
+            console.warn("⚠️ iOS PWA: Failed to create unlock audio:", err);
+          }
+        }
+        
+        // Get microphone stream (happens in same user gesture as audio unlock)
         // CRITICAL iOS PWA FIX: Request AUDIO ONLY with minimal constraints
         // The video workaround doesn't work in iOS PWA standalone mode (WKWebView)
         // Based on Chad Phillips' Safari WebRTC guide: use simple constraints
@@ -570,6 +616,17 @@
         
         mediaStream = await navigator.mediaDevices.getUserMedia(mediaConstraints);
         console.log("✅ MediaStream obtained, track state:", mediaStream.getAudioTracks()[0]?.readyState);
+        
+        // Wait for audio unlock to complete (if iOS PWA)
+        // Both getUserMedia and audio.play() happen in same user gesture, so this should work
+        if (isIOSPWA && audioUnlockPromise) {
+          try {
+            await audioUnlockPromise;
+            console.log("✅ iOS PWA: Both microphone and audio playback unlocked in same user gesture");
+          } catch (err: any) {
+            console.warn("⚠️ iOS PWA: Audio unlock completed with warning:", err);
+          }
+        }
 
         // Use MediaRecorder for ALL platforms (iOS PWA workaround makes it work)
         const mimeTypes = [
