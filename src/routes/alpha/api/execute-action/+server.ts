@@ -14,7 +14,6 @@ import {
   createRoomServiceListComponent
 } from '$lib/components/dynamic/component-loader';
 
-// Removed todosStore - todos functionality removed
 
 // In-memory cart storage for MVP (server-side)
 let cartStore: Cart = {
