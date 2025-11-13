@@ -690,9 +690,8 @@
         return;
       }
 
-      // Initialize AudioStreamer for playback (lazy initialization when audio arrives)
-      // AudioStreamer uses the same AudioContext pattern as AudioRecorder, compatible with iOS PWA
-      audioStreamer = null; // Will be initialized when first audio arrives
+      // AudioStreamer is already pre-initialized above (in same user gesture as mic)
+      // No need to nullify it here - iOS PWA requires it to be initialized early!
 
       // Get access token from server (still connecting)
       const accessTokenResponse = await fetch("/alpha/api/hume/access-token");
