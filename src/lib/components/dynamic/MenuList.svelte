@@ -99,6 +99,7 @@
     align-items: flex-end;
     gap: 0.5rem;
     flex-shrink: 0;
+    margin-right: -1.5rem;
   }
 
   .menu-item-price {
@@ -106,6 +107,7 @@
     color: var(--color-brand-navy-800);
     background: var(--color-secondary-200);
     border: 2px solid var(--color-secondary-400);
+    border-left: none;
     font-size: 1.5rem;
     text-align: center;
     min-width: fit-content;
@@ -116,7 +118,8 @@
     gap: 0.125rem;
     letter-spacing: -0.02em;
     padding: 0.625rem 1rem;
-    border-radius: 12px;
+    padding-right: 1.5rem;
+    border-radius: 0 12px 12px 0;
     box-shadow: 0 2px 8px rgba(45, 166, 180, 0.15);
   }
 
