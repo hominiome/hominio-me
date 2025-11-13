@@ -455,19 +455,20 @@
 
       try {
         // Get microphone stream
-        // CRITICAL FOR iOS PWA: Use MINIMAL constraints - complex constraints cause "capture failure"
-        // iOS PWA (homescreen pinned) is MUCH more restrictive than Safari
-        // Echo cancellation and other processing can cause stream closure in PWA mode
+        // CRITICAL iOS PWA FIX: Request BOTH audio and video, then stop video track
+        // This is the standard workaround for iOS PWA MediaRecorder "capture failure" bug
+        // iOS PWA requires video permission to keep audio stream alive with MediaRecorder
         const isIOSPWA = (window.navigator as any).standalone === true;
         console.log(`📱 iOS PWA mode: ${isIOSPWA}`);
         
-        const audioConstraints = isIOSPWA
+        const mediaConstraints = isIOSPWA
           ? {
-              // MINIMAL constraints for iOS PWA - just get the stream!
+              // iOS PWA workaround: Request video to prevent "capture failure"
               audio: true,
+              video: { facingMode: 'user' }  // Request video (will be stopped immediately)
             }
           : {
-              // Full constraints for other browsers
+              // Full audio constraints for other browsers
               audio: {
                 channelCount: 1,
                 echoCancellation: true,
@@ -476,15 +477,20 @@
               },
             };
         
-        mediaStream = await navigator.mediaDevices.getUserMedia(audioConstraints);
+        mediaStream = await navigator.mediaDevices.getUserMedia(mediaConstraints);
         console.log("✅ MediaStream obtained, track state:", mediaStream.getAudioTracks()[0]?.readyState);
 
-        // CRITICAL FOR iOS PWA: MediaRecorder MUST start IMMEDIATELY after getUserMedia()
-        // iOS PWA closes the stream if it's not actively consumed within milliseconds
-        // DO NOT create any other stream consumers (audio elements, AudioContext, etc.) in iOS PWA
-        // Multiple consumers cause "capture failure" errors
-        
-        // Get browser-supported MIME type
+        // iOS PWA workaround: Stop video track immediately (we only need audio)
+        if (isIOSPWA) {
+          const videoTracks = mediaStream.getVideoTracks();
+          videoTracks.forEach(track => {
+            track.stop();
+            mediaStream.removeTrack(track);
+          });
+          console.log("✅ iOS PWA: Video track stopped and removed (workaround for MediaRecorder bug)");
+        }
+
+        // Use MediaRecorder for ALL platforms (iOS PWA workaround makes it work)
         const mimeTypes = [
           "audio/webm;codecs=opus",
           "audio/webm",
@@ -500,10 +506,7 @@
           }
         }
 
-        console.log(
-          "🎤 Using MediaRecorder (WebM/Opus) + AudioWorklet (iOS PWA), MIME type:",
-          selectedMimeType
-        );
+        console.log("🎤 Using MediaRecorder (WebM/Opus), MIME type:", selectedMimeType);
 
         // Create MediaRecorder on the mic stream (WebM/Opus format)
         mediaRecorder = new MediaRecorder(mediaStream, {
@@ -515,7 +518,7 @@
         let totalBytesSent = 0;
         let firstChunkTime = 0;
 
-        // Handle MediaRecorder data (WebM/Opus format - EXACT same format as MediaRecorder!)
+        // Handle MediaRecorder data (WebM/Opus format)
         mediaRecorder.ondataavailable = async (event: BlobEvent) => {
           if (event.data.size === 0) {
             console.warn("⚠️ Empty audio chunk received");
@@ -629,41 +632,9 @@
           isRecording = false;
         };
 
-        // CRITICAL: Start MediaRecorder IMMEDIATELY (synchronous) to prevent iOS PWA from closing stream
-        // This must happen before AudioRecorder to ensure the stream is consumed instantly
+        // Start MediaRecorder immediately
         mediaRecorder.start(100);
-        console.log(
-          "✅ MediaRecorder started IMMEDIATELY with 100ms timeslice (iOS PWA critical - stream now actively consumed)"
-        );
-
-        // Monitor track state to detect iOS PWA stream closure
-        const audioTrack = mediaStream.getAudioTracks()[0];
-        if (audioTrack) {
-          audioTrack.addEventListener("ended", () => {
-            console.error("❌ CRITICAL: Audio track ended unexpectedly! iOS PWA may have closed the stream.");
-            console.error("Track state:", {
-              readyState: audioTrack.readyState,
-              enabled: audioTrack.enabled,
-              muted: audioTrack.muted,
-              label: audioTrack.label,
-            });
-          });
-          console.log("✅ Track monitor attached - readyState:", audioTrack.readyState);
-        }
-
-        // IMPORTANT: Don't start AudioRecorder in iOS PWA mode - it can cause stream closure
-        // Multiple consumers of the stream can trigger "capture failure" in iOS PWA
-        // Reuse isIOSPWA variable from above
-        if (!isIOSPWA) {
-          // Only use AudioRecorder in non-PWA mode (desktop, mobile Safari, etc.)
-          audioRecorder = new AudioRecorder(16000);
-          audioRecorder.start(mediaStream).catch((err) => {
-            console.error("⚠️ AudioRecorder start failed (non-critical):", err);
-          });
-          console.log("✅ AudioRecorder starting in parallel (non-PWA mode only)");
-        } else {
-          console.log("⚠️ Skipping AudioRecorder in iOS PWA mode to avoid stream conflicts");
-        }
+        console.log("✅ MediaRecorder started with 100ms timeslice");
 
         // Store references for cleanup
         (window as any).__mediaRecorder = mediaRecorder;
