@@ -466,11 +466,12 @@
           },
         });
 
-        // Start AudioWorklet in parallel to keep stream alive in iOS PWA
-        // This doesn't interfere with MediaRecorder, but ensures the stream stays active
+        // CRITICAL for iOS PWA: Start AudioWorklet using the SAME MediaStream as MediaRecorder
+        // iOS PWA will close the stream if we create a second one via getUserMedia()
+        // By passing the existing stream, both MediaRecorder and AudioWorklet use the same stream
         audioRecorder = new AudioRecorder(16000);
-        await audioRecorder.start();
-        // AudioWorklet is now running and keeping the stream alive
+        await audioRecorder.start(mediaStream); // Pass the same stream!
+        console.log("✅ AudioWorklet started with same MediaStream as MediaRecorder (iOS PWA fix)");
 
         // Get browser-supported MIME type (same as MediaRecorder)
         const mimeTypes = [
