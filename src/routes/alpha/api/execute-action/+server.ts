@@ -437,12 +437,12 @@ const actionHandlers: Record<string, (params: any) => Promise<{ result: any; ui?
     }
 
     // Find the service
-    const allSpaServices: any[] = [];
+    const allWellnessServices: any[] = [];
     Object.values(spaBeautyData.categories).forEach(categoryServices => {
-      allSpaServices.push(...categoryServices);
+      allWellnessServices.push(...categoryServices);
     });
-
-    const service = allSpaServices.find(s => s.id === serviceId);
+    
+    const service = allWellnessServices.find(s => s.id === serviceId);
     if (!service) {
       throw new Error(`Service with ID "${serviceId}" not found`);
     }
