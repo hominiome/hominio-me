@@ -24,6 +24,8 @@
   // State - using $state for reactivity
   let isRecording = $state(false);
   let isConnected = $state(false);
+  let isConnecting = $state(false); // Track connecting state (permission + socket)
+  let isWaitingForPermission = $state(false); // Track permission request state
   let lastResponse = $state("");
   let actionMessage = $state<string | null>(null); // For action tool calls (create/edit/delete)
   let orderConfirmationUI = $state<any>(null); // For confirm_order UI display in mini-modal
@@ -36,6 +38,8 @@
     updateVoiceCallState({
       isRecording,
       isConnected,
+      isConnecting,
+      isWaitingForPermission,
       lastResponse,
     });
   });
@@ -428,6 +432,8 @@
 
     try {
       lastResponse = "";
+      isConnecting = true;
+      isWaitingForPermission = true;
 
       console.log("🎙️ Starting Hume voice conversation...");
 
@@ -435,6 +441,8 @@
         console.error("❌ HUME_CONFIG_ID not configured");
         lastResponse =
           "Error: Voice configuration not set up. Please configure HUME_CONFIG_ID.";
+        isConnecting = false;
+        isWaitingForPermission = false;
         return;
       }
 
@@ -443,21 +451,26 @@
       // The function returns a stream if it's still active, or null if we need a fresh one
       console.log("🎤 Requesting microphone permission...");
       permissionStream = await requestMicrophonePermission();
+      isWaitingForPermission = false;
       if (permissionStream === null) {
         // Check if permission was actually denied or just needs a fresh stream
         const permissionStatus = await checkMicrophonePermission();
         if (!permissionStatus) {
           console.error("❌ Microphone permission not granted - aborting call");
-          lastResponse = "Microphone permission is required to start a voice call.";
+          lastResponse =
+            "Microphone permission is required to start a voice call.";
+          isConnecting = false;
           return;
         }
         // Permission is granted but stream was ended - we'll get a fresh one in startAudioCapture
-        console.log("✅ Microphone permission granted - will get fresh stream for capture");
+        console.log(
+          "✅ Microphone permission granted - will get fresh stream for capture"
+        );
       } else {
         console.log("✅ Microphone permission granted - reusing active stream");
       }
 
-      // Get access token from server
+      // Get access token from server (still connecting)
       const accessTokenResponse = await fetch("/alpha/api/hume/access-token");
       if (!accessTokenResponse.ok) {
         const errorData = await accessTokenResponse.json();
@@ -480,21 +493,78 @@
 
       // Connect to EVI WebSocket
       console.log("🔄 Connecting to Hume EVI WebSocket...");
+      console.log("📊 Config ID:", HUME_CONFIG_ID ? "Set" : "Missing");
+
       socket = await client.empathicVoice.chat.connect({
         configId: HUME_CONFIG_ID,
       });
       console.log("✅ Socket created, waiting for open event...");
 
-      // Set up event listeners
-      socket.on("open", async () => {
-        console.log("✅ Hume connection opened");
-        isConnected = true;
-        // isExpanded is now derived from isRecording || isConnected, so no need to set it here
-        // Audio player already initialized above
-        
-        // Verify socket is really open
-        // @ts-ignore - readyState exists on the socket
-        console.log("📊 Socket readyState after open event:", socket.readyState);
+      // Check initial socket state
+      // @ts-ignore - readyState exists on the socket
+      console.log(
+        "📊 Socket initial readyState:",
+        socket.readyState,
+        "(0 = CONNECTING, 1 = OPEN, 2 = CLOSING, 3 = CLOSED)"
+      );
+
+      // Set up event listeners BEFORE waiting for open
+      // Use a promise-based approach with timeout to detect if socket hangs
+      let socketOpened = false;
+      let socketOpenTimeout: ReturnType<typeof setTimeout> | null = null;
+      let preOpenErrorHandler: ((error: Error) => void) | null = null;
+
+      const socketOpenPromise = new Promise<void>((resolve, reject) => {
+        socketOpenTimeout = setTimeout(() => {
+          if (!socketOpened) {
+            console.error("❌ Socket open timeout after 10 seconds");
+            // Remove the pre-open error handler since we're timing out
+            if (preOpenErrorHandler) {
+              socket.off("error", preOpenErrorHandler);
+              preOpenErrorHandler = null;
+            }
+            reject(new Error("Socket connection timeout"));
+          }
+        }, 10000); // 10 second timeout
+
+        socket.on("open", async () => {
+          socketOpened = true;
+          if (socketOpenTimeout) {
+            clearTimeout(socketOpenTimeout);
+            socketOpenTimeout = null;
+          }
+          // Remove the pre-open error handler since socket is now open
+          if (preOpenErrorHandler) {
+            socket.off("error", preOpenErrorHandler);
+            preOpenErrorHandler = null;
+          }
+          console.log("✅ Hume connection opened");
+          isConnected = true;
+
+          // Verify socket is really open
+          // @ts-ignore - readyState exists on the socket
+          console.log(
+            "📊 Socket readyState after open event:",
+            socket.readyState
+          );
+          resolve();
+        });
+
+        // Store reference to pre-open error handler so we can remove it later
+        preOpenErrorHandler = (error: Error) => {
+          // Don't set socketOpened = true for errors - only for successful open
+          if (socketOpenTimeout) {
+            clearTimeout(socketOpenTimeout);
+            socketOpenTimeout = null;
+          }
+          console.error("❌ Socket error before open:", error);
+          // Remove this handler since we're rejecting
+          socket.off("error", preOpenErrorHandler);
+          preOpenErrorHandler = null;
+          reject(error);
+        };
+
+        socket.on("error", preOpenErrorHandler);
       });
 
       socket.on("message", async (message: any) => {
@@ -546,8 +616,13 @@
         }
       });
 
+      // Error handler for errors AFTER socket is open
+      // The preOpenErrorHandler in socketOpenPromise handles errors BEFORE open
+      // This handler will only be active after socketOpenPromise resolves (socket is open)
       socket.on("error", (error: Error) => {
-        console.error("❌ Hume error:", error);
+        // This handler only runs for errors AFTER socket is open
+        // The preOpenErrorHandler is removed once socket opens or promise rejects
+        console.error("❌ Hume error (after open):", error);
         console.error("Error details:", error.message, error.stack);
         cleanupCall();
       });
@@ -564,32 +639,55 @@
         }
       });
 
-      // Wait for connection to open (as per Hume docs)
-      await socket.tillSocketOpen();
-      console.log("✅ Socket connection ready");
-      
+      // Wait for connection to open
+      // Use our own promise with timeout instead of tillSocketOpen() which might hang
+      console.log("⏳ Waiting for socket to open...");
+      try {
+        await socketOpenPromise;
+        console.log("✅ Socket connection ready (via open event)");
+      } catch (err: any) {
+        // Fallback: try tillSocketOpen() if our promise fails
+        console.log("⚠️ Open event promise failed, trying tillSocketOpen()...");
+        try {
+          await socket.tillSocketOpen();
+          console.log("✅ Socket connection ready (via tillSocketOpen)");
+        } catch (tillErr: any) {
+          console.error("❌ Both socket open methods failed:", tillErr);
+          throw new Error(
+            `Socket failed to open: ${err.message || tillErr.message}`
+          );
+        }
+      }
+
       // Verify socket is actually open before starting audio capture
       // @ts-ignore - readyState exists on the socket
       const socketState = socket.readyState;
       console.log("📊 Socket readyState:", socketState, "(1 = OPEN)");
-      
+
       if (socketState !== 1) {
         console.error("❌ Socket not open! State:", socketState);
         throw new Error(`Socket not open (state: ${socketState})`);
       }
 
       // Small delay to ensure socket is fully ready
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise((resolve) => setTimeout(resolve, 100));
 
       // Start audio capture
       await startAudioCapture();
 
-      console.log("🎙️ Hume voice call started - bidirectional communication should be active");
+      // Connection is complete
+      isConnecting = false;
+
+      console.log(
+        "🎙️ Hume voice call started - bidirectional communication should be active"
+      );
     } catch (err: any) {
       console.error("Failed to start Hume voice:", err);
       lastResponse = `Error: ${err.message || "Failed to start voice call"}`;
       isConnected = false;
       isRecording = false;
+      isConnecting = false;
+      isWaitingForPermission = false;
     }
   }
 
@@ -610,7 +708,10 @@
           name: "microphone" as PermissionName,
         });
         const isGranted = permissionStatus.state === "granted";
-        console.log("🎤 Microphone permission status (Permissions API):", permissionStatus.state);
+        console.log(
+          "🎤 Microphone permission status (Permissions API):",
+          permissionStatus.state
+        );
         if (isGranted) {
           return true; // Definitely granted
         }
@@ -632,18 +733,20 @@
       const testStream = await navigator.mediaDevices.getUserMedia({
         audio: true,
       });
-      
+
       // If we got here without a prompt, permission was already granted
       // Clean up immediately
-      testStream.getTracks().forEach(track => {
+      testStream.getTracks().forEach((track) => {
         try {
           track.stop();
         } catch (e) {
           // Ignore cleanup errors
         }
       });
-      
-      console.log("✅ Microphone permission already granted (silent check succeeded)");
+
+      console.log(
+        "✅ Microphone permission already granted (silent check succeeded)"
+      );
       return true;
     } catch (err: any) {
       // If getUserMedia fails, permission is either denied or not yet granted
@@ -675,14 +778,16 @@
       // First, check if permission is already granted
       const alreadyGranted = await checkMicrophonePermission();
       if (alreadyGranted) {
-        console.log("✅ Microphone permission already granted - will get fresh stream when needed");
+        console.log(
+          "✅ Microphone permission already granted - will get fresh stream when needed"
+        );
         return null; // Return null to indicate we should get a fresh stream (no prompt needed)
       }
 
       // Permission not granted yet - we need to request it
       // This will show the permission prompt to the user
       console.log("🔄 Requesting microphone permission (showing prompt)...");
-      
+
       try {
         // Request permission - this will show the prompt on iOS/other browsers
         const stream = await navigator.mediaDevices.getUserMedia({
@@ -691,14 +796,18 @@
 
         // Verify the stream is actually active
         const tracks = stream.getAudioTracks();
-        const hasActiveTrack = tracks.length > 0 && tracks.some(t => t.readyState === 'live' && !t.muted);
-        
+        const hasActiveTrack =
+          tracks.length > 0 &&
+          tracks.some((t) => t.readyState === "live" && !t.muted);
+
         if (!hasActiveTrack) {
-          console.log("⚠️ Stream obtained but no active tracks - iOS may have ended it");
+          console.log(
+            "⚠️ Stream obtained but no active tracks - iOS may have ended it"
+          );
           // Clean up the stream
-          tracks.forEach(track => {
+          tracks.forEach((track) => {
             try {
-              if (track.readyState === 'live') track.stop();
+              if (track.readyState === "live") track.stop();
             } catch (e) {
               // Ignore - track may already be ended
             }
@@ -709,15 +818,17 @@
         // Verify permission is actually granted
         const permissionGranted = await checkMicrophonePermission();
         if (!permissionGranted) {
-          console.log("⚠️ getUserMedia succeeded but permission not granted yet");
+          console.log(
+            "⚠️ getUserMedia succeeded but permission not granted yet"
+          );
           // Wait a bit for permission to propagate (iOS can be slow)
-          await new Promise(resolve => setTimeout(resolve, 200));
+          await new Promise((resolve) => setTimeout(resolve, 200));
           const recheckGranted = await checkMicrophonePermission();
           if (!recheckGranted) {
             // Still not granted - clean up and return null
-            tracks.forEach(track => {
+            tracks.forEach((track) => {
               try {
-                if (track.readyState === 'live') track.stop();
+                if (track.readyState === "live") track.stop();
               } catch (e) {
                 // Ignore
               }
@@ -727,13 +838,14 @@
         }
 
         // Stream is active and permission is granted - we can use this stream!
-        console.log("✅ Microphone permission granted - stream is active and ready");
+        console.log(
+          "✅ Microphone permission granted - stream is active and ready"
+        );
         return stream; // Return the active stream for reuse
-        
       } catch (getUserMediaErr: any) {
         // getUserMedia failed - permission denied or other error
         console.error("❌ getUserMedia failed:", getUserMediaErr);
-        
+
         if (
           getUserMediaErr.name === "NotAllowedError" ||
           getUserMediaErr.name === "PermissionDeniedError"
@@ -757,7 +869,9 @@
       }
     } catch (err: any) {
       console.error("❌ Failed to request microphone permission:", err);
-      lastResponse = `Failed to access microphone: ${err.message || "Unknown error"}`;
+      lastResponse = `Failed to access microphone: ${
+        err.message || "Unknown error"
+      }`;
       return null;
     }
   }
@@ -779,14 +893,18 @@
       // Use the stream from permission request if it's still active, otherwise get a fresh one
       if (permissionStream && permissionStream.active) {
         const tracks = permissionStream.getAudioTracks();
-        const hasActiveTrack = tracks.some(t => t.readyState === 'live' && !t.muted);
-        
+        const hasActiveTrack = tracks.some(
+          (t) => t.readyState === "live" && !t.muted
+        );
+
         if (hasActiveTrack) {
           console.log("✅ Reusing active stream from permission request");
           audioStream = permissionStream;
           permissionStream = null; // Clear reference - we own it now
         } else {
-          console.log("⚠️ Permission stream no longer active - getting fresh stream");
+          console.log(
+            "⚠️ Permission stream no longer active - getting fresh stream"
+          );
           permissionStream = null;
           audioStream = await getAudioStream();
         }
@@ -794,9 +912,9 @@
         console.log("🔄 Getting fresh audio stream...");
         audioStream = await getAudioStream();
       }
-      
+
       console.log("✅ Audio stream obtained");
-      
+
       // Validate the stream has a valid audio track
       ensureSingleValidAudioTrack(audioStream);
       console.log("✅ Audio track validated");
@@ -814,7 +932,7 @@
 
       // Track audio chunks sent for debugging
       let audioChunksSent = 0;
-      
+
       mediaRecorder.ondataavailable = async (event) => {
         if (event.data.size < 1) {
           console.log("ℹ️ Empty audio chunk received, skipping");
@@ -827,11 +945,15 @@
           console.warn("⚠️ Socket not initialized, skipping audio chunk");
           return;
         }
-        
+
         // @ts-ignore - readyState exists on the socket
         const socketReady = socket.readyState === 1; // WebSocket.OPEN = 1
         if (!socketReady) {
-          console.warn("⚠️ Socket not open (state:", socket.readyState, "), skipping audio chunk");
+          console.warn(
+            "⚠️ Socket not open (state:",
+            socket.readyState,
+            "), skipping audio chunk"
+          );
           return;
         }
 
@@ -841,7 +963,13 @@
           audioChunksSent++;
           if (audioChunksSent % 20 === 0) {
             // Log every 20 chunks (roughly every second) to confirm audio is being sent
-            console.log("📤 Audio chunks sent:", audioChunksSent, "chunk size:", event.data.size, "bytes");
+            console.log(
+              "📤 Audio chunks sent:",
+              audioChunksSent,
+              "chunk size:",
+              event.data.size,
+              "bytes"
+            );
           }
         } catch (err: any) {
           console.error("❌ Error sending audio:", err);
@@ -864,31 +992,40 @@
       console.log("🔄 Starting MediaRecorder...");
       console.log("📊 Pre-start state:", {
         socketExists: !!socket,
-        socketReady: socket ? (socket as any).readyState : 'N/A',
+        socketReady: socket ? (socket as any).readyState : "N/A",
         streamActive: audioStream.active,
-        tracksCount: audioStream.getTracks().length
+        tracksCount: audioStream.getTracks().length,
       });
-      
+
       mediaRecorder.start(50);
-      
+
       // Set recording state BEFORE logging to ensure UI updates
       isRecording = true;
       // isExpanded is now derived from isRecording || isConnected, so no need to set it here
-      
-      console.log("✅ Recording started - isRecording:", isRecording, "isConnected:", isConnected);
+
+      console.log(
+        "✅ Recording started - isRecording:",
+        isRecording,
+        "isConnected:",
+        isConnected
+      );
       console.log("📊 Post-start state:", {
         mediaRecorderState: mediaRecorder.state,
-        socketReady: socket ? (socket as any).readyState : 'N/A',
-        streamActive: audioStream.active
+        socketReady: socket ? (socket as any).readyState : "N/A",
+        streamActive: audioStream.active,
       });
-      
+
       // Verify recording state and audio track status
       if (mediaRecorder.state === "recording") {
         console.log("✅ MediaRecorder confirmed in 'recording' state");
       } else {
-        console.warn("⚠️ MediaRecorder state:", mediaRecorder.state, "(expected 'recording')");
+        console.warn(
+          "⚠️ MediaRecorder state:",
+          mediaRecorder.state,
+          "(expected 'recording')"
+        );
       }
-      
+
       // Verify audio track is active and sending data
       const audioTracks = audioStream.getAudioTracks();
       if (audioTracks.length > 0) {
@@ -897,9 +1034,9 @@
           enabled: track.enabled,
           readyState: track.readyState,
           muted: track.muted,
-          label: track.label
+          label: track.label,
         });
-        
+
         // Monitor track state changes
         track.onended = () => {
           console.warn("⚠️ Audio track ended unexpectedly");
@@ -908,40 +1045,46 @@
             // Try to restart if we're still supposed to be recording
             setTimeout(() => {
               if (isRecording && isConnected) {
-                startAudioCapture().catch(err => {
+                startAudioCapture().catch((err) => {
                   console.error("❌ Failed to restart audio capture:", err);
                 });
               }
             }, 1000);
           }
         };
-        
+
         track.onmute = () => {
           console.warn("⚠️ Audio track muted");
         };
-        
+
         track.onunmute = () => {
           console.log("✅ Audio track unmuted");
         };
       } else {
         console.error("❌ No audio tracks found in stream!");
       }
-      
+
       // Verify audio player is ready for output
       if (audioPlayer) {
-        console.log("🔊 Audio player ready for output (bidirectional communication enabled)");
+        console.log(
+          "🔊 Audio player ready for output (bidirectional communication enabled)"
+        );
       } else {
-        console.warn("⚠️ Audio player not initialized - audio output may not work");
+        console.warn(
+          "⚠️ Audio player not initialized - audio output may not work"
+        );
       }
-      
-      console.log("🎙️ Bidirectional voice call active - ready to speak and listen");
+
+      console.log(
+        "🎙️ Bidirectional voice call active - ready to speak and listen"
+      );
     } catch (err: any) {
       console.error("❌ Failed to start audio capture:", err);
       console.error("Error details:", err.name, err.message, err.stack);
       isRecording = false;
       isConnected = false;
-      lastResponse = `Failed to start audio: ${err.message || 'Unknown error'}`;
-      
+      lastResponse = `Failed to start audio: ${err.message || "Unknown error"}`;
+
       // Clean up on error
       if (audioStream) {
         audioStream.getTracks().forEach((track) => track.stop());
@@ -969,7 +1112,7 @@
       audioStream.getTracks().forEach((track) => track.stop());
       audioStream = null;
     }
-    
+
     // Clean up permission stream if it exists
     if (permissionStream) {
       permissionStream.getTracks().forEach((track) => track.stop());
@@ -995,6 +1138,8 @@
     // Reset state
     isRecording = false;
     isConnected = false;
+    isConnecting = false;
+    isWaitingForPermission = false;
     lastResponse = "";
     actionMessage = null;
 
@@ -1020,7 +1165,6 @@
       cleanupCall();
     }
   }
-
 
   // Cleanup on component destroy
   onDestroy(() => {
