@@ -492,50 +492,73 @@
         audioPlayer = new EVIWebAudioPlayer();
         console.log("✅ EVIWebAudioPlayer instance created");
         
-        console.log("📊 Calling audioPlayer.init()...");
-        // Initialize immediately - getUserMedia() above provides the required user interaction
-        await audioPlayer.init();
-        console.log("✅ Audio player initialized");
+        // For iOS: Try to access AudioContext immediately and resume if suspended
+        // This must happen synchronously within the user gesture
+        if (isIOS) {
+          try {
+            // @ts-ignore - accessing internal audioContext if available
+            const audioContext =
+              audioPlayer.audioContext || (audioPlayer as any).context;
+            if (audioContext) {
+              console.log("📊 iOS: Found AudioContext, state:", audioContext.state);
+              if (audioContext.state === "suspended" && typeof audioContext.resume === "function") {
+                console.log("🔄 iOS: Resuming AudioContext immediately (within gesture)...");
+                // Resume synchronously - don't await, just trigger it
+                audioContext.resume().catch((e: any) => {
+                  console.log("ℹ️ AudioContext resume attempt:", e?.message);
+                });
+              }
+            }
+          } catch (e: any) {
+            console.log("ℹ️ Could not access AudioContext before init:", e?.message);
+          }
+        }
         
-        // In iOS Safari/PWA, AudioContext starts in "suspended" state
-        // We need to explicitly resume it after initialization
-        // Try to access the internal AudioContext and resume it if suspended
+        console.log("📊 Calling audioPlayer.init()...");
+        // Initialize with timeout to prevent infinite hang
+        const initTimeout = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error("AudioPlayer init timeout after 3 seconds")), 3000)
+        );
+        
+        try {
+          await Promise.race([audioPlayer.init(), initTimeout]);
+          console.log("✅ Audio player initialized");
+        } catch (initErr: any) {
+          if (initErr.message?.includes("timeout")) {
+            console.warn("⚠️ AudioPlayer.init() timed out - continuing anyway");
+            // Try to resume AudioContext manually as fallback
+            try {
+              // @ts-ignore
+              const audioContext = audioPlayer.audioContext || (audioPlayer as any).context;
+              if (audioContext && audioContext.state === "suspended") {
+                console.log("🔄 Attempting manual AudioContext resume after timeout...");
+                await audioContext.resume();
+                console.log("✅ AudioContext resumed manually, state:", audioContext.state);
+              }
+            } catch (e: any) {
+              console.log("ℹ️ Manual resume failed:", e?.message);
+            }
+          } else {
+            throw initErr; // Re-throw if not timeout
+          }
+        }
+        
+        // Final check and resume AudioContext if needed
         try {
           // @ts-ignore - accessing internal audioContext if available
           const audioContext =
             audioPlayer.audioContext || (audioPlayer as any).context;
           if (audioContext && typeof audioContext.resume === "function") {
-            console.log("📊 Checking AudioContext state...");
+            console.log("📊 Final AudioContext state check:", audioContext.state);
             if (audioContext.state === "suspended") {
-              console.log("🔄 AudioContext is suspended, resuming...");
+              console.log("🔄 AudioContext still suspended, resuming...");
               await audioContext.resume();
-              console.log(
-                "✅ AudioContext resumed, state:",
-                audioContext.state
-              );
-            } else {
-              console.log(
-                "✅ AudioContext already running, state:",
-                audioContext.state
-              );
-            }
-            
-            // For iOS PWAs: Double-check and retry resume if still suspended
-            if (isIOSPWA && audioContext.state === "suspended") {
-              console.log("🔄 iOS PWA: Retrying AudioContext resume...");
-              await new Promise((resolve) => setTimeout(resolve, 100)); // Small delay
-              await audioContext.resume();
-              console.log(
-                "✅ AudioContext resume retry, state:",
-                audioContext.state
-              );
+              console.log("✅ AudioContext resumed, final state:", audioContext.state);
             }
           }
         } catch (resumeErr: any) {
-          // If we can't access/resume the AudioContext, that's okay
-          // The EVIWebAudioPlayer might handle it internally
           console.log(
-            "ℹ️ Could not access/resume AudioContext directly:",
+            "ℹ️ Could not access/resume AudioContext:",
             resumeErr.message
           );
         }
