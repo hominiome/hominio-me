@@ -558,10 +558,93 @@
     }
   }
 
+  /**
+   * Request microphone permission explicitly (required for iOS PWAs)
+   * This must be called before getUserMedia to ensure permission prompt appears
+   */
+  async function requestMicrophonePermission(): Promise<boolean> {
+    if (!browser || !navigator.mediaDevices) {
+      console.error("❌ MediaDevices API not available");
+      return false;
+    }
+
+    try {
+      // Check current permission status (if API is available)
+      // Note: navigator.permissions.query is not available in all browsers (e.g., Safari/iOS)
+      if (navigator.permissions && navigator.permissions.query) {
+        try {
+          const permissionStatus = await navigator.permissions.query({
+            name: "microphone" as PermissionName,
+          });
+          console.log(
+            "🎤 Microphone permission status:",
+            permissionStatus.state
+          );
+
+          // If already granted, we're good
+          if (permissionStatus.state === "granted") {
+            console.log("✅ Microphone permission already granted");
+            return true;
+          }
+        } catch (permErr) {
+          // Permissions API not supported (e.g., Safari/iOS), continue to getUserMedia
+          console.log(
+            "ℹ️ Permissions API not available, proceeding to request permission"
+          );
+        }
+      }
+
+      // Explicitly request permission by calling getUserMedia
+      // This is required for iOS PWAs - the permission prompt won't appear otherwise
+      // We need to call this BEFORE the actual audio capture starts
+      console.log("🔄 Requesting microphone permission...");
+      const testStream = await navigator.mediaDevices.getUserMedia({
+        audio: true,
+      });
+
+      // Immediately stop the test stream (we just needed the permission prompt)
+      testStream.getTracks().forEach((track) => track.stop());
+
+      console.log("✅ Microphone permission granted");
+      return true;
+    } catch (err: any) {
+      console.error("❌ Failed to get microphone permission:", err);
+
+      // Handle specific error cases
+      if (
+        err.name === "NotAllowedError" ||
+        err.name === "PermissionDeniedError"
+      ) {
+        lastResponse =
+          "Microphone permission denied. Please enable microphone access in your browser settings.";
+      } else if (
+        err.name === "NotFoundError" ||
+        err.name === "DevicesNotFoundError"
+      ) {
+        lastResponse =
+          "No microphone found. Please connect a microphone and try again.";
+      } else {
+        lastResponse = `Failed to access microphone: ${
+          err.message || "Unknown error"
+        }`;
+      }
+
+      return false;
+    }
+  }
+
   async function startAudioCapture() {
     if (!browser) return;
 
     try {
+      // Request microphone permission first (required for iOS PWAs)
+      const hasPermission = await requestMicrophonePermission();
+      if (!hasPermission) {
+        console.error("❌ Microphone permission not granted");
+        isRecording = false;
+        return;
+      }
+
       // Get audio stream
       audioStream = await getAudioStream();
       ensureSingleValidAudioTrack(audioStream);
