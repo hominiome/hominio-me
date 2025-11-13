@@ -354,7 +354,7 @@ const actionHandlers: Record<string, (params: any) => Promise<{ result: any; ui?
     const output = {
       cart,
       success: true,
-      message: `Added ${itemsToAdd.length} item(s) to cart`
+      message: `Added ${cartItems.length} item(s) to cart`
     };
     
     // Use new native Svelte component system instead of Mitosis

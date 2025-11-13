@@ -74,6 +74,7 @@
   // Hume instances
   let socket: any = null;
   let audioStream: MediaStream | null = null;
+  let micMonitor: HTMLAudioElement | null = null;
   let mediaRecorder: MediaRecorder | null = null;
   let audioPlayer: EVIWebAudioPlayer | null = null;
   let permissionStream: MediaStream | null = null; // Store stream from permission request if still active
@@ -458,6 +459,31 @@
           audio: true,
         });
         console.log("✅ Microphone permission granted - stream active");
+
+        // Keep the microphone stream alive on iOS by piping it into a muted audio element
+        try {
+          if (!micMonitor) {
+            micMonitor = document.createElement("audio");
+            micMonitor.setAttribute("playsinline", "true");
+            micMonitor.muted = true;
+            micMonitor.autoplay = true;
+            micMonitor.style.display = "none";
+            document.body.appendChild(micMonitor);
+          }
+
+          if (micMonitor) {
+            micMonitor.srcObject = audioStream;
+            const playPromise = micMonitor.play();
+            if (playPromise && typeof playPromise.catch === "function") {
+              playPromise.catch((err: any) => {
+                console.warn("⚠️ mic monitor play() rejected:", err?.message);
+              });
+            }
+          }
+        } catch (monitorErr: any) {
+          console.warn("⚠️ Failed to start mic monitor element:", monitorErr?.message);
+        }
+
         isWaitingForPermission = false;
       } catch (permissionErr: any) {
         console.error("❌ Microphone permission denied:", permissionErr);
@@ -1188,6 +1214,18 @@
     if (audioStream) {
       audioStream.getTracks().forEach((track) => track.stop());
       audioStream = null;
+    }
+
+    if (micMonitor) {
+      try {
+        micMonitor.srcObject = null;
+        if (micMonitor.parentElement) {
+          micMonitor.parentElement.removeChild(micMonitor);
+        }
+      } catch (err) {
+        console.warn("⚠️ Failed to clean up mic monitor element:", (err as Error).message);
+      }
+      micMonitor = null;
     }
 
     // Clean up permission stream if it exists
