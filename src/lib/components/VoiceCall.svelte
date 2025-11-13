@@ -75,6 +75,34 @@
   let socket: any = null;
   let audioStream: MediaStream | null = null;
   let micMonitor: HTMLAudioElement | null = null;
+  let micAudioContext: AudioContext | null = null;
+  let micSourceNode: MediaStreamAudioSourceNode | null = null;
+  let micGainNode: GainNode | null = null;
+  const preferredAudioConstraints: MediaStreamConstraints = {
+    audio: {
+      channelCount: 1,
+      sampleRate: 44100,
+      echoCancellation: false,
+      noiseSuppression: false,
+      autoGainControl: false,
+    },
+  };
+
+  async function acquireAudioStream() {
+    if (!navigator.mediaDevices) {
+      throw new Error("MediaDevices API not available");
+    }
+
+    try {
+      return await navigator.mediaDevices.getUserMedia(preferredAudioConstraints);
+    } catch (err) {
+      console.warn(
+        "⚠️ Preferred audio constraints failed, falling back to basic audio stream:",
+        (err as Error).message
+      );
+      return await navigator.mediaDevices.getUserMedia({ audio: true });
+    }
+  }
   let mediaRecorder: MediaRecorder | null = null;
   let audioPlayer: EVIWebAudioPlayer | null = null;
   let permissionStream: MediaStream | null = null; // Store stream from permission request if still active
@@ -443,6 +471,44 @@
         lastResponse =
           "Error: Voice configuration not set up. Please configure HUME_CONFIG_ID.";
         isConnecting = false;
+        try {
+          const AudioContextConstructor =
+            (window as any).AudioContext || (window as any).webkitAudioContext;
+          if (!micAudioContext && AudioContextConstructor) {
+            micAudioContext = new AudioContextConstructor();
+          }
+
+          if (micAudioContext) {
+            if (micAudioContext.state === "suspended") {
+              await micAudioContext.resume();
+            }
+
+            // Disconnect previous nodes if they exist
+            try {
+              if (micSourceNode) {
+                micSourceNode.disconnect();
+              }
+              if (micGainNode) {
+                micGainNode.disconnect();
+              }
+            } catch (disconnectErr) {
+              console.warn(
+                "⚠️ Failed to disconnect previous mic nodes:",
+                (disconnectErr as Error).message
+              );
+            }
+
+            micSourceNode = micAudioContext.createMediaStreamSource(audioStream);
+            micGainNode = micAudioContext.createGain();
+            micGainNode.gain.value = 0.0001; // effectively silent but keeps stream active
+
+            micSourceNode.connect(micGainNode);
+            micGainNode.connect(micAudioContext.destination);
+          }
+        } catch (audioCtxErr: any) {
+          console.warn("⚠️ Failed to initialize mic AudioContext:", audioCtxErr?.message);
+        }
+
         isWaitingForPermission = false;
         return;
       }
@@ -455,9 +521,7 @@
       // Get a fresh stream every time - don't try to reuse old streams
       // iOS PWA requires active usage to keep permission alive
       try {
-        audioStream = await navigator.mediaDevices.getUserMedia({
-          audio: true,
-        });
+        audioStream = await acquireAudioStream();
         console.log("✅ Microphone permission granted - stream active");
 
         // CRITICAL for iOS PWA: Start MediaRecorder IMMEDIATELY to keep stream alive!
@@ -657,7 +721,6 @@
             console.log("🔄 Socket ready - updating MediaRecorder handler and sending queued chunks");
             
             // Update the ondataavailable handler to send directly now
-            const originalHandler = mediaRecorder.ondataavailable;
             mediaRecorder.ondataavailable = async (event) => {
               if (event.data.size < 1) return;
               
@@ -911,9 +974,7 @@
     // If permission is already granted, getUserMedia succeeds immediately without prompt
     try {
       // Use a very short-lived stream just to check permission
-      const testStream = await navigator.mediaDevices.getUserMedia({
-        audio: true,
-      });
+      const testStream = await acquireAudioStream();
 
       // If we got here without a prompt, permission was already granted
       // Clean up immediately
@@ -971,9 +1032,7 @@
 
       try {
         // Request permission - this will show the prompt on iOS/other browsers
-        const stream = await navigator.mediaDevices.getUserMedia({
-          audio: true,
-        });
+      const stream = await acquireAudioStream();
 
         // Verify the stream is actually active
         const tracks = stream.getAudioTracks();
@@ -1104,6 +1163,11 @@
       const mimeType = mimeTypeResult.success
         ? mimeTypeResult.mimeType
         : "audio/webm";
+
+      if (mediaRecorder && mediaRecorder.state === "recording") {
+        console.log("🎤 MediaRecorder already running (startAudioCapture bypass)");
+        return;
+      }
 
       console.log("🎤 Using MIME type:", mimeType);
 
@@ -1294,6 +1358,42 @@
         console.warn("⚠️ Failed to clean up mic monitor element:", (err as Error).message);
       }
       micMonitor = null;
+    }
+
+    if (micSourceNode) {
+      try {
+        micSourceNode.disconnect();
+      } catch (err) {
+        console.warn(
+          "⚠️ Failed to disconnect mic source node:",
+          (err as Error).message
+        );
+      }
+      micSourceNode = null;
+    }
+
+    if (micGainNode) {
+      try {
+        micGainNode.disconnect();
+      } catch (err) {
+        console.warn(
+          "⚠️ Failed to disconnect mic gain node:",
+          (err as Error).message
+        );
+      }
+      micGainNode = null;
+    }
+
+    if (micAudioContext) {
+      try {
+        micAudioContext.close();
+      } catch (err) {
+        console.warn(
+          "⚠️ Failed to close mic audio context:",
+          (err as Error).message
+        );
+      }
+      micAudioContext = null;
     }
 
     // Clean up permission stream if it exists

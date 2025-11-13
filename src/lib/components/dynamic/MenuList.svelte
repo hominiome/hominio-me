@@ -46,91 +46,79 @@
   .menu-items-grid {
     display: flex;
     flex-direction: column;
-    gap: 1rem;
+    gap: 0.75rem;
   }
 
   .menu-item-card {
+    display: flex;
+    align-items: stretch;
     background: white;
     border: 1px solid rgba(45, 166, 180, 0.25);
     border-radius: 16px;
-    padding: 1rem 0;
-    box-shadow: 0 1px 6px rgba(45, 166, 180, 0.08);
+    box-shadow: 0 1px 4px rgba(45, 166, 180, 0.08);
     overflow: hidden;
+    min-height: 72px;
   }
 
   .menu-item-header {
     display: flex;
-    justify-content: space-between;
     align-items: stretch;
-    gap: 0;
     width: 100%;
   }
 
   .menu-item-title-section {
-    display: flex;
-    flex-direction: column;
-    gap: 0.25rem;
     flex: 1;
     min-width: 0;
-    padding: 1rem 1.5rem;
+    padding: 0.75rem 1.25rem;
+    display: flex;
+    flex-direction: column;
     justify-content: center;
+    gap: 0.2rem;
   }
 
   .menu-item-name {
     display: block;
     margin: 0;
-    font-size: 1.25rem;
+    font-size: 1.125rem;
     font-weight: 700;
     color: var(--color-brand-navy-700);
-    line-height: 1.3;
+    line-height: 1.25;
     letter-spacing: -0.01em;
   }
 
   .menu-item-description {
     display: block;
     margin: 0;
-    font-size: 0.875rem;
+    font-size: 0.8125rem;
     font-weight: 400;
     color: #64748b;
-    line-height: 1.5;
-    margin-top: 0.25rem;
+    line-height: 1.35;
   }
 
   .menu-item-pricing {
     display: flex;
-    flex-direction: column;
     align-items: stretch;
     justify-content: stretch;
-    gap: 0;
-    flex-shrink: 0;
+    background: var(--color-secondary-200);
+    border-left: 1px solid rgba(45, 166, 180, 0.4);
+    min-width: 96px;
   }
 
   .menu-item-price {
-    font-weight: 800;
-    color: var(--color-brand-navy-800);
-    background: var(--color-secondary-200);
-    border: 2px solid var(--color-secondary-400);
-    border-left: none;
-    border-top: none;
-    border-bottom: none;
-    font-size: 1.5rem;
-    text-align: center;
-    min-width: fit-content;
-    flex-shrink: 0;
+    flex: 1;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 0.125rem;
-    letter-spacing: -0.02em;
-    padding: 0 1.5rem;
-    border-radius: 0;
-    box-shadow: none;
-    height: 100%;
+    font-weight: 800;
+    font-size: 1.25rem;
+    color: var(--color-brand-navy-800);
+    padding: 0 1.1rem;
+    letter-spacing: -0.015em;
   }
 
   .menu-item-unit {
-    font-size: 0.625rem;
+    font-size: 0.6rem;
     font-weight: 600;
     color: var(--color-secondary-700);
     text-transform: lowercase;
