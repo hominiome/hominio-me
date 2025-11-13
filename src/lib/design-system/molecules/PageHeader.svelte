@@ -26,7 +26,7 @@
 </script>
 
 <div class="text-center flex-1">
-  <h1 class="{classes.title} font-bold text-brand-navy-700 mb-1">
+  <h1 class="{classes.title} font-bold text-brand-navy-500 mb-1">
     {title}
   </h1>
   {#if subtitle}

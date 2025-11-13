@@ -496,7 +496,7 @@ import EditProjectContent from "$lib/EditProjectContent.svelte";
       {#if showCreateModal && $session.data?.user}
         <Modal open={showCreateModal} onClose={handleCreateModalClose}>
           <div class="w-full overflow-visible">
-            <h2 class="text-3xl font-bold text-brand-navy-700 mb-6">
+            <h2 class="text-3xl font-bold text-brand-navy-500 mb-6">
               Create New Project
             </h2>
             <form

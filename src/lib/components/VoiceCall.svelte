@@ -476,25 +476,24 @@
       // iOS Safari requires user interaction to activate AudioContext from suspended state
       console.log("🔄 Initializing audio player (while user interaction is active)...");
       
-      // For iOS PWAs: Check if we're in standalone mode and ensure audio session is active
+      // For iOS PWAs: Play a silent audio element to unlock audio playback
+      // This is required for iOS PWAs to allow AudioContext creation
       const isIOSPWA = browser && 
         (navigator.standalone === true || 
          (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches));
       
       if (isIOSPWA) {
-        console.log("📱 iOS PWA detected - ensuring audio session is active...");
-        // Try to activate audio session by creating a temporary AudioContext
-        // This helps ensure iOS recognizes we need audio playback capability
+        console.log("📱 iOS PWA detected - unlocking audio playback...");
         try {
-          const tempAudioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-          if (tempAudioContext.state === 'suspended') {
-            await tempAudioContext.resume();
-            console.log("✅ Temporary AudioContext resumed for iOS PWA");
-          }
-          // Close it immediately - we just needed to activate the audio session
-          await tempAudioContext.close();
-        } catch (tempCtxErr: any) {
-          console.log("ℹ️ Could not create temporary AudioContext:", tempCtxErr.message);
+          // Create a silent audio element and play it to unlock audio
+          // This is the recommended approach for iOS PWAs
+          const audio = new Audio();
+          audio.src = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=';
+          audio.volume = 0;
+          await audio.play();
+          console.log("✅ Audio unlocked for iOS PWA");
+        } catch (unlockErr: any) {
+          console.log("ℹ️ Could not unlock audio (might already be unlocked):", unlockErr.message);
         }
       }
       
