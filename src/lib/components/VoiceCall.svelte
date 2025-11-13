@@ -672,7 +672,7 @@
 
         // IMPORTANT: Don't start AudioRecorder in iOS PWA mode - it can cause stream closure
         // Multiple consumers of the stream can trigger "capture failure" in iOS PWA
-        const isIOSPWA = (window.navigator as any).standalone === true;
+        // Reuse isIOSPWA variable from above
         if (!isIOSPWA) {
           // Only use AudioRecorder in non-PWA mode (desktop, mobile Safari, etc.)
           audioRecorder = new AudioRecorder(16000);
