@@ -455,46 +455,49 @@
 
       try {
         // Get microphone stream
-        // IMPORTANT: Enable echoCancellation to prevent AI from hearing its own voice output
-        // This prevents feedback loops where AI responds to its own speech
-        mediaStream = await navigator.mediaDevices.getUserMedia({
-          audio: {
-            channelCount: 1,
-            echoCancellation: true, // Enable to prevent AI hearing its own voice
-            noiseSuppression: true, // Enable for better audio quality
-            autoGainControl: true, // Enable for consistent volume
-          },
-        });
+        // CRITICAL FOR iOS PWA: Use MINIMAL constraints - complex constraints cause "capture failure"
+        // iOS PWA (homescreen pinned) is MUCH more restrictive than Safari
+        // Echo cancellation and other processing can cause stream closure in PWA mode
+        const isIOSPWA = (window.navigator as any).standalone === true;
+        console.log(`📱 iOS PWA mode: ${isIOSPWA}`);
+        
+        const audioConstraints = isIOSPWA
+          ? {
+              // MINIMAL constraints for iOS PWA - just get the stream!
+              audio: true,
+            }
+          : {
+              // Full constraints for other browsers
+              audio: {
+                channelCount: 1,
+                echoCancellation: true,
+                noiseSuppression: true,
+                autoGainControl: true,
+              },
+            };
+        
+        mediaStream = await navigator.mediaDevices.getUserMedia(audioConstraints);
+        console.log("✅ MediaStream obtained, track state:", mediaStream.getAudioTracks()[0]?.readyState);
 
-        // CRITICAL FOR iOS PWA: Create AudioContext and connect to stream IMMEDIATELY
-        // iOS PWA closes the stream if it's not consumed within milliseconds
-        // We create a minimal AudioContext source node FIRST to consume the stream instantly
-        // This prevents iOS from closing it before MediaRecorder can start
+        // CRITICAL FOR iOS PWA: Create a MUTED audio element to consume stream IMMEDIATELY
+        // This is simpler and more reliable than AudioContext in iOS PWA
+        // iOS PWA closes streams that aren't consumed within milliseconds
+        let immediateAudioElement: HTMLAudioElement | null = null;
+        try {
+          immediateAudioElement = document.createElement("audio");
+          immediateAudioElement.muted = true; // Silent - just consuming the stream
+          immediateAudioElement.autoplay = true;
+          immediateAudioElement.srcObject = mediaStream;
+          // Don't append to DOM - just keep reference
+          console.log("✅ Muted audio element created to consume stream immediately (iOS PWA compatible)");
+        } catch (err) {
+          console.warn("⚠️ Failed to create immediate audio element (non-critical):", err);
+        }
+        
+        // Store reference for cleanup
         let immediateAudioContext: AudioContext | null = null;
         let immediateSource: MediaStreamAudioSourceNode | null = null;
         let immediateGain: GainNode | null = null;
-        try {
-          immediateAudioContext = new (window.AudioContext || (window as any).webkitAudioContext)({
-            sampleRate: 16000,
-          });
-          
-          // CRITICAL for iOS PWA: Ensure AudioContext is in "running" state
-          // iOS PWA may suspend AudioContext, which can cause stream closure
-          if (immediateAudioContext.state === "suspended") {
-            await immediateAudioContext.resume();
-            console.log("✅ Immediate AudioContext resumed (was suspended)");
-          }
-          
-          immediateSource = immediateAudioContext.createMediaStreamSource(mediaStream);
-          // Create a gain node set to 0 (silent) and connect to prevent audio feedback
-          immediateGain = immediateAudioContext.createGain();
-          immediateGain.gain.value = 0; // Silent - just consuming the stream
-          immediateSource.connect(immediateGain);
-          immediateGain.connect(immediateAudioContext.destination);
-          console.log(`✅ Immediate AudioContext created and connected (iOS PWA - stream now consumed instantly, silent, state: ${immediateAudioContext.state})`);
-        } catch (err) {
-          console.warn("⚠️ Failed to create immediate AudioContext (non-critical):", err);
-        }
 
         // CRITICAL FOR iOS PWA: MediaRecorder MUST start IMMEDIATELY after getUserMedia()
         // iOS PWA closes the stream if it's not actively consumed within milliseconds
@@ -667,18 +670,24 @@
           console.log("✅ Track monitor attached - readyState:", audioTrack.readyState);
         }
 
-        // NOW start AudioRecorder in parallel (async) - stream is already being consumed by MediaRecorder
-        // This keeps the stream alive in iOS PWA standalone mode
-        audioRecorder = new AudioRecorder(16000);
-        // Don't await - start in parallel, but stream is already safe
-        audioRecorder.start(mediaStream).catch((err) => {
-          console.error("⚠️ AudioRecorder start failed (non-critical):", err);
-        });
-        console.log("✅ AudioRecorder starting in parallel (stream already consumed by MediaRecorder)");
+        // IMPORTANT: Don't start AudioRecorder in iOS PWA mode - it can cause stream closure
+        // Multiple consumers of the stream can trigger "capture failure" in iOS PWA
+        // Reuse isIOSPWA variable from above
+        if (!isIOSPWA) {
+          // Only use AudioRecorder in non-PWA mode (desktop, mobile Safari, etc.)
+          audioRecorder = new AudioRecorder(16000);
+          audioRecorder.start(mediaStream).catch((err) => {
+            console.error("⚠️ AudioRecorder start failed (non-critical):", err);
+          });
+          console.log("✅ AudioRecorder starting in parallel (non-PWA mode only)");
+        } else {
+          console.log("⚠️ Skipping AudioRecorder in iOS PWA mode to avoid stream conflicts");
+        }
 
         // Store references for cleanup
         (window as any).__mediaRecorder = mediaRecorder;
         (window as any).__mediaStream = mediaStream;
+        (window as any).__immediateAudioElement = immediateAudioElement;
         (window as any).__immediateAudioContext = immediateAudioContext;
         (window as any).__immediateSource = immediateSource;
         (window as any).__immediateGain = immediateGain;
@@ -1391,7 +1400,20 @@
       }
       delete (window as any).__mediaRecorder;
     }
-    // Clean up immediate AudioContext (iOS PWA stream consumer)
+    // Clean up immediate audio element (iOS PWA stream consumer)
+    const immediateAudioElement = (window as any).__immediateAudioElement;
+    if (immediateAudioElement) {
+      try {
+        immediateAudioElement.pause();
+        immediateAudioElement.srcObject = null;
+        console.log("✅ Immediate audio element cleaned up");
+      } catch (err) {
+        console.error("Error cleaning up immediate audio element:", err);
+      }
+      delete (window as any).__immediateAudioElement;
+    }
+
+    // Clean up immediate AudioContext (if used)
     const immediateAudioContext = (window as any).__immediateAudioContext;
     const immediateSource = (window as any).__immediateSource;
     const immediateGain = (window as any).__immediateGain;
