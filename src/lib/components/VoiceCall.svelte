@@ -10,7 +10,6 @@
     resetVoiceCallState,
   } from "$lib/stores/voice-call";
   import ComponentRenderer from "$lib/components/dynamic/ComponentRenderer.svelte";
-  import { AudioRecorder } from "$lib/audio/audio-recorder";
   import { AudioStreamer } from "$lib/audio/audio-streamer";
   import { audioContext } from "$lib/audio/utils";
 
@@ -69,7 +68,6 @@
 
   // Hume instances
   let socket: any = null;
-  let audioRecorder: AudioRecorder | null = null;
   let audioStreamer: AudioStreamer | null = null;
   let audioChunkQueue: string[] = []; // Queue for base64 audio chunks until socket is ready
   let humeReady: boolean = false; // Track if Hume has sent a ready/setup_complete message
@@ -394,35 +392,6 @@
     });
   }
 
-  // // Helper to send text input directly to Hume (without speaking)
-  // async function sendTextInput(text: string) {
-  //   // If not connected, start the call first
-  //   if (!socket || !isConnected) {
-  //     console.log("📞 Auto-starting call to send text input...");
-  //     await startCall();
-
-  //     // Wait for connection to be established (poll with timeout)
-  //     let attempts = 0;
-  //     while ((!socket || !isConnected) && attempts < 50) {
-  //       await new Promise((resolve) => setTimeout(resolve, 100));
-  //       attempts++;
-  //     }
-
-  //     if (!socket || !isConnected) {
-  //       console.error("❌ Failed to establish connection for text input");
-  //       return;
-  //     }
-  //   }
-
-  //   // Send the text input
-  //   // @ts-ignore - sendJson exists but not in types
-  //   socket.sendJson({
-  //     type: "user_input",
-  //     text,
-  //   });
-  //   console.log(`📝 Text input sent: "${text}"`);
-  // }
-
   async function startCall() {
     if (!browser) return;
 
@@ -690,9 +659,8 @@
         return;
       }
 
-      // Initialize AudioStreamer for playback (lazy initialization when audio arrives)
-      // AudioStreamer uses the same AudioContext pattern as AudioRecorder, compatible with iOS PWA
-      audioStreamer = null; // Will be initialized when first audio arrives
+      // AudioStreamer is already pre-initialized above (in same user gesture as mic)
+      // No need to nullify it here - iOS PWA requires it to be initialized early!
 
       // Get access token from server (still connecting)
       const accessTokenResponse = await fetch("/alpha/api/hume/access-token");
@@ -889,13 +857,6 @@
                 }
               }
             }
-
-            // Now that Hume is ready, start sending audio if AudioRecorder is running
-            if (audioRecorder && audioRecorder.recording) {
-              console.log(
-                "🎤 AudioRecorder is running - audio will now be sent to Hume"
-              );
-            }
           }
 
           // Handle user interruptions - stop audio playback immediately for low latency
@@ -1038,7 +999,6 @@
         console.log("📊 Current state when closing:", {
           isRecording,
           isConnected,
-          audioRecorderActive: audioRecorder?.recording,
           audioChunksQueued: audioChunkQueue.length,
         });
         // Only cleanup if it's not a reconnection attempt
@@ -1090,13 +1050,6 @@
         console.warn("⚠️ MediaRecorder not running - this shouldn't happen");
       }
 
-      // AudioRecorder (AudioWorklet) should also be running to keep stream alive in iOS PWA
-      if (audioRecorder && audioRecorder.recording) {
-        console.log(
-          "✅ AudioRecorder (AudioWorklet) running to keep stream alive in iOS PWA"
-        );
-      }
-
       // Connection is complete
       isConnecting = false;
 
@@ -1125,191 +1078,6 @@
 
       // Clean up resources
       cleanupCall();
-    }
-  }
-
-  /**
-   * Check if microphone permission is already granted
-   * Returns true if granted, false if not granted or unknown
-   * Uses multiple strategies for maximum compatibility (especially iOS)
-   */
-  async function checkMicrophonePermission(): Promise<boolean> {
-    if (!browser || !navigator.mediaDevices) {
-      return false;
-    }
-
-    // Strategy 1: Use Permissions API if available (Chrome, Firefox, etc.)
-    if (navigator.permissions && navigator.permissions.query) {
-      try {
-        const permissionStatus = await navigator.permissions.query({
-          name: "microphone" as PermissionName,
-        });
-        const isGranted = permissionStatus.state === "granted";
-        console.log(
-          "🎤 Microphone permission status (Permissions API):",
-          permissionStatus.state
-        );
-        if (isGranted) {
-          return true; // Definitely granted
-        }
-        if (permissionStatus.state === "denied") {
-          return false; // Definitely denied - don't ask again
-        }
-        // If "prompt", continue to Strategy 2
-      } catch (permErr) {
-        // Permissions API not supported (e.g., Safari/iOS) - continue to Strategy 2
-        console.log("ℹ️ Permissions API not available, using fallback check");
-      }
-    }
-
-    // Strategy 2: Try to get a stream without user interaction (silent check)
-    // This works on iOS/Safari where Permissions API isn't available
-    // If permission is already granted, getUserMedia succeeds immediately without prompt
-    try {
-      // Use a very short-lived stream just to check permission
-      const testStream = await navigator.mediaDevices.getUserMedia({
-        audio: true,
-      });
-
-      // If we got here without a prompt, permission was already granted
-      // Clean up immediately
-      testStream.getTracks().forEach((track) => {
-        try {
-          track.stop();
-        } catch (e) {
-          // Ignore cleanup errors
-        }
-      });
-
-      console.log(
-        "✅ Microphone permission already granted (silent check succeeded)"
-      );
-      return true;
-    } catch (err: any) {
-      // If getUserMedia fails, permission is either denied or not yet granted
-      if (
-        err.name === "NotAllowedError" ||
-        err.name === "PermissionDeniedError"
-      ) {
-        console.log("❌ Microphone permission denied");
-        return false; // Permission denied - don't ask again
-      }
-      // Other errors (NotFoundError, etc.) - assume not granted yet
-      console.log("ℹ️ Microphone permission status unclear:", err.name);
-      return false;
-    }
-  }
-
-  /**
-   * Request microphone permission explicitly (required for iOS PWAs)
-   * Returns the stream if it's still active, or null if we need to get a new one
-   * Uses event-based validation instead of timeouts for robustness
-   */
-  async function requestMicrophonePermission(): Promise<MediaStream | null> {
-    if (!browser || !navigator.mediaDevices) {
-      console.error("❌ MediaDevices API not available");
-      return null;
-    }
-
-    try {
-      // First, check if permission is already granted
-      const alreadyGranted = await checkMicrophonePermission();
-      if (alreadyGranted) {
-        console.log(
-          "✅ Microphone permission already granted - will get fresh stream when needed"
-        );
-        return null; // Return null to indicate we should get a fresh stream (no prompt needed)
-      }
-
-      // Permission not granted yet - we need to request it
-      // This will show the permission prompt to the user
-      console.log("🔄 Requesting microphone permission (showing prompt)...");
-
-      try {
-        // Request permission - this will show the prompt on iOS/other browsers
-        const stream = await navigator.mediaDevices.getUserMedia({
-          audio: true,
-        });
-
-        // Verify the stream is actually active
-        const tracks = stream.getAudioTracks();
-        const hasActiveTrack =
-          tracks.length > 0 &&
-          tracks.some((t) => t.readyState === "live" && !t.muted);
-
-        if (!hasActiveTrack) {
-          console.log(
-            "⚠️ Stream obtained but no active tracks - iOS may have ended it"
-          );
-          // Clean up the stream
-          tracks.forEach((track) => {
-            try {
-              if (track.readyState === "live") track.stop();
-            } catch (e) {
-              // Ignore - track may already be ended
-            }
-          });
-          return null; // Need to get a fresh stream
-        }
-
-        // Verify permission is actually granted
-        const permissionGranted = await checkMicrophonePermission();
-        if (!permissionGranted) {
-          console.log(
-            "⚠️ getUserMedia succeeded but permission not granted yet"
-          );
-          // Wait a bit for permission to propagate (iOS can be slow)
-          await new Promise((resolve) => setTimeout(resolve, 200));
-          const recheckGranted = await checkMicrophonePermission();
-          if (!recheckGranted) {
-            // Still not granted - clean up and return null
-            tracks.forEach((track) => {
-              try {
-                if (track.readyState === "live") track.stop();
-              } catch (e) {
-                // Ignore
-              }
-            });
-            return null;
-          }
-        }
-
-        // Stream is active and permission is granted - we can use this stream!
-        console.log(
-          "✅ Microphone permission granted - stream is active and ready"
-        );
-        return stream; // Return the active stream for reuse
-      } catch (getUserMediaErr: any) {
-        // getUserMedia failed - permission denied or other error
-        console.error("❌ getUserMedia failed:", getUserMediaErr);
-
-        if (
-          getUserMediaErr.name === "NotAllowedError" ||
-          getUserMediaErr.name === "PermissionDeniedError"
-        ) {
-          lastResponse =
-            "Microphone permission denied. Please enable microphone access in your browser settings.";
-          return null;
-        } else if (
-          getUserMediaErr.name === "NotFoundError" ||
-          getUserMediaErr.name === "DevicesNotFoundError"
-        ) {
-          lastResponse =
-            "No microphone found. Please connect a microphone and try again.";
-          return null;
-        } else {
-          lastResponse = `Failed to access microphone: ${
-            getUserMediaErr.message || "Unknown error"
-          }`;
-          return null;
-        }
-      }
-    } catch (err: any) {
-      console.error("❌ Failed to request microphone permission:", err);
-      lastResponse = `Failed to access microphone: ${
-        err.message || "Unknown error"
-      }`;
-      return null;
     }
   }
 
@@ -1349,17 +1117,6 @@
         console.error("Error stopping MediaStream tracks:", err);
       }
       delete (window as any).__mediaStream;
-    }
-
-    // Stop AudioRecorder (AudioWorklet - keeps stream alive in iOS PWA)
-    if (audioRecorder) {
-      try {
-        audioRecorder.stop();
-        console.log("✅ AudioRecorder (AudioWorklet) stopped");
-      } catch (err) {
-        console.error("Error stopping AudioRecorder:", err);
-      }
-      audioRecorder = null;
     }
 
     // Stop AudioStreamer
