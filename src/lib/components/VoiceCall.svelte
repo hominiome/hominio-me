@@ -480,21 +480,54 @@
 
       // Connect to EVI WebSocket
       console.log("🔄 Connecting to Hume EVI WebSocket...");
+      console.log("📊 Config ID:", HUME_CONFIG_ID ? "Set" : "Missing");
+      
       socket = await client.empathicVoice.chat.connect({
         configId: HUME_CONFIG_ID,
       });
       console.log("✅ Socket created, waiting for open event...");
+      
+      // Check initial socket state
+      // @ts-ignore - readyState exists on the socket
+      console.log("📊 Socket initial readyState:", socket.readyState, "(0 = CONNECTING, 1 = OPEN, 2 = CLOSING, 3 = CLOSED)");
 
-      // Set up event listeners
-      socket.on("open", async () => {
-        console.log("✅ Hume connection opened");
-        isConnected = true;
-        // isExpanded is now derived from isRecording || isConnected, so no need to set it here
-        // Audio player already initialized above
-        
-        // Verify socket is really open
-        // @ts-ignore - readyState exists on the socket
-        console.log("📊 Socket readyState after open event:", socket.readyState);
+      // Set up event listeners BEFORE waiting for open
+      // Use a promise-based approach with timeout to detect if socket hangs
+      let socketOpened = false;
+      let socketOpenTimeout: ReturnType<typeof setTimeout> | null = null;
+      
+      const socketOpenPromise = new Promise<void>((resolve, reject) => {
+        socketOpenTimeout = setTimeout(() => {
+          if (!socketOpened) {
+            console.error("❌ Socket open timeout after 10 seconds");
+            reject(new Error("Socket connection timeout"));
+          }
+        }, 10000); // 10 second timeout
+
+        socket.on("open", async () => {
+          socketOpened = true;
+          if (socketOpenTimeout) {
+            clearTimeout(socketOpenTimeout);
+            socketOpenTimeout = null;
+          }
+          console.log("✅ Hume connection opened");
+          isConnected = true;
+          
+          // Verify socket is really open
+          // @ts-ignore - readyState exists on the socket
+          console.log("📊 Socket readyState after open event:", socket.readyState);
+          resolve();
+        });
+
+        socket.on("error", (error: Error) => {
+          socketOpened = true;
+          if (socketOpenTimeout) {
+            clearTimeout(socketOpenTimeout);
+            socketOpenTimeout = null;
+          }
+          console.error("❌ Socket error before open:", error);
+          reject(error);
+        });
       });
 
       socket.on("message", async (message: any) => {
@@ -546,10 +579,15 @@
         }
       });
 
+      // Error handler for errors AFTER socket is open
+      // The error handler in socketOpenPromise handles errors BEFORE open
       socket.on("error", (error: Error) => {
-        console.error("❌ Hume error:", error);
-        console.error("Error details:", error.message, error.stack);
-        cleanupCall();
+        // Only handle errors if socket is already opened (not handled by socketOpenPromise)
+        if (socketOpened) {
+          console.error("❌ Hume error (after open):", error);
+          console.error("Error details:", error.message, error.stack);
+          cleanupCall();
+        }
       });
 
       socket.on("close", (event: any) => {
@@ -564,9 +602,23 @@
         }
       });
 
-      // Wait for connection to open (as per Hume docs)
-      await socket.tillSocketOpen();
-      console.log("✅ Socket connection ready");
+      // Wait for connection to open
+      // Use our own promise with timeout instead of tillSocketOpen() which might hang
+      console.log("⏳ Waiting for socket to open...");
+      try {
+        await socketOpenPromise;
+        console.log("✅ Socket connection ready (via open event)");
+      } catch (err: any) {
+        // Fallback: try tillSocketOpen() if our promise fails
+        console.log("⚠️ Open event promise failed, trying tillSocketOpen()...");
+        try {
+          await socket.tillSocketOpen();
+          console.log("✅ Socket connection ready (via tillSocketOpen)");
+        } catch (tillErr: any) {
+          console.error("❌ Both socket open methods failed:", tillErr);
+          throw new Error(`Socket failed to open: ${err.message || tillErr.message}`);
+        }
+      }
       
       // Verify socket is actually open before starting audio capture
       // @ts-ignore - readyState exists on the socket
