@@ -35,13 +35,12 @@
   }
 
   .coming-soon-text {
-    /* Apple HIG: Large title, bold, clear hierarchy */
     font-size: 2.5rem; /* 40px */
-    font-weight: 700; /* Bold - avoid light weights per Apple HIG */
-    color: var(--color-primary-700); /* Darker for better contrast */
+    font-weight: 500;
+    color: var(--color-brand-navy-700);
     margin: 0;
-    line-height: 1.3; /* Tighter line-height for headlines */
-    letter-spacing: -0.01em; /* Slight negative tracking for larger text */
+    line-height: 1.3;
+    letter-spacing: 0.5px;
   }
 
   @media (min-width: 768px) {
