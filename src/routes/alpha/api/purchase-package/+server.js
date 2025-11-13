@@ -45,7 +45,7 @@ export async function POST({ request }) {
     return json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { packageType, cupId } = await request.json();
+  const { packageType } = await request.json();
 
   if (!packageType || !PACKAGES[packageType]) {
     return json(
@@ -120,7 +120,7 @@ export async function POST({ request }) {
           identityType: selectedPackage.packageType,
           price: selectedPackage.price,
           purchasedAt: now,
-          userIdentityId: existingIdentity.id,
+          userIdentityId: existingVotingIdentity.id,
         })
         .execute();
 

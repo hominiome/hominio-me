@@ -3,7 +3,7 @@
 
 /**
  * User roles in the Hominio system
- * - DEFAULT: Regular user (can participate, vote with hominio identity)
+ * - DEFAULT: Regular user (can participate with hominio identity)
  * - FOUNDER: User with founder identity (can create and manage projects)
  * - ADMIN: Administrator (full system access)
  */

@@ -40,7 +40,7 @@ const notification = table('notification')
   .columns({
     id: string(),
     userId: string(), // User ID (private to user)
-    resourceType: string(), // Type of resource: 'identityPurchase', 'match', etc.
+    resourceType: string(), // Type of resource: 'identityPurchase', 'newsletter', etc.
     resourceId: string(), // ID of the resource
     title: string(), // Notification title
     previewTitle: string(), // Optional preview title for curiosity loop

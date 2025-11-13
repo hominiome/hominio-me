@@ -1,6 +1,6 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from '@sveltejs/kit';
-import { getZeroDbInstance } from '$lib/zero-manager.server.js';
+import { getZeroDbInstance } from '$lib/db.server.js';
 import { extractAuthData } from '$lib/server/auth-context.js';
 
 /**
