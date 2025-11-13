@@ -31,9 +31,6 @@
   let cartUI = $state<any>(null); // For cart UI display in mini-modal (add_to_cart, get_cart)
   let timeSlotSelectionUI = $state<any>(null); // For time slot selection UI display in mini-modal
   let actionMessageTimeout: ReturnType<typeof setTimeout> | null = null; // Track timeout to cancel if new action comes
-  
-  // Store the permission stream to reuse (avoid multiple getUserMedia calls)
-  let permissionStream: MediaStream | null = null;
 
   // Sync state to store for reactive access from parent
   $effect(() => {
@@ -445,10 +442,10 @@
 
       // Request microphone permission FIRST (before anything else)
       // This is critical for iOS PWAs - permission must be requested early
-      // We get the stream here and reuse it later to avoid multiple getUserMedia calls
+      // We only check/request permission here, but get the stream later when we're ready to use it
       console.log("🎤 Requesting microphone permission (early)...");
-      const permissionStream = await requestMicrophonePermission();
-      if (!permissionStream) {
+      const hasPermission = await requestMicrophonePermission();
+      if (!hasPermission) {
         console.error("❌ Microphone permission not granted - aborting call");
         lastResponse = "Microphone permission is required to start a voice call.";
         isExpanded = false;
@@ -577,12 +574,13 @@
   /**
    * Request microphone permission explicitly (required for iOS PWAs)
    * This must be called before getUserMedia to ensure permission prompt appears
-   * Returns the stream so we can reuse it instead of calling getUserMedia again
+   * Returns true if permission is granted, false otherwise
+   * Note: We don't keep the stream here - we'll get a fresh one when we're ready to use it
    */
-  async function requestMicrophonePermission(): Promise<MediaStream | null> {
+  async function requestMicrophonePermission(): Promise<boolean> {
     if (!browser || !navigator.mediaDevices) {
       console.error("❌ MediaDevices API not available");
-      return null;
+      return false;
     }
 
     try {
@@ -598,9 +596,10 @@
             permissionStatus.state
           );
 
-          // If already granted, we still need to get a stream
+          // If already granted, we're good (but still need to call getUserMedia later)
           if (permissionStatus.state === "granted") {
             console.log("✅ Microphone permission already granted");
+            return true;
           }
         } catch (permErr) {
           // Permissions API not supported (e.g., Safari/iOS), continue to getUserMedia
@@ -612,16 +611,19 @@
 
       // Explicitly request permission by calling getUserMedia
       // This is required for iOS PWAs - the permission prompt won't appear otherwise
-      // We need to call this BEFORE the actual audio capture starts
+      // We get a test stream to trigger the permission prompt, then immediately release it
+      // We'll get a fresh stream later when we're ready to actually use it
       console.log("🔄 Requesting microphone permission...");
-      const stream = await navigator.mediaDevices.getUserMedia({
+      const testStream = await navigator.mediaDevices.getUserMedia({
         audio: true,
       });
 
-      // Store the stream to reuse (don't stop it yet - we'll use it for recording)
-      permissionStream = stream;
-      console.log("✅ Microphone permission granted and stream obtained");
-      return stream;
+      // Immediately stop the test stream - we just needed the permission prompt
+      // Getting a fresh stream later ensures it's active when we use it
+      testStream.getTracks().forEach((track) => track.stop());
+      
+      console.log("✅ Microphone permission granted");
+      return true;
     } catch (err: any) {
       console.error("❌ Failed to get microphone permission:", err);
 
@@ -644,7 +646,7 @@
         }`;
       }
 
-      return null;
+      return false;
     }
   }
 
@@ -663,16 +665,11 @@
         throw new Error("MediaDevices API not available");
       }
 
-      // Use the permission stream we already obtained (reuse to avoid multiple getUserMedia calls)
-      // This is important for iOS PWAs where multiple calls can cause issues
-      if (permissionStream && permissionStream.active) {
-        console.log("🔄 Reusing permission stream...");
-        audioStream = permissionStream;
-        permissionStream = null; // Clear reference after use
-      } else {
-        console.log("🔄 Getting new audio stream (permission stream not available)...");
-        audioStream = await getAudioStream();
-      }
+      // Get audio stream now (permission was already granted earlier)
+      // Getting a fresh stream ensures it's active when we use it
+      // In iOS PWAs, streams that sit idle can be terminated
+      console.log("🔄 Getting audio stream...");
+      audioStream = await getAudioStream();
       console.log("✅ Audio stream obtained");
       
       ensureSingleValidAudioTrack(audioStream);
