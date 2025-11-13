@@ -1,11 +1,11 @@
-import { json } from "@sveltejs/kit";
-import { nanoid } from "nanoid";
 import {
   getSession,
   requireExplorerIdentity,
 } from "$lib/api-helpers.server.js";
 import { zeroDb } from "$lib/db.server.js";
 import { getNotificationConfig } from "$lib/notification-helpers.server.js";
+import { json } from "@sveltejs/kit";
+import { nanoid } from "nanoid";
 
 // Package definitions
 const PACKAGES = {
@@ -70,9 +70,10 @@ export async function POST({ request }) {
       .execute();
 
     // Find specific identity types
-    const existingVotingIdentity = existingIdentities.find(id => 
-      id.identityType === packageType || 
-      (["hominio", "founder", "angel"].includes(id.identityType))
+    const existingVotingIdentity = existingIdentities.find(
+      (id) =>
+        id.identityType === packageType ||
+        ["hominio", "founder", "angel"].includes(id.identityType)
     );
 
     if (existingVotingIdentity) {
@@ -90,7 +91,11 @@ export async function POST({ request }) {
       if (!validUpgrades.includes(packageType)) {
         return json(
           {
-            error: `Cannot downgrade from ${PACKAGES[currentIdentityType].name} to ${selectedPackage.name}. Valid upgrades: ${validUpgrades.map((p) => PACKAGES[p].name).join(", ")}`,
+            error: `Cannot downgrade from ${
+              PACKAGES[currentIdentityType].name
+            } to ${selectedPackage.name}. Valid upgrades: ${validUpgrades
+              .map((p) => PACKAGES[p].name)
+              .join(", ")}`,
           },
           { status: 400 }
         );
@@ -136,8 +141,8 @@ export async function POST({ request }) {
       const notificationSubtype = isHominio
         ? "hominio"
         : isFounder
-          ? "founder"
-          : "other";
+        ? "founder"
+        : "other";
       const notificationConfig = getNotificationConfig(
         "identityPurchase",
         notificationSubtype,
@@ -217,8 +222,8 @@ export async function POST({ request }) {
       const notificationSubtype = isHominio
         ? "hominio"
         : isFounder
-          ? "founder"
-          : "other";
+        ? "founder"
+        : "other";
       const notificationConfig = getNotificationConfig(
         "identityPurchase",
         notificationSubtype,

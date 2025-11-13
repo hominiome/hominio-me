@@ -12,10 +12,13 @@
   import { env } from "$env/dynamic/public";
   import { executeAction } from "$lib/voice/core-tools";
   import { addActivity } from "$lib/stores/activity-stream";
-  import { updateVoiceCallState, resetVoiceCallState } from "$lib/stores/voice-call";
+  import {
+    updateVoiceCallState,
+    resetVoiceCallState,
+  } from "$lib/stores/voice-call";
   import MitosisRenderer from "$lib/mitosis/renderer.svelte";
 
-  // Hume configuration from environment variable
+  // Hume configuration from environment variable (runtime via $env/dynamic/public)
   const HUME_CONFIG_ID = env.PUBLIC_HUME_CONFIG_ID || "";
 
   // State - using $state for reactivity
@@ -28,23 +31,33 @@
   let cartUI = $state<any>(null); // For cart UI display in mini-modal (add_to_cart, get_cart)
   let timeSlotSelectionUI = $state<any>(null); // For time slot selection UI display in mini-modal
   let actionMessageTimeout: ReturnType<typeof setTimeout> | null = null; // Track timeout to cancel if new action comes
-  
+
   // Sync state to store for reactive access from parent
   $effect(() => {
-    updateVoiceCallState({ isRecording, isConnected, isExpanded, lastResponse });
+    updateVoiceCallState({
+      isRecording,
+      isConnected,
+      isExpanded,
+      lastResponse,
+    });
   });
 
   // Helper to determine if action is a view tool (shows UI) or action tool (shows compact message)
   function isViewTool(action: string): boolean {
-    return action === 'list_menu' || action === 'list_spa_beauty' || action === 'list_taxi' || action === 'list_room_service';
+    return (
+      action === "list_menu" ||
+      action === "list_spa_beauty" ||
+      action === "list_taxi" ||
+      action === "list_room_service"
+    );
   }
 
   function isCartTool(action: string): boolean {
-    return action === 'add_to_cart' || action === 'get_cart';
+    return action === "add_to_cart" || action === "get_cart";
   }
 
   function isTimeSlotTool(action: string): boolean {
-    return action === 'select_time_slot';
+    return action === "select_time_slot";
   }
 
   // Helper to format action message for mini-modal display
@@ -53,7 +66,6 @@
     return null;
   }
 
-  
   // Expose functions via component API
   export { startCall, stopCall };
 
@@ -108,42 +120,80 @@
           let responseText = "";
           if (result.result) {
             if (typeof result.result === "object") {
-              if (result.result.menuItems && Array.isArray(result.result.menuItems)) {
+              if (
+                result.result.menuItems &&
+                Array.isArray(result.result.menuItems)
+              ) {
                 // Include menu context for AI - format as name -> id -> price mapping
                 // Prices ARE included in context for UI display and AI knowledge, but NOT automatically mentioned in spoken response
                 // Only mention prices in spoken response if user explicitly asks
                 const menuContext = result.result.menuItems
-                  .map((item: any) => `${item.name} -> ID: ${item.id}, Preis: ${item.priceFormatted || `€${item.price.toFixed(2)}`}${item.unitFormatted || ''}`)
-                  .join('; ');
-                const category = result.result.category ? ` in category ${result.result.category}` : '';
+                  .map(
+                    (item: any) =>
+                      `${item.name} -> ID: ${item.id}, Preis: ${
+                        item.priceFormatted || `€${item.price.toFixed(2)}`
+                      }${item.unitFormatted || ""}`
+                  )
+                  .join("; ");
+                const category = result.result.category
+                  ? ` in category ${result.result.category}`
+                  : "";
                 responseText = `Menu${category}: ${menuContext}. Remember these name-to-ID-to-price mappings for future orders and price questions. Do NOT mention prices automatically in your spoken responses, only if the user explicitly asks.`;
-              } else if (result.result.services && Array.isArray(result.result.services)) {
+              } else if (
+                result.result.services &&
+                Array.isArray(result.result.services)
+              ) {
                 // Check if it's SPA/Beauty services (have availableSlots)
-                if (result.result.services.length > 0 && result.result.services[0].availableSlots) {
+                if (
+                  result.result.services.length > 0 &&
+                  result.result.services[0].availableSlots
+                ) {
                   // Include SPA/Beauty services context for AI - format as name -> id -> price -> available slots mapping
                   const servicesContext = result.result.services
                     .map((service: any) => {
                       const availableSlots = service.availableSlots
                         .filter((slot: any) => slot.available)
                         .map((slot: any) => slot.time)
-                        .join(', ');
-                      return `${service.name} -> ID: ${service.id}, Preis: ${service.priceFormatted || `€${service.price.toFixed(2)}`}${service.unitFormatted || ''}, Dauer: ${service.duration} Min, Verfügbare Slots: ${availableSlots}`;
+                        .join(", ");
+                      return `${service.name} -> ID: ${service.id}, Preis: ${
+                        service.priceFormatted || `€${service.price.toFixed(2)}`
+                      }${service.unitFormatted || ""}, Dauer: ${
+                        service.duration
+                      } Min, Verfügbare Slots: ${availableSlots}`;
                     })
-                    .join('; ');
-                  const category = result.result.category ? ` in category ${result.result.category}` : '';
+                    .join("; ");
+                  const category = result.result.category
+                    ? ` in category ${result.result.category}`
+                    : "";
                   responseText = `SPA & Beauty Services${category}: ${servicesContext}. Remember these name-to-ID-to-price-to-slots mappings for future bookings. Do NOT mention prices automatically in your spoken responses, only if the user explicitly asks. For SPA/Beauty services, guide the user to select an available time slot.`;
-                } else if (result.result.services.length > 0 && result.result.services[0].basePrice) {
+                } else if (
+                  result.result.services.length > 0 &&
+                  result.result.services[0].basePrice
+                ) {
                   // Taxi services (have basePrice and pricePerKm)
                   const servicesContext = result.result.services
-                    .map((service: any) => `${service.name} -> ID: ${service.id}, Grundpreis: ${service.basePriceFormatted}, Preis pro km: ${service.pricePerKmFormatted}`)
-                    .join('; ');
+                    .map(
+                      (service: any) =>
+                        `${service.name} -> ID: ${service.id}, Grundpreis: ${service.basePriceFormatted}, Preis pro km: ${service.pricePerKmFormatted}`
+                    )
+                    .join("; ");
                   responseText = `Taxi Services: ${servicesContext}. Remember these name-to-ID-to-price mappings for future bookings. Do NOT mention prices automatically in your spoken responses, only if the user explicitly asks. For Taxi bookings, ask for pickup time (specific time, not slot), pickup address, and destination address.`;
                 } else {
                   // Room Service (have price and availableUntil)
                   const servicesContext = result.result.services
-                    .map((service: any) => `${service.name} -> ID: ${service.id}, Preis: ${service.priceFormatted || `€${service.price.toFixed(2)}`}${service.unitFormatted || ''}, Verfügbar bis: ${service.availableUntil}`)
-                    .join('; ');
-                  const category = result.result.category ? ` in category ${result.result.category}` : '';
+                    .map(
+                      (service: any) =>
+                        `${service.name} -> ID: ${service.id}, Preis: ${
+                          service.priceFormatted ||
+                          `€${service.price.toFixed(2)}`
+                        }${service.unitFormatted || ""}, Verfügbar bis: ${
+                          service.availableUntil
+                        }`
+                    )
+                    .join("; ");
+                  const category = result.result.category
+                    ? ` in category ${result.result.category}`
+                    : "";
                   responseText = `Room Service${category}: ${servicesContext}. Remember these name-to-ID-to-price mappings for future orders. Do NOT mention prices automatically in your spoken responses, only if the user explicitly asks. For Room Service, check if it's still before 11:00 AM for same-day delivery, otherwise schedule for tomorrow. Ask for delivery time if not specified.`;
                 }
               } else if (result.result.needsTimeSlot && result.result.service) {
@@ -151,7 +201,7 @@
                 const availableSlots = result.result.service.availableSlots
                   .filter((slot: any) => slot.available)
                   .map((slot: any) => slot.time)
-                  .join(', ');
+                  .join(", ");
                 responseText = `Please select a time slot for ${result.result.service.name}. Available slots: ${availableSlots}.`;
               } else if (result.result.serviceId && result.result.timeSlot) {
                 // Time slot selected - show updated cart
@@ -159,8 +209,13 @@
               } else if (result.result.order) {
                 // Order confirmation - don't mention price unless user asks
                 const orderItems = result.result.order.items
-                  .map((item: any) => `${item.quantity}x ${item.name}${item.timeSlot ? ` um ${item.timeSlot} Uhr` : ''}`)
-                  .join(', ');
+                  .map(
+                    (item: any) =>
+                      `${item.quantity}x ${item.name}${
+                        item.timeSlot ? ` um ${item.timeSlot} Uhr` : ""
+                      }`
+                  )
+                  .join(", ");
                 responseText = `Order placed: ${orderItems}.`;
               } else {
                 responseText = "Task completed successfully.";
@@ -184,14 +239,18 @@
             }
             actionMessage = null;
             console.log("[VoiceCall] View tool - showing UI in main area");
-            
+
             // Add to activity stream (only for view tools)
-            console.log("[VoiceCall] Adding view tool to activity stream:", result.ui ? 'present' : 'missing', result);
+            console.log(
+              "[VoiceCall] Adding view tool to activity stream:",
+              result.ui ? "present" : "missing",
+              result
+            );
             // Determine vibeId based on action
-            let vibeId = 'menu';
-            if (action === 'list_spa_beauty') vibeId = 'spa-beauty';
-            else if (action === 'list_taxi') vibeId = 'taxi';
-            else if (action === 'list_room_service') vibeId = 'room-service';
+            let vibeId = "menu";
+            if (action === "list_spa_beauty") vibeId = "spa-beauty";
+            else if (action === "list_taxi") vibeId = "taxi";
+            else if (action === "list_room_service") vibeId = "room-service";
             addActivity({
               vibeId: vibeId,
               toolName: action,
@@ -205,7 +264,7 @@
               clearTimeout(actionMessageTimeout);
               actionMessageTimeout = null;
             }
-            
+
             // Check if time slot selection is needed
             if (result.result.needsTimeSlot && result.ui) {
               // Show time slot selection UI in mini-modal
@@ -213,14 +272,18 @@
               orderConfirmationUI = null;
               cartUI = null;
               timeSlotSelectionUI = result.ui;
-              console.log("[VoiceCall] Cart tool - showing time slot selection UI in mini-modal");
+              console.log(
+                "[VoiceCall] Cart tool - showing time slot selection UI in mini-modal"
+              );
             } else {
               // Show cart UI in mini-modal
               actionMessage = null;
               orderConfirmationUI = null;
               timeSlotSelectionUI = null;
               cartUI = result.ui;
-              console.log("[VoiceCall] Cart tool - showing cart UI in mini-modal");
+              console.log(
+                "[VoiceCall] Cart tool - showing cart UI in mini-modal"
+              );
             }
           } else if (isTimeSlotTool(action)) {
             // Time slot tool: Show updated cart UI in mini-modal after slot selection
@@ -229,28 +292,30 @@
               clearTimeout(actionMessageTimeout);
               actionMessageTimeout = null;
             }
-            
+
             // Show updated cart UI in mini-modal
             actionMessage = null;
             orderConfirmationUI = null;
             timeSlotSelectionUI = null;
             cartUI = result.ui; // Updated cart with time slot
-            console.log("[VoiceCall] Time slot tool - showing updated cart UI in mini-modal");
+            console.log(
+              "[VoiceCall] Time slot tool - showing updated cart UI in mini-modal"
+            );
           } else {
             // Action tools: Show compact message in mini-modal, DON'T add to activity stream
             // Special case: confirm_order shows UI in mini-modal instead of text message
-            if (action === 'confirm_order' && result.ui) {
+            if (action === "confirm_order" && result.ui) {
               // Cancel any existing timeout
               if (actionMessageTimeout) {
                 clearTimeout(actionMessageTimeout);
                 actionMessageTimeout = null;
               }
-              
+
               // Show order confirmation UI in mini-modal
               actionMessage = null; // Clear text message
               cartUI = null; // Clear cart UI
               orderConfirmationUI = result.ui; // Set UI for mini-modal
-              
+
               // Auto-clear order UI after 5 seconds
               actionMessageTimeout = setTimeout(() => {
                 orderConfirmationUI = null;
@@ -262,7 +327,7 @@
                 clearTimeout(actionMessageTimeout);
                 actionMessageTimeout = null;
               }
-              
+
               // Set new action message (replaces previous one immediately)
               const message = formatActionMessage(action, result.result);
               if (message) {
@@ -270,8 +335,11 @@
                 orderConfirmationUI = null; // Clear any order UI
                 cartUI = null; // Clear cart UI
                 timeSlotSelectionUI = null; // Clear time slot selection UI
-                console.log("[VoiceCall] Action tool - showing compact message:", actionMessage);
-                
+                console.log(
+                  "[VoiceCall] Action tool - showing compact message:",
+                  actionMessage
+                );
+
                 // Auto-clear action message after 3 seconds (or until new action replaces it)
                 actionMessageTimeout = setTimeout(() => {
                   actionMessage = null;
@@ -279,7 +347,7 @@
                 }, 3000);
               }
             }
-            
+
             // No todo-related updates needed - todos functionality removed
           }
 
@@ -327,34 +395,34 @@
     });
   }
 
-  // Helper to send text input directly to Hume (without speaking)
-  async function sendTextInput(text: string) {
-    // If not connected, start the call first
-    if (!socket || !isConnected) {
-      console.log("📞 Auto-starting call to send text input...");
-      await startCall();
+  // // Helper to send text input directly to Hume (without speaking)
+  // async function sendTextInput(text: string) {
+  //   // If not connected, start the call first
+  //   if (!socket || !isConnected) {
+  //     console.log("📞 Auto-starting call to send text input...");
+  //     await startCall();
 
-      // Wait for connection to be established (poll with timeout)
-      let attempts = 0;
-      while ((!socket || !isConnected) && attempts < 50) {
-        await new Promise((resolve) => setTimeout(resolve, 100));
-        attempts++;
-      }
+  //     // Wait for connection to be established (poll with timeout)
+  //     let attempts = 0;
+  //     while ((!socket || !isConnected) && attempts < 50) {
+  //       await new Promise((resolve) => setTimeout(resolve, 100));
+  //       attempts++;
+  //     }
 
-      if (!socket || !isConnected) {
-        console.error("❌ Failed to establish connection for text input");
-        return;
-      }
-    }
+  //     if (!socket || !isConnected) {
+  //       console.error("❌ Failed to establish connection for text input");
+  //       return;
+  //     }
+  //   }
 
-    // Send the text input
-    // @ts-ignore - sendJson exists but not in types
-    socket.sendJson({
-      type: "user_input",
-      text,
-    });
-    console.log(`📝 Text input sent: "${text}"`);
-  }
+  //   // Send the text input
+  //   // @ts-ignore - sendJson exists but not in types
+  //   socket.sendJson({
+  //     type: "user_input",
+  //     text,
+  //   });
+  //   console.log(`📝 Text input sent: "${text}"`);
+  // }
 
   async function startCall() {
     if (!browser) return;
@@ -585,14 +653,14 @@
       clearTimeout(actionMessageTimeout);
       actionMessageTimeout = null;
     }
-    
+
     // Reset state
     isRecording = false;
     isConnected = false;
     isExpanded = false;
     lastResponse = "";
     actionMessage = null;
-    
+
     // Reset store state
     resetVoiceCallState();
 
