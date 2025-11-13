@@ -1055,8 +1055,8 @@
 
   .invite-title {
     font-size: 1.75rem;
-    font-weight: 700;
-    color: #1a1a4e;
+    font-weight: 500;
+    color: var(--color-brand-navy-500);
     margin: 0;
     text-align: center;
   }
@@ -1305,7 +1305,12 @@
     margin-bottom: 2rem;
   }
 
-  /* .section-title removed - using global h2 styles from app.css */
+  .section-title {
+    font-size: 1.25rem;
+    font-weight: 500;
+    color: var(--color-brand-navy-500);
+    margin: 0 0 1rem 0;
+  }
 
 
   .divider-line {

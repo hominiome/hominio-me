@@ -300,7 +300,6 @@ h1 span, h2 span, h3 span, h4 span, h5 span, h6 span {
 p, span, div, button, a, label, input, textarea, select {
   font-family: var(--font-family-body);
   line-height: 1.5;
-  color: var(--color-brand-navy-400); /* Default text color */
 }
 
 /* Line-height utilities */
