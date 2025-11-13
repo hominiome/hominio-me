@@ -221,7 +221,7 @@ const actionHandlers: Record<string, (params: any) => Promise<{ result: any; ui?
       }
 
       if (!foundItem) {
-        const allItems = [...allMenuItems, ...allSpaServices, ...allTaxiServices, ...allRoomServiceItems];
+        const allItems = [...allMenuItems, ...allWellnessServices, ...allTaxiServices, ...allRoomServiceItems];
         const availableItems = allItems.map(item => `${item.name} (${item.id})`).join(', ');
         throw new Error(`Item with ID "${orderItem.id}" not found. Available items: ${availableItems}`);
       }
@@ -441,7 +441,7 @@ const actionHandlers: Record<string, (params: any) => Promise<{ result: any; ui?
     Object.values(spaBeautyData.categories).forEach(categoryServices => {
       allWellnessServices.push(...categoryServices);
     });
-    
+
     const service = allWellnessServices.find(s => s.id === serviceId);
     if (!service) {
       throw new Error(`Service with ID "${serviceId}" not found`);
