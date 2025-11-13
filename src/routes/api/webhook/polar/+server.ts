@@ -365,7 +365,7 @@ const webhookConfig = {
           userId,
           subscriptionId || "",
           "Purchase Successful! 🎉",
-          "Your purchase was successful! You can now vote and participate in all cups. Have fun!",
+          "Your purchase was successful! Welcome to Hominio!",
           "Start Voting",
           "/alpha"
         );

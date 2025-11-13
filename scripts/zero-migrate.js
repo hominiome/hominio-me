@@ -48,51 +48,8 @@ async function createTables() {
       .execute();
     console.log("✅ Project table created\n");
 
-    // 2. Cup table
-    console.log("🏆 Creating cup table...");
-    await db.schema
-      .createTable("cup")
-      .ifNotExists()
-      .addColumn("id", "text", (col) => col.primaryKey())
-      .addColumn("name", "text", (col) => col.notNull())
-      .addColumn("description", "text", (col) => col.notNull().defaultTo(""))
-      .addColumn("creatorId", "text", (col) => col.notNull())
-      .addColumn("logoImageUrl", "text", (col) => col.notNull().defaultTo(""))
-      .addColumn("size", "integer", (col) => col.notNull())
-      .addColumn("selectedProjectIds", "text", (col) =>
-        col.notNull().defaultTo("")
-      )
-      .addColumn("status", "text", (col) => col.notNull().defaultTo("draft"))
-      .addColumn("currentRound", "text", (col) => col.notNull().defaultTo(""))
-      .addColumn("winnerId", "text", (col) => col.notNull().defaultTo(""))
-      .addColumn("createdAt", "text", (col) => col.notNull())
-      .addColumn("startedAt", "text", (col) => col.notNull().defaultTo(""))
-      .addColumn("completedAt", "text", (col) => col.notNull().defaultTo(""))
-      .addColumn("updatedAt", "text", (col) => col.notNull().defaultTo(""))
-      .addColumn("endDate", "text", (col) => col.notNull().defaultTo(""))
-      .execute();
-    console.log("✅ Cup table created\n");
-
-    // 3. CupMatch table
-    console.log("🎯 Creating cupMatch table...");
-    await db.schema
-      .createTable("cupMatch")
-      .ifNotExists()
-      .addColumn("id", "text", (col) => col.primaryKey())
-      .addColumn("cupId", "text", (col) => col.notNull())
-      .addColumn("round", "text", (col) => col.notNull())
-      .addColumn("position", "integer", (col) => col.notNull())
-      .addColumn("project1Id", "text", (col) => col.notNull().defaultTo(""))
-      .addColumn("project2Id", "text", (col) => col.notNull().defaultTo(""))
-      .addColumn("winnerId", "text", (col) => col.notNull().defaultTo(""))
-      .addColumn("status", "text", (col) => col.notNull().defaultTo("pending"))
-      .addColumn("completedAt", "text", (col) => col.notNull().defaultTo(""))
-      .addColumn("endDate", "text", (col) => col.notNull().defaultTo(""))
-      .execute();
-    console.log("✅ CupMatch table created\n");
-
-    // 4. UserIdentities table
-    // All identities are universal (apply to all cups)
+    // 2. UserIdentities table
+    // All identities are universal
     // expiresAt is nullable: null = no expiration, otherwise ISO timestamp when identity expires
     console.log("👤 Creating userIdentities table...");
     await db.schema
@@ -101,10 +58,10 @@ async function createTables() {
       .addColumn("id", "text", (col) => col.primaryKey())
       .addColumn("userId", "text", (col) => col.notNull())
       .addColumn("identityType", "text", (col) => col.notNull())
-      .addColumn("votingWeight", "integer", (col) => col.notNull())
       .addColumn("selectedAt", "text", (col) => col.notNull())
       .addColumn("upgradedFrom", "text", (col) => col.notNull().defaultTo(""))
       .addColumn("expiresAt", "text") // Nullable: ISO timestamp when identity expires (null = no expiration)
+      .addColumn("subscriptionId", "text") // Nullable: Polar subscription ID for subscription-based identities
       .execute();
 
     // Create index for efficient lookups by userId
@@ -130,21 +87,7 @@ async function createTables() {
       .execute();
     console.log("✅ IdentityPurchase table created\n");
 
-    // 6. Vote table
-    console.log("🗳️  Creating vote table...");
-    await db.schema
-      .createTable("vote")
-      .ifNotExists()
-      .addColumn("id", "text", (col) => col.primaryKey())
-      .addColumn("userId", "text", (col) => col.notNull())
-      .addColumn("matchId", "text", (col) => col.notNull())
-      .addColumn("projectSide", "text", (col) => col.notNull())
-      .addColumn("votingWeight", "integer", (col) => col.notNull())
-      .addColumn("createdAt", "text", (col) => col.notNull())
-      .execute();
-    console.log("✅ Vote table created\n");
-
-    // 7. Notification table
+    // 5. Notification table
     console.log("🔔 Creating notification table...");
     await db.schema
       .createTable("notification")
@@ -169,7 +112,7 @@ async function createTables() {
       .execute();
     console.log("✅ Notification table created\n");
 
-    // 8. UserPreferences table
+    // 6. UserPreferences table
     console.log("⚙️  Creating userPreferences table...");
     await db.schema
       .createTable("userPreferences")
@@ -193,7 +136,7 @@ async function createTables() {
 
     console.log("✅ UserPreferences table created\n");
 
-    // 9. PushSubscription table (for Web Push Notifications)
+    // 7. PushSubscription table (for Web Push Notifications)
     console.log("📱 Creating pushSubscription table...");
     await db.schema
       .createTable("pushSubscription")
@@ -223,7 +166,7 @@ async function createTables() {
 
     console.log("✅ PushSubscription table created\n");
 
-    // 10. Polar webhook events table (SERVER-SIDE ONLY - NOT in Zero schema, NOT synced to clients)
+    // 8. Polar webhook events table (SERVER-SIDE ONLY - NOT in Zero schema, NOT synced to clients)
     // This table exists in the same Postgres DB but is completely isolated from Zero replication
     console.log("🔔 Creating polar_webhook_events table (server-side only)...");
     await db.schema
@@ -295,11 +238,8 @@ async function setupReplication() {
 
   const tables = [
     "project",
-    "cup",
-    "cupMatch",
     "userIdentities",
     "identityPurchase",
-    "vote",
     "notification",
     "userPreferences",
     "pushSubscription",
@@ -309,7 +249,6 @@ async function setupReplication() {
   for (const table of tables) {
     try {
       const quotedTable = [
-        "cupMatch",
         "userIdentities",
         "identityPurchase",
         "userPreferences",
@@ -331,7 +270,7 @@ async function setupReplication() {
 
   // Create or update publication
   try {
-    await sql`CREATE PUBLICATION zero_data FOR TABLE project, cup, "cupMatch", "userIdentities", "identityPurchase", vote, notification, "userPreferences", "pushSubscription"`.execute(
+    await sql`CREATE PUBLICATION zero_data FOR TABLE project, "userIdentities", "identityPurchase", notification, "userPreferences", "pushSubscription"`.execute(
       db
     );
     console.log("✅ Created publication 'zero_data'\n");
@@ -341,7 +280,7 @@ async function setupReplication() {
 
       // Ensure all current tables are included
       try {
-        await sql`ALTER PUBLICATION zero_data SET TABLE project, cup, "cupMatch", "userIdentities", "identityPurchase", vote, notification, "userPreferences", "pushSubscription"`.execute(
+        await sql`ALTER PUBLICATION zero_data SET TABLE project, "userIdentities", "identityPurchase", notification, "userPreferences", "pushSubscription"`.execute(
           db
         );
         console.log("✅ Updated publication to include all tables\n");
@@ -490,6 +429,87 @@ async function removeCupIdFromIdentityPurchase() {
       "❌ Error removing cupId column from identityPurchase:",
       error.message
     );
+    throw error;
+  }
+}
+
+/**
+ * Drop legacy cup/match/vote tables
+ * These tables are no longer needed
+ */
+async function dropLegacyTables() {
+  console.log("🗑️  Dropping legacy cup/match/vote tables...\n");
+
+  const tablesToDrop = [
+    { name: "vote", quoted: false },
+    { name: "cupMatch", quoted: true },
+    { name: "cup", quoted: false },
+    { name: "projectVote", quoted: false },
+    { name: "heartTransaction", quoted: false },
+  ];
+
+  for (const table of tablesToDrop) {
+    try {
+      const tableName = table.quoted ? `"${table.name}"` : table.name;
+      
+      // Check if table exists
+      const tableExists = await sql`
+        SELECT table_name 
+        FROM information_schema.tables 
+        WHERE table_name = ${table.name}
+      `.execute(db);
+
+      if (tableExists.rows.length > 0) {
+        // Drop table
+        await sql`DROP TABLE IF EXISTS ${sql.raw(tableName)} CASCADE`.execute(db);
+        console.log(`✅ Dropped table ${table.name}\n`);
+      } else {
+        console.log(`ℹ️  Table ${table.name} doesn't exist (already removed)\n`);
+      }
+    } catch (error) {
+      console.error(`❌ Error dropping table ${table.name}:`, error.message);
+      // Continue with other tables even if one fails
+    }
+  }
+
+  // Remove from publication if they were there
+  try {
+    await sql`ALTER PUBLICATION zero_data DROP TABLE IF EXISTS cup, "cupMatch", vote`.execute(db);
+    console.log("✅ Removed legacy tables from publication\n");
+  } catch (error) {
+    // Ignore if already removed
+    console.log("ℹ️  Legacy tables already removed from publication\n");
+  }
+}
+
+/**
+ * Remove votingWeight column from userIdentities table if it exists
+ * Voting functionality has been removed
+ */
+async function removeVotingWeightFromUserIdentities() {
+  console.log("🔄 Removing votingWeight column from userIdentities table...\n");
+
+  try {
+    // Check if column exists
+    const columnExists = await sql`
+      SELECT column_name 
+      FROM information_schema.columns 
+      WHERE table_name = 'userIdentities' 
+      AND column_name = 'votingWeight'
+    `.execute(db);
+
+    if (columnExists.rows.length > 0) {
+      // Column exists, drop it
+      await sql`
+        ALTER TABLE "userIdentities" 
+        DROP COLUMN "votingWeight"
+      `.execute(db);
+      console.log("✅ Removed votingWeight column from userIdentities table\n");
+    } else {
+      console.log("ℹ️  votingWeight column doesn't exist (already removed)\n");
+    }
+  } catch (error) {
+    console.error("❌ Error removing votingWeight column:", error.message);
     throw error;
   }
 }
@@ -717,6 +737,8 @@ createTables()
   .then(() => createPushSubscriptionTable())
   .then(() => addDeviceInfoToPushSubscription())
   .then(() => ensureUserPreferencesHaveUserId())
+  .then(() => dropLegacyTables())
+  .then(() => removeVotingWeightFromUserIdentities())
   .then(() => {
     console.log("✨ Migration completed successfully!");
     process.exit(0);

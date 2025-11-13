@@ -2,9 +2,9 @@ import notificationConfig from "./notification-config.json";
 
 /**
  * Get notification configuration for a given resource type and subtype
- * @param {string} resourceType - e.g., 'identityPurchase', 'vote'
+ * @param {string} resourceType - e.g., 'identityPurchase', 'newsletter'
  * @param {string} subtype - e.g., 'hominio', 'founder', 'other', 'received'
- * @param {Object} replacements - Object with key-value pairs to replace placeholders like {cupName}, {identityName}, {message}
+ * @param {Object} replacements - Object with key-value pairs to replace placeholders like {identityName}, {message}
  * @returns {Object|null} Notification config or null if not found
  */
 export function getNotificationConfig(resourceType, subtype, replacements = {}) {

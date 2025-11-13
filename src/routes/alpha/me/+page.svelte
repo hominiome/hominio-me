@@ -647,8 +647,7 @@
             
                     <div class="info-section">
                       <p class="info-text">
-                        When you are a founder and want to apply with your project for the first Cup, message me now.<br><br>
-                        Any other questions or requests, let me know too.
+                        Have any questions or requests? Feel free to contact me anytime.
                       </p>
                     </div>
 

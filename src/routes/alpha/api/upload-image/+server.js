@@ -44,7 +44,7 @@ function validateFile(file) {
 }
 
 /**
- * Check if user has founder identity (any cup)
+ * Check if user has founder identity
  */
 async function hasFounderIdentity(userId) {
   try {

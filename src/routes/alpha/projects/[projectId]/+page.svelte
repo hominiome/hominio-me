@@ -8,8 +8,6 @@
   import { getYouTubeEmbedUrl } from "$lib/youtubeUtils";
   import {
     projectById,
-    allCups,
-    allMatches,
     allProjects,
   } from "$lib/synced-queries";
   import { Button } from "$lib/design-system/atoms";
@@ -31,8 +29,7 @@ import EditProjectContent from "$lib/EditProjectContent.svelte";
     name: string | null;
     image: string | null;
   } | null>(null);
-  let matches = $state<any[]>([]);
-  let cups = $state<any[]>([]);
+  // Removed: matches and cups (Cups functionality removed)
   let projects = $state<any[]>([]);
   let showVideoThumbnail = $state(true);
   let isAdmin = $state(false);
@@ -68,9 +65,6 @@ import EditProjectContent from "$lib/EditProjectContent.svelte";
 
   onMount(() => {
     let projectView: any;
-    let matchesView1: any;
-    let matchesView2: any;
-    let cupsView: any;
     let projectsView: any;
 
     (async () => {
@@ -94,21 +88,7 @@ import EditProjectContent from "$lib/EditProjectContent.svelte";
       const projectQuery = projectById(projectId);
       projectView = zero.materialize(projectQuery);
 
-      // Query all matches (then filter by projectId in listener)
-      const matchesQuery = allMatches();
-      const matchesView = zero.materialize(matchesQuery);
-
-      matchesView.addListener((data: any) => {
-        // Filter matches where this project participated (either as project1 or project2)
-        const allMatchesData = Array.from(data || []);
-        matches = allMatchesData.filter(
-          (m: any) => m.project1Id === projectId || m.project2Id === projectId
-        );
-      });
-
-      // Query all cups using synced query
-      const cupsQuery = allCups();
-      cupsView = zero.materialize(cupsQuery);
+      // Removed: matches and cups queries (Cups functionality removed)
 
       // Query all projects for opponent names using synced query
       const projectsQuery = allProjects();
@@ -131,10 +111,6 @@ import EditProjectContent from "$lib/EditProjectContent.svelte";
         }
       });
 
-      cupsView.addListener((data: any) => {
-        cups = Array.from(data || []);
-      });
-
       projectsView.addListener((data: any) => {
         projects = Array.from(data || []);
       });
@@ -147,77 +123,14 @@ import EditProjectContent from "$lib/EditProjectContent.svelte";
 
     return () => {
       if (projectView) projectView.destroy();
-      if (matchesView1) matchesView1.destroy();
-      if (matchesView2) matchesView2.destroy();
-      if (cupsView) cupsView.destroy();
       if (projectsView) projectsView.destroy();
     };
   });
-
-  function getRoundLabel(round: string) {
-    switch (round) {
-      case "round_4":
-        return "Round of 4";
-      case "round_8":
-        return "Round of 8";
-      case "round_16":
-        return "Round of 16";
-      case "round_32":
-        return "Round of 32";
-      case "round_64":
-        return "Round of 64";
-      case "round_128":
-        return "Round of 128";
-      case "quarter":
-        return "Quarter Finals";
-      case "semi":
-        return "Semi Finals";
-      case "final":
-        return "Final";
-      default:
-        return round;
-    }
-  }
-
-  function getCupName(cupId: string) {
-    const cup = cups.find((c) => c.id === cupId);
-    return cup?.name || cupId;
-  }
 
   function getProjectName(projectId: string) {
     const proj = projects.find((p) => p.id === projectId);
     return proj?.title || "Unknown Project";
   }
-
-  function getMatchResult(match: any) {
-    if (match.status !== "completed") return null;
-    if (match.winnerId === projectId) return "won";
-    if (match.project1Id === projectId || match.project2Id === projectId)
-      return "lost";
-    return null;
-  }
-
-  function getOpponentProject(match: any) {
-    if (match.project1Id === projectId) return match.project2Id;
-    if (match.project2Id === projectId) return match.project1Id;
-    return null;
-  }
-
-  // Group matches by cup
-  const matchesByCup = $derived.by(() => {
-    const grouped = new Map<string, any[]>();
-    if (matches && matches.length > 0) {
-      matches.forEach((match) => {
-        if (match && match.cupId) {
-          if (!grouped.has(match.cupId)) {
-            grouped.set(match.cupId, []);
-          }
-          grouped.get(match.cupId)!.push(match);
-        }
-      });
-    }
-    return grouped;
-  });
 
   const isOwner = $derived(
     project?.userId === $session.data?.user?.id || isAdmin
@@ -443,82 +356,6 @@ import EditProjectContent from "$lib/EditProjectContent.svelte";
             </div>
           {/each}
         </div>
-      </div>
-    {/if}
-
-    <!-- Cups and Matches -->
-    {#if matches && matches.length > 0 && Array.from(matchesByCup).length > 0}
-      <div
-        class="bg-white rounded-2xl border-2 border-brand-navy-500/6 shadow-md p-6 md:p-8 mb-6"
-      >
-        <h2 class="text-xl font-bold text-brand-navy-500 mb-4">
-          Tournament Participation
-        </h2>
-        {#each Array.from(matchesByCup) as [cupId, cupMatches]}
-          <div class="mb-8 last:mb-0">
-            <h3
-              class="text-lg font-bold text-brand-navy-500 mb-4 pb-2 border-b-2 border-brand-navy-500/10"
-            >
-              {getCupName(cupId)}
-            </h3>
-            <div class="flex flex-col gap-3">
-              {#each cupMatches as match}
-                {@const result = getMatchResult(match)}
-                {@const opponentId = getOpponentProject(match)}
-                <div
-                  class="p-4 rounded-lg border-l-4 transition-all hover:translate-x-1 hover:shadow-md {result ===
-                  'won'
-                    ? 'bg-success-50 border-success-500'
-                    : result === 'lost'
-                      ? 'bg-brand-cream-50 border-brand-teal-500/30'
-                      : 'bg-brand-cream-50 border-brand-navy-500/20'}"
-                >
-                  <div class="flex items-center justify-between mb-2">
-                    <span
-                      class="text-xs font-semibold text-brand-navy-500 uppercase tracking-wider"
-                      >{getRoundLabel(match.round)}</span
-                    >
-                    {#if result === "won"}
-                      <span
-                        class="px-3 py-1 rounded-xl text-xs font-bold uppercase tracking-wider bg-success-500 text-white"
-                        >Won</span
-                      >
-                    {:else if result === "lost"}
-                      <span
-                        class="px-3 py-1 rounded-xl text-xs font-bold uppercase tracking-wider bg-brand-teal-500/15 text-brand-navy-700 border border-brand-teal-500/20"
-                        >Lost</span
-                      >
-                    {:else if match.status === "voting"}
-                      <span
-                        class="px-3 py-1 rounded-xl text-xs font-bold uppercase tracking-wider bg-brand-yellow-500 text-brand-navy-500"
-                        >Voting</span
-                      >
-                    {:else}
-                      <span
-                        class="px-3 py-1 rounded-xl text-xs font-bold uppercase tracking-wider bg-gray-400 text-white"
-                        >Pending</span
-                      >
-                    {/if}
-                  </div>
-                  <div class="text-sm text-brand-navy-700 mb-1">
-                    vs <a
-                      href="/alpha/projects/{opponentId}"
-                      class="text-brand-teal-500 hover:text-brand-navy-500 font-semibold transition-colors hover:underline"
-                      >{getProjectName(opponentId)}</a
-                    >
-                  </div>
-                  {#if match.completedAt}
-                    <div class="text-xs text-brand-navy-700/60">
-                      Completed: {new Date(
-                        match.completedAt
-                      ).toLocaleDateString()}
-                    </div>
-                  {/if}
-                </div>
-              {/each}
-            </div>
-          </div>
-        {/each}
       </div>
     {/if}
   {/if}

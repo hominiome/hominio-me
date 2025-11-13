@@ -170,7 +170,7 @@
     const pkg = packages.find((p) => p.packageType === packageType);
     if (!pkg) return false;
 
-    // All identities are now universal (cupId = null)
+    // All identities are now universal
     if (!userIdentity) return true; // Can purchase any identity if none exists
 
     const currentType = userIdentity.identityType;
@@ -361,7 +361,7 @@
       }
     }
 
-    // Legacy purchase flow (all identities are now universal, cupId = null)
+    // Legacy purchase flow (all identities are now universal)
     try {
       const response = await fetch("/alpha/api/purchase-package", {
         method: "POST",

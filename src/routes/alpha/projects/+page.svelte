@@ -264,7 +264,7 @@ import EditProjectContent from "$lib/EditProjectContent.svelte";
     };
   });
 
-  // Check if user has founder identity (any cup)
+  // Check if user has founder identity
   const hasFounderIdentity = $derived(() => {
     if (!userIdentities || userIdentities.length === 0) return false;
     return userIdentities.some(
