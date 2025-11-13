@@ -271,12 +271,14 @@ h1, h2 {
   font-family: var(--font-family-title);
   font-weight: 400; /* Shrikhand Regular */
   line-height: 1.2;
+  letter-spacing: 0.5px; /* Subtle character spacing */
 }
 
 h3, h4, h5, h6 {
   font-family: var(--font-family-title);
   font-weight: 400; /* Shrikhand Regular */
   line-height: 1.2;
+  letter-spacing: 0.5px; /* Subtle character spacing */
 }
 
 h1 span, h2 span, h3 span, h4 span, h5 span, h6 span {
