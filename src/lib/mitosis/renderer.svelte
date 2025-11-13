@@ -503,21 +503,39 @@
     gap: 1rem;
   }
 
-  /* Menu item card - organic design with brand colors */
+  /* Menu item card - beautiful organic design with secondary teal accent */
   :global(.menu-item-card) {
-    background: var(--color-brand-cream-50);
-    border: 1px solid rgba(8, 27, 71, 0.1);
-    border-radius: 16px;
-    padding: 1.5rem;
+    background: white;
+    border: 2px solid rgba(45, 166, 180, 0.15);
+    border-radius: 20px;
+    padding: 1.75rem;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    box-shadow: 0 2px 8px rgba(8, 27, 71, 0.06), 0 1px 3px rgba(8, 27, 71, 0.04);
+    box-shadow: 0 2px 12px rgba(45, 166, 180, 0.08), 0 1px 4px rgba(45, 166, 180, 0.04);
+    position: relative;
+    overflow: hidden;
+  }
+
+  :global(.menu-item-card::before) {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, var(--color-secondary-400), var(--color-secondary-500));
+    opacity: 0;
+    transition: opacity 0.3s ease;
   }
 
   :global(.menu-item-card:hover) {
     background: white;
-    border-color: rgba(45, 166, 180, 0.3);
-    transform: translateY(-2px);
-    box-shadow: 0 8px 24px rgba(45, 166, 180, 0.12), 0 2px 8px rgba(45, 166, 180, 0.08);
+    border-color: var(--color-secondary-400);
+    transform: translateY(-4px);
+    box-shadow: 0 12px 32px rgba(45, 166, 180, 0.16), 0 4px 12px rgba(45, 166, 180, 0.12);
+  }
+
+  :global(.menu-item-card:hover::before) {
+    opacity: 1;
   }
 
   /* Menu item header - matches DIONYS item-header */
@@ -538,26 +556,28 @@
     min-width: 0;
   }
 
-  /* Menu item name - matches DIONYS item-name */
+  /* Menu item name - beautiful typography with teal accent */
   :global(.menu-item-name) {
     display: block;
     margin: 0;
-    font-size: 1rem;
-    font-weight: 600;
-    color: #1f2937; /* DIONYS dark text */
+    font-size: 1.125rem;
+    font-weight: 700;
+    color: var(--color-brand-navy-700);
     flex: 1;
     min-width: 0;
     line-height: 1.4;
+    letter-spacing: -0.01em;
   }
 
-  /* Menu item description */
+  /* Menu item description - softer, more readable */
   :global(.menu-item-description) {
     display: block;
     margin: 0;
-    font-size: 0.875rem;
+    font-size: 0.9375rem;
     font-weight: 400;
-    color: #6b7280; /* DIONYS gray text */
-    line-height: 1.5;
+    color: #64748b;
+    line-height: 1.6;
+    margin-top: 0.375rem;
   }
 
   /* Menu item pricing - matches DIONYS item-pricing */
@@ -569,24 +589,25 @@
     flex-shrink: 0;
   }
 
-  /* Menu item price - matches DIONYS per-item-price */
+  /* Menu item price - prominent teal accent */
   :global(.menu-item-price) {
-    font-weight: 600;
-    color: #1f2937; /* DIONYS dark text */
-    font-size: 1rem;
+    font-weight: 700;
+    color: var(--color-secondary-600);
+    font-size: 1.25rem;
     text-align: right;
     min-width: fit-content;
     flex-shrink: 0;
     display: flex;
     align-items: baseline;
     gap: 0.25rem;
+    letter-spacing: -0.02em;
   }
 
-  /* Menu item unit - matches DIONYS price-unit */
+  /* Menu item unit - subtle teal */
   :global(.menu-item-unit) {
-    font-size: 0.875rem;
+    font-size: 0.8125rem;
     font-weight: 500;
-    color: #6b7280; /* DIONYS gray text */
+    color: var(--color-secondary-500);
   }
 
   /* SPA & Beauty List Container - matches menu-list style */
@@ -916,11 +937,13 @@
   }
 
   :global(.order-confirmation-header) {
-    margin-bottom: 0.5rem;
+    margin-bottom: 0.75rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 2px solid rgba(45, 166, 180, 0.3);
   }
 
   :global(.order-confirmation-title) {
-    font-size: 0.75rem;
+    font-size: 1rem;
     font-weight: 700;
     color: rgba(255, 255, 255, 0.95);
     text-transform: uppercase;
@@ -974,9 +997,9 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding-top: 0.5rem;
-    margin-top: 0.5rem;
-    border-top: 2px solid rgba(255, 255, 255, 0.2);
+    padding-top: 0.75rem;
+    margin-top: 0.75rem;
+    border-top: 3px solid var(--color-secondary-400);
   }
 
   :global(.order-total-label) {
@@ -1000,12 +1023,12 @@
 
   :global(.cart-header) {
     margin-bottom: 0.75rem;
-    padding-bottom: 0.5rem;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+    padding-bottom: 0.75rem;
+    border-bottom: 2px solid rgba(45, 166, 180, 0.3);
   }
 
   :global(.cart-title) {
-    font-size: 0.875rem;
+    font-size: 1rem;
     font-weight: 700;
     color: rgba(255, 255, 255, 0.95);
     text-transform: uppercase;
@@ -1059,9 +1082,9 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding-top: 0.5rem;
-    margin-top: 0.5rem;
-    border-top: 2px solid rgba(255, 255, 255, 0.2);
+    padding-top: 0.75rem;
+    margin-top: 0.75rem;
+    border-top: 3px solid var(--color-secondary-400);
   }
 
   :global(.cart-total-label) {

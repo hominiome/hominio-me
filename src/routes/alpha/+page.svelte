@@ -55,6 +55,39 @@
     const date = new Date(isoString);
     return date.toLocaleTimeString();
   }
+
+  // Convert tool names to human-readable titles
+  function getHumanReadableTitle(vibeId: string, toolName: string): string {
+    const titleMap: Record<string, string> = {
+      // Menu tools
+      'list_menu': 'Speisekarte',
+      'list_beverages': 'Getränkekarte',
+      'list_desserts': 'Dessertkarte',
+      
+      // SPA tools
+      'list_spa_services': 'SPA Services',
+      'list_massages': 'Massage Angebote',
+      'list_beauty': 'Beauty Services',
+      
+      // Taxi tools
+      'list_taxi': 'Taxi Services',
+      'book_taxi': 'Taxi Buchung',
+      
+      // Room service
+      'list_room_service': 'Zimmerservice',
+      'order_room_service': 'Bestellung',
+      
+      // Cart
+      'view_cart': 'Warenkorb',
+      'checkout': 'Bestellung abschließen',
+      
+      // Todos
+      'list_todos': 'Aufgaben',
+      'create_todo': 'Neue Aufgabe',
+    };
+    
+    return titleMap[toolName] || 'Übersicht';
+  }
 </script>
 
 <div class="min-h-screen p-0 m-0 bg-[#f0f2f5]">
@@ -114,9 +147,12 @@
       </div>
     {:else if latestActivity}
       <!-- Latest Activity Content -->
-      <div class="bg-white rounded-2xl p-6 md:p-8 shadow-[0_4px_20px_rgba(0,0,0,0.08)] border border-[var(--color-accent-500)] max-w-6xl mx-auto transition-all duration-200">
-        <!-- Activity Header - Centered Context Title -->
-        <div class="flex items-center justify-center mb-6 pb-4 border-b border-gray-200">
+      <div class="bg-white rounded-2xl p-6 md:p-8 shadow-[0_4px_20px_rgba(0,0,0,0.08)] border-l-4 border-l-[var(--color-secondary-500)] border-t border-r border-b border-gray-200 max-w-6xl mx-auto transition-all duration-200">
+        <!-- Activity Header - Centered Beautiful Title -->
+        <div class="flex flex-col items-center justify-center mb-6 pb-4 border-b border-gray-200 gap-2">
+          <h2 class="text-2xl font-bold text-[var(--color-secondary-700)] text-center">
+            {getHumanReadableTitle(latestActivity.vibeId, latestActivity.toolName)}
+          </h2>
           <span class="text-gray-400 text-xs">
             {formatTimestamp(latestActivity.timestamp)}
           </span>
