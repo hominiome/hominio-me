@@ -548,17 +548,17 @@
               } catch (err: any) {
                 console.error("❌ Error sending audio:", err);
               }
-            } else {
+      } else {
               // Queue chunk until socket is ready
               audioChunkQueue.push(event.data);
-            }
+      }
           };
           
           // Start recording IMMEDIATELY - this keeps the stream alive!
           mediaRecorder.start(50);
           isRecording = true;
           console.log("🎤 MediaRecorder started immediately to keep stream alive");
-          
+      
           // Once socket is ready, send queued chunks
           const sendQueuedChunks = async () => {
             const currentSocket = socket;
@@ -576,7 +576,7 @@
                   console.error("❌ Error sending queued audio:", err);
                   break; // Stop if there's an error
                 }
-              } else {
+          } else {
                 break; // Socket closed, stop sending
               }
             }
@@ -613,12 +613,12 @@
         // Non-iOS: Initialize audio player normally
         console.log("🔄 Initializing audio player...");
         try {
-          audioPlayer = new EVIWebAudioPlayer();
-          await audioPlayer.init();
-          console.log("✅ Audio player initialized");
-        } catch (audioPlayerErr: any) {
-          console.error("❌ Failed to initialize audio player:", audioPlayerErr);
-          console.warn("⚠️ Continuing without audio player - will retry when audio arrives");
+        audioPlayer = new EVIWebAudioPlayer();
+        await audioPlayer.init();
+        console.log("✅ Audio player initialized");
+      } catch (audioPlayerErr: any) {
+        console.error("❌ Failed to initialize audio player:", audioPlayerErr);
+        console.warn("⚠️ Continuing without audio player - will retry when audio arrives");
           audioPlayer = null;
         }
       }
@@ -916,7 +916,7 @@
         console.log("✅ MediaRecorder already running (started early for iOS PWA)");
       } else {
         // Start audio capture (non-iOS or fallback)
-        await startAudioCapture();
+      await startAudioCapture();
       }
 
       // Connection is complete
@@ -932,6 +932,21 @@
       isRecording = false;
       isConnecting = false;
       isWaitingForPermission = false;
+      
+      // Clean up window references if socket connection failed (memory leak fix)
+      if ((window as any).__sendQueuedAudioChunks) {
+        delete (window as any).__sendQueuedAudioChunks;
+      }
+      if ((window as any).__audioChunkQueue) {
+        const queue = (window as any).__audioChunkQueue;
+        if (Array.isArray(queue)) {
+          queue.length = 0;
+        }
+        delete (window as any).__audioChunkQueue;
+      }
+      
+      // Clean up resources
+      cleanupCall();
     }
   }
 
@@ -1333,6 +1348,19 @@
    * Called when connection closes or errors
    */
   function cleanupCall() {
+    // Clean up window references for queued audio chunks (memory leak fix)
+    if ((window as any).__sendQueuedAudioChunks) {
+      delete (window as any).__sendQueuedAudioChunks;
+    }
+    if ((window as any).__audioChunkQueue) {
+      // Clear the queue array to free memory
+      const queue = (window as any).__audioChunkQueue;
+      if (Array.isArray(queue)) {
+        queue.length = 0;
+      }
+      delete (window as any).__audioChunkQueue;
+    }
+
     // Stop media recorder
     if (mediaRecorder && mediaRecorder.state === "recording") {
       try {
