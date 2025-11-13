@@ -470,18 +470,22 @@
         console.log("✅ Microphone permission granted - reusing active stream");
       }
 
-      // Initialize audio player IMMEDIATELY after getUserMedia() 
+      // Initialize audio player IMMEDIATELY after getUserMedia()
       // This is critical for iOS PWAs: AudioContext must be initialized/resumed
       // while the user interaction (from getUserMedia) is still active
       // iOS Safari requires user interaction to activate AudioContext from suspended state
-      console.log("🔄 Initializing audio player (while user interaction is active)...");
-      
+      console.log(
+        "🔄 Initializing audio player (while user interaction is active)..."
+      );
+
       // For iOS PWAs: Play a silent audio element to unlock audio playback
       // This is required for iOS PWAs to allow AudioContext creation
-      const isIOSPWA = browser && 
-        (navigator.standalone === true || 
-         (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches));
-      
+      const isIOSPWA =
+        browser &&
+        (navigator.standalone === true ||
+          (window.matchMedia &&
+            window.matchMedia("(display-mode: standalone)").matches));
+
       if (isIOSPWA) {
         console.log("📱 iOS PWA detected - unlocking audio playback...");
         try {
@@ -494,7 +498,8 @@
           audio.setAttribute("playsinline", "true");
           const playPromise = audio.play();
           if (playPromise?.then) {
-            playPromise
+            // Await the promise to ensure unlock completes before AudioContext initialization
+            await playPromise
               .then(() => {
                 console.log("✅ Audio unlocked for iOS PWA");
                 audio.pause();
@@ -507,7 +512,9 @@
                 );
               });
           } else {
-            console.log("ℹ️ Silent audio play() returned no promise (already unlocked?)");
+            console.log(
+              "ℹ️ Silent audio play() returned no promise (already unlocked?)"
+            );
           }
         } catch (unlockErr: any) {
           console.log(
@@ -516,52 +523,71 @@
           );
         }
       }
-      
+
       try {
         console.log("📊 Creating EVIWebAudioPlayer instance...");
         audioPlayer = new EVIWebAudioPlayer();
         console.log("✅ EVIWebAudioPlayer instance created");
-        
+
         console.log("📊 Calling audioPlayer.init()...");
         // Initialize immediately - getUserMedia() above provides the required user interaction
         await audioPlayer.init();
         console.log("✅ Audio player initialized");
-        
+
         // In iOS Safari/PWA, AudioContext starts in "suspended" state
         // We need to explicitly resume it after initialization
         // Try to access the internal AudioContext and resume it if suspended
         try {
           // @ts-ignore - accessing internal audioContext if available
-          const audioContext = audioPlayer.audioContext || (audioPlayer as any).context;
-          if (audioContext && typeof audioContext.resume === 'function') {
+          const audioContext =
+            audioPlayer.audioContext || (audioPlayer as any).context;
+          if (audioContext && typeof audioContext.resume === "function") {
             console.log("📊 Checking AudioContext state...");
-            if (audioContext.state === 'suspended') {
+            if (audioContext.state === "suspended") {
               console.log("🔄 AudioContext is suspended, resuming...");
               await audioContext.resume();
-              console.log("✅ AudioContext resumed, state:", audioContext.state);
+              console.log(
+                "✅ AudioContext resumed, state:",
+                audioContext.state
+              );
             } else {
-              console.log("✅ AudioContext already running, state:", audioContext.state);
+              console.log(
+                "✅ AudioContext already running, state:",
+                audioContext.state
+              );
             }
-            
+
             // For iOS PWAs: Double-check and retry resume if still suspended
-            if (isIOSPWA && audioContext.state === 'suspended') {
+            if (isIOSPWA && audioContext.state === "suspended") {
               console.log("🔄 iOS PWA: Retrying AudioContext resume...");
-              await new Promise(resolve => setTimeout(resolve, 100)); // Small delay
+              await new Promise((resolve) => setTimeout(resolve, 100)); // Small delay
               await audioContext.resume();
-              console.log("✅ AudioContext resume retry, state:", audioContext.state);
+              console.log(
+                "✅ AudioContext resume retry, state:",
+                audioContext.state
+              );
             }
           }
         } catch (resumeErr: any) {
           // If we can't access/resume the AudioContext, that's okay
           // The EVIWebAudioPlayer might handle it internally
-          console.log("ℹ️ Could not access/resume AudioContext directly:", resumeErr.message);
+          console.log(
+            "ℹ️ Could not access/resume AudioContext directly:",
+            resumeErr.message
+          );
         }
       } catch (audioPlayerErr: any) {
         console.error("❌ Failed to initialize audio player:", audioPlayerErr);
-        console.error("Audio player error details:", audioPlayerErr.message, audioPlayerErr.stack);
+        console.error(
+          "Audio player error details:",
+          audioPlayerErr.message,
+          audioPlayerErr.stack
+        );
         // Don't throw - continue without audio player (audio output won't work, but we can still try)
         // We'll try to initialize it later when audio actually arrives
-        console.warn("⚠️ Continuing without audio player - will retry when audio arrives");
+        console.warn(
+          "⚠️ Continuing without audio player - will retry when audio arrives"
+        );
         audioPlayer = null; // Clear the failed instance
       }
 
@@ -591,7 +617,11 @@
         console.log("✅ Socket created, waiting for open event...");
       } catch (socketConnectErr: any) {
         console.error("❌ Failed to create socket:", socketConnectErr);
-        console.error("Socket connect error details:", socketConnectErr.message, socketConnectErr.stack);
+        console.error(
+          "Socket connect error details:",
+          socketConnectErr.message,
+          socketConnectErr.stack
+        );
         throw socketConnectErr; // Re-throw to be caught by outer try-catch
       }
 
@@ -613,11 +643,11 @@
       const removeErrorHandler = (handler: ((error: Error) => void) | null) => {
         if (!handler) return;
         // Try different methods to remove the listener
-        if (typeof socket.off === 'function') {
+        if (typeof socket.off === "function") {
           socket.off("error", handler);
-        } else if (typeof socket.removeListener === 'function') {
+        } else if (typeof socket.removeListener === "function") {
           socket.removeListener("error", handler);
-        } else if (typeof socket.removeEventListener === 'function') {
+        } else if (typeof socket.removeEventListener === "function") {
           socket.removeEventListener("error", handler);
         }
         // If none of the methods exist, we can't remove it, but that's okay
@@ -698,28 +728,41 @@
                 audioPlayer = new EVIWebAudioPlayer();
                 await audioPlayer.init();
                 console.log("✅ Audio player initialized lazily");
-                
+
                 // Try to resume AudioContext if suspended (iOS PWA)
                 try {
                   // @ts-ignore - accessing internal audioContext if available
-                  const audioContext = audioPlayer.audioContext || (audioPlayer as any).context;
-                  if (audioContext && typeof audioContext.resume === 'function') {
-                    if (audioContext.state === 'suspended') {
+                  const audioContext =
+                    audioPlayer.audioContext || (audioPlayer as any).context;
+                  if (
+                    audioContext &&
+                    typeof audioContext.resume === "function"
+                  ) {
+                    if (audioContext.state === "suspended") {
                       console.log("🔄 Resuming suspended AudioContext...");
                       await audioContext.resume();
-                      console.log("✅ AudioContext resumed, state:", audioContext.state);
+                      console.log(
+                        "✅ AudioContext resumed, state:",
+                        audioContext.state
+                      );
                     }
                   }
                 } catch (resumeErr: any) {
-                  console.log("ℹ️ Could not access/resume AudioContext:", resumeErr.message);
+                  console.log(
+                    "ℹ️ Could not access/resume AudioContext:",
+                    resumeErr.message
+                  );
                 }
               } catch (lazyInitErr: any) {
-                console.error("❌ Failed to lazy initialize audio player:", lazyInitErr);
+                console.error(
+                  "❌ Failed to lazy initialize audio player:",
+                  lazyInitErr
+                );
                 // Continue without audio player - user won't hear audio but call can continue
                 return;
               }
             }
-            
+
             console.log("🔊 Received audio output from AI");
             audioPlayer.enqueue(message).catch((err: any) => {
               console.error("❌ Error enqueueing audio:", err);
