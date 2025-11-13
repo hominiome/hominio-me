@@ -272,6 +272,7 @@ h1, h2 {
   font-weight: 400; /* Shrikhand Regular */
   line-height: 1.2;
   letter-spacing: 0.5px; /* Subtle character spacing */
+  color: var(--color-brand-navy-800); /* Dark brand blue instead of black */
 }
 
 h3, h4, h5, h6 {
@@ -279,6 +280,7 @@ h3, h4, h5, h6 {
   font-weight: 400; /* Shrikhand Regular */
   line-height: 1.2;
   letter-spacing: 0.5px; /* Subtle character spacing */
+  color: var(--color-brand-navy-800); /* Dark brand blue instead of black */
 }
 
 h1 span, h2 span, h3 span, h4 span, h5 span, h6 span {
