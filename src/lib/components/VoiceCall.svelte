@@ -572,8 +572,37 @@
   }
 
   /**
+   * Check if microphone permission is already granted
+   * Returns true if granted, false if not granted or unknown
+   */
+  async function checkMicrophonePermission(): Promise<boolean> {
+    if (!browser || !navigator.mediaDevices) {
+      return false;
+    }
+
+    // Check permission status if API is available
+    if (navigator.permissions && navigator.permissions.query) {
+      try {
+        const permissionStatus = await navigator.permissions.query({
+          name: "microphone" as PermissionName,
+        });
+        const isGranted = permissionStatus.state === "granted";
+        console.log("🎤 Microphone permission status:", permissionStatus.state);
+        return isGranted;
+      } catch (permErr) {
+        // Permissions API not supported (e.g., Safari/iOS)
+        // We'll need to try getUserMedia to check
+        return false;
+      }
+    }
+
+    // Permissions API not available - assume not granted
+    return false;
+  }
+
+  /**
    * Request microphone permission explicitly (required for iOS PWAs)
-   * This must be called before getUserMedia to ensure permission prompt appears
+   * Only requests if permission is not already granted
    * Returns true if permission is granted, false otherwise
    * Note: We don't keep the stream here - we'll get a fresh one when we're ready to use it
    */
@@ -584,105 +613,90 @@
     }
 
     try {
-      let permissionState: string | null = null;
-      
-      // Check current permission status (if API is available)
-      // Note: navigator.permissions.query is not available in all browsers (e.g., Safari/iOS)
-      if (navigator.permissions && navigator.permissions.query) {
-        try {
-          const permissionStatus = await navigator.permissions.query({
-            name: "microphone" as PermissionName,
-          });
-          permissionState = permissionStatus.state;
-          console.log(
-            "🎤 Microphone permission status:",
-            permissionStatus.state
-          );
-
-          // If already granted, we're good (but still need to call getUserMedia later)
-          if (permissionStatus.state === "granted") {
-            console.log("✅ Microphone permission already granted");
-            return true;
-          }
-        } catch (permErr) {
-          // Permissions API not supported (e.g., Safari/iOS), continue to getUserMedia
-          console.log(
-            "ℹ️ Permissions API not available, proceeding to request permission"
-          );
-        }
+      // First, check if permission is already granted
+      const alreadyGranted = await checkMicrophonePermission();
+      if (alreadyGranted) {
+        console.log("✅ Microphone permission already granted - no need to request again");
+        return true;
       }
 
-      // Explicitly request permission by calling getUserMedia
-      // This is required for iOS PWAs - the permission prompt won't appear otherwise
-      // We get a test stream to trigger the permission prompt
-      console.log("🔄 Requesting microphone permission...");
-      const testStream = await navigator.mediaDevices.getUserMedia({
-        audio: true,
-      });
-
-      // Wait for stream to be fully established and permission to be granted
-      // In iOS PWAs, if status was "prompt", we need to wait for user to grant permission
-      await new Promise(resolve => setTimeout(resolve, 500));
+      // Permission not granted - we need to request it
+      // In iOS PWAs, we must call getUserMedia to trigger the permission prompt
+      console.log("🔄 Requesting microphone permission (first time or denied)...");
       
-      // Re-check permission status if it was "prompt" before
-      if (permissionState === "prompt" && navigator.permissions && navigator.permissions.query) {
-        try {
-          const updatedStatus = await navigator.permissions.query({
-            name: "microphone" as PermissionName,
-          });
-          permissionState = updatedStatus.state;
-          console.log("🎤 Updated permission status:", updatedStatus.state);
-        } catch (e) {
-          // Ignore
-        }
-      }
-      
-      // Only stop the test stream if permission is granted
-      // If status is still "prompt", the stream might be automatically ended by iOS
-      // and stopping it manually causes the "capture failure" error
-      if (permissionState === "granted" || !permissionState) {
-        // Stop the test stream - we just needed the permission prompt
-        // Getting a fresh stream later ensures it's active when we use it
-        const tracks = testStream.getTracks();
-        tracks.forEach((track) => {
-          try {
-            if (track.readyState === 'live') {
-              track.stop();
-            }
-          } catch (e) {
-            // Track might already be stopped - ignore
-          }
+      try {
+        const testStream = await navigator.mediaDevices.getUserMedia({
+          audio: true,
         });
-        console.log("✅ Microphone permission granted (test stream stopped)");
-      } else {
-        // Permission still pending - don't stop the stream manually
-        // iOS will handle it, and we'll get a fresh stream later anyway
-        console.log("ℹ️ Permission still pending, letting iOS handle stream cleanup");
+
+        // Wait a moment for the stream to be established
+        // In iOS PWAs, if permission was "prompt", user needs time to grant it
+        await new Promise(resolve => setTimeout(resolve, 300));
+        
+        // Verify permission is now granted
+        const nowGranted = await checkMicrophonePermission();
+        
+        if (nowGranted) {
+          // Permission granted - stop the test stream
+          // We'll get a fresh stream later when we actually need it
+          const tracks = testStream.getTracks();
+          tracks.forEach((track) => {
+            try {
+              if (track.readyState === 'live') {
+                track.stop();
+              }
+            } catch (e) {
+              // Track might already be stopped - ignore
+            }
+          });
+          console.log("✅ Microphone permission granted (test stream stopped)");
+          return true;
+        } else {
+          // Permission still not granted - don't stop the stream manually
+          // It might be automatically ended by iOS, and stopping it causes errors
+          console.log("ℹ️ Permission still pending or denied - letting iOS handle stream");
+          // Try to stop anyway, but catch errors
+          try {
+            testStream.getTracks().forEach(track => {
+              if (track.readyState === 'live') {
+                track.stop();
+              }
+            });
+          } catch (e) {
+            // Ignore - iOS may have already ended it
+          }
+          // Still return true if we got the stream (user might have granted it)
+          // The actual permission check will happen when we try to use it
+          return true;
+        }
+      } catch (getUserMediaErr: any) {
+        // getUserMedia failed - permission denied or other error
+        console.error("❌ getUserMedia failed:", getUserMediaErr);
+        
+        if (
+          getUserMediaErr.name === "NotAllowedError" ||
+          getUserMediaErr.name === "PermissionDeniedError"
+        ) {
+          lastResponse =
+            "Microphone permission denied. Please enable microphone access in your browser settings.";
+          return false;
+        } else if (
+          getUserMediaErr.name === "NotFoundError" ||
+          getUserMediaErr.name === "DevicesNotFoundError"
+        ) {
+          lastResponse =
+            "No microphone found. Please connect a microphone and try again.";
+          return false;
+        } else {
+          lastResponse = `Failed to access microphone: ${
+            getUserMediaErr.message || "Unknown error"
+          }`;
+          return false;
+        }
       }
-      
-      return true;
     } catch (err: any) {
-      console.error("❌ Failed to get microphone permission:", err);
-
-      // Handle specific error cases
-      if (
-        err.name === "NotAllowedError" ||
-        err.name === "PermissionDeniedError"
-      ) {
-        lastResponse =
-          "Microphone permission denied. Please enable microphone access in your browser settings.";
-      } else if (
-        err.name === "NotFoundError" ||
-        err.name === "DevicesNotFoundError"
-      ) {
-        lastResponse =
-          "No microphone found. Please connect a microphone and try again.";
-      } else {
-        lastResponse = `Failed to access microphone: ${
-          err.message || "Unknown error"
-        }`;
-      }
-
+      console.error("❌ Failed to request microphone permission:", err);
+      lastResponse = `Failed to access microphone: ${err.message || "Unknown error"}`;
       return false;
     }
   }
@@ -764,12 +778,59 @@
       
       console.log("✅ Recording started - isRecording:", isRecording, "isConnected:", isConnected);
       
-      // Verify recording state
+      // Verify recording state and audio track status
       if (mediaRecorder.state === "recording") {
         console.log("✅ MediaRecorder confirmed in 'recording' state");
       } else {
         console.warn("⚠️ MediaRecorder state:", mediaRecorder.state, "(expected 'recording')");
       }
+      
+      // Verify audio track is active and sending data
+      const audioTracks = audioStream.getAudioTracks();
+      if (audioTracks.length > 0) {
+        const track = audioTracks[0];
+        console.log("🎤 Audio track status:", {
+          enabled: track.enabled,
+          readyState: track.readyState,
+          muted: track.muted,
+          label: track.label
+        });
+        
+        // Monitor track state changes
+        track.onended = () => {
+          console.warn("⚠️ Audio track ended unexpectedly");
+          if (isRecording) {
+            console.log("🔄 Attempting to restart audio capture...");
+            // Try to restart if we're still supposed to be recording
+            setTimeout(() => {
+              if (isRecording && isConnected) {
+                startAudioCapture().catch(err => {
+                  console.error("❌ Failed to restart audio capture:", err);
+                });
+              }
+            }, 1000);
+          }
+        };
+        
+        track.onmute = () => {
+          console.warn("⚠️ Audio track muted");
+        };
+        
+        track.onunmute = () => {
+          console.log("✅ Audio track unmuted");
+        };
+      } else {
+        console.error("❌ No audio tracks found in stream!");
+      }
+      
+      // Verify audio player is ready for output
+      if (audioPlayer) {
+        console.log("🔊 Audio player ready for output (bidirectional communication enabled)");
+      } else {
+        console.warn("⚠️ Audio player not initialized - audio output may not work");
+      }
+      
+      console.log("🎙️ Bidirectional voice call active - ready to speak and listen");
     } catch (err: any) {
       console.error("❌ Failed to start audio capture:", err);
       console.error("Error details:", err.name, err.message, err.stack);
