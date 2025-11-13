@@ -324,7 +324,7 @@
     {/if}
   {:else if node.name === 'Card'}
     {@const className = String(node.attributes?.class || node.attributes?.className || '')}
-    <div class="mitosis-card-organic rounded-2xl transition-all duration-300 overflow-hidden my-2 {className}">
+    <div class="{className}">
       {#if 'children' in node && node.children}
         {#each node.children as child}
           {@render renderNode(child, state)}
@@ -395,23 +395,7 @@
 {/snippet}
 
 <style>
-  /* Organic card style for Mitosis Cards - UX Planet principles with brand colors */
-  .mitosis-card-organic {
-    background: var(--color-brand-cream-50);
-    border: 1px solid rgba(8, 27, 71, 0.1);
-    border-radius: 16px;
-    padding: 1.5rem;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    position: relative;
-    box-shadow: 0 2px 8px rgba(8, 27, 71, 0.06), 0 1px 3px rgba(8, 27, 71, 0.04);
-  }
-
-  .mitosis-card-organic:hover {
-    background: white;
-    border-color: rgba(45, 166, 180, 0.3);
-    transform: translateY(-2px);
-    box-shadow: 0 8px 24px rgba(45, 166, 180, 0.12), 0 2px 8px rgba(45, 166, 180, 0.08);
-  }
+  /* Mitosis Card component now uses pure CSS classes from the view JSON */
 
   /* Todo list container */
   :global(.todo-list-container) {
@@ -503,13 +487,10 @@
     gap: 1rem;
   }
 
-  /* Menu item card - compact, clean design with top teal accent */
+  /* Menu item card - compact, clean design without top bar */
   :global(.menu-item-card) {
     background: white;
-    border-top: 3px solid var(--color-secondary-500);
-    border-left: 1px solid rgba(45, 166, 180, 0.2);
-    border-right: 1px solid rgba(45, 166, 180, 0.2);
-    border-bottom: 1px solid rgba(45, 166, 180, 0.2);
+    border: 1px solid rgba(45, 166, 180, 0.25);
     border-radius: 16px;
     padding: 1.25rem 1.5rem;
     box-shadow: 0 1px 6px rgba(45, 166, 180, 0.08);
@@ -538,9 +519,9 @@
   :global(.menu-item-name) {
     display: block;
     margin: 0;
-    font-size: 1.25rem;
-    font-weight: 700;
-    color: var(--color-brand-navy-700);
+    font-size: 1.25rem !important;
+    font-weight: 700 !important;
+    color: var(--color-brand-navy-700) !important;
     flex: 1;
     min-width: 0;
     line-height: 1.3;
@@ -551,9 +532,9 @@
   :global(.menu-item-description) {
     display: block;
     margin: 0;
-    font-size: 0.875rem;
-    font-weight: 400;
-    color: #64748b;
+    font-size: 0.875rem !important;
+    font-weight: 400 !important;
+    color: #64748b !important;
     line-height: 1.5;
     margin-top: 0.25rem;
   }
@@ -567,25 +548,32 @@
     flex-shrink: 0;
   }
 
-  /* Menu item price - huge, bold teal price */
+  /* Menu item price - huge, bold badge style with better contrast */
   :global(.menu-item-price) {
-    font-weight: 800;
-    color: var(--color-secondary-600);
-    font-size: 1.75rem;
-    text-align: right;
+    font-weight: 800 !important;
+    color: var(--color-brand-navy-800) !important;
+    background: var(--color-secondary-200) !important;
+    border: 2px solid var(--color-secondary-400) !important;
+    font-size: 1.5rem !important;
+    text-align: center !important;
     min-width: fit-content;
     flex-shrink: 0;
-    display: flex;
-    align-items: baseline;
-    gap: 0.375rem;
-    letter-spacing: -0.03em;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    gap: 0.125rem !important;
+    letter-spacing: -0.02em !important;
+    padding: 0.625rem 1rem !important;
+    border-radius: 12px !important;
+    box-shadow: 0 2px 8px rgba(45, 166, 180, 0.15) !important;
   }
 
-  /* Menu item unit - tiny, subtle label */
+  /* Menu item unit - tiny label inside badge */
   :global(.menu-item-unit) {
-    font-size: 0.6875rem;
-    font-weight: 500;
-    color: var(--color-secondary-500);
+    font-size: 0.625rem !important;
+    font-weight: 600 !important;
+    color: var(--color-secondary-700) !important;
+    text-transform: lowercase !important;
   }
 
   /* SPA & Beauty List Container - matches menu-list style */

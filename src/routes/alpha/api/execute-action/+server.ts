@@ -7,6 +7,7 @@ import spaBeautyData from '$lib/data/spa-beauty.json';
 import taxiData from '$lib/data/taxi.json';
 import roomServiceData from '$lib/data/room-service.json';
 import type { CartItem, Cart } from '$lib/stores/cart';
+import { createMenuListComponent, createCartComponent } from '$lib/components/dynamic/component-loader';
 
 // Removed todosStore - todos functionality removed
 
@@ -114,14 +115,13 @@ const actionHandlers: Record<string, (params: any) => Promise<{ result: any; ui?
     
     const output = { menuItems: formattedMenuItems, category: selectedCategory };
     
-    // Load view by view-id (defaults to 'menu-list' if not specified)
-    const viewId = params.view || 'menu-list';
-    const ui = loadView(viewId, { menuItems: formattedMenuItems, category: selectedCategory });
+    // Use new native Svelte component system instead of Mitosis
+    const ui = createMenuListComponent(formattedMenuItems, selectedCategory);
     
     return {
       result: output,
       ui,
-      view: viewId
+      view: 'menu-list'
     };
   },
 
@@ -357,14 +357,22 @@ const actionHandlers: Record<string, (params: any) => Promise<{ result: any; ui?
       message: `Added ${cartItems.length} item(s) to cart`
     };
     
-    // Load cart view for mini-modal display
-    const viewId = params.view || 'cart';
-    const ui = loadView(viewId, { cart });
+    // Use new native Svelte component system instead of Mitosis
+    const cartItemsForUI = cart.items.map(item => ({
+      id: item.id,
+      name: item.name,
+      quantity: item.quantity,
+      price: item.totalPrice / item.quantity,
+      priceFormatted: `€${(item.totalPrice / item.quantity).toFixed(2)}`,
+      unit: item.unit,
+      timeSlot: item.timeSlot
+    }));
+    const ui = createCartComponent(cartItemsForUI);
     
     return {
       result: output,
       ui,
-      view: viewId
+      view: 'cart'
     };
   },
 
@@ -414,14 +422,22 @@ const actionHandlers: Record<string, (params: any) => Promise<{ result: any; ui?
       success: true
     };
     
-    // Load cart view for mini-modal display
-    const viewId = params.view || 'cart';
-    const ui = loadView(viewId, { cart });
+    // Use new native Svelte component system instead of Mitosis
+    const cartItems = cart.items.map(item => ({
+      id: item.id,
+      name: item.name,
+      quantity: item.quantity,
+      price: item.totalPrice / item.quantity,
+      priceFormatted: `€${(item.totalPrice / item.quantity).toFixed(2)}`,
+      unit: item.unit,
+      timeSlot: item.timeSlot
+    }));
+    const ui = createCartComponent(cartItems);
     
     return {
       result: output,
       ui,
-      view: viewId
+      view: 'cart'
     };
   },
 
@@ -496,14 +512,22 @@ const actionHandlers: Record<string, (params: any) => Promise<{ result: any; ui?
       message: `Time slot ${timeSlot} selected for ${service.name}`
     };
     
-    // Show updated cart in mini-modal
-    const viewId = params.view || 'cart';
-    const ui = loadView(viewId, { cart: updatedCart });
+    // Use new native Svelte component system instead of Mitosis
+    const cartItems = updatedCart.items.map(item => ({
+      id: item.id,
+      name: item.name,
+      quantity: item.quantity,
+      price: item.totalPrice / item.quantity,
+      priceFormatted: `€${(item.totalPrice / item.quantity).toFixed(2)}`,
+      unit: item.unit,
+      timeSlot: item.timeSlot
+    }));
+    const ui = createCartComponent(cartItems);
     
     return {
       result: output,
       ui,
-      view: viewId
+      view: 'cart'
     };
   },
 

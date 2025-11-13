@@ -1,6 +1,6 @@
 <script lang="ts">
   import { activityStream } from "$lib/stores/activity-stream";
-  import MitosisRenderer from "$lib/mitosis/renderer.svelte";
+  import ComponentRenderer from "$lib/components/dynamic/ComponentRenderer.svelte";
   import { executeAction } from "$lib/voice/core-tools";
   import { onMount } from "svelte";
 
@@ -149,22 +149,17 @@
       <!-- Latest Activity Content -->
       <div class="bg-white rounded-2xl p-6 md:p-8 shadow-[0_4px_20px_rgba(0,0,0,0.08)] border-t-4 border-t-[var(--color-secondary-500)] border-l border-r border-b border-gray-200 max-w-6xl mx-auto transition-all duration-200">
         <!-- Activity Header - Centered Beautiful Title -->
-        <div class="flex flex-col items-center justify-center mb-6 pb-4 border-b border-gray-200 gap-2">
+        <div class="flex flex-col items-center justify-center mb-6 pb-4 border-b border-gray-200">
           <h2 class="text-2xl font-bold text-[var(--color-secondary-700)] text-center">
             {getHumanReadableTitle(latestActivity.vibeId, latestActivity.toolName)}
           </h2>
-          <span class="text-gray-400 text-xs">
-            {formatTimestamp(latestActivity.timestamp)}
-          </span>
         </div>
         
         <!-- Activity Content -->
         <div class="mt-4">
           {#if latestActivity.ui}
-            <MitosisRenderer
-              config={latestActivity.ui}
-              onMCPToolCall={(tool, params) =>
-                handleMCPToolCall(tool, params)}
+            <ComponentRenderer
+              component={latestActivity.ui}
             />
           {:else}
             <pre class="bg-gray-100 p-4 rounded-lg overflow-x-auto text-sm m-0">{JSON.stringify(
