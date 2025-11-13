@@ -324,7 +324,7 @@
     {/if}
   {:else if node.name === 'Card'}
     {@const className = String(node.attributes?.class || node.attributes?.className || '')}
-    <div class="mitosis-card-organic rounded-2xl transition-all duration-300 overflow-hidden my-2 {className}">
+    <div class="{className}">
       {#if 'children' in node && node.children}
         {#each node.children as child}
           {@render renderNode(child, state)}
@@ -395,23 +395,7 @@
 {/snippet}
 
 <style>
-  /* Organic card style for Mitosis Cards - UX Planet principles with brand colors */
-  .mitosis-card-organic {
-    background: var(--color-brand-cream-50);
-    border: 1px solid rgba(8, 27, 71, 0.1);
-    border-radius: 16px;
-    padding: 1.5rem;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    position: relative;
-    box-shadow: 0 2px 8px rgba(8, 27, 71, 0.06), 0 1px 3px rgba(8, 27, 71, 0.04);
-  }
-
-  .mitosis-card-organic:hover {
-    background: white;
-    border-color: rgba(45, 166, 180, 0.3);
-    transform: translateY(-2px);
-    box-shadow: 0 8px 24px rgba(45, 166, 180, 0.12), 0 2px 8px rgba(45, 166, 180, 0.08);
-  }
+  /* Mitosis Card component now uses pure CSS classes from the view JSON */
 
   /* Todo list container */
   :global(.todo-list-container) {
