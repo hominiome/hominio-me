@@ -673,7 +673,7 @@
                           class="w-3 h-3 rounded-full bg-[rgba(26,26,78,0.3)] flex-shrink-0 shadow-[0_0_0_3px_rgba(26,26,78,0.1)]"
                         ></div>
                         <span
-                          class="text-sm font-bold text-[#1a1a4e] uppercase tracking-widest"
+                          class="text-sm font-medium text-brand-navy-700 uppercase tracking-widest"
                           >Coming Soon</span
                         >
                       </div>

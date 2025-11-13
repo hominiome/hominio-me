@@ -475,6 +475,29 @@
       // while the user interaction (from getUserMedia) is still active
       // iOS Safari requires user interaction to activate AudioContext from suspended state
       console.log("🔄 Initializing audio player (while user interaction is active)...");
+      
+      // For iOS PWAs: Check if we're in standalone mode and ensure audio session is active
+      const isIOSPWA = browser && 
+        (navigator.standalone === true || 
+         (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches));
+      
+      if (isIOSPWA) {
+        console.log("📱 iOS PWA detected - ensuring audio session is active...");
+        // Try to activate audio session by creating a temporary AudioContext
+        // This helps ensure iOS recognizes we need audio playback capability
+        try {
+          const tempAudioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+          if (tempAudioContext.state === 'suspended') {
+            await tempAudioContext.resume();
+            console.log("✅ Temporary AudioContext resumed for iOS PWA");
+          }
+          // Close it immediately - we just needed to activate the audio session
+          await tempAudioContext.close();
+        } catch (tempCtxErr: any) {
+          console.log("ℹ️ Could not create temporary AudioContext:", tempCtxErr.message);
+        }
+      }
+      
       try {
         console.log("📊 Creating EVIWebAudioPlayer instance...");
         audioPlayer = new EVIWebAudioPlayer();
@@ -499,6 +522,14 @@
               console.log("✅ AudioContext resumed, state:", audioContext.state);
             } else {
               console.log("✅ AudioContext already running, state:", audioContext.state);
+            }
+            
+            // For iOS PWAs: Double-check and retry resume if still suspended
+            if (isIOSPWA && audioContext.state === 'suspended') {
+              console.log("🔄 iOS PWA: Retrying AudioContext resume...");
+              await new Promise(resolve => setTimeout(resolve, 100)); // Small delay
+              await audioContext.resume();
+              console.log("✅ AudioContext resume retry, state:", audioContext.state);
             }
           }
         } catch (resumeErr: any) {

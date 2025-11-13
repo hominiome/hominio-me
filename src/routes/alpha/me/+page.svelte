@@ -1307,8 +1307,8 @@
 
   .section-title {
     font-size: 1.25rem;
-    font-weight: 700;
-    color: #111827;
+    font-weight: 500;
+    color: var(--color-brand-navy-700);
     margin: 0 0 1rem 0;
   }
 

@@ -259,12 +259,12 @@
 
   .activity-stream-header h1 {
     font-size: 1.5rem;
-    font-weight: 700;
+    font-weight: 500;
     color: white;
     margin: 0;
     line-height: 1.3;
-    letter-spacing: 0.05em;
-    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+    letter-spacing: 0.5px;
+    text-shadow: none; /* Remove shadow */
   }
 
   @media (min-width: 768px) {

@@ -4,12 +4,20 @@
 
 /* Font Face Declarations */
 
-/* Manrope - Default Body Font */
+/* Albert Sans - Default Body Font */
 @font-face {
-  font-family: 'Manrope';
-  src: url('/fonts/Manrope/Manrope-VariableFont_wght.ttf') format('truetype-variations');
-  font-weight: 200 800;
+  font-family: 'Albert Sans';
+  src: url('/fonts/Albert_Sans/AlbertSans-VariableFont_wght.ttf') format('truetype-variations');
+  font-weight: 100 900;
   font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Albert Sans';
+  src: url('/fonts/Albert_Sans/AlbertSans-Italic-VariableFont_wght.ttf') format('truetype-variations');
+  font-weight: 100 900;
+  font-style: italic;
   font-display: swap;
 }
 
@@ -209,7 +217,7 @@
 
       /* Font Families */
       --font-family-title: 'Shrikhand', cursive;
-      --font-family-body: 'Manrope', sans-serif;
+      --font-family-body: 'Albert Sans', sans-serif;
       
       --font-title: var(--font-family-title);
       --font-body: var(--font-family-body);
@@ -269,14 +277,18 @@ body > div {
 /* Headings - Shrikhand */
 h1, h2 {
   font-family: var(--font-family-title);
-  font-weight: 400; /* Shrikhand Regular */
+  font-weight: 500; /* Shrikhand Medium weight */
   line-height: 1.2;
+  letter-spacing: 0.5px; /* Subtle character spacing */
+  color: var(--color-brand-navy-700); /* Dark brand blue instead of black */
 }
 
 h3, h4, h5, h6 {
   font-family: var(--font-family-title);
-  font-weight: 400; /* Shrikhand Regular */
+  font-weight: 500; /* Shrikhand Medium weight */
   line-height: 1.2;
+  letter-spacing: 0.5px; /* Subtle character spacing */
+  color: var(--color-brand-navy-700); /* Dark brand blue instead of black */
 }
 
 h1 span, h2 span, h3 span, h4 span, h5 span, h6 span {
