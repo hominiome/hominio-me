@@ -470,11 +470,11 @@
         console.log("✅ Microphone permission granted - reusing active stream");
       }
 
-      // Initialize audio player IMMEDIATELY after getUserMedia()
+      // Initialize audio player IMMEDIATELY after getUserMedia() 
       // This is critical for iOS PWAs: AudioContext must be initialized/resumed
       // while the user interaction (from getUserMedia) is still active
       // iOS Safari requires user interaction to activate AudioContext from suspended state
-      console.log(
+                console.log(
         "🔄 Initializing audio player (while user interaction is active)..."
       );
 
@@ -486,17 +486,17 @@
       if (isIOS) {
         console.log("📱 iOS detected - relying on getUserMedia() gesture for AudioContext unlock");
       }
-
+      
       try {
         console.log("📊 Creating EVIWebAudioPlayer instance...");
         audioPlayer = new EVIWebAudioPlayer();
         console.log("✅ EVIWebAudioPlayer instance created");
-
+        
         console.log("📊 Calling audioPlayer.init()...");
         // Initialize immediately - getUserMedia() above provides the required user interaction
         await audioPlayer.init();
         console.log("✅ Audio player initialized");
-
+        
         // In iOS Safari/PWA, AudioContext starts in "suspended" state
         // We need to explicitly resume it after initialization
         // Try to access the internal AudioContext and resume it if suspended
@@ -519,7 +519,7 @@
                 audioContext.state
               );
             }
-
+            
             // For iOS PWAs: Double-check and retry resume if still suspended
             if (isIOSPWA && audioContext.state === "suspended") {
               console.log("🔄 iOS PWA: Retrying AudioContext resume...");
@@ -691,7 +691,7 @@
                 audioPlayer = new EVIWebAudioPlayer();
                 await audioPlayer.init();
                 console.log("✅ Audio player initialized lazily");
-
+                
                 // Try to resume AudioContext if suspended (iOS PWA)
                 try {
                   // @ts-ignore - accessing internal audioContext if available
@@ -725,7 +725,7 @@
                 return;
               }
             }
-
+            
             console.log("🔊 Received audio output from AI");
             audioPlayer.enqueue(message).catch((err: any) => {
               console.error("❌ Error enqueueing audio:", err);
