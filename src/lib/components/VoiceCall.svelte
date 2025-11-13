@@ -448,33 +448,31 @@
 
       // Request microphone permission FIRST (before anything else)
       // This is critical for iOS PWAs - permission must be requested early
-      // The function returns a stream if it's still active, or null if we need a fresh one
+      // AND we must start using it immediately or iOS will close it!
       console.log("🎤 Requesting microphone permission...");
-      permissionStream = await requestMicrophonePermission();
-      isWaitingForPermission = false;
-      if (permissionStream === null) {
-        // Check if permission was actually denied or just needs a fresh stream
-        const permissionStatus = await checkMicrophonePermission();
-        if (!permissionStatus) {
-          console.error("❌ Microphone permission not granted - aborting call");
-          lastResponse =
-            "Microphone permission is required to start a voice call.";
-          isConnecting = false;
-          return;
-        }
-        // Permission is granted but stream was ended - we'll get a fresh one in startAudioCapture
-        console.log(
-          "✅ Microphone permission granted - will get fresh stream for capture"
-        );
-      } else {
-        console.log("✅ Microphone permission granted - reusing active stream");
+      
+      // Get a fresh stream every time - don't try to reuse old streams
+      // iOS PWA requires active usage to keep permission alive
+      try {
+        audioStream = await navigator.mediaDevices.getUserMedia({
+          audio: true,
+        });
+        console.log("✅ Microphone permission granted - stream active");
+        isWaitingForPermission = false;
+      } catch (permissionErr: any) {
+        console.error("❌ Microphone permission denied:", permissionErr);
+        isWaitingForPermission = false;
+        lastResponse =
+          "Microphone permission is required to start a voice call.";
+        isConnecting = false;
+        return;
       }
 
-      // Initialize audio player IMMEDIATELY after getUserMedia()
+      // Initialize audio player IMMEDIATELY after getUserMedia() 
       // This is critical for iOS PWAs: AudioContext must be initialized/resumed
       // while the user interaction (from getUserMedia) is still active
       // iOS Safari requires user interaction to activate AudioContext from suspended state
-      console.log(
+                console.log(
         "🔄 Initializing audio player (while user interaction is active)..."
       );
 
@@ -486,56 +484,79 @@
       if (isIOS) {
         console.log("📱 iOS detected - relying on getUserMedia() gesture for AudioContext unlock");
       }
-
+      
       try {
         console.log("📊 Creating EVIWebAudioPlayer instance...");
         audioPlayer = new EVIWebAudioPlayer();
         console.log("✅ EVIWebAudioPlayer instance created");
-
+        
+        // For iOS: Try to access AudioContext immediately and resume if suspended
+        // This must happen synchronously within the user gesture
+        if (isIOS) {
+          try {
+            // @ts-ignore - accessing internal audioContext if available
+            const audioContext =
+              audioPlayer.audioContext || (audioPlayer as any).context;
+            if (audioContext) {
+              console.log("📊 iOS: Found AudioContext, state:", audioContext.state);
+              if (audioContext.state === "suspended" && typeof audioContext.resume === "function") {
+                console.log("🔄 iOS: Resuming AudioContext immediately (within gesture)...");
+                // Resume synchronously - don't await, just trigger it
+                audioContext.resume().catch((e: any) => {
+                  console.log("ℹ️ AudioContext resume attempt:", e?.message);
+                });
+              }
+            }
+          } catch (e: any) {
+            console.log("ℹ️ Could not access AudioContext before init:", e?.message);
+          }
+        }
+        
         console.log("📊 Calling audioPlayer.init()...");
-        // Initialize immediately - getUserMedia() above provides the required user interaction
-        await audioPlayer.init();
-        console.log("✅ Audio player initialized");
-
-        // In iOS Safari/PWA, AudioContext starts in "suspended" state
-        // We need to explicitly resume it after initialization
-        // Try to access the internal AudioContext and resume it if suspended
+        // Initialize with timeout to prevent infinite hang
+        const initTimeout = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error("AudioPlayer init timeout after 3 seconds")), 3000)
+        );
+        
+        try {
+          await Promise.race([audioPlayer.init(), initTimeout]);
+          console.log("✅ Audio player initialized");
+        } catch (initErr: any) {
+          if (initErr.message?.includes("timeout")) {
+            console.warn("⚠️ AudioPlayer.init() timed out - continuing anyway");
+            // Try to resume AudioContext manually as fallback
+            try {
+              // @ts-ignore
+              const audioContext = audioPlayer.audioContext || (audioPlayer as any).context;
+              if (audioContext && audioContext.state === "suspended") {
+                console.log("🔄 Attempting manual AudioContext resume after timeout...");
+                await audioContext.resume();
+                console.log("✅ AudioContext resumed manually, state:", audioContext.state);
+              }
+            } catch (e: any) {
+              console.log("ℹ️ Manual resume failed:", e?.message);
+            }
+          } else {
+            throw initErr; // Re-throw if not timeout
+          }
+        }
+        
+        // Final check and resume AudioContext if needed
         try {
           // @ts-ignore - accessing internal audioContext if available
           const audioContext =
             audioPlayer.audioContext || (audioPlayer as any).context;
           if (audioContext && typeof audioContext.resume === "function") {
-            console.log("📊 Checking AudioContext state...");
+            console.log("📊 Final AudioContext state check:", audioContext.state);
             if (audioContext.state === "suspended") {
-              console.log("🔄 AudioContext is suspended, resuming...");
+              console.log("🔄 AudioContext still suspended, resuming...");
               await audioContext.resume();
-              console.log(
-                "✅ AudioContext resumed, state:",
-                audioContext.state
-              );
-            } else {
-              console.log(
-                "✅ AudioContext already running, state:",
-                audioContext.state
-              );
-            }
-
-            // For iOS PWAs: Double-check and retry resume if still suspended
-            if (isIOSPWA && audioContext.state === "suspended") {
-              console.log("🔄 iOS PWA: Retrying AudioContext resume...");
-              await new Promise((resolve) => setTimeout(resolve, 100)); // Small delay
-              await audioContext.resume();
-              console.log(
-                "✅ AudioContext resume retry, state:",
-                audioContext.state
-              );
+              console.log("✅ AudioContext resumed, final state:", audioContext.state);
             }
           }
         } catch (resumeErr: any) {
-          // If we can't access/resume the AudioContext, that's okay
-          // The EVIWebAudioPlayer might handle it internally
           console.log(
-            "ℹ️ Could not access/resume AudioContext directly:",
+            "ℹ️ Could not access/resume AudioContext:",
             resumeErr.message
           );
         }
@@ -691,7 +712,7 @@
                 audioPlayer = new EVIWebAudioPlayer();
                 await audioPlayer.init();
                 console.log("✅ Audio player initialized lazily");
-
+                
                 // Try to resume AudioContext if suspended (iOS PWA)
                 try {
                   // @ts-ignore - accessing internal audioContext if available
@@ -725,7 +746,7 @@
                 return;
               }
             }
-
+            
             console.log("🔊 Received audio output from AI");
             audioPlayer.enqueue(message).catch((err: any) => {
               console.error("❌ Error enqueueing audio:", err);
@@ -1031,30 +1052,26 @@
         throw new Error("MediaDevices API not available");
       }
 
-      // Use the stream from permission request if it's still active, otherwise get a fresh one
-      if (permissionStream && permissionStream.active) {
-        const tracks = permissionStream.getAudioTracks();
+      // Check if we already have an active stream from startCall
+      if (audioStream && audioStream.active) {
+        const tracks = audioStream.getAudioTracks();
         const hasActiveTrack = tracks.some(
           (t) => t.readyState === "live" && !t.muted
         );
 
         if (hasActiveTrack) {
-          console.log("✅ Reusing active stream from permission request");
-          audioStream = permissionStream;
-          permissionStream = null; // Clear reference - we own it now
+          console.log("✅ Using existing active audio stream (keeping mic alive)");
+          // Stream is already set - just continue to use it
         } else {
-          console.log(
-            "⚠️ Permission stream no longer active - getting fresh stream"
-          );
-          permissionStream = null;
+          console.log("⚠️ Existing stream no longer active - getting fresh stream");
           audioStream = await getAudioStream();
         }
       } else {
-        console.log("🔄 Getting fresh audio stream...");
+        console.log("🔄 No active stream found - getting fresh audio stream...");
         audioStream = await getAudioStream();
       }
 
-      console.log("✅ Audio stream obtained");
+      console.log("✅ Audio stream ready for capture");
 
       // Validate the stream has a valid audio track
       ensureSingleValidAudioTrack(audioStream);

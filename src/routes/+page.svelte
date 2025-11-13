@@ -2,7 +2,7 @@
   <div class="coming-soon-container">
     <img src="/logo.png" alt="Hominio" class="logo" />
     <h1 class="coming-soon-text">Coming Soon</h1>
-  </div>
+    </div>
 </div>
 
 <style>
@@ -32,7 +32,7 @@
     width: 120px;
     height: auto;
     margin-bottom: 1rem;
-  }
+    }
 
   .coming-soon-text {
     font-size: 2.5rem; /* 40px */

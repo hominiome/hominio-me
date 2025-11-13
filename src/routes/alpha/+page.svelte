@@ -233,7 +233,7 @@
     .activity-stream-content-full-width {
       padding-left: 1.5rem !important;
       padding-right: 1.5rem !important;
-    }
+  }
   }
 
 
@@ -249,10 +249,10 @@
 
   .empty-state-card {
     background: white;
-    border: 1px solid #e2e8f0;
-    border-radius: 20px;
+    border: 1px solid rgba(8, 27, 71, 0.12);
+    border-radius: 24px;
     padding: 2rem;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+    box-shadow: 0 4px 20px rgba(8, 27, 71, 0.08), 0 1px 4px rgba(8, 27, 71, 0.04);
     max-width: 48rem;
     width: 100%;
   }
@@ -303,18 +303,19 @@
 
   .example-card {
     padding: 1rem 1.25rem;
-    background: #f9fafb;
-    border: 1px solid #e5e7eb;
-    border-radius: 12px;
-    transition: all 0.2s ease;
+    background: var(--color-brand-cream-50);
+    border: 1px solid rgba(8, 27, 71, 0.1);
+    border-radius: 16px;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     cursor: default;
+    box-shadow: 0 1px 3px rgba(8, 27, 71, 0.04);
   }
 
   .example-card:hover {
-    background: #f3f4f6;
-    border-color: #d1d5db;
-    transform: translateY(-1px);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    background: white;
+    border-color: rgba(45, 166, 180, 0.3);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(45, 166, 180, 0.12), 0 2px 8px rgba(45, 166, 180, 0.08);
   }
 
   .example-text {

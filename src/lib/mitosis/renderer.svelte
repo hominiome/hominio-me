@@ -324,7 +324,7 @@
     {/if}
   {:else if node.name === 'Card'}
     {@const className = String(node.attributes?.class || node.attributes?.className || '')}
-    <div class="mitosis-card-dionys rounded-xl transition-all duration-200 overflow-hidden my-1 hover:-translate-y-0.5 {className}">
+    <div class="mitosis-card-organic rounded-2xl transition-all duration-300 overflow-hidden my-2 {className}">
       {#if 'children' in node && node.children}
         {#each node.children as child}
           {@render renderNode(child, state)}
@@ -395,22 +395,22 @@
 {/snippet}
 
 <style>
-  /* DIONYS item-card style for Mitosis Cards (Todo items) - exact match */
-  .mitosis-card-dionys {
-    /* DIONYS item-card style - exact match from View3Visual */
-    background: #f8fafc;
-    border: 1px solid #e2e8f0;
-    border-radius: 12px;
+  /* Organic card style for Mitosis Cards - UX Planet principles with brand colors */
+  .mitosis-card-organic {
+    background: var(--color-brand-cream-50);
+    border: 1px solid rgba(8, 27, 71, 0.1);
+    border-radius: 16px;
     padding: 1.5rem;
-    transition: all 0.2s ease;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     position: relative;
+    box-shadow: 0 2px 8px rgba(8, 27, 71, 0.06), 0 1px 3px rgba(8, 27, 71, 0.04);
   }
 
-  .mitosis-card-dionys:hover {
-    background: #f8fafc;
-    border-color: var(--color-accent-500); /* Yellow accent instead of #000957 */
+  .mitosis-card-organic:hover {
+    background: white;
+    border-color: rgba(45, 166, 180, 0.3);
     transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(244, 208, 63, 0.1);
+    box-shadow: 0 8px 24px rgba(45, 166, 180, 0.12), 0 2px 8px rgba(45, 166, 180, 0.08);
   }
 
   /* Todo list container */
@@ -427,19 +427,21 @@
     gap: 1rem;
   }
 
-  /* Todo item card - matches DIONYS item-card exactly */
+  /* Todo item card - organic design with brand colors */
   :global(.todo-item-card) {
-    background: #f8fafc;
-    border: 1px solid #e2e8f0;
-    border-radius: 12px;
+    background: var(--color-brand-cream-50);
+    border: 1px solid rgba(8, 27, 71, 0.1);
+    border-radius: 16px;
     padding: 1.5rem;
-    transition: all 0.2s ease;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 2px 8px rgba(8, 27, 71, 0.06), 0 1px 3px rgba(8, 27, 71, 0.04);
   }
 
   :global(.todo-item-card:hover) {
-    border-color: var(--color-accent-500); /* Yellow accent */
+    background: white;
+    border-color: rgba(45, 166, 180, 0.3);
     transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(244, 208, 63, 0.1);
+    box-shadow: 0 8px 24px rgba(45, 166, 180, 0.12), 0 2px 8px rgba(45, 166, 180, 0.08);
   }
 
   /* Todo item header - matches DIONYS item-header */
@@ -501,19 +503,21 @@
     gap: 1rem;
   }
 
-  /* Menu item card - matches DIONYS item-card exactly */
+  /* Menu item card - organic design with brand colors */
   :global(.menu-item-card) {
-    background: #f8fafc;
-    border: 1px solid #e2e8f0;
-    border-radius: 12px;
+    background: var(--color-brand-cream-50);
+    border: 1px solid rgba(8, 27, 71, 0.1);
+    border-radius: 16px;
     padding: 1.5rem;
-    transition: all 0.2s ease;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 2px 8px rgba(8, 27, 71, 0.06), 0 1px 3px rgba(8, 27, 71, 0.04);
   }
 
   :global(.menu-item-card:hover) {
-    border-color: var(--color-accent-500); /* Yellow accent */
+    background: white;
+    border-color: rgba(45, 166, 180, 0.3);
     transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(244, 208, 63, 0.1);
+    box-shadow: 0 8px 24px rgba(45, 166, 180, 0.12), 0 2px 8px rgba(45, 166, 180, 0.08);
   }
 
   /* Menu item header - matches DIONYS item-header */
@@ -598,22 +602,22 @@
     width: 100%;
   }
 
-  /* SPA & Beauty Service Card - matches menu-item-card style */
+  /* SPA & Beauty Service Card - organic design with brand colors */
   :global(.spa-beauty-service-card) {
-    /* DIONYS item-card style - exact match */
-    background: #f8fafc;
-    border: 1px solid #e2e8f0;
-    border-radius: 12px;
+    background: var(--color-brand-cream-50);
+    border: 1px solid rgba(8, 27, 71, 0.1);
+    border-radius: 16px;
     padding: 1.5rem;
-    transition: all 0.2s ease;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     position: relative;
+    box-shadow: 0 2px 8px rgba(8, 27, 71, 0.06), 0 1px 3px rgba(8, 27, 71, 0.04);
   }
 
   :global(.spa-beauty-service-card:hover) {
-    background: #f8fafc;
-    border-color: var(--color-accent-500); /* Yellow accent */
+    background: white;
+    border-color: rgba(45, 166, 180, 0.3);
     transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(244, 208, 63, 0.1);
+    box-shadow: 0 8px 24px rgba(45, 166, 180, 0.12), 0 2px 8px rgba(45, 166, 180, 0.08);
   }
 
   :global(.spa-beauty-service-header) {
@@ -752,18 +756,19 @@
   }
 
   :global(.taxi-service-card) {
-    background: #f8fafc;
-    border: 1px solid #e2e8f0;
-    border-radius: 12px;
+    background: var(--color-brand-cream-50);
+    border: 1px solid rgba(8, 27, 71, 0.1);
+    border-radius: 16px;
     padding: 1.5rem;
-    transition: all 0.2s ease;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 2px 8px rgba(8, 27, 71, 0.06), 0 1px 3px rgba(8, 27, 71, 0.04);
   }
 
   :global(.taxi-service-card:hover) {
-    background: #f8fafc;
-    border-color: var(--color-accent-500);
+    background: white;
+    border-color: rgba(45, 166, 180, 0.3);
     transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(244, 208, 63, 0.1);
+    box-shadow: 0 8px 24px rgba(45, 166, 180, 0.12), 0 2px 8px rgba(45, 166, 180, 0.08);
   }
 
   :global(.taxi-service-header) {
@@ -829,18 +834,19 @@
   }
 
   :global(.room-service-service-card) {
-    background: #f8fafc;
-    border: 1px solid #e2e8f0;
-    border-radius: 12px;
+    background: var(--color-brand-cream-50);
+    border: 1px solid rgba(8, 27, 71, 0.1);
+    border-radius: 16px;
     padding: 1.5rem;
-    transition: all 0.2s ease;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 2px 8px rgba(8, 27, 71, 0.06), 0 1px 3px rgba(8, 27, 71, 0.04);
   }
 
   :global(.room-service-service-card:hover) {
-    background: #f8fafc;
-    border-color: var(--color-accent-500);
+    background: white;
+    border-color: rgba(45, 166, 180, 0.3);
     transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(244, 208, 63, 0.1);
+    box-shadow: 0 8px 24px rgba(45, 166, 180, 0.12), 0 2px 8px rgba(45, 166, 180, 0.08);
   }
 
   :global(.room-service-service-header) {
