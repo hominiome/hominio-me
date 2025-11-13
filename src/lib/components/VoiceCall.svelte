@@ -584,6 +584,8 @@
     }
 
     try {
+      let permissionState: string | null = null;
+      
       // Check current permission status (if API is available)
       // Note: navigator.permissions.query is not available in all browsers (e.g., Safari/iOS)
       if (navigator.permissions && navigator.permissions.query) {
@@ -591,6 +593,7 @@
           const permissionStatus = await navigator.permissions.query({
             name: "microphone" as PermissionName,
           });
+          permissionState = permissionStatus.state;
           console.log(
             "🎤 Microphone permission status:",
             permissionStatus.state
@@ -617,28 +620,45 @@
         audio: true,
       });
 
-      // Wait for stream to be fully established before stopping
-      // In iOS PWAs, stopping immediately can cause "capture failure" errors
-      // This is just a warning and doesn't affect functionality - we'll get a fresh stream later
-      await new Promise(resolve => setTimeout(resolve, 300));
+      // Wait for stream to be fully established and permission to be granted
+      // In iOS PWAs, if status was "prompt", we need to wait for user to grant permission
+      await new Promise(resolve => setTimeout(resolve, 500));
       
-      // Stop the test stream - we just needed the permission prompt
-      // Getting a fresh stream later ensures it's active when we use it
-      // Note: In iOS PWAs, stopping the test stream may log a "capture failure" warning
-      // This is harmless - the permission is granted and we'll get a fresh stream
-      const tracks = testStream.getTracks();
-      tracks.forEach((track) => {
+      // Re-check permission status if it was "prompt" before
+      if (permissionState === "prompt" && navigator.permissions && navigator.permissions.query) {
         try {
-          if (track.readyState === 'live') {
-            track.stop();
-          }
+          const updatedStatus = await navigator.permissions.query({
+            name: "microphone" as PermissionName,
+          });
+          permissionState = updatedStatus.state;
+          console.log("🎤 Updated permission status:", updatedStatus.state);
         } catch (e) {
-          // Track might already be stopped or stopping failed - ignore
-          // This is common in iOS PWAs and doesn't affect functionality
+          // Ignore
         }
-      });
+      }
       
-      console.log("✅ Microphone permission granted (test stream stopped)");
+      // Only stop the test stream if permission is granted
+      // If status is still "prompt", the stream might be automatically ended by iOS
+      // and stopping it manually causes the "capture failure" error
+      if (permissionState === "granted" || !permissionState) {
+        // Stop the test stream - we just needed the permission prompt
+        // Getting a fresh stream later ensures it's active when we use it
+        const tracks = testStream.getTracks();
+        tracks.forEach((track) => {
+          try {
+            if (track.readyState === 'live') {
+              track.stop();
+            }
+          } catch (e) {
+            // Track might already be stopped - ignore
+          }
+        });
+        console.log("✅ Microphone permission granted (test stream stopped)");
+      } else {
+        // Permission still pending - don't stop the stream manually
+        // iOS will handle it, and we'll get a fresh stream later anyway
+        console.log("ℹ️ Permission still pending, letting iOS handle stream cleanup");
+      }
       
       return true;
     } catch (err: any) {
