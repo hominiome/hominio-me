@@ -353,6 +353,7 @@ export function createMutators(authData: AuthData | undefined) {
           id: string;
           userId: string;
           newsletterSubscribed: string;
+          pushEnabled?: string;
           updatedAt: string;
         }
       ) => {
@@ -365,6 +366,7 @@ export function createMutators(authData: AuthData | undefined) {
           id: args.id,
           userId: args.userId.trim(),
           newsletterSubscribed: args.newsletterSubscribed || 'false',
+          pushEnabled: args.pushEnabled || 'false',
           updatedAt: args.updatedAt,
         });
       },
@@ -379,6 +381,7 @@ export function createMutators(authData: AuthData | undefined) {
         args: {
           id: string;
           newsletterSubscribed?: string;
+          pushEnabled?: string;
           updatedAt: string;
         }
       ) => {
@@ -394,6 +397,7 @@ export function createMutators(authData: AuthData | undefined) {
         await tx.mutate.userPreferences.update({
           id,
           newsletterSubscribed: args.newsletterSubscribed !== undefined ? args.newsletterSubscribed : preferences.newsletterSubscribed,
+          pushEnabled: args.pushEnabled !== undefined ? args.pushEnabled : preferences.pushEnabled,
           updatedAt: args.updatedAt,
         });
       },

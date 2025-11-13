@@ -82,6 +82,20 @@ import { env as publicEnv } from "$env/dynamic/public";
   onMount(() => {
     if (!browser) return; // Only run on client
 
+    // Register Service Worker for push notifications (non-blocking)
+    if ('serviceWorker' in navigator) {
+      import('$lib/push-manager.ts').then(({ registerServiceWorker, storeSessionToken }) => {
+        registerServiceWorker().then(() => {
+          // Store session token for Service Worker authentication
+          storeSessionToken().catch((err) => {
+            console.error('[Push] Failed to store session token:', err);
+          });
+        }).catch((err) => {
+          console.error('[Push] Failed to register service worker:', err);
+        });
+      });
+    }
+
     // Add global unhandled rejection handler for debugging
     // This will help us see what mutations are failing
     const unhandledRejectionHandler = (event: PromiseRejectionEvent) => {
@@ -187,6 +201,26 @@ import { env as publicEnv } from "$env/dynamic/public";
               } catch (error) {
                 // Silently fail - don't interrupt user flow
                 console.warn("[Newsletter] Failed to create newsletter prompt:", error);
+              }
+            })();
+
+            // Create push prompt notification for new users (if they haven't enabled push on any device)
+            // This should happen after newsletter prompt, before onboarding
+            (async () => {
+              try {
+                const response = await fetch("/alpha/api/create-push-prompt", {
+                  method: "POST",
+                });
+                // Silently handle - if it already exists, that's fine
+                if (response.ok) {
+                  const result = await response.json();
+                  if (result.success && !result.alreadyExists) {
+                    console.log("[Push] Push prompt notification created for new user");
+                  }
+                }
+              } catch (error) {
+                // Silently fail - don't interrupt user flow
+                console.warn("[Push] Failed to create push prompt:", error);
               }
             })();
 

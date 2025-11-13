@@ -187,6 +187,33 @@
       }
     }
 
+    // Handle enable_push action (push notification prompt)
+    if (action.action === "enable_push") {
+      markAsRead();
+      onClose();
+      
+      // Try to enable push directly
+      try {
+        const { initializePushNotifications } = await import('$lib/push-manager.ts');
+        const success = await initializePushNotifications();
+        
+        if (success) {
+          console.log('[Push] Push notifications enabled from notification action');
+          // Navigate to /alpha/me to show the updated state
+          goto(action.url || "/alpha/me");
+        } else {
+          console.warn('[Push] Failed to enable push from notification, navigating to settings');
+          // If it fails, navigate to settings page where user can try again
+          goto(action.url || "/alpha/me");
+        }
+      } catch (error) {
+        console.error('[Push] Error enabling push from notification:', error);
+        // Navigate to settings page on error
+        goto(action.url || "/alpha/me");
+      }
+      return;
+    }
+
     // Handle mark_read action (e.g., "Never mind" button)
     if (action.action === "mark_read") {
       markAsRead();
@@ -268,15 +295,16 @@
     <div class="actions-container">
       {#each actions() as action}
         {@const isNewsletterPrompt = notification.resourceType === "signup" && notification.resourceId === "newsletterPrompt"}
+        {@const isPushPrompt = notification.resourceType === "signup" && notification.resourceId === "pushPrompt"}
         {@const isInstagramFollow = notification.resourceType === "signup" && notification.resourceId === "instagramFollow"}
-        {@const isYesButton = action.action === "newsletter_subscribe"}
-        {@const isNoButton = action.action === "newsletter_decline"}
+        {@const isYesButton = (isNewsletterPrompt && action.action === "newsletter_subscribe") || (isPushPrompt && action.action === "enable_push")}
+        {@const isNoButton = (isNewsletterPrompt && action.action === "newsletter_decline") || (isPushPrompt && action.action === "mark_read")}
         {@const isInstagramButton = isInstagramFollow && action.action === "navigate" && action.url?.includes("instagram.com")}
         {@const isNeverMindButton = isInstagramFollow && action.action === "mark_read"}
         <button
           class="action-button"
-          class:action-button-yes={isNewsletterPrompt && isYesButton}
-          class:action-button-no={isNewsletterPrompt && isNoButton}
+          class:action-button-yes={(isNewsletterPrompt || isPushPrompt) && isYesButton}
+          class:action-button-no={(isNewsletterPrompt || isPushPrompt) && isNoButton}
           class:action-button-instagram={isInstagramButton}
           class:action-button-never-mind={isNeverMindButton}
           onclick={() => handleActionClick(action)}

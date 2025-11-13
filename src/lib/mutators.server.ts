@@ -419,6 +419,7 @@ export function createServerMutators(
           id: string;
           userId: string;
           newsletterSubscribed: string;
+          pushEnabled?: string;
           updatedAt: string;
         }
       ) => {
@@ -446,6 +447,7 @@ export function createServerMutators(
         args: {
           id: string;
           newsletterSubscribed?: string;
+          pushEnabled?: string;
           updatedAt: string;
         }
       ) => {
@@ -455,14 +457,40 @@ export function createServerMutators(
         }
 
         // Verify preferences exist
-        const preferences = await tx.query.userPreferences.where('id', args.id).one();
+        // Use .run() to execute the query and get actual results (not the query builder)
+        const preferencesResult = await tx.query.userPreferences.where('id', args.id).run();
+        const preferences = Array.from(preferencesResult)[0];
+        
         if (!preferences) {
           throw new Error('User preferences not found');
+        }
+
+        // Debug logging
+        console.log('[mutators.server] Updating preferences:', {
+          preferencesId: args.id,
+          preferencesUserId: preferences.userId,
+          authUserId: authData.sub,
+          match: preferences.userId === authData.sub,
+        });
+
+        // Check if userId exists in preferences
+        if (!preferences.userId) {
+          console.error('[mutators.server] Preferences missing userId field:', {
+            preferencesId: args.id,
+            preferencesKeys: Object.keys(preferences),
+            preferencesObject: preferences,
+          });
+          throw new Error('Invalid preferences: missing userId field');
         }
 
         // Check if user is updating their own preferences or is admin
         const userIsAdmin = isAdmin(authData.sub);
         if (preferences.userId !== authData.sub && !userIsAdmin) {
+          console.error('[mutators.server] Permission denied:', {
+            preferencesUserId: preferences.userId,
+            authUserId: authData.sub,
+            isAdmin: userIsAdmin,
+          });
           throw new Error('Forbidden: You can only update your own preferences');
         }
 

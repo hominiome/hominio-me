@@ -62,6 +62,22 @@ const userPreferences = table('userPreferences')
     id: string(),
     userId: string(), // User ID
     newsletterSubscribed: string(), // 'true' | 'false' (as string for Zero compatibility)
+    pushEnabled: string(), // 'true' | 'false' (as string for Zero compatibility) - Web Push Notifications enabled
+    updatedAt: string(), // ISO timestamp
+  })
+  .primaryKey('id');
+
+// Push subscriptions - stores Web Push API subscriptions for users (one per device/browser)
+const pushSubscription = table('pushSubscription')
+  .columns({
+    id: string(),
+    userId: string(), // User ID
+    endpoint: string(), // Push service endpoint URL (unique per device/browser)
+    p256dh: string(), // User public key (base64)
+    auth: string(), // Auth secret (base64)
+    userAgent: string(), // Browser user agent for device identification
+    deviceName: string(), // Human-readable device name (e.g., "Chrome on Mac", "Safari on iPhone")
+    createdAt: string(), // ISO timestamp
     updatedAt: string(), // ISO timestamp
   })
   .primaryKey('id');
@@ -84,7 +100,7 @@ const project = table('project')
   .primaryKey('id');
 
 export const schema = createSchema({
-  tables: [userIdentities, identityPurchase, notification, userPreferences, project],
+  tables: [userIdentities, identityPurchase, notification, userPreferences, pushSubscription, project],
   // Disable legacy queries - we use synced queries instead
   enableLegacyQueries: false,
   // Disable legacy CRUD mutators - we use custom mutators instead

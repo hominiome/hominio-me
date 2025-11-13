@@ -48,6 +48,20 @@ function getQuery(name: string, args: readonly ReadonlyJSONValue[]) {
   }
 
   // ========================================
+  // PUSH SUBSCRIPTION QUERIES
+  // ========================================
+  
+  if (name === 'pushSubscriptionsByUser') {
+    z.tuple([z.string()]).parse(args);
+    const [userId] = args as [string];
+    return {
+      query: builder.pushSubscription
+        .where('userId', '=', userId)
+        .orderBy('createdAt', 'desc'),
+    };
+  }
+
+  // ========================================
   // IDENTITY PURCHASE QUERIES
   // ========================================
   

@@ -11,6 +11,7 @@
     purchasesByUser,
     identitiesByUser,
     userPreferencesByUser,
+    pushSubscriptionsByUser,
   } from "$lib/synced-queries";
 
   // Session data from layout
@@ -63,6 +64,7 @@
   let userIdentities = $state<any[]>([]);
   let purchases = $state<any[]>([]);
   let userPreferences = $state<any[]>([]);
+  let pushSubscriptions = $state<any[]>([]);
   let loading = $state(true);
 
   async function handleSignOut() {
@@ -235,6 +237,7 @@
     let identitiesView: any;
     let purchasesView: any;
     let preferencesView: any;
+    let subscriptionsView: any;
 
     (async () => {
       // Wait for Zero to be ready
@@ -260,6 +263,16 @@
         console.warn("Failed to check identity expiry:", error);
       }
 
+      // Create push prompt notification if user hasn't enabled push yet
+      // This will show as a priority notification with modal trigger
+      try {
+        await fetch("/alpha/api/create-push-prompt", {
+          method: "POST",
+        });
+      } catch (error) {
+        console.warn("Failed to create push prompt:", error);
+      }
+
       // Query user's identities using synced query
       const identitiesQuery = identitiesByUser(userId);
       identitiesView = zero.materialize(identitiesQuery);
@@ -283,6 +296,19 @@
 
       preferencesView.addListener((data: any) => {
         userPreferences = Array.from(data || []);
+        
+        // Sync browser permission with server state after preferences are loaded
+        if (data && Array.from(data).length > 0) {
+          syncPushPermissionWithServer();
+        }
+      });
+
+      // Query push subscriptions using synced query
+      const subscriptionsQuery = pushSubscriptionsByUser(userId);
+      subscriptionsView = zero.materialize(subscriptionsQuery);
+
+      subscriptionsView.addListener((data: any) => {
+        pushSubscriptions = Array.from(data || []);
         loading = false;
       });
     })();
@@ -291,6 +317,7 @@
       if (identitiesView) identitiesView.destroy();
       if (purchasesView) purchasesView.destroy();
       if (preferencesView) preferencesView.destroy();
+      if (subscriptionsView) subscriptionsView.destroy();
     };
   });
 
@@ -304,6 +331,29 @@
       return false; // Default to not subscribed
     }
     return currentPreferences()?.newsletterSubscribed === 'true';
+  });
+
+  // Check if push is enabled on any device
+  const isPushEnabled = $derived(() => {
+    // Push is enabled if user has at least one active subscription
+    return pushSubscriptions.length > 0;
+  });
+
+  // Get current device endpoint (for comparison)
+  let currentDeviceEndpoint = $state<string | null>(null);
+  
+  $effect(() => {
+    if (!browser || !('serviceWorker' in navigator)) return;
+    
+    (async () => {
+      try {
+        const registration = await navigator.serviceWorker.ready;
+        const subscription = await registration.pushManager.getSubscription();
+        currentDeviceEndpoint = subscription?.endpoint || null;
+      } catch {
+        currentDeviceEndpoint = null;
+      }
+    })();
   });
 
   // Toggle newsletter subscription
@@ -328,9 +378,217 @@
         id: nanoid(),
         userId: userId,
         newsletterSubscribed: newSubscriptionStatus,
+        pushEnabled: 'false',
         updatedAt: new Date().toISOString(),
       });
     }
+  }
+
+  // Check if current device has push enabled
+  const isCurrentDevicePushEnabled = $derived(() => {
+    if (!currentDeviceEndpoint) return false;
+    return pushSubscriptions.some((sub: any) => sub.endpoint === currentDeviceEndpoint);
+  });
+
+  // Toggle push notifications
+  // If no devices have push: enable on current device
+  // If at least one device has push: toggle current device
+  async function togglePushNotifications() {
+    if (!zero || !data.session?.id) return;
+
+    const userId = data.session.id;
+    const hasAnyPush = isPushEnabled();
+    const currentDeviceHasPush = isCurrentDevicePushEnabled();
+
+    // If enabling push (no devices have push OR current device doesn't have push)
+    if (!hasAnyPush || !currentDeviceHasPush) {
+      const { initializePushNotifications } = await import('$lib/push-manager.ts');
+      const success = await initializePushNotifications();
+      
+      if (!success) {
+        console.log('[Push] Failed to enable push notifications on this device');
+        return;
+      }
+      // If subscription succeeded, the /alpha/api/push/subscribe endpoint
+      // will automatically create/update the subscription
+      // pushEnabled will be updated automatically based on subscriptions count
+    } else {
+      // If disabling push, unsubscribe only this device
+      const { unsubscribeFromPush } = await import('$lib/push-manager.ts');
+      await unsubscribeFromPush();
+      // The /alpha/api/push/unsubscribe endpoint will automatically
+      // remove this device's subscription and update pushEnabled if no subscriptions remain
+    }
+  }
+
+  // Remove push subscription for a specific device
+  async function removeDeviceSubscription(endpoint: string) {
+    if (!zero || !data.session?.id) return;
+
+    try {
+      const { unsubscribeFromPush } = await import('$lib/push-manager.ts');
+      
+      // If it's the current device, use the standard unsubscribe
+      if (endpoint === currentDeviceEndpoint) {
+        await unsubscribeFromPush();
+      } else {
+        // Otherwise, call the API directly to remove the subscription
+        await fetch('/alpha/api/push/unsubscribe', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ endpoint }),
+        });
+      }
+    } catch (error) {
+      console.error('[Push] Failed to remove device subscription:', error);
+    }
+  }
+
+  // Sync browser permission with server state on mount
+  let syncInProgress = false;
+  async function syncPushPermissionWithServer() {
+    if (!browser || !('Notification' in window) || !data.session?.id) return;
+    
+    // Prevent concurrent sync calls
+    if (syncInProgress) {
+      console.log('[Push] Sync already in progress, skipping');
+      return;
+    }
+    
+    syncInProgress = true;
+    
+    try {
+      const permission = Notification.permission;
+      const currentPrefs = currentPreferences();
+      
+      if (!currentPrefs) {
+        console.log('[Push] No preferences found, skipping sync');
+        return;
+      }
+
+      console.log('[Push] Syncing permission:', {
+        permission,
+        pushEnabled: currentPrefs.pushEnabled,
+        subscriptionsCount: pushSubscriptions.length,
+        preferencesId: currentPrefs.id,
+        preferencesUserId: currentPrefs.userId,
+        sessionUserId: data.session?.id,
+      });
+
+      // Get current device subscription
+      let currentSubscription: PushSubscription | null = null;
+      if ('serviceWorker' in navigator) {
+        try {
+          const registration = await navigator.serviceWorker.ready;
+          currentSubscription = await registration.pushManager.getSubscription();
+        } catch (error) {
+          console.error('[Push] Error getting current subscription:', error);
+        }
+      }
+
+      // Clean up: Remove database subscriptions that don't exist in browser
+      // This handles cases where browser subscriptions were cleared but DB still has them
+      if (currentSubscription) {
+        const currentEndpoint = currentSubscription.endpoint;
+        // Check if current subscription exists in database
+        const existsInDb = pushSubscriptions.some((sub: any) => sub.endpoint === currentEndpoint);
+        if (!existsInDb) {
+          console.log('[Push] Current subscription not in DB, saving it');
+          // Save current subscription to server
+          const subscriptionData = {
+            endpoint: currentSubscription.endpoint,
+            keys: {
+              p256dh: arrayBufferToBase64(currentSubscription.getKey('p256dh')!),
+              auth: arrayBufferToBase64(currentSubscription.getKey('auth')!),
+            },
+          };
+          await fetch('/alpha/api/push/subscribe', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ subscription: subscriptionData }),
+          });
+        }
+      } else {
+        // No current subscription - remove all DB subscriptions for this user
+        // This handles cases where browser cleared subscriptions but DB still has them
+        if (pushSubscriptions.length > 0) {
+          console.log('[Push] No browser subscription but DB has subscriptions - cleaning up');
+          // Remove all subscriptions from DB
+          for (const sub of pushSubscriptions) {
+            await fetch('/alpha/api/push/unsubscribe', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ endpoint: sub.endpoint }),
+            });
+          }
+        }
+      }
+
+      // If browser permission is denied but server says enabled, disable on server
+      if (permission === 'denied') {
+        if (pushSubscriptions.length > 0) {
+          console.log('[Push] Browser permission denied - removing all subscriptions');
+          // Remove all subscriptions
+          for (const sub of pushSubscriptions) {
+            await fetch('/alpha/api/push/unsubscribe', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ endpoint: sub.endpoint }),
+            });
+          }
+        }
+        if (currentPrefs.pushEnabled === 'true' && zero && currentPrefs.userId === data.session?.id) {
+          zero.mutate.userPreferences.update({
+            id: currentPrefs.id,
+            pushEnabled: 'false',
+            updatedAt: new Date().toISOString(),
+          });
+        }
+        return;
+      }
+
+      // If browser permission is granted but server says disabled, check subscription
+      if (permission === 'granted') {
+        if (currentSubscription) {
+          // Check if subscription exists in database
+          const existsInDb = pushSubscriptions.some((sub: any) => sub.endpoint === currentSubscription!.endpoint);
+          if (!existsInDb) {
+            console.log('[Push] Browser has subscription but not in DB - saving it');
+            // Save subscription to server
+            const subscriptionData = {
+              endpoint: currentSubscription.endpoint,
+              keys: {
+                p256dh: arrayBufferToBase64(currentSubscription.getKey('p256dh')!),
+                auth: arrayBufferToBase64(currentSubscription.getKey('auth')!),
+              },
+            };
+            await fetch('/alpha/api/push/subscribe', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ subscription: subscriptionData }),
+            });
+          }
+        } else {
+          // Permission is granted but no subscription exists
+          // Don't automatically try to create - user might have denied it intentionally
+          // Only log for debugging
+          console.log('[Push] Permission granted but no subscription exists');
+          console.log('[Push] User can enable push manually via toggle');
+        }
+      }
+    } finally {
+      syncInProgress = false;
+    }
+  }
+
+  // Helper to convert ArrayBuffer to base64
+  function arrayBufferToBase64(buffer: ArrayBuffer): string {
+    const bytes = new Uint8Array(buffer);
+    let binary = '';
+    for (let i = 0; i < bytes.byteLength; i++) {
+      binary += String.fromCharCode(bytes[i]);
+    }
+    return window.btoa(binary);
   }
 </script>
 
@@ -464,6 +722,42 @@
             class:active={isNewsletterSubscribed()}
             onclick={toggleNewsletterSubscription}
             aria-label={isNewsletterSubscribed() ? "Disable newsletter notifications" : "Enable newsletter notifications"}
+          >
+            <span class="toggle-slider"></span>
+          </button>
+        </div>
+        <div class="preference-item">
+          <div class="preference-info">
+            <span class="preference-label">Push Notifications</span>
+            <span class="preference-description">
+              Receive priority notifications even when browser is closed
+            </span>
+            {#if pushSubscriptions.length > 0}
+              <div class="devices-list">
+                <span class="devices-label">Active on {pushSubscriptions.length} device{pushSubscriptions.length === 1 ? '' : 's'}:</span>
+                {#each pushSubscriptions as subscription}
+                  <div class="device-item">
+                    <span class="device-name">{subscription.deviceName || 'Unknown Device'}</span>
+                    {#if subscription.endpoint === currentDeviceEndpoint}
+                      <span class="device-badge current">This Device</span>
+                    {/if}
+                    <button
+                      class="device-remove"
+                      onclick={() => removeDeviceSubscription(subscription.endpoint)}
+                      aria-label={`Remove push notifications from ${subscription.deviceName || 'device'}`}
+                    >
+                      ×
+                    </button>
+                  </div>
+                {/each}
+              </div>
+            {/if}
+          </div>
+          <button
+            class="toggle-switch"
+            class:active={isPushEnabled()}
+            onclick={togglePushNotifications}
+            aria-label={isPushEnabled() ? "Disable push notifications" : "Enable push notifications"}
           >
             <span class="toggle-slider"></span>
           </button>
@@ -1218,6 +1512,69 @@
   .preference-description {
     font-size: 0.875rem;
     color: rgba(26, 26, 78, 0.6);
+  }
+
+  .devices-list {
+    margin-top: 0.75rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .devices-label {
+    font-size: 0.75rem;
+    color: rgba(26, 26, 78, 0.5);
+    font-weight: 500;
+  }
+
+  .device-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    background: rgba(78, 205, 196, 0.1);
+    border-radius: 6px;
+    border: 1px solid rgba(78, 205, 196, 0.2);
+  }
+
+  .device-name {
+    font-size: 0.813rem;
+    color: rgba(26, 26, 78, 0.8);
+    flex: 1;
+  }
+
+  .device-badge {
+    font-size: 0.688rem;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-weight: 600;
+  }
+
+  .device-badge.current {
+    background: rgba(78, 205, 196, 0.2);
+    color: #1a1a4e;
+  }
+
+  .device-remove {
+    background: transparent;
+    border: none;
+    color: rgba(26, 26, 78, 0.5);
+    font-size: 1.25rem;
+    line-height: 1;
+    cursor: pointer;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+  }
+
+  .device-remove:hover {
+    background: rgba(163, 55, 106, 0.1);
+    color: #a3376a;
   }
 
   .toggle-switch {

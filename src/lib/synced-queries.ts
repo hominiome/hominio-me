@@ -56,6 +56,25 @@ export const userPreferencesByUser = syncedQuery(
 
 /**
  * ========================================
+ * PUSH SUBSCRIPTION QUERIES
+ * ========================================
+ */
+
+/**
+ * Get all push subscriptions for a specific user
+ */
+export const pushSubscriptionsByUser = syncedQuery(
+  'pushSubscriptionsByUser',
+  z.tuple([z.string()]), // userId
+  (userId: string) => {
+    return builder.pushSubscription
+      .where('userId', '=', userId)
+      .orderBy('createdAt', 'desc');
+  }
+);
+
+/**
+ * ========================================
  * IDENTITY PURCHASE QUERIES
  * ========================================
  */

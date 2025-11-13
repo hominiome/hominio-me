@@ -3,6 +3,7 @@ import { requireAdmin } from "$lib/api-helpers.server.js";
 import { getZeroDbInstance } from "$lib/db.server.js";
 import { nanoid } from "nanoid";
 import { getNotificationConfig } from "$lib/notification-helpers.server.js";
+import { sendPushForPriorityNotification } from "$lib/push-notifications.server.js";
 
 /**
  * POST /alpha/api/send-newsletter
@@ -82,14 +83,32 @@ export async function POST({ request }) {
     // Create notifications for each subscribed user
     const notificationPromises = subscribedUsers.map(async (pref) => {
       const notificationId = nanoid();
-      return zeroDb
+      const notification = {
+        id: notificationId,
+        userId: pref.userId,
+        ...notificationData,
+      };
+      
+      await zeroDb
         .insertInto("notification")
-        .values({
-          id: notificationId,
-          userId: pref.userId,
-          ...notificationData,
-        })
+        .values(notification)
         .execute();
+
+      // Send push notification if priority (non-blocking)
+      if (notificationData.priority === "true") {
+        sendPushForPriorityNotification({
+          id: notification.id,
+          userId: notification.userId,
+          title: notification.title,
+          message: notification.message,
+          resourceType: notification.resourceType,
+          resourceId: notification.resourceId,
+          priority: notification.priority,
+          icon: notification.icon,
+        }).catch((err) => {
+          console.error(`[Push] Failed to send push for notification ${notification.id}:`, err);
+        });
+      }
     });
 
     await Promise.all(notificationPromises);
