@@ -460,28 +460,70 @@
         });
         console.log("✅ Microphone permission granted - stream active");
 
-        // Keep the microphone stream alive on iOS by piping it into a muted audio element
+        // CRITICAL for iOS PWA: Start MediaRecorder IMMEDIATELY to keep stream alive!
+        // iOS closes streams that aren't actively being recorded
+        // We'll queue chunks and send them once WebSocket is ready
         try {
-          if (!micMonitor) {
-            micMonitor = document.createElement("audio");
-            micMonitor.setAttribute("playsinline", "true");
-            micMonitor.muted = true;
-            micMonitor.autoplay = true;
-            micMonitor.style.display = "none";
-            document.body.appendChild(micMonitor);
-          }
-
-          if (micMonitor) {
-            micMonitor.srcObject = audioStream;
-            const playPromise = micMonitor.play();
-            if (playPromise && typeof playPromise.catch === "function") {
-              playPromise.catch((err: any) => {
-                console.warn("⚠️ mic monitor play() rejected:", err?.message);
-              });
+          const mimeTypeResult = getBrowserSupportedMimeType();
+          const mimeType = mimeTypeResult.success ? mimeTypeResult.mimeType : "audio/webm";
+          
+          mediaRecorder = new MediaRecorder(audioStream, { mimeType });
+          
+          // Queue for chunks until socket is ready
+          const audioChunkQueue: Blob[] = [];
+          
+          mediaRecorder.ondataavailable = async (event) => {
+            if (event.data.size < 1) return;
+            
+            // Check socket reference (will be set later)
+            const currentSocket = socket;
+            if (currentSocket && (currentSocket as any).readyState === 1) {
+              try {
+                const encodedAudioData = await convertBlobToBase64(event.data);
+                currentSocket.sendAudioInput({ data: encodedAudioData });
+              } catch (err: any) {
+                console.error("❌ Error sending audio:", err);
+              }
+            } else {
+              // Queue chunk until socket is ready
+              audioChunkQueue.push(event.data);
             }
-          }
-        } catch (monitorErr: any) {
-          console.warn("⚠️ Failed to start mic monitor element:", monitorErr?.message);
+          };
+          
+          // Start recording IMMEDIATELY - this keeps the stream alive!
+          mediaRecorder.start(50);
+          isRecording = true;
+          console.log("🎤 MediaRecorder started immediately to keep stream alive");
+          
+          // Once socket is ready, send queued chunks
+          const sendQueuedChunks = async () => {
+            const currentSocket = socket;
+            if (!currentSocket || (currentSocket as any).readyState !== 1) {
+              return;
+            }
+            
+            while (audioChunkQueue.length > 0) {
+              const chunk = audioChunkQueue.shift();
+              if (chunk && currentSocket && (currentSocket as any).readyState === 1) {
+                try {
+                  const encodedAudioData = await convertBlobToBase64(chunk);
+                  currentSocket.sendAudioInput({ data: encodedAudioData });
+                } catch (err: any) {
+                  console.error("❌ Error sending queued audio:", err);
+                  break; // Stop if there's an error
+                }
+              } else {
+                break; // Socket closed, stop sending
+              }
+            }
+          };
+          
+          // Store function and queue reference to call when socket opens
+          (window as any).__sendQueuedAudioChunks = sendQueuedChunks;
+          (window as any).__audioChunkQueue = audioChunkQueue;
+        } catch (recorderErr: any) {
+          console.error("❌ Failed to start MediaRecorder immediately:", recorderErr);
+          // Continue anyway - we'll try again in startAudioCapture
         }
 
         isWaitingForPermission = false;
@@ -609,6 +651,35 @@
             "📊 Socket readyState after open event:",
             socket.readyState
           );
+          
+          // If MediaRecorder was started early, update handler and send queued chunks
+          if ((window as any).__sendQueuedAudioChunks && mediaRecorder) {
+            console.log("🔄 Socket ready - updating MediaRecorder handler and sending queued chunks");
+            
+            // Update the ondataavailable handler to send directly now
+            const originalHandler = mediaRecorder.ondataavailable;
+            mediaRecorder.ondataavailable = async (event) => {
+              if (event.data.size < 1) return;
+              
+              // Send directly now that socket is ready
+              if (socket && (socket as any).readyState === 1) {
+                try {
+                  const encodedAudioData = await convertBlobToBase64(event.data);
+                  socket.sendAudioInput({ data: encodedAudioData });
+                } catch (err: any) {
+                  console.error("❌ Error sending audio:", err);
+                }
+              }
+            };
+            
+            // Send any queued chunks
+            (window as any).__sendQueuedAudioChunks();
+            
+            // Clean up
+            delete (window as any).__sendQueuedAudioChunks;
+            delete (window as any).__audioChunkQueue;
+          }
+          
           resolve();
         });
 
@@ -776,8 +847,14 @@
       // Small delay to ensure socket is fully ready
       await new Promise((resolve) => setTimeout(resolve, 100));
 
-      // Start audio capture
-      await startAudioCapture();
+      // If MediaRecorder was already started (iOS PWA), just verify it's running
+      // Otherwise, start it now
+      if (mediaRecorder && mediaRecorder.state === "recording") {
+        console.log("✅ MediaRecorder already running (started early for iOS PWA)");
+      } else {
+        // Start audio capture (non-iOS or fallback)
+        await startAudioCapture();
+      }
 
       // Connection is complete
       isConnecting = false;
