@@ -511,8 +511,8 @@
         mediaRecorder.ondataavailable = async (event: BlobEvent) => {
           if (event.data.size === 0) {
             console.warn("⚠️ Empty audio chunk received");
-            return;
-          }
+          return;
+        }
 
           chunkCount++;
           const chunkTime = Date.now();
@@ -546,7 +546,7 @@
               duration: chunkTime - (firstChunkTime || chunkTime),
               firstChunk: chunkCount === 1,
             });
-
+      
             // Log first chunk in detail
             if (chunkCount === 1) {
               firstChunkTime = chunkTime;
@@ -1331,7 +1331,7 @@
     if (mediaRecorder) {
       try {
         if (mediaRecorder.state !== "inactive") {
-          mediaRecorder.stop();
+              mediaRecorder.stop();
           console.log("✅ MediaRecorder stopped");
         }
       } catch (err) {
@@ -1349,7 +1349,7 @@
         console.error("Error stopping MediaStream tracks:", err);
       }
       delete (window as any).__mediaStream;
-    }
+      }
 
     // Stop AudioRecorder (AudioWorklet - keeps stream alive in iOS PWA)
     if (audioRecorder) {
