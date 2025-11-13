@@ -115,15 +115,9 @@
     {:else if latestActivity}
       <!-- Latest Activity Content -->
       <div class="bg-white rounded-2xl p-6 md:p-8 shadow-[0_4px_20px_rgba(0,0,0,0.08)] border border-[var(--color-accent-500)] max-w-6xl mx-auto transition-all duration-200">
-        <!-- Activity Header -->
-        <div class="flex items-center gap-4 mb-6 pb-4 border-b border-gray-200 flex-wrap">
-          <span class="bg-[var(--color-accent-500)] text-[var(--color-accent-900)] px-1.5 py-0.5 rounded-[10px] text-[0.625rem] font-semibold uppercase tracking-wide min-w-[18px] text-center">
-            {latestActivity.vibeId}
-          </span>
-          <span class="text-gray-800 font-semibold text-sm capitalize">
-            {latestActivity.toolName}
-          </span>
-          <span class="ml-auto text-gray-400 text-[0.625rem]">
+        <!-- Activity Header - Centered Context Title -->
+        <div class="flex items-center justify-center mb-6 pb-4 border-b border-gray-200">
+          <span class="text-gray-400 text-xs">
             {formatTimestamp(latestActivity.timestamp)}
           </span>
         </div>

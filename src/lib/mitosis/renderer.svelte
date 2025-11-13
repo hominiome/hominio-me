@@ -922,7 +922,7 @@
   :global(.order-confirmation-title) {
     font-size: 0.75rem;
     font-weight: 700;
-    color: var(--color-accent-900);
+    color: rgba(255, 255, 255, 0.95);
     text-transform: uppercase;
     letter-spacing: 0.05em;
     margin: 0;
@@ -939,7 +939,7 @@
     justify-content: space-between;
     align-items: center;
     padding: 0.375rem 0;
-    border-bottom: 1px solid rgba(244, 208, 63, 0.2);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   }
 
   :global(.order-item:last-child) {
@@ -949,7 +949,7 @@
   :global(.order-item-name) {
     font-size: 0.75rem;
     font-weight: 600;
-    color: var(--color-accent-900);
+    color: rgba(255, 255, 255, 0.9);
     flex: 1;
     display: flex;
     flex-direction: column;
@@ -959,14 +959,14 @@
   :global(.order-item-time-slot) {
     font-size: 0.625rem;
     font-weight: 500;
-    color: var(--color-accent-700);
+    color: rgba(255, 255, 255, 0.7);
     font-style: italic;
   }
 
   :global(.order-item-price) {
     font-size: 0.75rem;
     font-weight: 600;
-    color: var(--color-accent-900);
+    color: rgba(255, 255, 255, 0.95);
     margin-left: 1rem;
   }
 
@@ -976,13 +976,13 @@
     align-items: center;
     padding-top: 0.5rem;
     margin-top: 0.5rem;
-    border-top: 2px solid var(--color-accent-500);
+    border-top: 2px solid rgba(255, 255, 255, 0.2);
   }
 
   :global(.order-total-label) {
     font-size: 0.75rem;
     font-weight: 700;
-    color: var(--color-accent-900);
+    color: rgba(255, 255, 255, 0.95);
     text-transform: uppercase;
     letter-spacing: 0.05em;
   }
@@ -990,7 +990,7 @@
   :global(.order-total-amount) {
     font-size: 0.875rem;
     font-weight: 700;
-    color: var(--color-accent-900);
+    color: rgba(255, 255, 255, 0.95);
   }
 
   /* Cart container - matches order confirmation style */
@@ -1001,13 +1001,13 @@
   :global(.cart-header) {
     margin-bottom: 0.75rem;
     padding-bottom: 0.5rem;
-    border-bottom: 1px solid rgba(244, 208, 63, 0.2);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.15);
   }
 
   :global(.cart-title) {
     font-size: 0.875rem;
     font-weight: 700;
-    color: var(--color-accent-900);
+    color: rgba(255, 255, 255, 0.95);
     text-transform: uppercase;
     letter-spacing: 0.05em;
   }
@@ -1024,7 +1024,7 @@
     justify-content: space-between;
     align-items: center;
     padding: 0.5rem 0;
-    border-bottom: 1px solid rgba(244, 208, 63, 0.2);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   }
 
   :global(.cart-item:last-child) {
@@ -1034,7 +1034,7 @@
   :global(.cart-item-name) {
     font-size: 0.75rem;
     font-weight: 600;
-    color: var(--color-accent-900);
+    color: rgba(255, 255, 255, 0.9);
     flex: 1;
     display: flex;
     flex-direction: column;
@@ -1044,14 +1044,14 @@
   :global(.cart-item-time-slot) {
     font-size: 0.625rem;
     font-weight: 500;
-    color: var(--color-accent-700);
+    color: rgba(255, 255, 255, 0.7);
     font-style: italic;
   }
 
   :global(.cart-item-price) {
     font-size: 0.75rem;
     font-weight: 600;
-    color: var(--color-accent-900);
+    color: rgba(255, 255, 255, 0.95);
     margin-left: 1rem;
   }
 
@@ -1061,13 +1061,13 @@
     align-items: center;
     padding-top: 0.5rem;
     margin-top: 0.5rem;
-    border-top: 2px solid var(--color-accent-500);
+    border-top: 2px solid rgba(255, 255, 255, 0.2);
   }
 
   :global(.cart-total-label) {
     font-size: 0.75rem;
     font-weight: 700;
-    color: var(--color-accent-900);
+    color: rgba(255, 255, 255, 0.95);
     text-transform: uppercase;
     letter-spacing: 0.05em;
   }
@@ -1075,7 +1075,7 @@
   :global(.cart-total-amount) {
     font-size: 0.875rem;
     font-weight: 700;
-    color: var(--color-accent-900);
+    color: rgba(255, 255, 255, 0.95);
   }
 </style>
 
