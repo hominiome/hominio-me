@@ -6,8 +6,8 @@ import spaBeautyData from '$lib/data/spa-beauty.json';
 import taxiData from '$lib/data/taxi.json';
 import roomServiceData from '$lib/data/room-service.json';
 import type { CartItem, Cart } from '$lib/stores/cart';
-import { 
-  createMenuListComponent, 
+import {
+  createMenuListComponent,
   createCartComponent,
   createSpaBeautyListComponent,
   createTaxiListComponent,
@@ -25,7 +25,7 @@ let cartStore: Cart = {
 
 function addToCartServer(item: CartItem) {
   const existingItemIndex = cartStore.items.findIndex(i => i.id === item.id);
-  
+
   if (existingItemIndex >= 0) {
     // Update quantity if item already exists
     const updatedItems = [...cartStore.items];
@@ -36,7 +36,7 @@ function addToCartServer(item: CartItem) {
       totalPriceFormatted: `€${(updatedItems[existingItemIndex].totalPrice + item.totalPrice).toFixed(2)}`,
       displayText: `${updatedItems[existingItemIndex].quantity + item.quantity}x ${item.name}`
     };
-    
+
     const total = updatedItems.reduce((sum, i) => sum + i.totalPrice, 0);
     cartStore = {
       items: updatedItems,
@@ -71,7 +71,7 @@ function getCartServer(): Cart {
 const actionHandlers: Record<string, (params: any) => Promise<{ result: any; ui?: any; view?: string }>> = {
   async list_menu(params: { category?: string; view?: string } = {}) {
     const { category } = params;
-    
+
     // Map German category names to JSON keys
     const categoryMap: Record<string, keyof typeof menuData.categories> = {
       'getränke': 'getraenke',
@@ -88,15 +88,15 @@ const actionHandlers: Record<string, (params: any) => Promise<{ result: any; ui?
       'dessert': 'nachspeisen',
       'desserts': 'nachspeisen'
     };
-    
+
     let menuItems: any[] = [];
     let selectedCategory: string | null = null;
-    
+
     if (category) {
       // Normalize category name
       const normalizedCategory = category.toLowerCase().trim();
       const categoryKey = categoryMap[normalizedCategory];
-      
+
       if (categoryKey && menuData.categories[categoryKey]) {
         menuItems = menuData.categories[categoryKey];
         selectedCategory = categoryKey.charAt(0).toUpperCase() + categoryKey.slice(1);
@@ -110,19 +110,19 @@ const actionHandlers: Record<string, (params: any) => Promise<{ result: any; ui?
         menuItems.push(...items);
       });
     }
-    
+
     // Format prices for display
     const formattedMenuItems = menuItems.map(item => ({
       ...item,
       priceFormatted: `€${item.price.toFixed(2)}`,
       unitFormatted: `/${item.unit}`
     }));
-    
+
     const output = { menuItems: formattedMenuItems, category: selectedCategory };
-    
+
     // Use new native Svelte component system instead of Mitosis
     const ui = createMenuListComponent(formattedMenuItems, selectedCategory);
-    
+
     return {
       result: output,
       ui,
@@ -133,14 +133,14 @@ const actionHandlers: Record<string, (params: any) => Promise<{ result: any; ui?
   async list_wellness(params: { view?: string } = {}) {
     // ALWAYS return ALL wellness services - no category filtering
     // Wellness includes: massage, facial, sauna, wellness, and all beauty treatments
-    
+
     const services: any[] = [];
-    
+
     // Collect all services from all categories
     Object.values(spaBeautyData.categories).forEach(categoryServices => {
       services.push(...categoryServices);
     });
-    
+
     // Format prices and add available slots info
     const formattedServices = services.map(service => ({
       ...service,
@@ -149,12 +149,12 @@ const actionHandlers: Record<string, (params: any) => Promise<{ result: any; ui?
       duration: `${service.duration} Min`,
       availableSlotsCount: service.availableSlots.filter((slot: any) => slot.available).length
     }));
-    
+
     const output = { services: formattedServices };
-    
+
     // Use native Svelte component instead of Mitosis
     const ui = createSpaBeautyListComponent(formattedServices, null); // No category - show all
-    
+
     return {
       result: output,
       ui,
@@ -170,64 +170,64 @@ const actionHandlers: Record<string, (params: any) => Promise<{ result: any; ui?
 
   async add_to_cart(params: { items: Array<{ id: string; quantity?: number; timeSlot?: string; pickupTime?: string; pickupAddress?: string; destinationAddress?: string; estimatedDistance?: number; deliveryTime?: string }>; view?: string }) {
     const { items } = params;
-    
+
     if (!items || !Array.isArray(items) || items.length === 0) {
       throw new Error('Items array is required and must not be empty');
     }
-    
+
     // Collect all menu items from all categories
     const allMenuItems: any[] = [];
     Object.values(menuData.categories).forEach(categoryItems => {
       allMenuItems.push(...categoryItems);
     });
-    
+
     // Collect all wellness services from all categories
     const allWellnessServices: any[] = [];
     Object.values(spaBeautyData.categories).forEach(categoryServices => {
       allWellnessServices.push(...categoryServices);
     });
-    
+
     // Collect all Taxi services
     const allTaxiServices = taxiData.services;
-    
+
     // Collect all Room Service items from all categories
     const allRoomServiceItems: any[] = [];
     Object.values(roomServiceData.categories).forEach(categoryItems => {
       allRoomServiceItems.push(...categoryItems);
     });
-    
+
     // Build cart items
     const cartItems: CartItem[] = items.map(orderItem => {
       // Try to find in menu first
       let foundItem = allMenuItems.find(item => item.id === orderItem.id);
       let itemType: 'menu' | 'wellness' | 'taxi' | 'room-service' = 'menu';
-      
+
       // If not found in menu, try wellness services
       if (!foundItem) {
         foundItem = allWellnessServices.find(item => item.id === orderItem.id);
         itemType = 'wellness';
       }
-      
+
       // If not found, try Taxi services
       if (!foundItem) {
         foundItem = allTaxiServices.find(item => item.id === orderItem.id);
         itemType = 'taxi';
       }
-      
+
       // If not found, try Room Service
       if (!foundItem) {
         foundItem = allRoomServiceItems.find(item => item.id === orderItem.id);
         itemType = 'room-service';
       }
-      
+
       if (!foundItem) {
-        const allItems = [...allMenuItems, ...allSpaServices, ...allTaxiServices, ...allRoomServiceItems];
+        const allItems = [...allMenuItems, ...allWellnessServices, ...allTaxiServices, ...allRoomServiceItems];
         const availableItems = allItems.map(item => `${item.name} (${item.id})`).join(', ');
         throw new Error(`Item with ID "${orderItem.id}" not found. Available items: ${availableItems}`);
       }
-      
+
       const quantity = orderItem.quantity || 1;
-      
+
       // Calculate total price based on item type
       let totalPrice: number;
       if (itemType === 'taxi') {
@@ -237,7 +237,7 @@ const actionHandlers: Record<string, (params: any) => Promise<{ result: any; ui?
       } else {
         totalPrice = foundItem.price * quantity;
       }
-      
+
       const cartItem: CartItem = {
         id: foundItem.id,
         name: foundItem.name,
@@ -250,7 +250,7 @@ const actionHandlers: Record<string, (params: any) => Promise<{ result: any; ui?
         displayText: `${quantity}x ${foundItem.name}`,
         type: itemType
       };
-      
+
       // Add time slot for wellness services (if provided)
       if (itemType === 'wellness') {
         cartItem.duration = foundItem.duration;
@@ -259,7 +259,7 @@ const actionHandlers: Record<string, (params: any) => Promise<{ result: any; ui?
           cartItem.displayText = `${quantity}x ${foundItem.name} um ${orderItem.timeSlot} Uhr`;
         }
       }
-      
+
       // Add pickup time and addresses for Taxi services
       if (itemType === 'taxi') {
         if (orderItem.pickupTime) {
@@ -276,7 +276,7 @@ const actionHandlers: Record<string, (params: any) => Promise<{ result: any; ui?
           cartItem.estimatedDistance = orderItem.estimatedDistance;
         }
       }
-      
+
       // Add delivery date and time for Room Service
       if (itemType === 'room-service') {
         const deliveryDate = getDeliveryDate(foundItem.availableUntil);
@@ -290,21 +290,21 @@ const actionHandlers: Record<string, (params: any) => Promise<{ result: any; ui?
           cartItem.displayText = `${quantity}x ${foundItem.name} ${dateLabel}`;
         }
       }
-      
+
       return cartItem;
     });
-    
+
     // Add items to cart
     cartItems.forEach(item => addToCartServer(item));
-    
+
     // Get updated cart
     const cart = getCartServer();
-    
+
     // Check if any wellness services were added without time slots
-    const addedWellnessItemsWithoutSlots = cartItems.filter(item => 
+    const addedWellnessItemsWithoutSlots = cartItems.filter(item =>
       item.type === 'wellness' && !item.timeSlot
     );
-    
+
     // If wellness items without slots were added, show time slot selection UI for the first one
     if (addedWellnessItemsWithoutSlots.length > 0) {
       const firstService = addedWellnessItemsWithoutSlots[0];
@@ -313,7 +313,7 @@ const actionHandlers: Record<string, (params: any) => Promise<{ result: any; ui?
         allWellnessServices.push(...categoryServices);
       });
       const serviceData = allWellnessServices.find(s => s.id === firstService.id);
-      
+
       if (serviceData) {
         const output = {
           cart,
@@ -326,11 +326,11 @@ const actionHandlers: Record<string, (params: any) => Promise<{ result: any; ui?
           success: true,
           message: `Added ${cartItems.length} item(s) to cart. Please select a time slot for ${serviceData.name}.`
         };
-        
+
         // Load time slot selection view for mini-modal display
         const viewId = params.view || 'time-slot-selection';
         const ui = loadView(viewId, { service: output.service });
-        
+
         return {
           result: output,
           ui,
@@ -338,13 +338,13 @@ const actionHandlers: Record<string, (params: any) => Promise<{ result: any; ui?
         };
       }
     }
-    
+
     const output = {
       cart,
       success: true,
       message: `Added ${cartItems.length} item(s) to cart`
     };
-    
+
     // Use new native Svelte component system instead of Mitosis
     const cartItemsForUI = cart.items.map(item => ({
       id: item.id,
@@ -356,7 +356,7 @@ const actionHandlers: Record<string, (params: any) => Promise<{ result: any; ui?
       timeSlot: item.timeSlot
     }));
     const ui = createCartComponent(cartItemsForUI);
-    
+
     return {
       result: output,
       ui,
@@ -366,12 +366,12 @@ const actionHandlers: Record<string, (params: any) => Promise<{ result: any; ui?
 
   async get_cart(params: { view?: string } = {}) {
     const cart = getCartServer();
-    
+
     // Check if there are wellness services without time slots
-    const wellnessItemsWithoutSlots = cart.items.filter(item => 
+    const wellnessItemsWithoutSlots = cart.items.filter(item =>
       item.type === 'wellness' && !item.timeSlot
     );
-    
+
     // If there are wellness items without slots, show time slot selection UI for the first one
     if (wellnessItemsWithoutSlots.length > 0) {
       const firstService = wellnessItemsWithoutSlots[0];
@@ -380,7 +380,7 @@ const actionHandlers: Record<string, (params: any) => Promise<{ result: any; ui?
         allWellnessServices.push(...categoryServices);
       });
       const serviceData = allWellnessServices.find(s => s.id === firstService.id);
-      
+
       if (serviceData) {
         const output = {
           cart,
@@ -392,11 +392,11 @@ const actionHandlers: Record<string, (params: any) => Promise<{ result: any; ui?
           },
           success: true
         };
-        
+
         // Load time slot selection view for mini-modal display
         const viewId = params.view || 'time-slot-selection';
         const ui = loadView(viewId, { service: output.service });
-        
+
         return {
           result: output,
           ui,
@@ -404,12 +404,12 @@ const actionHandlers: Record<string, (params: any) => Promise<{ result: any; ui?
         };
       }
     }
-    
+
     const output = {
       cart,
       success: true
     };
-    
+
     // Use new native Svelte component system instead of Mitosis
     const cartItems = cart.items.map(item => ({
       id: item.id,
@@ -421,7 +421,7 @@ const actionHandlers: Record<string, (params: any) => Promise<{ result: any; ui?
       timeSlot: item.timeSlot
     }));
     const ui = createCartComponent(cartItems);
-    
+
     return {
       result: output,
       ui,
@@ -431,22 +431,22 @@ const actionHandlers: Record<string, (params: any) => Promise<{ result: any; ui?
 
   async select_time_slot(params: { serviceId: string; timeSlot: string; view?: string }) {
     const { serviceId, timeSlot } = params;
-    
+
     if (!serviceId || !timeSlot) {
       throw new Error('Service ID and time slot are required');
     }
-    
+
     // Find the service
-    const allSpaServices: any[] = [];
+    const allWellnessServices: any[] = [];
     Object.values(spaBeautyData.categories).forEach(categoryServices => {
-      allSpaServices.push(...categoryServices);
+      allWellnessServices.push(...categoryServices);
     });
-    
-    const service = allSpaServices.find(s => s.id === serviceId);
+
+    const service = allWellnessServices.find(s => s.id === serviceId);
     if (!service) {
       throw new Error(`Service with ID "${serviceId}" not found`);
     }
-    
+
     // Check if time slot exists and is available
     const slot = service.availableSlots.find((s: any) => s.time === timeSlot);
     if (!slot) {
@@ -456,7 +456,7 @@ const actionHandlers: Record<string, (params: any) => Promise<{ result: any; ui?
         .join(', ');
       throw new Error(`Time slot "${timeSlot}" not found for "${service.name}". Available slots: ${availableSlots}`);
     }
-    
+
     if (!slot.available) {
       const availableSlots = service.availableSlots
         .filter((s: any) => s.available)
@@ -464,11 +464,11 @@ const actionHandlers: Record<string, (params: any) => Promise<{ result: any; ui?
         .join(', ');
       throw new Error(`Time slot "${timeSlot}" is not available for "${service.name}". Available slots: ${availableSlots}`);
     }
-    
+
     // Update the cart item with the selected time slot
     const cart = getCartServer();
     const cartItemIndex = cart.items.findIndex(item => item.id === serviceId && item.type === 'wellness' && !item.timeSlot);
-    
+
     if (cartItemIndex >= 0) {
       // Update the cart item
       const updatedItems = [...cart.items];
@@ -477,7 +477,7 @@ const actionHandlers: Record<string, (params: any) => Promise<{ result: any; ui?
         timeSlot: timeSlot,
         displayText: `${updatedItems[cartItemIndex].quantity}x ${service.name} um ${timeSlot} Uhr`
       };
-      
+
       // Update cart store
       const total = updatedItems.reduce((sum, i) => sum + i.totalPrice, 0);
       cartStore = {
@@ -486,10 +486,10 @@ const actionHandlers: Record<string, (params: any) => Promise<{ result: any; ui?
         totalFormatted: `€${total.toFixed(2)}`
       };
     }
-    
+
     // Get updated cart
     const updatedCart = getCartServer();
-    
+
     const output = {
       serviceId,
       serviceName: service.name,
@@ -499,7 +499,7 @@ const actionHandlers: Record<string, (params: any) => Promise<{ result: any; ui?
       success: true,
       message: `Time slot ${timeSlot} selected for ${service.name}`
     };
-    
+
     // Use new native Svelte component system instead of Mitosis
     const cartItems = updatedCart.items.map(item => ({
       id: item.id,
@@ -511,7 +511,7 @@ const actionHandlers: Record<string, (params: any) => Promise<{ result: any; ui?
       timeSlot: item.timeSlot
     }));
     const ui = createCartComponent(cartItems);
-    
+
     return {
       result: output,
       ui,
@@ -521,16 +521,16 @@ const actionHandlers: Record<string, (params: any) => Promise<{ result: any; ui?
 
   async confirm_order(params: { view?: string } = {}) {
     const cart = getCartServer();
-    
+
     if (cart.items.length === 0) {
       throw new Error('Cart is empty. Add items to cart before confirming order.');
     }
-    
+
     // Check if wellness services have time slots
-    const wellnessItemsWithoutSlots = cart.items.filter(item => 
+    const wellnessItemsWithoutSlots = cart.items.filter(item =>
       item.type === 'wellness' && !item.timeSlot
     );
-    
+
     if (wellnessItemsWithoutSlots.length > 0) {
       const serviceNames = wellnessItemsWithoutSlots.map(item => item.name).join(', ');
       // Get available slots for the first service without slot
@@ -540,12 +540,12 @@ const actionHandlers: Record<string, (params: any) => Promise<{ result: any; ui?
         allWellnessServices.push(...categoryServices);
       });
       const serviceData = allWellnessServices.find(s => s.id === firstService.id);
-      const availableSlots = serviceData 
+      const availableSlots = serviceData
         ? serviceData.availableSlots.filter((s: any) => s.available).map((s: any) => s.time).join(', ')
         : 'keine verfügbar';
       throw new Error(`Time slots are required for wellness services: ${serviceNames}. Available slots for "${firstService.name}": ${availableSlots}. Please select time slots first using select_time_slot.`);
     }
-    
+
     // Build order from cart
     const order = {
       items: cart.items,
@@ -553,20 +553,20 @@ const actionHandlers: Record<string, (params: any) => Promise<{ result: any; ui?
       totalFormatted: cart.totalFormatted,
       timestamp: new Date().toISOString()
     };
-    
+
     const output = {
       order,
       success: true,
       message: 'Order confirmed successfully'
     };
-    
+
     // Clear cart after order confirmation
     clearCartServer();
-    
+
     // Load order confirmation view for mini-modal display
     const viewId = params.view || 'order-confirmation';
     const ui = loadView(viewId, { order });
-    
+
     return {
       result: output,
       ui,
@@ -581,12 +581,12 @@ const actionHandlers: Record<string, (params: any) => Promise<{ result: any; ui?
       basePriceFormatted: `€${service.basePrice.toFixed(2)}`,
       pricePerKmFormatted: `€${service.pricePerKm.toFixed(2)}`
     }));
-    
+
     const output = { services: formattedServices };
-    
+
     // Use native Svelte component instead of Mitosis
     const ui = createTaxiListComponent(formattedServices);
-    
+
     return {
       result: output,
       ui,
@@ -596,7 +596,7 @@ const actionHandlers: Record<string, (params: any) => Promise<{ result: any; ui?
 
   async list_room_service(params: { category?: string; view?: string } = {}) {
     const { category } = params;
-    
+
     // Map German category names to JSON keys
     const categoryMap: Record<string, keyof typeof roomServiceData.categories> = {
       'breakfast': 'breakfast',
@@ -608,14 +608,14 @@ const actionHandlers: Record<string, (params: any) => Promise<{ result: any; ui?
       'snacks': 'snacks',
       'snack': 'snacks'
     };
-    
+
     let services: any[] = [];
     let selectedCategory: string | null = null;
-    
+
     if (category) {
       const normalizedCategory = category.toLowerCase().trim();
       const categoryKey = categoryMap[normalizedCategory];
-      
+
       if (categoryKey && roomServiceData.categories[categoryKey]) {
         services = roomServiceData.categories[categoryKey];
         selectedCategory = categoryKey.charAt(0).toUpperCase() + categoryKey.slice(1);
@@ -628,7 +628,7 @@ const actionHandlers: Record<string, (params: any) => Promise<{ result: any; ui?
         services.push(...categoryServices);
       });
     }
-    
+
     // Format prices
     const formattedServices = services.map(service => ({
       ...service,
@@ -636,12 +636,12 @@ const actionHandlers: Record<string, (params: any) => Promise<{ result: any; ui?
       unitFormatted: `/${service.unit}`,
       category: selectedCategory
     }));
-    
+
     const output = { services: formattedServices, category: selectedCategory };
-    
+
     // Use native Svelte component instead of Mitosis
     const ui = createRoomServiceListComponent(formattedServices, selectedCategory);
-    
+
     return {
       result: output,
       ui,
@@ -656,11 +656,11 @@ function canOrderRoomServiceForToday(availableUntil: string): boolean {
   const currentHour = now.getHours();
   const currentMinute = now.getMinutes();
   const currentTime = currentHour * 60 + currentMinute; // minutes since midnight
-  
+
   // Parse availableUntil (e.g., "11:00")
   const [hours, minutes] = availableUntil.split(':').map(Number);
   const availableUntilTime = hours * 60 + minutes;
-  
+
   return currentTime < availableUntilTime;
 }
 
@@ -669,7 +669,7 @@ function getDeliveryDate(availableUntil: string): string {
   const today = new Date();
   const tomorrow = new Date(today);
   tomorrow.setDate(tomorrow.getDate() + 1);
-  
+
   if (canOrderRoomServiceForToday(availableUntil)) {
     return today.toISOString().split('T')[0]; // Today
   } else {
