@@ -354,17 +354,25 @@ const actionHandlers: Record<string, (params: any) => Promise<{ result: any; ui?
     const output = {
       cart,
       success: true,
-      message: `Added ${cartItems.length} item(s) to cart`
+      message: `Added ${itemsToAdd.length} item(s) to cart`
     };
     
-    // Load cart view for mini-modal display
-    const viewId = params.view || 'cart';
-    const ui = loadView(viewId, { cart });
+    // Use new native Svelte component system instead of Mitosis
+    const cartItemsForUI = cart.items.map(item => ({
+      id: item.id,
+      name: item.name,
+      quantity: item.quantity,
+      price: item.totalPrice / item.quantity,
+      priceFormatted: `€${(item.totalPrice / item.quantity).toFixed(2)}`,
+      unit: item.unit,
+      timeSlot: item.timeSlot
+    }));
+    const ui = createCartComponent(cartItems);
     
     return {
       result: output,
       ui,
-      view: viewId
+      view: 'cart'
     };
   },
 
@@ -414,14 +422,22 @@ const actionHandlers: Record<string, (params: any) => Promise<{ result: any; ui?
       success: true
     };
     
-    // Load cart view for mini-modal display
-    const viewId = params.view || 'cart';
-    const ui = loadView(viewId, { cart });
+    // Use new native Svelte component system instead of Mitosis
+    const cartItems = cart.items.map(item => ({
+      id: item.id,
+      name: item.name,
+      quantity: item.quantity,
+      price: item.totalPrice / item.quantity,
+      priceFormatted: `€${(item.totalPrice / item.quantity).toFixed(2)}`,
+      unit: item.unit,
+      timeSlot: item.timeSlot
+    }));
+    const ui = createCartComponent(cartItems);
     
     return {
       result: output,
       ui,
-      view: viewId
+      view: 'cart'
     };
   },
 
@@ -496,14 +512,22 @@ const actionHandlers: Record<string, (params: any) => Promise<{ result: any; ui?
       message: `Time slot ${timeSlot} selected for ${service.name}`
     };
     
-    // Show updated cart in mini-modal
-    const viewId = params.view || 'cart';
-    const ui = loadView(viewId, { cart: updatedCart });
+    // Use new native Svelte component system instead of Mitosis
+    const cartItems = updatedCart.items.map(item => ({
+      id: item.id,
+      name: item.name,
+      quantity: item.quantity,
+      price: item.totalPrice / item.quantity,
+      priceFormatted: `€${(item.totalPrice / item.quantity).toFixed(2)}`,
+      unit: item.unit,
+      timeSlot: item.timeSlot
+    }));
+    const ui = createCartComponent(cartItems);
     
     return {
       result: output,
       ui,
-      view: viewId
+      view: 'cart'
     };
   },
 
