@@ -503,21 +503,17 @@
     gap: 1rem;
   }
 
-  /* Menu item card - organic design with brand colors */
+  /* Menu item card - compact, clean design with top teal accent */
   :global(.menu-item-card) {
-    background: var(--color-brand-cream-50);
-    border: 1px solid rgba(8, 27, 71, 0.1);
-    border-radius: 16px;
-    padding: 1.5rem;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    box-shadow: 0 2px 8px rgba(8, 27, 71, 0.06), 0 1px 3px rgba(8, 27, 71, 0.04);
-  }
-
-  :global(.menu-item-card:hover) {
     background: white;
-    border-color: rgba(45, 166, 180, 0.3);
-    transform: translateY(-2px);
-    box-shadow: 0 8px 24px rgba(45, 166, 180, 0.12), 0 2px 8px rgba(45, 166, 180, 0.08);
+    border-top: 3px solid var(--color-secondary-500);
+    border-left: 1px solid rgba(45, 166, 180, 0.2);
+    border-right: 1px solid rgba(45, 166, 180, 0.2);
+    border-bottom: 1px solid rgba(45, 166, 180, 0.2);
+    border-radius: 16px;
+    padding: 1.25rem 1.5rem;
+    box-shadow: 0 1px 6px rgba(45, 166, 180, 0.08);
+    position: relative;
   }
 
   /* Menu item header - matches DIONYS item-header */
@@ -538,26 +534,28 @@
     min-width: 0;
   }
 
-  /* Menu item name - matches DIONYS item-name */
+  /* Menu item name - large, bold title */
   :global(.menu-item-name) {
     display: block;
     margin: 0;
-    font-size: 1rem;
-    font-weight: 600;
-    color: #1f2937; /* DIONYS dark text */
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--color-brand-navy-700);
     flex: 1;
     min-width: 0;
-    line-height: 1.4;
+    line-height: 1.3;
+    letter-spacing: -0.01em;
   }
 
-  /* Menu item description */
+  /* Menu item description - smaller, subtle */
   :global(.menu-item-description) {
     display: block;
     margin: 0;
     font-size: 0.875rem;
     font-weight: 400;
-    color: #6b7280; /* DIONYS gray text */
+    color: #64748b;
     line-height: 1.5;
+    margin-top: 0.25rem;
   }
 
   /* Menu item pricing - matches DIONYS item-pricing */
@@ -569,24 +567,25 @@
     flex-shrink: 0;
   }
 
-  /* Menu item price - matches DIONYS per-item-price */
+  /* Menu item price - huge, bold teal price */
   :global(.menu-item-price) {
-    font-weight: 600;
-    color: #1f2937; /* DIONYS dark text */
-    font-size: 1rem;
+    font-weight: 800;
+    color: var(--color-secondary-600);
+    font-size: 1.75rem;
     text-align: right;
     min-width: fit-content;
     flex-shrink: 0;
     display: flex;
     align-items: baseline;
-    gap: 0.25rem;
+    gap: 0.375rem;
+    letter-spacing: -0.03em;
   }
 
-  /* Menu item unit - matches DIONYS price-unit */
+  /* Menu item unit - tiny, subtle label */
   :global(.menu-item-unit) {
-    font-size: 0.875rem;
+    font-size: 0.6875rem;
     font-weight: 500;
-    color: #6b7280; /* DIONYS gray text */
+    color: var(--color-secondary-500);
   }
 
   /* SPA & Beauty List Container - matches menu-list style */
@@ -916,13 +915,15 @@
   }
 
   :global(.order-confirmation-header) {
-    margin-bottom: 0.5rem;
+    margin-bottom: 0.75rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 2px solid rgba(45, 166, 180, 0.3);
   }
 
   :global(.order-confirmation-title) {
-    font-size: 0.75rem;
+    font-size: 1rem;
     font-weight: 700;
-    color: var(--color-accent-900);
+    color: rgba(255, 255, 255, 0.95);
     text-transform: uppercase;
     letter-spacing: 0.05em;
     margin: 0;
@@ -939,7 +940,7 @@
     justify-content: space-between;
     align-items: center;
     padding: 0.375rem 0;
-    border-bottom: 1px solid rgba(244, 208, 63, 0.2);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   }
 
   :global(.order-item:last-child) {
@@ -949,7 +950,7 @@
   :global(.order-item-name) {
     font-size: 0.75rem;
     font-weight: 600;
-    color: var(--color-accent-900);
+    color: rgba(255, 255, 255, 0.9);
     flex: 1;
     display: flex;
     flex-direction: column;
@@ -959,14 +960,14 @@
   :global(.order-item-time-slot) {
     font-size: 0.625rem;
     font-weight: 500;
-    color: var(--color-accent-700);
+    color: rgba(255, 255, 255, 0.7);
     font-style: italic;
   }
 
   :global(.order-item-price) {
     font-size: 0.75rem;
     font-weight: 600;
-    color: var(--color-accent-900);
+    color: rgba(255, 255, 255, 0.95);
     margin-left: 1rem;
   }
 
@@ -974,15 +975,15 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding-top: 0.5rem;
-    margin-top: 0.5rem;
-    border-top: 2px solid var(--color-accent-500);
+    padding-top: 0.75rem;
+    margin-top: 0.75rem;
+    border-top: 3px solid var(--color-secondary-400);
   }
 
   :global(.order-total-label) {
     font-size: 0.75rem;
     font-weight: 700;
-    color: var(--color-accent-900);
+    color: rgba(255, 255, 255, 0.95);
     text-transform: uppercase;
     letter-spacing: 0.05em;
   }
@@ -990,7 +991,7 @@
   :global(.order-total-amount) {
     font-size: 0.875rem;
     font-weight: 700;
-    color: var(--color-accent-900);
+    color: rgba(255, 255, 255, 0.95);
   }
 
   /* Cart container - matches order confirmation style */
@@ -1000,14 +1001,14 @@
 
   :global(.cart-header) {
     margin-bottom: 0.75rem;
-    padding-bottom: 0.5rem;
-    border-bottom: 1px solid rgba(244, 208, 63, 0.2);
+    padding-bottom: 0.75rem;
+    border-bottom: 2px solid rgba(45, 166, 180, 0.3);
   }
 
   :global(.cart-title) {
-    font-size: 0.875rem;
+    font-size: 1rem;
     font-weight: 700;
-    color: var(--color-accent-900);
+    color: rgba(255, 255, 255, 0.95);
     text-transform: uppercase;
     letter-spacing: 0.05em;
   }
@@ -1024,7 +1025,7 @@
     justify-content: space-between;
     align-items: center;
     padding: 0.5rem 0;
-    border-bottom: 1px solid rgba(244, 208, 63, 0.2);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   }
 
   :global(.cart-item:last-child) {
@@ -1034,7 +1035,7 @@
   :global(.cart-item-name) {
     font-size: 0.75rem;
     font-weight: 600;
-    color: var(--color-accent-900);
+    color: rgba(255, 255, 255, 0.9);
     flex: 1;
     display: flex;
     flex-direction: column;
@@ -1044,14 +1045,14 @@
   :global(.cart-item-time-slot) {
     font-size: 0.625rem;
     font-weight: 500;
-    color: var(--color-accent-700);
+    color: rgba(255, 255, 255, 0.7);
     font-style: italic;
   }
 
   :global(.cart-item-price) {
     font-size: 0.75rem;
     font-weight: 600;
-    color: var(--color-accent-900);
+    color: rgba(255, 255, 255, 0.95);
     margin-left: 1rem;
   }
 
@@ -1059,15 +1060,15 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding-top: 0.5rem;
-    margin-top: 0.5rem;
-    border-top: 2px solid var(--color-accent-500);
+    padding-top: 0.75rem;
+    margin-top: 0.75rem;
+    border-top: 3px solid var(--color-secondary-400);
   }
 
   :global(.cart-total-label) {
     font-size: 0.75rem;
     font-weight: 700;
-    color: var(--color-accent-900);
+    color: rgba(255, 255, 255, 0.95);
     text-transform: uppercase;
     letter-spacing: 0.05em;
   }
@@ -1075,7 +1076,7 @@
   :global(.cart-total-amount) {
     font-size: 0.875rem;
     font-weight: 700;
-    color: var(--color-accent-900);
+    color: rgba(255, 255, 255, 0.95);
   }
 </style>
 

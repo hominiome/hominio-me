@@ -468,111 +468,27 @@
         return;
       }
 
-      // Initialize audio player IMMEDIATELY after getUserMedia() 
-      // This is critical for iOS PWAs: AudioContext must be initialized/resumed
-      // while the user interaction (from getUserMedia) is still active
-      // iOS Safari requires user interaction to activate AudioContext from suspended state
-                console.log(
-        "🔄 Initializing audio player (while user interaction is active)..."
-      );
-
-      // For iOS: We're already in a user gesture context from getUserMedia()
-      // AudioContext initialization should work directly without needing silent audio
-      // Silent audio unlock causes hangs in iOS PWA, so we skip it entirely
+      // For iOS: Don't initialize AudioPlayer yet - it conflicts with microphone!
+      // iOS can't have both mic input and audio output initialized simultaneously
+      // We'll lazy-initialize AudioPlayer when we receive audio from AI
       const isIOS = browser && /iPad|iPhone|iPod/.test(navigator.userAgent);
       
       if (isIOS) {
-        console.log("📱 iOS detected - relying on getUserMedia() gesture for AudioContext unlock");
-      }
-      
-      try {
-        console.log("📊 Creating EVIWebAudioPlayer instance...");
-        audioPlayer = new EVIWebAudioPlayer();
-        console.log("✅ EVIWebAudioPlayer instance created");
-        
-        // For iOS: Try to access AudioContext immediately and resume if suspended
-        // This must happen synchronously within the user gesture
-        if (isIOS) {
-          try {
-            // @ts-ignore - accessing internal audioContext if available
-            const audioContext =
-              audioPlayer.audioContext || (audioPlayer as any).context;
-            if (audioContext) {
-              console.log("📊 iOS: Found AudioContext, state:", audioContext.state);
-              if (audioContext.state === "suspended" && typeof audioContext.resume === "function") {
-                console.log("🔄 iOS: Resuming AudioContext immediately (within gesture)...");
-                // Resume synchronously - don't await, just trigger it
-                audioContext.resume().catch((e: any) => {
-                  console.log("ℹ️ AudioContext resume attempt:", e?.message);
-                });
-              }
-            }
-          } catch (e: any) {
-            console.log("ℹ️ Could not access AudioContext before init:", e?.message);
-          }
-        }
-        
-        console.log("📊 Calling audioPlayer.init()...");
-        // Initialize with timeout to prevent infinite hang
-        const initTimeout = new Promise((_, reject) =>
-          setTimeout(() => reject(new Error("AudioPlayer init timeout after 3 seconds")), 3000)
-        );
-        
+        console.log("📱 iOS PWA: Skipping AudioPlayer init to keep microphone alive");
+        console.log("🔊 AudioPlayer will be initialized when AI audio arrives");
+        audioPlayer = null; // Will be lazy-initialized
+      } else {
+        // Non-iOS: Initialize audio player normally
+        console.log("🔄 Initializing audio player...");
         try {
-          await Promise.race([audioPlayer.init(), initTimeout]);
+          audioPlayer = new EVIWebAudioPlayer();
+          await audioPlayer.init();
           console.log("✅ Audio player initialized");
-        } catch (initErr: any) {
-          if (initErr.message?.includes("timeout")) {
-            console.warn("⚠️ AudioPlayer.init() timed out - continuing anyway");
-            // Try to resume AudioContext manually as fallback
-            try {
-              // @ts-ignore
-              const audioContext = audioPlayer.audioContext || (audioPlayer as any).context;
-              if (audioContext && audioContext.state === "suspended") {
-                console.log("🔄 Attempting manual AudioContext resume after timeout...");
-                await audioContext.resume();
-                console.log("✅ AudioContext resumed manually, state:", audioContext.state);
-              }
-            } catch (e: any) {
-              console.log("ℹ️ Manual resume failed:", e?.message);
-            }
-          } else {
-            throw initErr; // Re-throw if not timeout
-          }
+        } catch (audioPlayerErr: any) {
+          console.error("❌ Failed to initialize audio player:", audioPlayerErr);
+          console.warn("⚠️ Continuing without audio player - will retry when audio arrives");
+          audioPlayer = null;
         }
-        
-        // Final check and resume AudioContext if needed
-        try {
-          // @ts-ignore - accessing internal audioContext if available
-          const audioContext =
-            audioPlayer.audioContext || (audioPlayer as any).context;
-          if (audioContext && typeof audioContext.resume === "function") {
-            console.log("📊 Final AudioContext state check:", audioContext.state);
-            if (audioContext.state === "suspended") {
-              console.log("🔄 AudioContext still suspended, resuming...");
-              await audioContext.resume();
-              console.log("✅ AudioContext resumed, final state:", audioContext.state);
-            }
-          }
-        } catch (resumeErr: any) {
-          console.log(
-            "ℹ️ Could not access/resume AudioContext:",
-            resumeErr.message
-          );
-        }
-      } catch (audioPlayerErr: any) {
-        console.error("❌ Failed to initialize audio player:", audioPlayerErr);
-        console.error(
-          "Audio player error details:",
-          audioPlayerErr.message,
-          audioPlayerErr.stack
-        );
-        // Don't throw - continue without audio player (audio output won't work, but we can still try)
-        // We'll try to initialize it later when audio actually arrives
-        console.warn(
-          "⚠️ Continuing without audio player - will retry when audio arrives"
-        );
-        audioPlayer = null; // Clear the failed instance
       }
 
       // Get access token from server (still connecting)
@@ -1052,7 +968,8 @@
         throw new Error("MediaDevices API not available");
       }
 
-      // Check if we already have an active stream from startCall
+      // CRITICAL for iOS: NEVER get a new stream - always reuse the existing one!
+      // Getting a new stream causes iOS to close the original mic permission
       if (audioStream && audioStream.active) {
         const tracks = audioStream.getAudioTracks();
         const hasActiveTrack = tracks.some(
@@ -1063,11 +980,13 @@
           console.log("✅ Using existing active audio stream (keeping mic alive)");
           // Stream is already set - just continue to use it
         } else {
-          console.log("⚠️ Existing stream no longer active - getting fresh stream");
+          console.log("⚠️ Stream tracks ended - iOS closed the mic");
+          console.log("🔄 Attempting to get fresh stream (may require re-permission)...");
           audioStream = await getAudioStream();
         }
       } else {
-        console.log("🔄 No active stream found - getting fresh audio stream...");
+        console.log("⚠️ No active stream - this shouldn't happen!");
+        console.log("🔄 Getting audio stream as fallback...");
         audioStream = await getAudioStream();
       }
 
@@ -1360,7 +1279,7 @@
 {/if}
 
 <style>
-  /* Transcript Mini-Modal - DIONYS content-area style positioned directly above navbar */
+  /* Transcript Mini-Modal - Inverted dark style positioned directly above navbar */
   .voice-transcript-modal {
     position: fixed;
     /* Position directly above navbar: navbar height (56px) + margin-bottom (0.375rem) + gap (0.5rem) */
@@ -1368,11 +1287,11 @@
     left: 50%;
     transform: translateX(-50%);
     z-index: 10001; /* Above navbar (z-index: 10000) */
-    /* DIONYS content-area style - exact match */
-    background: white;
-    border: 1px solid #e2e8f0;
+    /* Inverted style with dark bg-500 */
+    background: var(--color-brand-navy-500);
+    border: 1px solid rgba(255, 255, 255, 0.15);
     border-radius: 16px;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+    box-shadow: 0 4px 20px rgba(8, 27, 71, 0.3), 0 1px 4px rgba(8, 27, 71, 0.2);
     max-width: 500px;
     width: calc(100vw - 2rem);
     animation: slideUp 0.3s ease-out;
@@ -1403,7 +1322,7 @@
     font-size: 1rem;
     font-weight: 400;
     line-height: 1.5;
-    color: #6b7280; /* DIONYS body text color */
+    color: rgba(255, 255, 255, 0.85); /* Light text on dark bg */
   }
 
   @media (min-width: 640px) {
@@ -1413,7 +1332,7 @@
   }
 
   .transcript-area p.placeholder {
-    color: #9ca3af; /* DIONYS gray text */
+    color: rgba(255, 255, 255, 0.5); /* Light gray text on dark bg */
     font-style: italic;
     text-align: center;
   }
@@ -1421,21 +1340,21 @@
   .transcript-area p.action-message {
     font-weight: 600;
     font-size: 0.75rem;
-    color: var(--color-accent-900); /* Dark yellow for text */
-    /* DIONYS badge style with yellow accent */
+    color: var(--color-accent-900); /* Dark yellow text */
+    /* Inverted badge style with yellow accent */
     background: var(--color-accent-500); /* Yellow accent background */
     text-align: center;
     padding: 0.5rem 1rem;
     border-radius: 10px;
     letter-spacing: 0.05em;
     line-height: 1.4;
-    border: 1px solid var(--color-accent-500);
-    box-shadow: 0 1px 2px rgba(244, 208, 63, 0.2);
+    border: 1px solid var(--color-accent-600);
+    box-shadow: 0 2px 8px rgba(244, 208, 63, 0.3);
     text-transform: uppercase;
   }
 
   .transcript-area p.assistant-response {
-    color: #1f2937; /* DIONYS dark text */
+    color: rgba(255, 255, 255, 0.95); /* Bright white text on dark bg */
   }
 
   .order-confirmation-wrapper,
