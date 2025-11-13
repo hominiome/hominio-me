@@ -496,21 +496,32 @@
           audio.volume = 0;
           audio.muted = true;
           audio.setAttribute("playsinline", "true");
+          
+          // Add timeout to prevent hanging forever in iOS PWA
           const playPromise = audio.play();
           if (playPromise?.then) {
-            // Await the promise to ensure unlock completes before AudioContext initialization
-            await playPromise
-              .then(() => {
-                console.log("✅ Audio unlocked for iOS PWA");
+            const timeoutPromise = new Promise((_, reject) => 
+              setTimeout(() => reject(new Error("Audio unlock timeout")), 1000)
+            );
+            
+            try {
+              await Promise.race([playPromise, timeoutPromise]);
+              console.log("✅ Audio unlocked for iOS PWA");
+              audio.pause();
+              audio.removeAttribute("src");
+            } catch (unlockErr: any) {
+              console.log(
+                "ℹ️ Silent audio unlock failed/timeout (proceeding anyway):",
+                unlockErr?.message || unlockErr
+              );
+              // Clean up audio element even on failure
+              try {
                 audio.pause();
                 audio.removeAttribute("src");
-              })
-              .catch((unlockErr: any) => {
-                console.log(
-                  "ℹ️ Silent audio unlock failed (might already be unlocked):",
-                  unlockErr?.message || unlockErr
-                );
-              });
+              } catch (e) {
+                // Ignore cleanup errors
+              }
+            }
           } else {
             console.log(
               "ℹ️ Silent audio play() returned no promise (already unlocked?)"
@@ -518,7 +529,7 @@
           }
         } catch (unlockErr: any) {
           console.log(
-            "ℹ️ Could not initialize silent audio unlock (might already be unlocked):",
+            "ℹ️ Could not initialize silent audio unlock (proceeding anyway):",
             unlockErr?.message || unlockErr
           );
         }
