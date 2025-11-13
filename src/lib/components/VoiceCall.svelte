@@ -611,18 +611,35 @@
 
       // Explicitly request permission by calling getUserMedia
       // This is required for iOS PWAs - the permission prompt won't appear otherwise
-      // We get a test stream to trigger the permission prompt, then immediately release it
-      // We'll get a fresh stream later when we're ready to actually use it
+      // We get a test stream to trigger the permission prompt
       console.log("🔄 Requesting microphone permission...");
       const testStream = await navigator.mediaDevices.getUserMedia({
         audio: true,
       });
 
-      // Immediately stop the test stream - we just needed the permission prompt
-      // Getting a fresh stream later ensures it's active when we use it
-      testStream.getTracks().forEach((track) => track.stop());
+      // Wait for stream to be fully established before stopping
+      // In iOS PWAs, stopping immediately can cause "capture failure" errors
+      // This is just a warning and doesn't affect functionality - we'll get a fresh stream later
+      await new Promise(resolve => setTimeout(resolve, 300));
       
-      console.log("✅ Microphone permission granted");
+      // Stop the test stream - we just needed the permission prompt
+      // Getting a fresh stream later ensures it's active when we use it
+      // Note: In iOS PWAs, stopping the test stream may log a "capture failure" warning
+      // This is harmless - the permission is granted and we'll get a fresh stream
+      const tracks = testStream.getTracks();
+      tracks.forEach((track) => {
+        try {
+          if (track.readyState === 'live') {
+            track.stop();
+          }
+        } catch (e) {
+          // Track might already be stopped or stopping failed - ignore
+          // This is common in iOS PWAs and doesn't affect functionality
+        }
+      });
+      
+      console.log("✅ Microphone permission granted (test stream stopped)");
+      
       return true;
     } catch (err: any) {
       console.error("❌ Failed to get microphone permission:", err);
