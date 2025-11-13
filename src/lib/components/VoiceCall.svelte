@@ -455,17 +455,16 @@
 
       try {
         // Get microphone stream
-        // CRITICAL iOS PWA FIX: Request BOTH audio and video, then stop video track
-        // This is the standard workaround for iOS PWA MediaRecorder "capture failure" bug
-        // iOS PWA requires video permission to keep audio stream alive with MediaRecorder
+        // CRITICAL iOS PWA FIX: Request AUDIO ONLY with minimal constraints
+        // The video workaround doesn't work in iOS PWA standalone mode (WKWebView)
+        // Based on Chad Phillips' Safari WebRTC guide: use simple constraints
         const isIOSPWA = (window.navigator as any).standalone === true;
         console.log(`📱 iOS PWA mode: ${isIOSPWA}`);
         
         const mediaConstraints = isIOSPWA
           ? {
-              // iOS PWA workaround: Request video to prevent "capture failure"
+              // iOS PWA: Minimal audio-only constraints (WKWebView requirement)
               audio: true,
-              video: { facingMode: 'user' }  // Request video (will be stopped immediately)
             }
           : {
               // Full audio constraints for other browsers
@@ -479,16 +478,6 @@
         
         mediaStream = await navigator.mediaDevices.getUserMedia(mediaConstraints);
         console.log("✅ MediaStream obtained, track state:", mediaStream.getAudioTracks()[0]?.readyState);
-
-        // iOS PWA workaround: Stop video track immediately (we only need audio)
-        if (isIOSPWA) {
-          const videoTracks = mediaStream.getVideoTracks();
-          videoTracks.forEach(track => {
-            track.stop();
-            mediaStream.removeTrack(track);
-          });
-          console.log("✅ iOS PWA: Video track stopped and removed (workaround for MediaRecorder bug)");
-        }
 
         // Use MediaRecorder for ALL platforms (iOS PWA workaround makes it work)
         const mimeTypes = [
@@ -635,6 +624,23 @@
         // Start MediaRecorder immediately
         mediaRecorder.start(100);
         console.log("✅ MediaRecorder started with 100ms timeslice");
+
+        // CRITICAL iOS PWA FIX: Initialize AudioContext NOW (same user gesture as getUserMedia)
+        // iOS PWA won't allow AudioContext creation later if microphone is already active
+        // Safari allows lazy init, but iOS PWA requires both in same user gesture
+        if (!audioStreamer) {
+          console.log("🔊 Pre-initializing AudioStreamer (iOS PWA requires same user gesture as mic)");
+          try {
+            const ctx = await audioContext({
+              id: "voice-call-playback",
+            });
+            audioStreamer = new AudioStreamer(ctx);
+            console.log(`✅ AudioStreamer pre-initialized with sample rate: ${ctx.sampleRate}Hz`);
+          } catch (streamerErr: any) {
+            console.error("❌ Failed to pre-initialize AudioStreamer:", streamerErr);
+            // Continue - will try again later if needed
+          }
+        }
 
         // Store references for cleanup
         (window as any).__mediaRecorder = mediaRecorder;
@@ -910,25 +916,10 @@
           if (message.type === "audio_output") {
             // Lazy initialize AudioStreamer if it wasn't initialized earlier
             if (!audioStreamer) {
-              console.log("🔄 Lazy initializing AudioStreamer...");
-              try {
-                // Don't specify sampleRate - let browser use default (usually 48kHz)
-                // AudioStreamer will use the context's actual sample rate
-                const ctx = await audioContext({
-                  id: "voice-call-playback",
-                });
-                audioStreamer = new AudioStreamer(ctx);
-                console.log(
-                  `✅ AudioStreamer initialized with sample rate: ${ctx.sampleRate}Hz`
-                );
-              } catch (streamerErr: any) {
-                console.error(
-                  "❌ Failed to initialize AudioStreamer:",
-                  streamerErr
-                );
-                // Continue without audio streamer - user won't hear audio but call can continue
-                return;
-              }
+              console.error("❌ AudioStreamer not initialized - audio playback unavailable");
+              console.log("💡 Tip: AudioStreamer must be pre-initialized in same user gesture as mic (iOS PWA requirement)");
+              // Continue without audio streamer - user won't hear audio but call can continue
+              return;
             }
 
             console.log("🔊 Received audio output from AI");
