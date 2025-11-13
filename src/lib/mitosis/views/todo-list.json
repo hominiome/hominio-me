@@ -1,0 +1,98 @@
+{
+  "@type": "@builder.io/mitosis/component",
+  "name": "TodoList",
+  "state": {
+    "todos": []
+  },
+  "nodes": [
+    {
+      "name": "div",
+      "attributes": {
+        "class": "todo-list-container"
+      },
+      "children": [
+        {
+          "name": "Heading",
+          "attributes": {
+            "level": 2
+          },
+          "children": [
+            {
+              "name": "text",
+              "bindings": {
+                "text": "'Your Todos'"
+              }
+            }
+          ]
+        },
+        {
+          "name": "div",
+          "attributes": {
+            "class": "todo-items-grid"
+          },
+          "children": [
+            {
+              "name": "List",
+              "bindings": {
+                "items": "{{state.todos}}"
+              },
+              "children": [
+                {
+                  "name": "Card",
+                  "bindings": {
+                    "key": "{{item.id}}"
+                  },
+                  "attributes": {
+                    "class": "todo-item-card"
+                  },
+                  "children": [
+                    {
+                      "name": "div",
+                      "attributes": {
+                        "class": "todo-item-header"
+                      },
+                      "children": [
+                        {
+                          "name": "div",
+                          "attributes": {
+                            "class": "todo-item-title-section"
+                          },
+                          "children": [
+                            {
+                              "name": "Text",
+                              "attributes": {
+                                "class": "todo-item-name"
+                              },
+                              "bindings": {
+                                "text": "{{item.title}}"
+                              }
+                            }
+                          ]
+                        },
+                        {
+                          "name": "span",
+                          "attributes": {
+                            "class": "todo-status-badge"
+                          },
+                          "children": [
+                            {
+                              "name": "Text",
+                              "bindings": {
+                                "text": "{{item.completed ? 'Completed' : 'Pending'}}"
+                              }
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
+

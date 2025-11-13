@@ -3,7 +3,6 @@
 import type { Transaction } from '@rocicorp/zero';
 import type { Schema } from '../zero-schema';
 import { createMutators } from './mutators';
-import { canUpdateProject } from './auth-mutators.server';
 import { isAdmin } from './admin.server';
 
 // Type alias to avoid TypeScript complexity with ServerTransaction
@@ -20,11 +19,56 @@ export type AuthData = {
  * @param authData - Authentication data from cookie session
  * @param clientMutators - Client mutators to reuse
  */
+// Helper function to check if user can update a project
+async function canUpdateProject(
+  tx: AnyTransaction,
+  projectId: string,
+  userId: string
+): Promise<boolean> {
+  // Admins can always update
+  if (isAdmin(userId)) {
+    return true;
+  }
+
+  // If projectId is empty, checking for create permission (founder)
+  if (!projectId) {
+    const hasFounder = await tx.query.userIdentities
+      .where('userId', '=', userId)
+      .where('identityType', '=', 'founder')
+      .run();
+    return hasFounder.length > 0;
+  }
+
+  // Check if user owns the project
+  const projects = await tx.query.project.where('id', '=', projectId).run();
+  const project = projects.length > 0 ? projects[0] : null;
+
+  if (!project) {
+    return false; // Project doesn't exist
+  }
+
+  // Owner can update
+  if (project.userId === userId) {
+    // Also check if user has founder identity
+    const hasFounder = await tx.query.userIdentities
+      .where('userId', '=', userId)
+      .where('identityType', '=', 'founder')
+      .run();
+    return hasFounder.length > 0;
+  }
+
+  return false;
+}
+
 export function createServerMutators(
   authData: AuthData | undefined,
   clientMutators: any // Typed as any to avoid complex CustomMutatorDefs inference
 ) {
   return {
+    // ========================================
+    // PROJECT MUTATORS (Reference Implementation)
+    // ========================================
+
     project: {
       /**
        * Create a project (server-side)
@@ -53,21 +97,13 @@ export function createServerMutators(
 
         // Check if user can create projects (must be founder OR admin)
         const userIsAdmin = isAdmin(authData.sub);
-        const userIsFounder = await canUpdateProject(tx, '', authData.sub); // Will check founder identity
+        const userIsFounder = await canUpdateProject(tx, '', authData.sub);
 
         // Only founder users or admins can create projects
-        if (!userIsAdmin) {
-          // Check founder identity
-          const hasFounder = await tx.query.userIdentities
-            .where('userId', '=', authData.sub)
-            .where('identityType', '=', 'founder')
-            .run();
-
-          if (hasFounder.length === 0) {
+        if (!userIsAdmin && !userIsFounder) {
             throw new Error(
               'Forbidden: Only founders and admins can create projects. Purchase a founder identity first.'
             );
-          }
         }
 
         // If not admin, ensure user is creating project for themselves
@@ -115,7 +151,6 @@ export function createServerMutators(
         }
 
         // If trying to change userId (project owner), only admins can do this
-        // But allow if the userId is the same (not actually changing owner)
         if (newUserId !== undefined && newUserId !== null) {
           // Get current project to check current owner
           const projects = await tx.query.project.where('id', '=', id).run();
@@ -128,16 +163,15 @@ export function createServerMutators(
               throw new Error('Forbidden: Only admins can change project owner');
             }
           }
-          // If userId is the same or not provided, allow the update (already checked permissions above)
         }
 
-        // Delegate to client mutator (runs same logic but against server database)
+        // Delegate to client mutator
         await clientMutators.project.update(tx, args);
       },
 
       /**
        * Delete a project (server-side)
-       * Admin-only operation
+       * Enforces permissions: admin OR (founder AND owner)
        */
       delete: async (
         tx: AnyTransaction,
@@ -150,16 +184,15 @@ export function createServerMutators(
           throw new Error('Unauthorized: Must be logged in to delete projects');
         }
 
-        // Only admins can delete projects
-        const userIsAdmin = isAdmin(authData.sub);
-        if (!userIsAdmin) {
-          throw new Error('Forbidden: Only admins can delete projects');
-        }
+        const { id } = args;
 
-        // Verify project exists
-        const project = await tx.query.project.where('id', args.id).one();
-        if (!project) {
-          throw new Error('Project not found');
+        // Check permissions
+        const canUpdate = await canUpdateProject(tx, id, authData.sub);
+
+        if (!canUpdate) {
+          throw new Error(
+            'Forbidden: Only admins and project owners can delete projects'
+          );
         }
 
         // Delegate to client mutator
@@ -372,149 +405,6 @@ export function createServerMutators(
     },
 
     // ========================================
-    // CUP MUTATORS
-    // ========================================
-
-    cup: {
-      /**
-       * Create a cup (server-side)
-       * Admin-only operation
-       */
-      create: async (
-        tx: AnyTransaction,
-        args: {
-          id: string;
-          name: string;
-          description: string;
-          logoImageUrl: string;
-          size: number;
-          creatorId: string;
-          selectedProjectIds: string;
-          status: string;
-          currentRound: string;
-          winnerId: string;
-          createdAt: string;
-          startedAt: string;
-          completedAt: string;
-          updatedAt: string;
-          endDate: string;
-        }
-      ) => {
-        // Check authentication
-        if (!authData?.sub) {
-          throw new Error('Unauthorized: Must be logged in to create cups');
-        }
-
-        // Only admins can create cups
-        const userIsAdmin = isAdmin(authData.sub);
-        if (!userIsAdmin) {
-          throw new Error('Forbidden: Only admins can create cups');
-        }
-
-        // Delegate to client mutator
-        await clientMutators.cup.create(tx, args);
-      },
-
-      /**
-       * Update a cup (server-side)
-       * Admin-only operation
-       */
-      update: async (
-        tx: AnyTransaction,
-        args: {
-          id: string;
-          name?: string;
-          description?: string;
-          logoImageUrl?: string;
-        }
-      ) => {
-        // Check authentication
-        if (!authData?.sub) {
-          throw new Error('Unauthorized: Must be logged in to update cups');
-        }
-
-        // Only admins can update cups
-        const userIsAdmin = isAdmin(authData.sub);
-        if (!userIsAdmin) {
-          throw new Error('Forbidden: Only admins can update cups');
-        }
-
-        // Verify cup exists
-        const cup = await tx.query.cup.where('id', args.id).one();
-        if (!cup) {
-          throw new Error('Cup not found');
-        }
-
-        // Delegate to client mutator
-        await clientMutators.cup.update(tx, args);
-      },
-
-      /**
-       * Add a project to a cup (server-side)
-       * Admin-only operation
-       */
-      addProject: async (
-        tx: AnyTransaction,
-        args: {
-          cupId: string;
-          projectId: string;
-        }
-      ) => {
-        // Check authentication
-        if (!authData?.sub) {
-          throw new Error('Unauthorized: Must be logged in to add projects to cups');
-        }
-
-        // Only admins can add projects to cups
-        const userIsAdmin = isAdmin(authData.sub);
-        if (!userIsAdmin) {
-          throw new Error('Forbidden: Only admins can add projects to cups');
-        }
-
-        console.log('[SERVER addProject] Processing mutation:', {
-          cupId: args.cupId,
-          projectId: args.projectId,
-          userId: authData.sub,
-          isAdmin: userIsAdmin
-        });
-
-        // Delegate to client mutator (which will read latest state and append)
-        await clientMutators.cup.addProject(tx, args);
-
-        console.log('[SERVER addProject] Mutation completed:', {
-          cupId: args.cupId,
-          projectId: args.projectId
-        });
-      },
-
-      /**
-       * Remove a project from a cup (server-side)
-       * Admin-only operation
-       */
-      removeProject: async (
-        tx: AnyTransaction,
-        args: {
-          cupId: string;
-          projectId: string;
-        }
-      ) => {
-        // Check authentication
-        if (!authData?.sub) {
-          throw new Error('Unauthorized: Must be logged in to remove projects from cups');
-        }
-
-        // Only admins can remove projects from cups
-        const userIsAdmin = isAdmin(authData.sub);
-        if (!userIsAdmin) {
-          throw new Error('Forbidden: Only admins can remove projects from cups');
-        }
-
-        // Delegate to client mutator
-        await clientMutators.cup.removeProject(tx, args);
-      },
-    },
-
-    // ========================================
     // USER PREFERENCES MUTATORS
     // ========================================
 
@@ -529,6 +419,7 @@ export function createServerMutators(
           id: string;
           userId: string;
           newsletterSubscribed: string;
+          pushEnabled?: string;
           updatedAt: string;
         }
       ) => {
@@ -556,6 +447,7 @@ export function createServerMutators(
         args: {
           id: string;
           newsletterSubscribed?: string;
+          pushEnabled?: string;
           updatedAt: string;
         }
       ) => {
@@ -565,14 +457,40 @@ export function createServerMutators(
         }
 
         // Verify preferences exist
-        const preferences = await tx.query.userPreferences.where('id', args.id).one();
+        // Use .run() to execute the query and get actual results (not the query builder)
+        const preferencesResult = await tx.query.userPreferences.where('id', args.id).run();
+        const preferences = Array.from(preferencesResult)[0];
+        
         if (!preferences) {
           throw new Error('User preferences not found');
+        }
+
+        // Debug logging
+        console.log('[mutators.server] Updating preferences:', {
+          preferencesId: args.id,
+          preferencesUserId: preferences.userId,
+          authUserId: authData.sub,
+          match: preferences.userId === authData.sub,
+        });
+
+        // Check if userId exists in preferences
+        if (!preferences.userId) {
+          console.error('[mutators.server] Preferences missing userId field:', {
+            preferencesId: args.id,
+            preferencesKeys: Object.keys(preferences),
+            preferencesObject: preferences,
+          });
+          throw new Error('Invalid preferences: missing userId field');
         }
 
         // Check if user is updating their own preferences or is admin
         const userIsAdmin = isAdmin(authData.sub);
         if (preferences.userId !== authData.sub && !userIsAdmin) {
+          console.error('[mutators.server] Permission denied:', {
+            preferencesUserId: preferences.userId,
+            authUserId: authData.sub,
+            isAdmin: userIsAdmin,
+          });
           throw new Error('Forbidden: You can only update your own preferences');
         }
 

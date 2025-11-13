@@ -1,0 +1,115 @@
+{
+  "@type": "@builder.io/mitosis/component",
+  "name": "TaxiList",
+  "state": {
+    "services": []
+  },
+  "nodes": [
+    {
+      "name": "div",
+      "attributes": {
+        "class": "taxi-list-container"
+      },
+      "children": [
+        {
+          "name": "Heading",
+          "attributes": {
+            "level": 2
+          },
+          "children": [
+            {
+              "name": "text",
+              "bindings": {
+                "text": "'Taxi Services'"
+              }
+            }
+          ]
+        },
+        {
+          "name": "div",
+          "attributes": {
+            "class": "taxi-services-list"
+          },
+          "children": [
+            {
+              "name": "List",
+              "bindings": {
+                "items": "{{state.services}}"
+              },
+              "children": [
+                {
+                  "name": "Card",
+                  "bindings": {
+                    "key": "{{item.id}}"
+                  },
+                  "attributes": {
+                    "class": "taxi-service-card"
+                  },
+                  "children": [
+                    {
+                      "name": "div",
+                      "attributes": {
+                        "class": "taxi-service-header"
+                      },
+                      "children": [
+                        {
+                          "name": "div",
+                          "attributes": {
+                            "class": "taxi-service-title-section"
+                          },
+                          "children": [
+                            {
+                              "name": "Text",
+                              "attributes": {
+                                "class": "taxi-service-name"
+                              },
+                              "bindings": {
+                                "text": "{{item.name}}"
+                              }
+                            },
+                            {
+                              "name": "Text",
+                              "attributes": {
+                                "class": "taxi-service-description"
+                              },
+                              "bindings": {
+                                "text": "{{item.description}}"
+                              }
+                            }
+                          ]
+                        },
+                        {
+                          "name": "div",
+                          "attributes": {
+                            "class": "taxi-service-pricing"
+                          },
+                          "children": [
+                            {
+                              "name": "div",
+                              "attributes": {
+                                "class": "taxi-service-price"
+                              },
+                              "children": [
+                                {
+                                  "name": "Text",
+                                  "bindings": {
+                                    "text": "{{item.basePriceFormatted + ' + ' + item.pricePerKmFormatted + '/km'}}"
+                                  }
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
+

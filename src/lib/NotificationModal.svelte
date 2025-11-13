@@ -2,10 +2,6 @@
   import { goto } from "$app/navigation";
   import Icon from "@iconify/svelte";
   import NotificationItem from "./NotificationItem.svelte";
-  import PrizePoolDisplay from "./components/PrizePoolDisplay.svelte";
-  import VotingProgressDisplay from "./components/VotingProgressDisplay.svelte";
-  import OpponentReveal from "./components/OpponentReveal.svelte";
-  import VictoryCelebration from "./components/VictoryCelebration.svelte";
   import ImageDisplay from "./components/ImageDisplay.svelte";
   import Modal from "./Modal.svelte";
 
@@ -40,10 +36,6 @@
 
   // Component mapping
   const componentMap = {
-    PrizePoolDisplay: PrizePoolDisplay,
-    VotingProgressDisplay: VotingProgressDisplay,
-    OpponentReveal: OpponentReveal,
-    VictoryCelebration: VictoryCelebration,
     ImageDisplay: ImageDisplay,
   };
 
@@ -61,72 +53,6 @@
 
   // Get component props based on component type
   const getComponentProps = $derived(() => {
-    if (
-      notification.displayComponent === "PrizePoolDisplay" &&
-      notification.resourceType === "identityPurchase"
-    ) {
-      // For explorer invitations, resourceId format is "identityId|onboarderImageUrl"
-      // For regular purchases, resourceId is just the purchaseId
-      // Extract the first part (before |) as purchaseId
-      const purchaseId = notification.resourceId.includes("|")
-        ? notification.resourceId.split("|")[0]
-        : notification.resourceId;
-      return { purchaseId };
-    }
-
-    if (
-      notification.displayComponent === "VotingProgressDisplay" &&
-      notification.resourceType === "vote"
-    ) {
-      // Parse matchId, projectSide, and votesReceived from resourceId (format: "matchId|projectSide|votesReceived")
-      const parts = notification.resourceId.split("|");
-      const matchId = parts[0];
-      const projectSide =
-        parts[1] === "project1" || parts[1] === "project2"
-          ? parts[1]
-          : "project1";
-      const votesReceived = parts[2] ? parseInt(parts[2], 10) : 0;
-      return {
-        matchId,
-        projectSide,
-        votesReceived,
-        notificationIcon: notification.icon,
-      };
-    }
-
-    if (
-      notification.displayComponent === "OpponentReveal" &&
-      notification.resourceType === "opponentReveal"
-    ) {
-      // Parse matchId and opponentProjectId from resourceId (format: "matchId|opponentProjectId")
-      const parts = notification.resourceId.split("|");
-      const matchId = parts[0];
-      const opponentProjectId = parts[1] || "";
-      console.log("🎯 OpponentReveal props:", {
-        matchId,
-        opponentProjectId,
-        resourceId: notification.resourceId,
-      });
-      return {
-        matchId,
-        opponentProjectId,
-      };
-    }
-
-    if (
-      notification.displayComponent === "VictoryCelebration" &&
-      notification.resourceType === "cupWin"
-    ) {
-      // Parse cupId and projectId from resourceId (format: "cupId|projectId")
-      const parts = notification.resourceId.split("|");
-      const cupId = parts[0] || "";
-      // The cup name is not in the notification, but VictoryCelebration will fetch it
-      return {
-        cupId,
-        cupName: "", // Will be fetched by the component
-      };
-    }
-
     if (
       notification.displayComponent === "ImageDisplay" &&
       notification.imageUrl
@@ -261,6 +187,33 @@
       }
     }
 
+    // Handle enable_push action (push notification prompt)
+    if (action.action === "enable_push") {
+      markAsRead();
+      onClose();
+      
+      // Try to enable push directly
+      try {
+        const { initializePushNotifications } = await import('$lib/push-manager.ts');
+        const success = await initializePushNotifications();
+        
+        if (success) {
+          console.log('[Push] Push notifications enabled from notification action');
+          // Navigate to /alpha/me to show the updated state
+          goto(action.url || "/alpha/me");
+        } else {
+          console.warn('[Push] Failed to enable push from notification, navigating to settings');
+          // If it fails, navigate to settings page where user can try again
+          goto(action.url || "/alpha/me");
+        }
+      } catch (error) {
+        console.error('[Push] Error enabling push from notification:', error);
+        // Navigate to settings page on error
+        goto(action.url || "/alpha/me");
+      }
+      return;
+    }
+
     // Handle mark_read action (e.g., "Never mind" button)
     if (action.action === "mark_read") {
       markAsRead();
@@ -323,23 +276,14 @@
     {@const props = getComponentProps()}
     {#if Component}
       <div class="display-component-wrapper" onclick={(e) => e.stopPropagation()}>
-        {#if notification.displayComponent === "OpponentReveal"}
-          <Component
-            matchId={props.matchId}
-            opponentProjectId={props.opponentProjectId}
-          />
-        {:else if notification.displayComponent === "VictoryCelebration"}
-          <Component cupId={props.cupId} cupName={props.cupName} />
-        {:else if notification.displayComponent === "ImageDisplay"}
+        {#if notification.displayComponent === "ImageDisplay"}
           <Component imageUrl={props.imageUrl} />
-        {:else}
-          <Component {...props} />
         {/if}
       </div>
     {/if}
   {/if}
 
-  <div class="notification-content-wrapper" onclick={(e) => e.stopPropagation()}>
+  <div class="notification-content-wrapper" onclick={(e) => e.stopPropagation()} role="dialog" aria-label="Notification">
     <NotificationItem
       {notification}
       onMarkRead={handleMarkRead}
@@ -351,15 +295,16 @@
     <div class="actions-container">
       {#each actions() as action}
         {@const isNewsletterPrompt = notification.resourceType === "signup" && notification.resourceId === "newsletterPrompt"}
+        {@const isPushPrompt = notification.resourceType === "signup" && notification.resourceId === "pushPrompt"}
         {@const isInstagramFollow = notification.resourceType === "signup" && notification.resourceId === "instagramFollow"}
-        {@const isYesButton = action.action === "newsletter_subscribe"}
-        {@const isNoButton = action.action === "newsletter_decline"}
+        {@const isYesButton = (isNewsletterPrompt && action.action === "newsletter_subscribe") || (isPushPrompt && action.action === "enable_push")}
+        {@const isNoButton = (isNewsletterPrompt && action.action === "newsletter_decline") || (isPushPrompt && action.action === "mark_read")}
         {@const isInstagramButton = isInstagramFollow && action.action === "navigate" && action.url?.includes("instagram.com")}
         {@const isNeverMindButton = isInstagramFollow && action.action === "mark_read"}
         <button
           class="action-button"
-          class:action-button-yes={isNewsletterPrompt && isYesButton}
-          class:action-button-no={isNewsletterPrompt && isNoButton}
+          class:action-button-yes={(isNewsletterPrompt || isPushPrompt) && isYesButton}
+          class:action-button-no={(isNewsletterPrompt || isPushPrompt) && isNoButton}
           class:action-button-instagram={isInstagramButton}
           class:action-button-never-mind={isNeverMindButton}
           onclick={() => handleActionClick(action)}

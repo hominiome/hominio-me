@@ -141,8 +141,8 @@
   class:modal-mode={!showActions}
   onclick={showActions ? handleMarkRead : undefined}
   onkeydown={showActions ? handleKeydown : undefined}
-  role={showActions ? "button" : undefined}
-  tabindex={showActions ? 0 : undefined}
+  role={showActions ? "button" : "article"}
+  {...(showActions ? { tabindex: 0 } : {})}
   aria-label={isRead ? "Notification (read)" : "Notification (unread)"}
 >
   <div class="notification-content">

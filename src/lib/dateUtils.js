@@ -49,23 +49,6 @@ export function formatEndDate(iso) {
 }
 
 /**
- * Get match end date, falling back to round date if match doesn't have one
- * @param {object} match - Match object with endDate property
- * @param {array} roundMatches - All matches in the same round
- * @returns {string} ISO timestamp string (match endDate or first round match endDate)
- */
-export function getMatchEndDate(match, roundMatches) {
-  // If match has its own endDate, use it
-  if (match.endDate) {
-    return match.endDate;
-  }
-
-  // Otherwise, find the first match in the round that has an endDate
-  const roundMatchWithDate = roundMatches.find((m) => m.endDate);
-  return roundMatchWithDate?.endDate || "";
-}
-
-/**
  * Validate that date/time is in the future
  * @param {string} date - Date string in YYYY-MM-DD format
  * @param {string} time - Time string in HH:mm format

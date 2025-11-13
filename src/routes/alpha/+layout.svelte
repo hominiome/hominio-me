@@ -8,7 +8,6 @@
 import { authClient } from "$lib/auth.client.js";
 import { browser } from "$app/environment";
 import { env as publicEnv } from "$env/dynamic/public";
-import Footer from "$lib/components/Footer.svelte";
   import { page } from "$app/stores";
   import { getZeroServerUrl, getMainDomainUrl } from "$lib/utils/domain";
   import Navbar from "$lib/Navbar.svelte";
@@ -17,8 +16,29 @@ import Footer from "$lib/components/Footer.svelte";
   import NotificationBell from "$lib/NotificationBell.svelte";
   import Modal from "$lib/Modal.svelte";
   import InviteOnlyContent from "$lib/InviteOnlyContent.svelte";
-  import ProjectDetailContent from "$lib/ProjectDetailContent.svelte";
+  import VoiceCall from "$lib/components/VoiceCall.svelte";
   import { goto } from "$app/navigation";
+  import { voiceCallState } from "$lib/stores/voice-call";
+  
+  // Voice call component reference
+  let voiceCallComponent: VoiceCall | null = $state(null);
+  
+  // Reactive derived state - uses Svelte's native reactivity with store
+  // Use $ prefix to auto-subscribe to store
+  const isCallActive = $derived($voiceCallState.isRecording || $voiceCallState.isConnected);
+  
+  // Call handlers
+  async function handleStartCall() {
+    if (voiceCallComponent) {
+      await voiceCallComponent.startCall();
+    }
+  }
+  
+  async function handleStopCall() {
+    if (voiceCallComponent) {
+      await voiceCallComponent.stopCall();
+    }
+  }
 
   // Get session data from layout server and children snippet
   let { data, children } = $props<{
@@ -61,6 +81,20 @@ import Footer from "$lib/components/Footer.svelte";
   // Initialize Zero once and make it available via context
   onMount(() => {
     if (!browser) return; // Only run on client
+
+    // Register Service Worker for push notifications (non-blocking)
+    if ('serviceWorker' in navigator) {
+      import('$lib/push-manager.ts').then(({ registerServiceWorker, storeSessionToken }) => {
+        registerServiceWorker().then(() => {
+          // Store session token for Service Worker authentication
+          storeSessionToken().catch((err) => {
+            console.error('[Push] Failed to store session token:', err);
+          });
+        }).catch((err) => {
+          console.error('[Push] Failed to register service worker:', err);
+        });
+      });
+    }
 
     // Add global unhandled rejection handler for debugging
     // This will help us see what mutations are failing
@@ -167,6 +201,26 @@ import Footer from "$lib/components/Footer.svelte";
               } catch (error) {
                 // Silently fail - don't interrupt user flow
                 console.warn("[Newsletter] Failed to create newsletter prompt:", error);
+              }
+            })();
+
+            // Create push prompt notification for new users (if they haven't enabled push on any device)
+            // This should happen after newsletter prompt, before onboarding
+            (async () => {
+              try {
+                const response = await fetch("/alpha/api/create-push-prompt", {
+                  method: "POST",
+                });
+                // Silently handle - if it already exists, that's fine
+                if (response.ok) {
+                  const result = await response.json();
+                  if (result.success && !result.alreadyExists) {
+                    console.log("[Push] Push prompt notification created for new user");
+                  }
+                }
+              } catch (error) {
+                // Silently fail - don't interrupt user flow
+                console.warn("[Push] Failed to create push prompt:", error);
               }
             })();
 
@@ -718,9 +772,7 @@ import Footer from "$lib/components/Footer.svelte";
   const showEditProjectModal = $derived(
     modalType === "edit-project" && !!modalProjectId
   );
-  const showProjectDetailModal = $derived(
-    modalType === "project-detail" && !!modalProjectId
-  );
+  const showProjectDetailModal = $derived(false);
   const showCreateCupModal = $derived(modalType === "create-cup");
   const showEditCupModal = $derived(modalType === "edit-cup" && !!modalCupId);
   const showDeleteProjectModal = $derived(
@@ -1273,6 +1325,7 @@ import Footer from "$lib/components/Footer.svelte";
 {/if}
 
 {#if shouldShowNavbar}
+<VoiceCall bind:this={voiceCallComponent} />
 <Navbar
   session={$session}
   {signInWithGoogle}
@@ -1300,6 +1353,9 @@ import Footer from "$lib/components/Footer.svelte";
   }}
   modalLeftButtons={modalLeftButtons()}
   modalRightButtons={modalRightButtons()}
+  isCallActive={isCallActive}
+  onStartCall={handleStartCall}
+  onStopCall={handleStopCall}
 />
 {/if}
 
@@ -1310,22 +1366,31 @@ import Footer from "$lib/components/Footer.svelte";
 {#if shouldShowNavbar}
 <div
   class="fixed bottom-0 left-0 right-0 z-[9999] pointer-events-none"
-  style="height: 80px; background: linear-gradient(to bottom, transparent 0%, rgba(250, 249, 246, 0.75) 50%, rgba(250, 249, 246, 1) 100%); backdrop-filter: blur(28px) saturate(200%); -webkit-backdrop-filter: blur(28px) saturate(200%); mask-image: linear-gradient(to bottom, transparent 0%, rgba(0,0,0,0.75) 50%, black 100%); -webkit-mask-image: linear-gradient(to bottom, transparent 0%, rgba(0,0,0,0.75) 50%, black 100%); border-top: 1px solid rgba(255, 255, 255, 0.2); box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.12), inset 0 -1px 0 rgba(255, 255, 255, 0.2);"
+  style="height: 80px; background: linear-gradient(to bottom, transparent 0%, rgba(8, 27, 71, 0.6) 50%, rgba(8, 27, 71, 0.85) 100%); backdrop-filter: blur(28px) saturate(200%); -webkit-backdrop-filter: blur(28px) saturate(200%); mask-image: linear-gradient(to bottom, transparent 0%, rgba(0,0,0,0.75) 50%, black 100%); -webkit-mask-image: linear-gradient(to bottom, transparent 0%, rgba(0,0,0,0.75) 50%, black 100%); border-top: 1px solid rgba(255, 255, 255, 0.2); box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.2), inset 0 -1px 0 rgba(255, 255, 255, 0.15);"
 ></div>
 {/if}
 
 <div class="content-wrapper relative min-h-screen">
-  <div class="mx-auto w-full max-w-7xl px-2 sm:px-4 lg:px-6">
+  <!-- Conditional wrapper: full-width for activity page, constrained for others -->
+  {#if $page.url.pathname === '/alpha'}
+    <!-- Full-width for activity stream to show background image -->
     {@render children()}
-    
-    <!-- Footer -->
-    <Footer />
     
     <!-- Spacer to ensure content can scroll properly behind navbar - only if navbar should be visible -->
     {#if shouldShowNavbar}
     <div class="h-20"></div>
     {/if}
-  </div>
+  {:else}
+    <!-- Constrained width for other pages -->
+    <div class="mx-auto w-full max-w-7xl px-2 sm:px-4 lg:px-6">
+      {@render children()}
+      
+      <!-- Spacer to ensure content can scroll properly behind navbar - only if navbar should be visible -->
+      {#if shouldShowNavbar}
+      <div class="h-20"></div>
+      {/if}
+    </div>
+  {/if}
 </div>
 
 <ToastContainer />
@@ -1347,14 +1412,6 @@ import Footer from "$lib/components/Footer.svelte";
   </Modal>
 {/if}
 
-{#if showProjectDetailModal && modalProjectId}
-  <Modal open={showProjectDetailModal} onClose={handleModalClose}>
-    <ProjectDetailContent
-      projectId={modalProjectId}
-      onClose={handleModalClose}
-    />
-  </Modal>
-{/if}
 
 <style>
   .content-wrapper {

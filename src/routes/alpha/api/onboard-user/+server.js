@@ -54,7 +54,6 @@ export async function POST({ request }) {
         id: identityId,
         userId,
         identityType: "explorer",
-        votingWeight: 0, // No voting rights
         selectedAt: now,
         upgradedFrom: null,
       })
@@ -80,7 +79,7 @@ export async function POST({ request }) {
         resourceId: resourceId,
         title: "Welcome to Hominio! 🎉",
         previewTitle: "",
-        message: `You've been invited by ${onboarderName}! Welcome to the Hominio community. Start exploring and when you're ready, upgrade to vote on projects.`,
+        message: `You've been invited by ${onboarderName}! Welcome to the Hominio community.`,
         read: "false",
         createdAt: welcomeTimestamp, // Later timestamp - appears after newsletter
         actions: JSON.stringify([
@@ -105,7 +104,6 @@ export async function POST({ request }) {
         id: identityId,
         userId,
         identityType: "explorer",
-        votingWeight: 0,
       },
     });
   } catch (error) {

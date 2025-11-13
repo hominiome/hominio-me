@@ -23,6 +23,10 @@
     modalRightButtons = [],
     canCloseModal = true, // Whether the modal can be closed
     hasExplorerIdentity = true, // Whether user has explorer identity (default true for backward compatibility)
+    // Voice call props
+    isCallActive = false,
+    onStartCall,
+    onStopCall,
   } = $props<{
     session: any;
     signInWithGoogle: () => Promise<void>;
@@ -34,6 +38,9 @@
     modalRightButtons?: ModalButton[];
     canCloseModal?: boolean;
     hasExplorerIdentity?: boolean;
+    isCallActive?: boolean;
+    onStartCall?: () => Promise<void>;
+    onStopCall?: () => Promise<void>;
   }>();
 
   // Track if user image failed to load
@@ -77,21 +84,6 @@
 
     <!-- Navigation Links (Desktop) -->
     <div class="nav-links desktop-nav-links">
-      <a
-        href="/alpha/projects"
-        class="nav-link"
-        class:active={$page.url.pathname === "/alpha/projects"}
-      >
-        Projects
-      </a>
-
-      <a
-        href="/alpha/cups"
-        class="nav-link"
-        class:active={$page.url.pathname.startsWith("/alpha/cups")}
-      >
-        Cups
-      </a>
 
       {#if isAdmin}
         <a
@@ -209,7 +201,7 @@
           {/if}
         </div>
       {:else}
-        <!-- Default Mode: Normal navigation -->
+        <!-- Default Mode: Always use modal-style layout with center call button -->
         <div class="footer-nav-container">
           <!-- Left-aligned items -->
           <div class="footer-nav-left">
@@ -217,32 +209,45 @@
               <img src="/logo.png" alt="Hominio" class="footer-nav-logo" />
             </a>
 
+            <!-- Vibes nav item - hidden for now, keeping as reference -->
             <a
               href="/alpha"
               class="footer-nav-link"
               class:active={$page.url.pathname === "/alpha"}
+              style="display: none;"
             >
               <Icon name="mdi:check-circle" size={20} />
-              <span class="footer-nav-label">Live</span>
+              <span class="footer-nav-label">Vibes</span>
             </a>
+          </div>
 
-            <a
-              href="/alpha/cups"
-              class="footer-nav-link"
-              class:active={$page.url.pathname.startsWith("/alpha/cups")}
-            >
-              <Icon name="mdi:star" size={20} />
-              <span class="footer-nav-label">Cups</span>
-            </a>
-
-            <a
-              href="/alpha/projects"
-              class="footer-nav-link"
-              class:active={$page.url.pathname === "/alpha/projects"}
-            >
-              <Icon name="mdi:view-grid" size={20} />
-              <span class="footer-nav-label">Projects</span>
-            </a>
+          <!-- Center: Call Button -->
+          <div class="footer-nav-center">
+            {#if isCallActive}
+              <Button
+                variant="alert"
+                onclick={() => onStopCall?.()}
+                aria-label="Stop call"
+                size="sm"
+                class="!rounded-full call-button"
+              >
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M19,6.41L17.59,5L12,10.59L6.41,5L5,6.41L10.59,12L5,17.59L6.41,19L12,13.41L17.59,19L19,17.59L13.41,12L19,6.41Z" />
+                </svg>
+              </Button>
+            {:else}
+              <Button
+                variant="success"
+                onclick={() => onStartCall?.()}
+                aria-label="Start call"
+                size="sm"
+                class="!rounded-full call-button"
+              >
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M12,2A3,3 0 0,1 15,5V11A3,3 0 0,1 12,14A3,3 0 0,1 9,11V5A3,3 0 0,1 12,2M19,11C19,14.53 16.39,17.44 13,17.93V21H11V17.93C7.61,17.44 5,14.53 5,11H7A5,5 0 0,0 12,16A5,5 0 0,0 17,11H19Z" />
+                </svg>
+              </Button>
+            {/if}
           </div>
 
           <!-- Right-aligned items -->
@@ -547,9 +552,9 @@
 
   /* Footer nav container - defines the inner width */
   .footer-nav-container {
-    display: flex;
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
     align-items: center;
-    justify-content: space-between;
     width: 100%;
     padding: 0.5rem 0.75rem; /* Padding for inner content */
     padding-bottom: calc(0.5rem + env(safe-area-inset-bottom));
@@ -561,15 +566,51 @@
     display: flex;
     align-items: center;
     gap: 0.25rem;
-    flex: 1;
+    justify-content: flex-start;
     min-width: 0; /* Allow flex shrinking */
+  }
+
+  .footer-nav-center {
+    display: flex;
+    align-items: center; /* Center vertically */
+    justify-content: center;
+    grid-column: 2;
+    height: 100%; /* Fill container height */
+  }
+  
+  /* Calculate nav link height for circle button */
+  .footer-nav-container {
+    --nav-link-content-height: 60px; /* Height of nav links including padding */
   }
 
   .footer-nav-right {
     display: flex;
     align-items: center;
     gap: 0.25rem;
-    flex: 0 0 auto;
+    justify-content: flex-end;
+    min-width: 0; /* Allow flex shrinking */
+  }
+
+  /* Call button styling - ensure perfect circle, match nav link height */
+  .call-button {
+    aspect-ratio: 1 / 1 !important; /* Force perfect circle */
+    border-radius: 50% !important; /* Fully rounded */
+  }
+  
+  /* Ensure the Button component inside is a perfect circle */
+  .footer-nav-center :global(button) {
+    aspect-ratio: 1 / 1 !important; /* Force perfect circle */
+    border-radius: 50% !important; /* Fully rounded */
+    width: 60px !important; /* Match nav link width */
+    height: 60px !important; /* Match nav link height */
+    min-width: 60px !important;
+    min-height: 60px !important;
+    max-width: 60px !important;
+    max-height: 60px !important;
+    padding: 0 !important; /* Remove padding to maintain circle */
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
   }
 
   /* Footer nav link - refined, beautiful design */
@@ -587,7 +628,7 @@
     border: none;
     cursor: pointer;
     font-family: inherit;
-    border-radius: 0.75rem;
+    border-radius: 1rem; /* More rounded - increased from 0.75rem */
     flex: 0 0 auto; /* Don't fill space */
     max-width: 60px; /* Max width constraint */
     width: 60px; /* Fixed width */
@@ -612,7 +653,7 @@
     position: absolute;
     inset: -2px;
     background: rgba(45, 166, 180, 0.15);
-    border-radius: 0.75rem;
+    border-radius: 1rem; /* More rounded - increased from 0.75rem */
     z-index: -1;
     filter: blur(4px);
   }

@@ -177,7 +177,6 @@ async function ensureExplorerIdentity(userId: string, upgradedFrom: string | nul
         id: explorerId,
         userId,
         identityType: "explorer",
-        votingWeight: 0,
         selectedAt: new Date().toISOString(),
         upgradedFrom: upgradedFrom,
       })
@@ -202,31 +201,48 @@ async function createNotification(
   const zeroDb = getZeroDbInstance();
   const notificationId = nanoid();
 
+  const notification = {
+    id: notificationId,
+    userId: userId.trim(),
+    resourceType: "subscription",
+    resourceId: subscriptionId || "",
+    title,
+    previewTitle: "",
+    message,
+    read: "false",
+    createdAt: new Date().toISOString(),
+    actions: JSON.stringify([
+      {
+        label: actionLabel,
+        action: actionType,
+        url: actionUrl, // Keep URL as fallback for error cases
+      },
+    ]),
+    sound: "/notification.mp3",
+    icon: "mdi:check-circle",
+    displayComponent: "",
+    priority: "true",
+  };
+
   await zeroDb
     .insertInto("notification")
-    .values({
-      id: notificationId,
-      userId: userId.trim(),
-      resourceType: "subscription",
-      resourceId: subscriptionId || "",
-      title,
-      previewTitle: "",
-      message,
-      read: "false",
-      createdAt: new Date().toISOString(),
-      actions: JSON.stringify([
-        {
-          label: actionLabel,
-          action: actionType,
-          url: actionUrl, // Keep URL as fallback for error cases
-        },
-      ]),
-      sound: "/notification.mp3",
-      icon: "mdi:check-circle",
-      displayComponent: "",
-      priority: "true",
-    })
+    .values(notification)
     .execute();
+
+  // Send push notification (non-blocking)
+  const { sendPushForPriorityNotification } = await import("$lib/push-notifications.server.js");
+  sendPushForPriorityNotification({
+    id: notification.id,
+    userId: notification.userId,
+    title: notification.title,
+    message: notification.message,
+    resourceType: notification.resourceType,
+    resourceId: notification.resourceId,
+    priority: notification.priority,
+    icon: notification.icon,
+  }).catch((err) => {
+    console.error(`[Push] Failed to send push for notification ${notification.id}:`, err);
+  });
 }
 
 // Create webhook handlers configuration
@@ -293,7 +309,6 @@ const webhookConfig = {
 
       const hominioPackage = {
         packageType: "hominio",
-        votingWeight: 1,
         name: "❤︎ I am Hominio",
         price: 1200,
       };
@@ -310,7 +325,6 @@ const webhookConfig = {
             id: identityId,
             userId,
             identityType: hominioPackage.packageType,
-            votingWeight: hominioPackage.votingWeight,
             selectedAt: now,
             upgradedFrom: null,
             expiresAt: null,
@@ -524,7 +538,6 @@ const webhookConfig = {
             id: identityId,
             userId,
             identityType: "hominio",
-            votingWeight: 1,
             selectedAt: now,
             upgradedFrom: null,
             expiresAt: null,

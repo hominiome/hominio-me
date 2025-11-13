@@ -1,5 +1,5 @@
 <script>
-	let className = '';
+  let className = "";
 	export { className as class };
 </script>
 
@@ -21,6 +21,9 @@
 	.text-wrap-content {
 		max-width: 800px;
 		width: 100%;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    hyphens: auto;
 	}
 
 	:global(.text-wrap-content a) {
@@ -37,6 +40,7 @@
 	:global(.text-wrap-content h1) {
 		font-size: 2.5rem;
 		font-weight: 700;
+    margin-top: 0;
 		margin-bottom: 2rem;
 		line-height: 1.3;
 		color: #111827;
@@ -81,21 +85,35 @@
 	:global(.text-wrap-content p) {
 		font-size: 1rem;
 		line-height: 1.7;
-		margin-bottom: 1rem;
+    margin-top: 0;
+    margin-bottom: 1.5rem;
 		color: #4b5563;
 	}
 
+  :global(.text-wrap-content p:last-child) {
+    margin-bottom: 0;
+  }
+
 	:global(.text-wrap-content ul) {
-		margin-bottom: 1rem;
+    margin-top: 0;
+    margin-bottom: 1.5rem;
 		padding-left: 1.5rem;
 	}
+
+  :global(.text-wrap-content ul:last-child) {
+    margin-bottom: 0;
+  }
 
 	:global(.text-wrap-content li) {
 		font-size: 1rem;
 		line-height: 1.7;
-		margin-bottom: 0.5rem;
+    margin-bottom: 0.75rem;
 		color: #4b5563;
 	}
+
+  :global(.text-wrap-content li:last-child) {
+    margin-bottom: 0;
+  }
 
 	:global(.text-wrap-content strong) {
 		font-weight: 600;
@@ -109,25 +127,36 @@
 
 		:global(.text-wrap-content h1) {
 			font-size: 2rem;
+      margin-bottom: 1.5rem;
 		}
 
 		:global(.text-wrap-content h2) {
 			font-size: 1.5rem;
+      margin-top: 2.5rem;
+      margin-bottom: 0.875rem;
 		}
 
 		:global(.text-wrap-content h3) {
 			font-size: 1.25rem;
+      margin-top: 1.75rem;
+      margin-bottom: 0.625rem;
 		}
 
 		:global(.text-wrap-content h4),
 		:global(.text-wrap-content h5) {
 			font-size: 1.1rem;
+      margin-top: 1.5rem;
+      margin-bottom: 0.5rem;
 		}
 
-		:global(.text-wrap-content p),
+    :global(.text-wrap-content p) {
+      font-size: 0.938rem;
+      margin-bottom: 1.25rem;
+    }
+
 		:global(.text-wrap-content li) {
 			font-size: 0.938rem;
+      margin-bottom: 0.625rem;
 		}
 	}
 </style>
-

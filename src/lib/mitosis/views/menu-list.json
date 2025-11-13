@@ -1,0 +1,130 @@
+{
+  "@type": "@builder.io/mitosis/component",
+  "name": "MenuList",
+  "state": {
+    "menuItems": [],
+    "category": null
+  },
+  "nodes": [
+    {
+      "name": "div",
+      "attributes": {
+        "class": "menu-list-container"
+      },
+      "children": [
+        {
+          "name": "Heading",
+          "attributes": {
+            "level": 2
+          },
+          "children": [
+            {
+              "name": "text",
+              "bindings": {
+                "text": "{{state.category ? 'Menü - ' + state.category : 'Unser Menü'}}"
+              }
+            }
+          ]
+        },
+        {
+          "name": "div",
+          "attributes": {
+            "class": "menu-items-grid"
+          },
+          "children": [
+            {
+              "name": "List",
+              "bindings": {
+                "items": "{{state.menuItems}}"
+              },
+              "children": [
+                {
+                  "name": "Card",
+                  "bindings": {
+                    "key": "{{item.id}}"
+                  },
+                  "attributes": {
+                    "class": "menu-item-card"
+                  },
+                  "children": [
+                    {
+                      "name": "div",
+                      "attributes": {
+                        "class": "menu-item-header"
+                      },
+                      "children": [
+                        {
+                          "name": "div",
+                          "attributes": {
+                            "class": "menu-item-title-section"
+                          },
+                          "children": [
+                            {
+                              "name": "Text",
+                              "attributes": {
+                                "class": "menu-item-name"
+                              },
+                              "bindings": {
+                                "text": "{{item.name}}"
+                              }
+                            },
+                            {
+                              "name": "Text",
+                              "attributes": {
+                                "class": "menu-item-description"
+                              },
+                              "bindings": {
+                                "text": "{{item.description}}"
+                              }
+                            }
+                          ]
+                        },
+                            {
+                              "name": "div",
+                              "attributes": {
+                                "class": "menu-item-pricing"
+                              },
+                              "children": [
+                                {
+                                  "name": "div",
+                                  "attributes": {
+                                    "class": "menu-item-price"
+                                  },
+                                  "children": [
+                                    {
+                                      "name": "Text",
+                                      "bindings": {
+                                        "text": "{{item.priceFormatted}}"
+                                      }
+                                    },
+                                    {
+                                      "name": "span",
+                                      "attributes": {
+                                        "class": "menu-item-unit"
+                                      },
+                                      "children": [
+                                        {
+                                          "name": "Text",
+                                          "bindings": {
+                                            "text": "{{item.unitFormatted}}"
+                                          }
+                                        }
+                                      ]
+                                    }
+                                  ]
+                                }
+                              ]
+                            }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
+

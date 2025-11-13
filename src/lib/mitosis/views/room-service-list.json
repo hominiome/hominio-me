@@ -1,0 +1,130 @@
+{
+  "@type": "@builder.io/mitosis/component",
+  "name": "RoomServiceList",
+  "state": {
+    "services": [],
+    "category": null
+  },
+  "nodes": [
+    {
+      "name": "div",
+      "attributes": {
+        "class": "room-service-list-container"
+      },
+      "children": [
+        {
+          "name": "Heading",
+          "attributes": {
+            "level": 2
+          },
+          "children": [
+            {
+              "name": "text",
+              "bindings": {
+                "text": "{{state.category ? state.category + ' Room Service' : 'Room Service'}}"
+              }
+            }
+          ]
+        },
+        {
+          "name": "div",
+          "attributes": {
+            "class": "room-service-services-list"
+          },
+          "children": [
+            {
+              "name": "List",
+              "bindings": {
+                "items": "{{state.services}}"
+              },
+              "children": [
+                {
+                  "name": "Card",
+                  "bindings": {
+                    "key": "{{item.id}}"
+                  },
+                  "attributes": {
+                    "class": "room-service-service-card"
+                  },
+                  "children": [
+                    {
+                      "name": "div",
+                      "attributes": {
+                        "class": "room-service-service-header"
+                      },
+                      "children": [
+                        {
+                          "name": "div",
+                          "attributes": {
+                            "class": "room-service-service-title-section"
+                          },
+                          "children": [
+                            {
+                              "name": "Text",
+                              "attributes": {
+                                "class": "room-service-service-name"
+                              },
+                              "bindings": {
+                                "text": "{{item.name}}"
+                              }
+                            },
+                            {
+                              "name": "Text",
+                              "attributes": {
+                                "class": "room-service-service-description"
+                              },
+                              "bindings": {
+                                "text": "{{item.description}}"
+                              }
+                            }
+                          ]
+                        },
+                        {
+                          "name": "div",
+                          "attributes": {
+                            "class": "room-service-service-pricing"
+                          },
+                          "children": [
+                            {
+                              "name": "div",
+                              "attributes": {
+                                "class": "room-service-service-price"
+                              },
+                              "children": [
+                                {
+                                  "name": "Text",
+                                  "bindings": {
+                                    "text": "{{item.priceFormatted}}"
+                                  }
+                                },
+                                {
+                                  "name": "span",
+                                  "attributes": {
+                                    "class": "room-service-service-unit"
+                                  },
+                                  "children": [
+                                    {
+                                      "name": "Text",
+                                      "bindings": {
+                                        "text": "{{item.unitFormatted}}"
+                                      }
+                                    }
+                                  ]
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
+

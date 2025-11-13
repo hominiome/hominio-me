@@ -179,6 +179,9 @@ async function createTables() {
       .addColumn("newsletterSubscribed", "text", (col) =>
         col.notNull().defaultTo("false")
       )
+      .addColumn("pushEnabled", "text", (col) =>
+        col.notNull().defaultTo("false")
+      )
       .addColumn("updatedAt", "text", (col) => col.notNull())
       .execute();
 
@@ -190,7 +193,37 @@ async function createTables() {
 
     console.log("✅ UserPreferences table created\n");
 
-    // 9. Polar webhook events table (SERVER-SIDE ONLY - NOT in Zero schema, NOT synced to clients)
+    // 9. PushSubscription table (for Web Push Notifications)
+    console.log("📱 Creating pushSubscription table...");
+    await db.schema
+      .createTable("pushSubscription")
+      .ifNotExists()
+      .addColumn("id", "text", (col) => col.primaryKey())
+      .addColumn("userId", "text", (col) => col.notNull())
+      .addColumn("endpoint", "text", (col) => col.notNull())
+      .addColumn("p256dh", "text", (col) => col.notNull())
+      .addColumn("auth", "text", (col) => col.notNull())
+      .addColumn("userAgent", "text", (col) => col.notNull().defaultTo(""))
+      .addColumn("deviceName", "text", (col) => col.notNull().defaultTo("Unknown Device"))
+      .addColumn("createdAt", "text", (col) => col.notNull())
+      .addColumn("updatedAt", "text", (col) => col.notNull())
+      .execute();
+
+    // Create index for efficient lookups by userId
+    await sql`
+      CREATE INDEX IF NOT EXISTS idx_pushSubscription_user 
+      ON "pushSubscription"("userId")
+    `.execute(db);
+
+    // Create unique index on endpoint to prevent duplicates
+    await sql`
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_pushSubscription_endpoint 
+      ON "pushSubscription"("endpoint")
+    `.execute(db);
+
+    console.log("✅ PushSubscription table created\n");
+
+    // 10. Polar webhook events table (SERVER-SIDE ONLY - NOT in Zero schema, NOT synced to clients)
     // This table exists in the same Postgres DB but is completely isolated from Zero replication
     console.log("🔔 Creating polar_webhook_events table (server-side only)...");
     await db.schema
@@ -269,6 +302,7 @@ async function setupReplication() {
     "vote",
     "notification",
     "userPreferences",
+    "pushSubscription",
   ];
 
   // Enable replica identity for all tables
@@ -279,6 +313,7 @@ async function setupReplication() {
         "userIdentities",
         "identityPurchase",
         "userPreferences",
+        "pushSubscription",
       ].includes(table)
         ? `"${table}"`
         : table;
@@ -296,7 +331,7 @@ async function setupReplication() {
 
   // Create or update publication
   try {
-    await sql`CREATE PUBLICATION zero_data FOR TABLE project, cup, "cupMatch", "userIdentities", "identityPurchase", vote, notification, "userPreferences"`.execute(
+    await sql`CREATE PUBLICATION zero_data FOR TABLE project, cup, "cupMatch", "userIdentities", "identityPurchase", vote, notification, "userPreferences", "pushSubscription"`.execute(
       db
     );
     console.log("✅ Created publication 'zero_data'\n");
@@ -306,7 +341,7 @@ async function setupReplication() {
 
       // Ensure all current tables are included
       try {
-        await sql`ALTER PUBLICATION zero_data SET TABLE project, cup, "cupMatch", "userIdentities", "identityPurchase", vote, notification, "userPreferences"`.execute(
+        await sql`ALTER PUBLICATION zero_data SET TABLE project, cup, "cupMatch", "userIdentities", "identityPurchase", vote, notification, "userPreferences", "pushSubscription"`.execute(
           db
         );
         console.log("✅ Updated publication to include all tables\n");
@@ -490,6 +525,187 @@ async function addImageUrlToNotification() {
   }
 }
 
+/**
+ * Add pushEnabled column to userPreferences table if it doesn't exist
+ */
+async function addPushEnabledToUserPreferences() {
+  console.log("🔄 Adding pushEnabled column to userPreferences table...\n");
+
+  try {
+    // Check if column exists
+    const columnExists = await sql`
+      SELECT column_name 
+      FROM information_schema.columns 
+      WHERE table_name = 'userPreferences' 
+      AND column_name = 'pushEnabled'
+    `.execute(db);
+
+    if (columnExists.rows.length === 0) {
+      // Column doesn't exist, add it
+      await sql`
+        ALTER TABLE "userPreferences" 
+        ADD COLUMN "pushEnabled" text NOT NULL DEFAULT 'false'
+      `.execute(db);
+      console.log("✅ Added pushEnabled column to userPreferences table\n");
+    } else {
+      console.log("ℹ️  pushEnabled column already exists\n");
+    }
+  } catch (error) {
+    console.error("❌ Error adding pushEnabled column:", error.message);
+    throw error;
+  }
+}
+
+/**
+ * Ensure all userPreferences have a userId (migration for old data)
+ * This fixes any preferences that might have been created without userId
+ */
+async function ensureUserPreferencesHaveUserId() {
+  console.log("🔄 Ensuring all userPreferences have userId...\n");
+
+  try {
+    // Check if there are any preferences without userId
+    const preferencesWithoutUserId = await sql`
+      SELECT id 
+      FROM "userPreferences" 
+      WHERE "userId" IS NULL OR "userId" = ''
+    `.execute(db);
+
+    if (preferencesWithoutUserId.rows.length > 0) {
+      console.log(`⚠️  Found ${preferencesWithoutUserId.rows.length} preferences without userId, removing them...`);
+      
+      // Delete preferences without userId (they're invalid)
+      await sql`
+        DELETE FROM "userPreferences" 
+        WHERE "userId" IS NULL OR "userId" = ''
+      `.execute(db);
+      
+      console.log(`✅ Removed ${preferencesWithoutUserId.rows.length} invalid preferences\n`);
+    } else {
+      console.log("ℹ️  All preferences have userId\n");
+    }
+
+    // Ensure userId column is NOT NULL (should already be, but double-check)
+    try {
+      await sql`
+        ALTER TABLE "userPreferences" 
+        ALTER COLUMN "userId" SET NOT NULL
+      `.execute(db);
+      console.log("✅ Ensured userId column is NOT NULL\n");
+    } catch (error) {
+      if (error.message?.includes("already")) {
+        console.log("ℹ️  userId column already NOT NULL\n");
+      } else {
+        throw error;
+      }
+    }
+  } catch (error) {
+    console.error("❌ Error ensuring userId in userPreferences:", error.message);
+    throw error;
+  }
+}
+
+/**
+ * Add device information columns to pushSubscription table if they don't exist
+ */
+async function addDeviceInfoToPushSubscription() {
+  console.log("🔄 Adding device information to pushSubscription table...\n");
+
+  try {
+    // Check if userAgent column exists
+    const userAgentExists = await sql`
+      SELECT column_name 
+      FROM information_schema.columns 
+      WHERE table_name = 'pushSubscription' 
+      AND column_name = 'userAgent'
+    `.execute(db);
+
+    if (userAgentExists.rows.length === 0) {
+      await sql`
+        ALTER TABLE "pushSubscription" 
+        ADD COLUMN "userAgent" text NOT NULL DEFAULT ''
+      `.execute(db);
+      console.log("✅ Added userAgent column to pushSubscription table\n");
+    } else {
+      console.log("ℹ️  userAgent column already exists\n");
+    }
+
+    // Check if deviceName column exists
+    const deviceNameExists = await sql`
+      SELECT column_name 
+      FROM information_schema.columns 
+      WHERE table_name = 'pushSubscription' 
+      AND column_name = 'deviceName'
+    `.execute(db);
+
+    if (deviceNameExists.rows.length === 0) {
+      await sql`
+        ALTER TABLE "pushSubscription" 
+        ADD COLUMN "deviceName" text NOT NULL DEFAULT 'Unknown Device'
+      `.execute(db);
+      console.log("✅ Added deviceName column to pushSubscription table\n");
+    } else {
+      console.log("ℹ️  deviceName column already exists\n");
+    }
+  } catch (error) {
+    console.error("❌ Error adding device info to pushSubscription:", error.message);
+    throw error;
+  }
+}
+
+/**
+ * Create pushSubscription table if it doesn't exist
+ */
+async function createPushSubscriptionTable() {
+  console.log("🔄 Creating pushSubscription table...\n");
+
+  try {
+    // Check if table exists
+    const tableExists = await sql`
+      SELECT table_name 
+      FROM information_schema.tables 
+      WHERE table_name = 'pushSubscription'
+    `.execute(db);
+
+    if (tableExists.rows.length === 0) {
+      // Table doesn't exist, create it
+      await db.schema
+        .createTable("pushSubscription")
+        .addColumn("id", "text", (col) => col.primaryKey())
+        .addColumn("userId", "text", (col) => col.notNull())
+        .addColumn("endpoint", "text", (col) => col.notNull())
+        .addColumn("p256dh", "text", (col) => col.notNull())
+        .addColumn("auth", "text", (col) => col.notNull())
+        .addColumn("userAgent", "text", (col) => col.notNull().defaultTo(""))
+        .addColumn("deviceName", "text", (col) => col.notNull().defaultTo("Unknown Device"))
+        .addColumn("createdAt", "text", (col) => col.notNull())
+        .addColumn("updatedAt", "text", (col) => col.notNull())
+        .execute();
+
+      // Create indexes
+      await sql`
+        CREATE INDEX IF NOT EXISTS idx_pushSubscription_user 
+        ON "pushSubscription"("userId")
+      `.execute(db);
+
+      await sql`
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_pushSubscription_endpoint 
+        ON "pushSubscription"("endpoint")
+      `.execute(db);
+
+      // Enable replica identity
+      await sql`ALTER TABLE "pushSubscription" REPLICA IDENTITY FULL`.execute(db);
+
+      console.log("✅ Created pushSubscription table\n");
+    } else {
+      console.log("ℹ️  pushSubscription table already exists\n");
+    }
+  } catch (error) {
+    console.error("❌ Error creating pushSubscription table:", error.message);
+    throw error;
+  }
+}
+
 // Run migration
 createTables()
   .then(() => addExpiresAtColumn())
@@ -497,6 +713,10 @@ createTables()
   .then(() => removeCupIdFromUserIdentities())
   .then(() => removeCupIdFromIdentityPurchase())
   .then(() => addImageUrlToNotification())
+  .then(() => addPushEnabledToUserPreferences())
+  .then(() => createPushSubscriptionTable())
+  .then(() => addDeviceInfoToPushSubscription())
+  .then(() => ensureUserPreferencesHaveUserId())
   .then(() => {
     console.log("✨ Migration completed successfully!");
     process.exit(0);

@@ -7,24 +7,21 @@ import {
 import { zeroDb } from "$lib/db.server.js";
 import { getNotificationConfig } from "$lib/notification-helpers.server.js";
 
-// Package definitions - All identities are now universal (cupId = null)
+// Package definitions
 const PACKAGES = {
   hominio: {
     packageType: "hominio",
-    votingWeight: 1,
     name: "❤︎ I am Hominio",
     price: 1200, // Price in cents: 1200 = 12.00€/year (~14$ incl. taxes + VAT)
-    description: "Yearly Membership - Unlimited voting access to all cups",
+    description: "Yearly Membership",
   },
   founder: {
     packageType: "founder",
-    votingWeight: 5,
     name: "Hominio Founder",
     price: 1000, // Price in cents: 1000 = 10.00€
   },
   angel: {
     packageType: "angel",
-    votingWeight: 10,
     name: "Hominio Angel",
     price: 10000, // Price in cents: 10000 = 100.00€
   },
@@ -75,7 +72,7 @@ export async function POST({ request }) {
     // Find specific identity types
     const existingVotingIdentity = existingIdentities.find(id => 
       id.identityType === packageType || 
-      (id.votingWeight > 0 && ["hominio", "founder", "angel"].includes(id.identityType))
+      (["hominio", "founder", "angel"].includes(id.identityType))
     );
 
     if (existingVotingIdentity) {
@@ -99,12 +96,11 @@ export async function POST({ request }) {
         );
       }
 
-      // Update existing voting identity (upgrade from hominio to founder/angel)
+      // Update existing identity (upgrade from hominio to founder/angel)
       const updateQuery = zeroDb
         .updateTable("userIdentities")
         .set({
           identityType: selectedPackage.packageType,
-          votingWeight: selectedPackage.votingWeight,
           upgradedFrom: currentIdentityType,
           selectedAt: now, // Update selection time on upgrade
           expiresAt: null, // Clear expiration on upgrade (new purchase)
@@ -147,7 +143,6 @@ export async function POST({ request }) {
         notificationSubtype,
         {
           identityName,
-          cupName: "All Cups", // All identities are universal now
         }
       );
 
@@ -175,7 +170,6 @@ export async function POST({ request }) {
         success: true,
         identity: {
           identityType: selectedPackage.packageType,
-          votingWeight: selectedPackage.votingWeight,
           name: selectedPackage.name,
           upgradedFrom: currentIdentityType,
         },
@@ -191,7 +185,6 @@ export async function POST({ request }) {
           id: identityId,
           userId,
           identityType: selectedPackage.packageType,
-          votingWeight: selectedPackage.votingWeight,
           selectedAt: now,
           upgradedFrom: null,
           expiresAt: null, // No expiration for direct purchases
@@ -231,7 +224,6 @@ export async function POST({ request }) {
         notificationSubtype,
         {
           identityName,
-          cupName: "All Cups", // All identities are universal now
         }
       );
 
@@ -259,7 +251,6 @@ export async function POST({ request }) {
         success: true,
         identity: {
           identityType: selectedPackage.packageType,
-          votingWeight: selectedPackage.votingWeight,
           name: selectedPackage.name,
         },
         message: `Successfully purchased ${selectedPackage.name}`,

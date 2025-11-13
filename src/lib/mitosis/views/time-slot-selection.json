@@ -1,0 +1,91 @@
+{
+  "@type": "@builder.io/mitosis/component",
+  "name": "TimeSlotSelection",
+  "state": {
+    "service": {
+      "id": "",
+      "name": "",
+      "availableSlots": []
+    }
+  },
+  "nodes": [
+    {
+      "name": "div",
+      "attributes": {
+        "class": "time-slot-selection-container"
+      },
+      "children": [
+        {
+          "name": "div",
+          "attributes": {
+            "class": "time-slot-selection-header"
+          },
+          "children": [
+            {
+              "name": "Text",
+              "attributes": {
+                "class": "time-slot-selection-title"
+              },
+              "bindings": {
+                "text": "{{'Zeit-Slot für ' + state.service.name}}"
+              }
+            }
+          ]
+        },
+        {
+          "name": "div",
+          "attributes": {
+            "class": "time-slot-selection-message"
+          },
+          "children": [
+            {
+              "name": "Text",
+              "bindings": {
+                "text": "'Bitte wähle einen verfügbaren Zeit-Slot:'"
+              }
+            }
+          ]
+        },
+        {
+          "name": "div",
+          "attributes": {
+            "class": "time-slots-grid"
+          },
+          "children": [
+            {
+              "name": "List",
+              "bindings": {
+                "items": "{{state.service.availableSlots}}"
+              },
+              "children": [
+                {
+                  "name": "Show",
+                  "bindings": {
+                    "when": "{{item.available}}"
+                  },
+                  "children": [
+                    {
+                      "name": "div",
+                      "attributes": {
+                        "class": "time-slot-item"
+                      },
+                      "children": [
+                        {
+                          "name": "Text",
+                          "bindings": {
+                            "text": "{{item.time}}"
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
+

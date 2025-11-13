@@ -1,0 +1,85 @@
+{
+  "categories": {
+    "breakfast": [
+      {
+        "id": "breakfast-1",
+        "name": "Kontinentales Frühstück",
+        "description": "Kaffee, Tee, Croissants, Brot, Butter, Marmelade, Honig",
+        "price": 18.00,
+        "unit": "pro Person",
+        "availableUntil": "11:00"
+      },
+      {
+        "id": "breakfast-2",
+        "name": "Vollständiges Frühstück",
+        "description": "Kontinentales Frühstück plus Eier, Speck, Wurst, Käse",
+        "price": 28.00,
+        "unit": "pro Person",
+        "availableUntil": "11:00"
+      },
+      {
+        "id": "breakfast-3",
+        "name": "Frühstück aufs Zimmer",
+        "description": "Frühstücksbuffet aufs Zimmer",
+        "price": 35.00,
+        "unit": "pro Person",
+        "availableUntil": "11:00"
+      }
+    ],
+    "lunch": [
+      {
+        "id": "lunch-1",
+        "name": "Mittagessen aufs Zimmer",
+        "description": "Auswahl aus der Mittagskarte",
+        "price": 25.00,
+        "unit": "pro Person",
+        "availableUntil": "23:59"
+      },
+      {
+        "id": "lunch-2",
+        "name": "Business Lunch",
+        "description": "Schnelles Business Lunch Menü",
+        "price": 22.00,
+        "unit": "pro Person",
+        "availableUntil": "23:59"
+      }
+    ],
+    "dinner": [
+      {
+        "id": "dinner-1",
+        "name": "Abendessen aufs Zimmer",
+        "description": "Auswahl aus der Abendkarte",
+        "price": 35.00,
+        "unit": "pro Person",
+        "availableUntil": "23:59"
+      },
+      {
+        "id": "dinner-2",
+        "name": "Romantisches Dinner",
+        "description": "3-Gänge Menü mit Wein",
+        "price": 85.00,
+        "unit": "pro Person",
+        "availableUntil": "23:59"
+      }
+    ],
+    "snacks": [
+      {
+        "id": "snack-1",
+        "name": "Snack Box",
+        "description": "Verschiedene Snacks und Getränke",
+        "price": 15.00,
+        "unit": "pro Box",
+        "availableUntil": "23:59"
+      },
+      {
+        "id": "snack-2",
+        "name": "Minibar Nachfüllung",
+        "description": "Nachfüllung der Minibar",
+        "price": 45.00,
+        "unit": "pro Nachfüllung",
+        "availableUntil": "23:59"
+      }
+    ]
+  }
+}
+

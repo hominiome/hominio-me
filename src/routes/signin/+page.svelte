@@ -3,7 +3,6 @@
   import { onMount } from "svelte";
   import { goto } from "$app/navigation";
   import Loading from "$lib/components/Loading.svelte";
-  import Footer from "$lib/components/Footer.svelte";
 
   let loading = $state(true);
   let signingIn = $state(false);
@@ -90,9 +89,6 @@
       </div>
     {/if}
   </div>
-
-  <!-- Footer -->
-  <Footer />
 </div>
 
 <style>

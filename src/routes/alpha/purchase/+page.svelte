@@ -20,20 +20,18 @@
   const polarProductId =
     env.PUBLIC_POLAR_PRODUCT_ID_1 || "aa8e6119-7f7f-4ce3-abde-666720be9fb3";
 
-  // Package definitions - All identities are now universal (cupId = null)
+  // Package definitions
   const packages = [
     {
       packageType: "hominio",
-      votingWeight: 1,
       name: "I am Hominio",
       price: 12, // 12€/year (~14$ incl. taxes + VAT)
       priceCents: 1200,
-      description: "Yearly Membership - Unlimited voting access to all cups",
+      description: "Yearly Membership",
       usesPolar: true, // Uses Polar checkout
     },
     {
       packageType: "founder",
-      votingWeight: 5,
       name: "Hominio Founder",
       price: 987, // 987€
       priceCents: 98700,
@@ -139,9 +137,9 @@
           const identities = Array.from(data);
           console.log("[Purchase] Identities found:", identities.length);
           if (identities.length > 0) {
-            // Get the identity with highest voting weight
+            // Get the most recently selected identity
             userIdentity = identities.reduce((prev: any, curr: any) =>
-              curr.votingWeight > prev.votingWeight ? curr : prev
+              new Date(curr.selectedAt) > new Date(prev.selectedAt) ? curr : prev
             );
           } else {
             userIdentity = null;
@@ -390,9 +388,7 @@
         userIdentity = {
           id: userIdentity?.id || `temp-${Date.now()}`,
           userId: $session.data?.user?.id || "",
-          cupId: null, // All identities are universal
           identityType: result.identity.identityType,
-          votingWeight: result.identity.votingWeight,
           upgradedFrom: result.identity.upgradedFrom || null,
           selectedAt: new Date().toISOString(),
         };
@@ -540,18 +536,6 @@
                       d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"
                     />
                   </svg>
-                  <div class="flex items-baseline justify-center gap-2 mb-4">
-                    <div
-                      class="text-[3.5rem] font-black text-[#1a1a4e] leading-none"
-                    >
-                      {pkg.votingWeight}
-                    </div>
-                    <div
-                      class="text-xl text-[rgba(26,26,78,0.6)] font-semibold"
-                    >
-                      vote{pkg.votingWeight > 1 ? "s" : ""}
-                    </div>
-                  </div>
                   <h3 class="text-2xl font-bold text-[#1a1a4e] mt-2 mb-1">
                     {pkg.name}
                   </h3>
@@ -835,14 +819,6 @@
             >
               <div class="flex flex-col items-center text-center gap-4">
                 <h3 class="text-2xl font-bold text-[#1a1a4e]">{pkg.name}</h3>
-                <div class="flex items-baseline justify-center gap-2">
-                  <div class="text-3xl font-black text-[#1a1a4e] leading-none">
-                    {pkg.votingWeight}
-                  </div>
-                  <div class="text-lg text-[rgba(26,26,78,0.6)] font-semibold">
-                    vote{pkg.votingWeight > 1 ? "s" : ""}
-                  </div>
-                </div>
                 <div class="text-lg font-bold text-[#f4d03f]">
                   €{pkg.price}
                 </div>
