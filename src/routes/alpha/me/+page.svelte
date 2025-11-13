@@ -1305,12 +1305,7 @@
     margin-bottom: 2rem;
   }
 
-  .section-title {
-    font-size: 1.25rem;
-    font-weight: 500;
-    color: var(--color-brand-navy-500);
-    margin: 0 0 1rem 0;
-  }
+  /* .section-title removed - using global h2 styles from app.css */
 
 
   .divider-line {
