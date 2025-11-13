@@ -279,17 +279,20 @@ h1, h2 {
   font-family: var(--font-family-title);
   font-weight: 700; /* Archivo Bold for h1, h2 */
   line-height: 1.2;
+  text-transform: uppercase;
 }
 
 h3, h4, h5, h6 {
   font-family: var(--font-family-title);
   font-weight: 500; /* Archivo Medium for h3-h6 */
   line-height: 1.2;
+  text-transform: uppercase;
 }
 
 h1 span, h2 span, h3 span, h4 span, h5 span, h6 span {
   font-family: inherit;
   font-weight: inherit;
+  text-transform: inherit;
 }
 
 /* Montserrat has better baseline metrics - no special alignment hacks needed */
