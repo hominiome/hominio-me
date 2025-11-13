@@ -548,15 +548,28 @@
       let socketOpenTimeout: ReturnType<typeof setTimeout> | null = null;
       let preOpenErrorHandler: ((error: Error) => void) | null = null;
 
+      // Helper function to safely remove event listeners
+      const removeErrorHandler = (handler: ((error: Error) => void) | null) => {
+        if (!handler) return;
+        // Try different methods to remove the listener
+        if (typeof socket.off === 'function') {
+          socket.off("error", handler);
+        } else if (typeof socket.removeListener === 'function') {
+          socket.removeListener("error", handler);
+        } else if (typeof socket.removeEventListener === 'function') {
+          socket.removeEventListener("error", handler);
+        }
+        // If none of the methods exist, we can't remove it, but that's okay
+        // The handler will just not be called if the socket is already closed/errored
+      };
+
       const socketOpenPromise = new Promise<void>((resolve, reject) => {
         socketOpenTimeout = setTimeout(() => {
           if (!socketOpened) {
             console.error("❌ Socket open timeout after 10 seconds");
             // Remove the pre-open error handler since we're timing out
-            if (preOpenErrorHandler) {
-              socket.off("error", preOpenErrorHandler);
-              preOpenErrorHandler = null;
-            }
+            removeErrorHandler(preOpenErrorHandler);
+            preOpenErrorHandler = null;
             reject(new Error("Socket connection timeout"));
           }
         }, 10000); // 10 second timeout
@@ -568,10 +581,8 @@
             socketOpenTimeout = null;
           }
           // Remove the pre-open error handler since socket is now open
-          if (preOpenErrorHandler) {
-            socket.off("error", preOpenErrorHandler);
-            preOpenErrorHandler = null;
-          }
+          removeErrorHandler(preOpenErrorHandler);
+          preOpenErrorHandler = null;
           console.log("✅ Hume connection opened");
           isConnected = true;
 
@@ -593,7 +604,7 @@
           }
           console.error("❌ Socket error before open:", error);
           // Remove this handler since we're rejecting
-          socket.off("error", preOpenErrorHandler);
+          removeErrorHandler(preOpenErrorHandler);
           preOpenErrorHandler = null;
           reject(error);
         };
