@@ -120,7 +120,7 @@ export async function POST({ request }) {
           identityType: selectedPackage.packageType,
           price: selectedPackage.price,
           purchasedAt: now,
-          userIdentityId: existingIdentity.id,
+          userIdentityId: existingVotingIdentity.id,
         })
         .execute();
 
