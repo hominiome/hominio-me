@@ -16,7 +16,7 @@
     updateVoiceCallState,
     resetVoiceCallState,
   } from "$lib/stores/voice-call";
-  import MitosisRenderer from "$lib/mitosis/renderer.svelte";
+  import ComponentRenderer from "$lib/components/dynamic/ComponentRenderer.svelte";
 
   // Hume configuration from environment variable (runtime via $env/dynamic/public)
   const HUME_CONFIG_ID = env.PUBLIC_HUME_CONFIG_ID || "";
@@ -1257,15 +1257,15 @@
     <div class="transcript-area">
       {#if orderConfirmationUI}
         <div class="order-confirmation-wrapper">
-          <MitosisRenderer config={orderConfirmationUI} />
+          <ComponentRenderer component={orderConfirmationUI} />
         </div>
       {:else if timeSlotSelectionUI}
         <div class="time-slot-selection-wrapper">
-          <MitosisRenderer config={timeSlotSelectionUI} />
+          <ComponentRenderer component={timeSlotSelectionUI} />
         </div>
       {:else if cartUI}
         <div class="cart-wrapper">
-          <MitosisRenderer config={cartUI} />
+          <ComponentRenderer component={cartUI} />
         </div>
       {:else if actionMessage}
         <p class="action-message">{actionMessage}</p>

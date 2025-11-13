@@ -548,11 +548,12 @@
     flex-shrink: 0;
   }
 
-  /* Menu item price - huge, bold badge style */
+  /* Menu item price - huge, bold badge style with better contrast */
   :global(.menu-item-price) {
     font-weight: 800 !important;
-    color: white !important;
-    background: linear-gradient(135deg, var(--color-secondary-500), var(--color-secondary-600)) !important;
+    color: var(--color-brand-navy-800) !important;
+    background: var(--color-secondary-200) !important;
+    border: 2px solid var(--color-secondary-400) !important;
     font-size: 1.5rem !important;
     text-align: center !important;
     min-width: fit-content;
@@ -564,14 +565,14 @@
     letter-spacing: -0.02em !important;
     padding: 0.625rem 1rem !important;
     border-radius: 12px !important;
-    box-shadow: 0 2px 8px rgba(45, 166, 180, 0.25) !important;
+    box-shadow: 0 2px 8px rgba(45, 166, 180, 0.15) !important;
   }
 
   /* Menu item unit - tiny label inside badge */
   :global(.menu-item-unit) {
     font-size: 0.625rem !important;
-    font-weight: 500 !important;
-    color: rgba(255, 255, 255, 0.9) !important;
+    font-weight: 600 !important;
+    color: var(--color-secondary-700) !important;
     text-transform: lowercase !important;
   }
 

@@ -1,6 +1,6 @@
 <script lang="ts">
   import { activityStream } from "$lib/stores/activity-stream";
-  import MitosisRenderer from "$lib/mitosis/renderer.svelte";
+  import ComponentRenderer from "$lib/components/dynamic/ComponentRenderer.svelte";
   import { executeAction } from "$lib/voice/core-tools";
   import { onMount } from "svelte";
 
@@ -158,10 +158,8 @@
         <!-- Activity Content -->
         <div class="mt-4">
           {#if latestActivity.ui}
-            <MitosisRenderer
-              config={latestActivity.ui}
-              onMCPToolCall={(tool, params) =>
-                handleMCPToolCall(tool, params)}
+            <ComponentRenderer
+              component={latestActivity.ui}
             />
           {:else}
             <pre class="bg-gray-100 p-4 rounded-lg overflow-x-auto text-sm m-0">{JSON.stringify(
