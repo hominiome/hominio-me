@@ -485,15 +485,35 @@
       if (isIOSPWA) {
         console.log("📱 iOS PWA detected - unlocking audio playback...");
         try {
-          // Create a silent audio element and play it to unlock audio
-          // This is the recommended approach for iOS PWAs
+          // Create a silent audio element and try to play it to unlock audio
           const audio = new Audio();
-          audio.src = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=';
+          audio.src =
+            "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=";
           audio.volume = 0;
-          await audio.play();
-          console.log("✅ Audio unlocked for iOS PWA");
+          audio.muted = true;
+          audio.setAttribute("playsinline", "true");
+          const playPromise = audio.play();
+          if (playPromise?.then) {
+            playPromise
+              .then(() => {
+                console.log("✅ Audio unlocked for iOS PWA");
+                audio.pause();
+                audio.removeAttribute("src");
+              })
+              .catch((unlockErr: any) => {
+                console.log(
+                  "ℹ️ Silent audio unlock failed (might already be unlocked):",
+                  unlockErr?.message || unlockErr
+                );
+              });
+          } else {
+            console.log("ℹ️ Silent audio play() returned no promise (already unlocked?)");
+          }
         } catch (unlockErr: any) {
-          console.log("ℹ️ Could not unlock audio (might already be unlocked):", unlockErr.message);
+          console.log(
+            "ℹ️ Could not initialize silent audio unlock (might already be unlocked):",
+            unlockErr?.message || unlockErr
+          );
         }
       }
       
