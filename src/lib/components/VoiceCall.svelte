@@ -470,6 +470,51 @@
         console.log("✅ Microphone permission granted - reusing active stream");
       }
 
+      // Initialize audio player IMMEDIATELY after getUserMedia() 
+      // This is critical for iOS PWAs: AudioContext must be initialized/resumed
+      // while the user interaction (from getUserMedia) is still active
+      // iOS Safari requires user interaction to activate AudioContext from suspended state
+      console.log("🔄 Initializing audio player (while user interaction is active)...");
+      try {
+        console.log("📊 Creating EVIWebAudioPlayer instance...");
+        audioPlayer = new EVIWebAudioPlayer();
+        console.log("✅ EVIWebAudioPlayer instance created");
+        
+        console.log("📊 Calling audioPlayer.init()...");
+        // Initialize immediately - getUserMedia() above provides the required user interaction
+        await audioPlayer.init();
+        console.log("✅ Audio player initialized");
+        
+        // In iOS Safari/PWA, AudioContext starts in "suspended" state
+        // We need to explicitly resume it after initialization
+        // Try to access the internal AudioContext and resume it if suspended
+        try {
+          // @ts-ignore - accessing internal audioContext if available
+          const audioContext = audioPlayer.audioContext || (audioPlayer as any).context;
+          if (audioContext && typeof audioContext.resume === 'function') {
+            console.log("📊 Checking AudioContext state...");
+            if (audioContext.state === 'suspended') {
+              console.log("🔄 AudioContext is suspended, resuming...");
+              await audioContext.resume();
+              console.log("✅ AudioContext resumed, state:", audioContext.state);
+            } else {
+              console.log("✅ AudioContext already running, state:", audioContext.state);
+            }
+          }
+        } catch (resumeErr: any) {
+          // If we can't access/resume the AudioContext, that's okay
+          // The EVIWebAudioPlayer might handle it internally
+          console.log("ℹ️ Could not access/resume AudioContext directly:", resumeErr.message);
+        }
+      } catch (audioPlayerErr: any) {
+        console.error("❌ Failed to initialize audio player:", audioPlayerErr);
+        console.error("Audio player error details:", audioPlayerErr.message, audioPlayerErr.stack);
+        // Don't throw - continue without audio player (audio output won't work, but we can still try)
+        // We'll try to initialize it later when audio actually arrives
+        console.warn("⚠️ Continuing without audio player - will retry when audio arrives");
+        audioPlayer = null; // Clear the failed instance
+      }
+
       // Get access token from server (still connecting)
       const accessTokenResponse = await fetch("/alpha/api/hume/access-token");
       if (!accessTokenResponse.ok) {
@@ -484,40 +529,6 @@
       console.log("🔄 Initializing Hume client...");
       const client = new HumeClient({ accessToken });
       console.log("✅ Hume client initialized");
-
-      // Initialize audio player EARLY (before connection) for lower latency
-      // This reduces delay when first audio arrives
-      // Note: In iOS PWAs, audio context initialization can hang without user interaction
-      // We'll initialize it with a timeout and continue if it hangs
-      console.log("🔄 Initializing audio player...");
-      console.log("📊 Before audio player creation");
-      try {
-        console.log("📊 Creating EVIWebAudioPlayer instance...");
-        audioPlayer = new EVIWebAudioPlayer();
-        console.log("✅ EVIWebAudioPlayer instance created");
-        
-        console.log("📊 Calling audioPlayer.init() with timeout...");
-        // Use Promise.race to add a timeout for iOS PWA compatibility
-        const initPromise = audioPlayer.init();
-        const timeoutPromise = new Promise((_, reject) => {
-          setTimeout(() => {
-            reject(new Error("Audio player init timeout (iOS PWA may require user interaction)"));
-          }, 3000); // 3 second timeout
-        });
-        
-        await Promise.race([initPromise, timeoutPromise]);
-        console.log("🔊 Audio player initialized (early)");
-        console.log("📊 After audio player initialization");
-      } catch (audioPlayerErr: any) {
-        console.error("❌ Failed to initialize audio player:", audioPlayerErr);
-        console.error("Audio player error details:", audioPlayerErr.message, audioPlayerErr.stack);
-        // Don't throw - continue without audio player (audio output won't work, but we can still try)
-        // We'll try to initialize it later when audio actually arrives (after user interaction)
-        console.warn("⚠️ Continuing without audio player - will retry when audio arrives");
-        audioPlayer = null; // Clear the failed instance
-        console.log("📊 Continuing after audio player error");
-      }
-      console.log("📊 After audio player try-catch block");
 
       // Connect to EVI WebSocket
       console.log("🔄 Connecting to Hume EVI WebSocket...");
@@ -548,15 +559,28 @@
       let socketOpenTimeout: ReturnType<typeof setTimeout> | null = null;
       let preOpenErrorHandler: ((error: Error) => void) | null = null;
 
+      // Helper function to safely remove event listeners
+      const removeErrorHandler = (handler: ((error: Error) => void) | null) => {
+        if (!handler) return;
+        // Try different methods to remove the listener
+        if (typeof socket.off === 'function') {
+          socket.off("error", handler);
+        } else if (typeof socket.removeListener === 'function') {
+          socket.removeListener("error", handler);
+        } else if (typeof socket.removeEventListener === 'function') {
+          socket.removeEventListener("error", handler);
+        }
+        // If none of the methods exist, we can't remove it, but that's okay
+        // The handler will just not be called if the socket is already closed/errored
+      };
+
       const socketOpenPromise = new Promise<void>((resolve, reject) => {
         socketOpenTimeout = setTimeout(() => {
           if (!socketOpened) {
             console.error("❌ Socket open timeout after 10 seconds");
             // Remove the pre-open error handler since we're timing out
-            if (preOpenErrorHandler) {
-              socket.off("error", preOpenErrorHandler);
-              preOpenErrorHandler = null;
-            }
+            removeErrorHandler(preOpenErrorHandler);
+            preOpenErrorHandler = null;
             reject(new Error("Socket connection timeout"));
           }
         }, 10000); // 10 second timeout
@@ -568,10 +592,8 @@
             socketOpenTimeout = null;
           }
           // Remove the pre-open error handler since socket is now open
-          if (preOpenErrorHandler) {
-            socket.off("error", preOpenErrorHandler);
-            preOpenErrorHandler = null;
-          }
+          removeErrorHandler(preOpenErrorHandler);
+          preOpenErrorHandler = null;
           console.log("✅ Hume connection opened");
           isConnected = true;
 
@@ -593,7 +615,7 @@
           }
           console.error("❌ Socket error before open:", error);
           // Remove this handler since we're rejecting
-          socket.off("error", preOpenErrorHandler);
+          removeErrorHandler(preOpenErrorHandler);
           preOpenErrorHandler = null;
           reject(error);
         };
@@ -619,13 +641,28 @@
           // Handle audio output - use EVIWebAudioPlayer for smooth playback
           // Enqueue immediately without await for lower latency
           if (message.type === "audio_output") {
-            // Lazy initialize audio player if it wasn't initialized earlier (iOS PWA workaround)
+            // Lazy initialize audio player if it wasn't initialized earlier (fallback)
             if (!audioPlayer) {
-              console.log("🔄 Lazy initializing audio player (iOS PWA workaround)...");
+              console.log("🔄 Lazy initializing audio player (fallback)...");
               try {
                 audioPlayer = new EVIWebAudioPlayer();
                 await audioPlayer.init();
                 console.log("✅ Audio player initialized lazily");
+                
+                // Try to resume AudioContext if suspended (iOS PWA)
+                try {
+                  // @ts-ignore - accessing internal audioContext if available
+                  const audioContext = audioPlayer.audioContext || (audioPlayer as any).context;
+                  if (audioContext && typeof audioContext.resume === 'function') {
+                    if (audioContext.state === 'suspended') {
+                      console.log("🔄 Resuming suspended AudioContext...");
+                      await audioContext.resume();
+                      console.log("✅ AudioContext resumed, state:", audioContext.state);
+                    }
+                  }
+                } catch (resumeErr: any) {
+                  console.log("ℹ️ Could not access/resume AudioContext:", resumeErr.message);
+                }
               } catch (lazyInitErr: any) {
                 console.error("❌ Failed to lazy initialize audio player:", lazyInitErr);
                 // Continue without audio player - user won't hear audio but call can continue

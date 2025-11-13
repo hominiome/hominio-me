@@ -3,27 +3,22 @@
 @plugin '@tailwindcss/container-queries';
 
 /* Font Face Declarations */
+
+/* Manrope - Default Body Font */
 @font-face {
-  font-family: 'Yeseva One';
-  src: url('/fonts/Yeseva_One/YesevaOne-Regular.ttf') format('truetype');
+  font-family: 'Manrope';
+  src: url('/fonts/Manrope/Manrope-VariableFont_wght.ttf') format('truetype-variations');
+  font-weight: 200 800;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* Shrikhand - Title Font */
+@font-face {
+  font-family: 'Shrikhand';
+  src: url('/fonts/Shrikhand/Shrikhand-Regular.ttf') format('truetype');
   font-weight: 400;
   font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: 'Montserrat';
-  src: url('/fonts/Montserrat/Montserrat-VariableFont_wght.ttf') format('truetype-variations');
-  font-weight: 100 900;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: 'Montserrat';
-  src: url('/fonts/Montserrat/Montserrat-Italic-VariableFont_wght.ttf') format('truetype-variations');
-  font-weight: 100 900;
-  font-style: italic;
   font-display: swap;
 }
 
@@ -213,8 +208,8 @@
   --glass-border-opacity-heavy: 0.4;
 
       /* Font Families */
-      --font-family-title: 'Yeseva One', serif;
-      --font-family-body: 'Montserrat', sans-serif;
+      --font-family-title: 'Shrikhand', cursive;
+      --font-family-body: 'Manrope', sans-serif;
       
       --font-title: var(--font-family-title);
       --font-body: var(--font-family-body);
@@ -271,16 +266,24 @@ body > div {
   top: 0 !important;
 }
 
-h1, h2, h3, h4, h5, h6 {
+/* Headings - Shrikhand */
+h1, h2 {
   font-family: var(--font-family-title);
+  font-weight: 400; /* Shrikhand Regular */
+  line-height: 1.2;
+}
+
+h3, h4, h5, h6 {
+  font-family: var(--font-family-title);
+  font-weight: 400; /* Shrikhand Regular */
   line-height: 1.2;
 }
 
 h1 span, h2 span, h3 span, h4 span, h5 span, h6 span {
   font-family: inherit;
+  font-weight: inherit;
 }
 
-/* Montserrat has better baseline metrics - no special alignment hacks needed */
 /* Base font settings */
 p, span, div, button, a, label, input, textarea, select {
   font-family: var(--font-family-body);
