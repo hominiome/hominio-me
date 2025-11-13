@@ -11,6 +11,7 @@ export class AudioRecorder extends EventEmitter {
     recording: boolean = false;
     recordingWorklet: AudioWorkletNode | undefined;
     vuWorklet: AudioWorkletNode | undefined;
+    ownsStream: boolean = false; // Track if we own the stream (created it) or if it's shared
 
     private starting: Promise<void> | null = null;
 
@@ -18,32 +19,45 @@ export class AudioRecorder extends EventEmitter {
         super();
     }
 
-    async start() {
-        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-            throw new Error("Could not request user media");
+    async start(existingStream?: MediaStream) {
+        // If an existing stream is provided, use it (critical for iOS PWA - must use same stream as MediaRecorder)
+        if (existingStream) {
+            this.stream = existingStream;
+            this.ownsStream = false; // We don't own this stream - don't stop its tracks
+            console.log("✅ AudioRecorder using provided MediaStream (iOS PWA compatibility)");
+        } else {
+            // Otherwise, request a new stream (fallback for non-PWA usage)
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                throw new Error("Could not request user media");
+            }
+            this.ownsStream = true; // We own this stream - we can stop its tracks
         }
 
         this.starting = new Promise((resolve, reject) => {
             (async () => {
                 try {
-                    // Request microphone with preferred constraints
-                    // IMPORTANT: Enable echoCancellation to prevent AI from hearing its own voice output
-                    // This prevents feedback loops where AI responds to its own speech
-                    const preferredConstraints: MediaStreamConstraints = {
-                        audio: {
-                            channelCount: 1,
-                            sampleRate: this.sampleRate,
-                            echoCancellation: true, // Enable to prevent AI hearing its own voice
-                            noiseSuppression: true, // Enable for better audio quality
-                            autoGainControl: true, // Enable for consistent volume
-                        },
-                    };
+                    // Only request a new stream if one wasn't provided
+                    if (!this.stream) {
+                        // Request microphone with preferred constraints
+                        // IMPORTANT: Enable echoCancellation to prevent AI from hearing its own voice output
+                        // This prevents feedback loops where AI responds to its own speech
+                        const preferredConstraints: MediaStreamConstraints = {
+                            audio: {
+                                channelCount: 1,
+                                sampleRate: this.sampleRate,
+                                echoCancellation: true, // Enable to prevent AI hearing its own voice
+                                noiseSuppression: true, // Enable for better audio quality
+                                autoGainControl: true, // Enable for consistent volume
+                            },
+                        };
 
-                    try {
-                        this.stream = await navigator.mediaDevices.getUserMedia(preferredConstraints);
-                    } catch (err) {
-                        console.warn("⚠️ Preferred audio constraints failed, falling back to basic audio:", (err as Error).message);
-                        this.stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                        try {
+                            this.stream = await navigator.mediaDevices.getUserMedia(preferredConstraints);
+                        } catch (err) {
+                            console.warn("⚠️ Preferred audio constraints failed, falling back to basic audio:", (err as Error).message);
+                            this.stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                        }
+                        this.ownsStream = true; // We own this stream - we can stop its tracks
                     }
 
                     this.audioContext = await audioContext({
@@ -127,13 +141,17 @@ export class AudioRecorder extends EventEmitter {
             this.source?.disconnect();
             this.recordingWorklet?.disconnect();
             this.vuWorklet?.disconnect();
-            this.stream?.getTracks().forEach((track) => {
-                track.stop();
-            });
+            // Only stop stream tracks if we own the stream (not if it's shared with MediaRecorder)
+            if (this.ownsStream && this.stream) {
+                this.stream.getTracks().forEach((track) => {
+                    track.stop();
+                });
+            }
             this.stream = undefined;
             this.recordingWorklet = undefined;
             this.vuWorklet = undefined;
             this.recording = false;
+            this.ownsStream = false;
             this.emit('stopped');
         };
 
