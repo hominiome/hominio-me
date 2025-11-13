@@ -487,18 +487,40 @@
 
       // Initialize audio player EARLY (before connection) for lower latency
       // This reduces delay when first audio arrives
-      audioPlayer = new EVIWebAudioPlayer();
-      await audioPlayer.init();
-      console.log("🔊 Audio player initialized (early)");
+      console.log("🔄 Initializing audio player...");
+      console.log("📊 Before audio player creation");
+      try {
+        console.log("📊 Creating EVIWebAudioPlayer instance...");
+        audioPlayer = new EVIWebAudioPlayer();
+        console.log("✅ EVIWebAudioPlayer instance created");
+        
+        console.log("📊 Calling audioPlayer.init()...");
+        await audioPlayer.init();
+        console.log("🔊 Audio player initialized (early)");
+        console.log("📊 After audio player initialization");
+      } catch (audioPlayerErr: any) {
+        console.error("❌ Failed to initialize audio player:", audioPlayerErr);
+        console.error("Audio player error details:", audioPlayerErr.message, audioPlayerErr.stack);
+        // Don't throw - continue without audio player (audio output won't work, but we can still try)
+        console.warn("⚠️ Continuing without audio player - audio output may not work");
+        console.log("📊 Continuing after audio player error");
+      }
+      console.log("📊 After audio player try-catch block");
 
       // Connect to EVI WebSocket
       console.log("🔄 Connecting to Hume EVI WebSocket...");
       console.log("📊 Config ID:", HUME_CONFIG_ID ? "Set" : "Missing");
 
-      socket = await client.empathicVoice.chat.connect({
-        configId: HUME_CONFIG_ID,
-      });
-      console.log("✅ Socket created, waiting for open event...");
+      try {
+        socket = await client.empathicVoice.chat.connect({
+          configId: HUME_CONFIG_ID,
+        });
+        console.log("✅ Socket created, waiting for open event...");
+      } catch (socketConnectErr: any) {
+        console.error("❌ Failed to create socket:", socketConnectErr);
+        console.error("Socket connect error details:", socketConnectErr.message, socketConnectErr.stack);
+        throw socketConnectErr; // Re-throw to be caught by outer try-catch
+      }
 
       // Check initial socket state
       // @ts-ignore - readyState exists on the socket
