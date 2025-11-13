@@ -1,15 +1,20 @@
 <script lang="ts">
   import MenuList from './MenuList.svelte';
   import Cart from './Cart.svelte';
+  import SpaBeautyList from './SpaBeautyList.svelte';
+  import TaxiList from './TaxiList.svelte';
+  import RoomServiceList from './RoomServiceList.svelte';
   import type { ComponentResponse } from './types';
 
   export let component: ComponentResponse | null = null;
 
-  // Component registry
+  // Component registry - all native Svelte components (no Mitosis!)
   const components: Record<string, any> = {
     MenuList,
     Cart,
-    // Add more components here as we create them
+    SpaBeautyList,
+    TaxiList,
+    RoomServiceList,
   };
 </script>
 

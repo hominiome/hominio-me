@@ -33,10 +33,12 @@ export interface SpaBeautyService {
   id: string;
   name: string;
   description: string;
-  duration: string;
+  duration: string | number; // Can be number (minutes) or formatted string
   price: number;
   priceFormatted: string;
   category: string;
+  unit?: string;
+  unitFormatted?: string;
 }
 
 export interface TaxiService {
@@ -44,8 +46,11 @@ export interface TaxiService {
   name: string;
   description: string;
   capacity: number;
-  price: number;
-  priceFormatted: string;
+  basePrice: number;
+  basePriceFormatted: string;
+  pricePerKm: number;
+  pricePerKmFormatted: string;
+  unit: string;
 }
 
 export interface TimeSlot {
