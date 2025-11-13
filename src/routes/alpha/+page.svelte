@@ -92,11 +92,11 @@
 
 <div class="min-h-screen p-0 m-0 bg-[#f0f2f5]">
   <!-- Inner content wrapper -->
-  <div class="max-w-6xl mx-auto px-[6px] md:px-6 py-8 w-full relative z-[1]">
+  <div class="max-w-6xl mx-auto px-[6px] md:px-6 py-2 md:py-8 w-full relative z-[1]">
     {#if activities.length === 0}
       <!-- Empty State -->
-      <div class="p-8 flex justify-center items-start w-full min-h-[calc(100vh-200px)]">
-        <div class="bg-white border border-[rgba(8,27,71,0.12)] rounded-3xl p-8 md:p-10 lg:p-12 shadow-[0_4px_20px_rgba(8,27,71,0.08),0_1px_4px_rgba(8,27,71,0.04)] max-w-3xl w-full">
+      <div class="p-2 md:p-8 flex justify-center items-start w-full min-h-[calc(100vh-200px)]">
+        <div class="bg-white border border-[rgba(8,27,71,0.12)] rounded-3xl p-4 md:p-10 lg:p-12 shadow-[0_4px_20px_rgba(8,27,71,0.08),0_1px_4px_rgba(8,27,71,0.04)] max-w-3xl w-full">
           <div class="mb-10 text-center">
             <h2 class="text-3xl md:text-4xl lg:text-5xl font-semibold text-gray-800 mb-4 leading-tight">
               Ich bin Hominio, dein persönlicher Concierge.
