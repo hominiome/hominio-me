@@ -1,13 +1,18 @@
 import { json, error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { loadView } from '$lib/mitosis/view-loader';
 import { requireExplorerIdentity } from '$lib/api-helpers.server.js';
 import menuData from '$lib/data/menu.json';
 import spaBeautyData from '$lib/data/spa-beauty.json';
 import taxiData from '$lib/data/taxi.json';
 import roomServiceData from '$lib/data/room-service.json';
 import type { CartItem, Cart } from '$lib/stores/cart';
-import { createMenuListComponent, createCartComponent } from '$lib/components/dynamic/component-loader';
+import { 
+  createMenuListComponent, 
+  createCartComponent,
+  createSpaBeautyListComponent,
+  createTaxiListComponent,
+  createRoomServiceListComponent
+} from '$lib/components/dynamic/component-loader';
 
 // Removed todosStore - todos functionality removed
 
@@ -165,18 +170,19 @@ const actionHandlers: Record<string, (params: any) => Promise<{ result: any; ui?
       ...service,
       priceFormatted: `€${service.price.toFixed(2)}`,
       unitFormatted: `/${service.unit}`,
+      duration: `${service.duration} Min`,
       availableSlotsCount: service.availableSlots.filter((slot: any) => slot.available).length
     }));
     
     const output = { services: formattedServices, category: selectedCategory };
     
-    const viewId = params.view || 'spa-beauty-list';
-    const ui = loadView(viewId, { services: formattedServices, category: selectedCategory });
+    // Use native Svelte component instead of Mitosis
+    const ui = createSpaBeautyListComponent(formattedServices, selectedCategory);
     
     return {
       result: output,
       ui,
-      view: viewId
+      view: 'spa-beauty-list'
     };
   },
 
@@ -596,13 +602,13 @@ const actionHandlers: Record<string, (params: any) => Promise<{ result: any; ui?
     
     const output = { services: formattedServices };
     
-    const viewId = params.view || 'taxi-list';
-    const ui = loadView(viewId, { services: formattedServices });
+    // Use native Svelte component instead of Mitosis
+    const ui = createTaxiListComponent(formattedServices);
     
     return {
       result: output,
       ui,
-      view: viewId
+      view: 'taxi-list'
     };
   },
 
@@ -645,18 +651,19 @@ const actionHandlers: Record<string, (params: any) => Promise<{ result: any; ui?
     const formattedServices = services.map(service => ({
       ...service,
       priceFormatted: `€${service.price.toFixed(2)}`,
-      unitFormatted: `/${service.unit}`
+      unitFormatted: `/${service.unit}`,
+      category: selectedCategory
     }));
     
     const output = { services: formattedServices, category: selectedCategory };
     
-    const viewId = params.view || 'room-service-list';
-    const ui = loadView(viewId, { services: formattedServices, category: selectedCategory });
+    // Use native Svelte component instead of Mitosis
+    const ui = createRoomServiceListComponent(formattedServices, selectedCategory);
     
     return {
       result: output,
       ui,
-      view: viewId
+      view: 'room-service-list'
     };
   },
 };

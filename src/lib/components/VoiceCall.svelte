@@ -1,13 +1,6 @@
 <script lang="ts">
   import { onDestroy } from "svelte";
-  import {
-    HumeClient,
-    getBrowserSupportedMimeType,
-    getAudioStream,
-    ensureSingleValidAudioTrack,
-    convertBlobToBase64,
-    EVIWebAudioPlayer,
-  } from "hume";
+  import { HumeClient } from "hume";
   import { browser } from "$app/environment";
   import { env } from "$env/dynamic/public";
   import { executeAction } from "$lib/voice/core-tools";
@@ -17,6 +10,9 @@
     resetVoiceCallState,
   } from "$lib/stores/voice-call";
   import ComponentRenderer from "$lib/components/dynamic/ComponentRenderer.svelte";
+  import { AudioRecorder } from "$lib/audio/audio-recorder";
+  import { AudioStreamer } from "$lib/audio/audio-streamer";
+  import { audioContext } from "$lib/audio/utils";
 
   // Hume configuration from environment variable (runtime via $env/dynamic/public)
   const HUME_CONFIG_ID = env.PUBLIC_HUME_CONFIG_ID || "";
@@ -73,39 +69,10 @@
 
   // Hume instances
   let socket: any = null;
-  let audioStream: MediaStream | null = null;
-  let micMonitor: HTMLAudioElement | null = null;
-  let micAudioContext: AudioContext | null = null;
-  let micSourceNode: MediaStreamAudioSourceNode | null = null;
-  let micGainNode: GainNode | null = null;
-  const preferredAudioConstraints: MediaStreamConstraints = {
-    audio: {
-      channelCount: 1,
-      sampleRate: 44100,
-      echoCancellation: false,
-      noiseSuppression: false,
-      autoGainControl: false,
-    },
-  };
-
-  async function acquireAudioStream() {
-    if (!navigator.mediaDevices) {
-      throw new Error("MediaDevices API not available");
-    }
-
-    try {
-      return await navigator.mediaDevices.getUserMedia(preferredAudioConstraints);
-    } catch (err) {
-      console.warn(
-        "⚠️ Preferred audio constraints failed, falling back to basic audio stream:",
-        (err as Error).message
-      );
-      return await navigator.mediaDevices.getUserMedia({ audio: true });
-    }
-  }
-  let mediaRecorder: MediaRecorder | null = null;
-  let audioPlayer: EVIWebAudioPlayer | null = null;
-  let permissionStream: MediaStream | null = null; // Store stream from permission request if still active
+  let audioRecorder: AudioRecorder | null = null;
+  let audioStreamer: AudioStreamer | null = null;
+  let audioChunkQueue: string[] = []; // Queue for base64 audio chunks until socket is ready
+  let humeReady: boolean = false; // Track if Hume has sent a ready/setup_complete message
 
   // Client-side tool call handler
   async function handleToolCall(message: any) {
@@ -479,144 +446,220 @@
       // This is critical for iOS PWAs - permission must be requested early
       // AND we must start using it immediately or iOS will close it!
       console.log("🎤 Requesting microphone permission...");
-      
-      // Get a fresh stream every time - don't try to reuse old streams
-      // iOS PWA requires active usage to keep permission alive
-      try {
-        audioStream = await acquireAudioStream();
-        console.log("✅ Microphone permission granted - stream active");
 
-        // CRITICAL for iOS PWA: Start MediaRecorder IMMEDIATELY to keep stream alive!
-        // iOS closes streams that aren't actively being recorded
-        // We'll queue chunks and send them once WebSocket is ready
-        try {
-          const mimeTypeResult = getBrowserSupportedMimeType();
-          const mimeType = mimeTypeResult.success ? mimeTypeResult.mimeType : "audio/webm";
-          
-          mediaRecorder = new MediaRecorder(audioStream, { mimeType });
-          
-          // Queue for chunks until socket is ready
-          const audioChunkQueue: Blob[] = [];
-          
-          mediaRecorder.ondataavailable = async (event) => {
-            if (event.data.size < 1) return;
-            
-            // Check socket reference (will be set later)
-            const currentSocket = socket;
-            if (currentSocket && (currentSocket as any).readyState === 1) {
-              try {
-                const encodedAudioData = await convertBlobToBase64(event.data);
-                currentSocket.sendAudioInput({ data: encodedAudioData });
-              } catch (err: any) {
-                console.error("❌ Error sending audio:", err);
-              }
-      } else {
-              // Queue chunk until socket is ready
-              audioChunkQueue.push(event.data);
-      }
-          };
-          
-          // Start recording IMMEDIATELY - this keeps the stream alive!
-          mediaRecorder.start(50);
-          isRecording = true;
-          console.log("🎤 MediaRecorder started immediately to keep stream alive");
-      
-          // Once socket is ready, send queued chunks
-          const sendQueuedChunks = async () => {
-            const currentSocket = socket;
-            if (!currentSocket || (currentSocket as any).readyState !== 1) {
-              return;
-            }
-            
-            while (audioChunkQueue.length > 0) {
-              const chunk = audioChunkQueue.shift();
-              if (chunk && currentSocket && (currentSocket as any).readyState === 1) {
-                try {
-                  const encodedAudioData = await convertBlobToBase64(chunk);
-                  currentSocket.sendAudioInput({ data: encodedAudioData });
-                } catch (err: any) {
-                  console.error("❌ Error sending queued audio:", err);
-                  break; // Stop if there's an error
-                }
-          } else {
-                break; // Socket closed, stop sending
-              }
-            }
-          };
-          
-          // Store function and queue reference to call when socket opens
-          (window as any).__sendQueuedAudioChunks = sendQueuedChunks;
-          (window as any).__audioChunkQueue = audioChunkQueue;
-        } catch (recorderErr: any) {
-          console.error("❌ Failed to start MediaRecorder immediately:", recorderErr);
-          // Continue anyway - we'll try again in startAudioCapture
+      // OPTIMIZED: Use MediaRecorder for WebM/Opus format + AudioWorklet to keep stream alive in iOS PWA
+      // MediaRecorder gives us the exact same format as before (WebM/Opus)
+      // AudioWorklet runs in parallel to keep the stream alive in iOS PWA standalone mode
+      let mediaRecorder: MediaRecorder | null = null;
+      let mediaStream: MediaStream | null = null;
+
+      try {
+        // Get microphone stream
+        // IMPORTANT: Enable echoCancellation to prevent AI from hearing its own voice output
+        // This prevents feedback loops where AI responds to its own speech
+        mediaStream = await navigator.mediaDevices.getUserMedia({
+          audio: {
+            channelCount: 1,
+            echoCancellation: true, // Enable to prevent AI hearing its own voice
+            noiseSuppression: true, // Enable for better audio quality
+            autoGainControl: true, // Enable for consistent volume
+          },
+        });
+
+        // Start AudioWorklet in parallel to keep stream alive in iOS PWA
+        // This doesn't interfere with MediaRecorder, but ensures the stream stays active
+        audioRecorder = new AudioRecorder(16000);
+        await audioRecorder.start();
+        // AudioWorklet is now running and keeping the stream alive
+
+        // Get browser-supported MIME type (same as MediaRecorder)
+        const mimeTypes = [
+          "audio/webm;codecs=opus",
+          "audio/webm",
+          "audio/ogg;codecs=opus",
+          "audio/mp4",
+        ];
+
+        let selectedMimeType = "audio/webm";
+        for (const mimeType of mimeTypes) {
+          if (MediaRecorder.isTypeSupported(mimeType)) {
+            selectedMimeType = mimeType;
+            break;
+          }
         }
 
-        // CRITICAL for iOS: Keep the microphone stream alive by piping it into a muted audio element
-        // AND by creating an AudioContext pipeline (belt and suspenders approach)
-        try {
-          if (!micMonitor) {
-            micMonitor = document.createElement("audio");
-            micMonitor.setAttribute("playsinline", "true");
-            micMonitor.muted = true;
-            micMonitor.autoplay = true;
-            micMonitor.style.display = "none";
-            document.body.appendChild(micMonitor);
+        console.log(
+          "🎤 Using MediaRecorder (WebM/Opus) + AudioWorklet (iOS PWA), MIME type:",
+          selectedMimeType
+        );
+
+        // Create MediaRecorder on the mic stream (WebM/Opus format - same as before!)
+        mediaRecorder = new MediaRecorder(mediaStream, {
+          mimeType: selectedMimeType,
+        });
+
+        // Track chunk statistics
+        let chunkCount = 0;
+        let totalBytesSent = 0;
+        let firstChunkTime = 0;
+
+        // Handle MediaRecorder data (WebM/Opus format - EXACT same format as MediaRecorder!)
+        mediaRecorder.ondataavailable = async (event: BlobEvent) => {
+          if (event.data.size === 0) {
+            console.warn("⚠️ Empty audio chunk received");
+            return;
           }
 
-          if (micMonitor && audioStream) {
-            micMonitor.srcObject = audioStream;
-            const playPromise = micMonitor.play();
-            if (playPromise && typeof playPromise.catch === "function") {
-              playPromise.catch((err: any) => {
-                console.warn("⚠️ mic monitor play() rejected:", err?.message);
+          chunkCount++;
+          const chunkTime = Date.now();
+
+          // Convert Blob to base64 (exactly like MediaRecorder implementation)
+          const base64Data = await new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onloadend = () => {
+              const base64 =
+                (reader.result as string).split(",")[1] ||
+                (reader.result as string);
+              resolve(base64);
+            };
+            reader.onerror = reject;
+            reader.readAsDataURL(event.data);
+          });
+
+          // Detailed logging for first few chunks (like MediaRecorder)
+          if (chunkCount <= 5) {
+            const blobSize = event.data.size;
+            const base64Length = base64Data.length;
+            const audioTrack = mediaStream?.getAudioTracks()[0];
+            const settings = audioTrack?.getSettings();
+
+            console.log(`📊 MediaRecorder Chunk #${chunkCount}:`, {
+              blobSize,
+              base64Length,
+              mimeType: event.data.type,
+              sampleRate: settings?.sampleRate,
+              channelCount: settings?.channelCount,
+              duration: chunkTime - (firstChunkTime || chunkTime),
+              firstChunk: chunkCount === 1,
+            });
+
+            // Log first chunk in detail
+            if (chunkCount === 1) {
+              firstChunkTime = chunkTime;
+              // Try to decode and analyze the blob
+              const arrayBuffer = await event.data.arrayBuffer();
+              const uint8Array = new Uint8Array(arrayBuffer);
+              console.log("📊 First chunk binary analysis:", {
+                arrayBufferSize: arrayBuffer.byteLength,
+                uint8ArrayLength: uint8Array.length,
+                firstBytes: Array.from(uint8Array.slice(0, 20)),
+                lastBytes: Array.from(uint8Array.slice(-20)),
+                // Check if it's WebM (starts with 0x1A 0x45 0xDF 0xA3)
+                isWebM:
+                  uint8Array[0] === 0x1a &&
+                  uint8Array[1] === 0x45 &&
+                  uint8Array[2] === 0xdf &&
+                  uint8Array[3] === 0xa3,
+                // Check if it's OGG (starts with "OggS")
+                isOGG:
+                  uint8Array[0] === 0x4f &&
+                  uint8Array[1] === 0x67 &&
+                  uint8Array[2] === 0x67 &&
+                  uint8Array[3] === 0x53,
               });
             }
-            console.log("✅ Mic monitor element started to keep stream alive");
-          }
-        } catch (monitorErr: any) {
-          console.warn("⚠️ Failed to start mic monitor element:", monitorErr?.message);
-        }
-
-        // Also create an AudioContext pipeline to keep the stream active
-        try {
-          const AudioContextConstructor =
-            (window as any).AudioContext || (window as any).webkitAudioContext;
-          if (!micAudioContext && AudioContextConstructor && audioStream) {
-            micAudioContext = new AudioContextConstructor();
           }
 
-          if (micAudioContext && audioStream) {
-            if (micAudioContext.state === "suspended") {
-              await micAudioContext.resume();
-            }
+          totalBytesSent += base64Data.length;
 
-            // Disconnect previous nodes if they exist
+          // Send to socket if ready (no rate limiting - MediaRecorder handles timing)
+          const currentSocket = socket;
+          const socketReady =
+            currentSocket && (currentSocket as any).readyState === 1;
+
+          if (socketReady) {
             try {
-              if (micSourceNode) {
-                micSourceNode.disconnect();
+              // Log every 20th chunk to verify streaming
+              if (chunkCount % 20 === 0) {
+                console.log(
+                  `📤 Sending MediaRecorder chunk #${chunkCount} (${base64Data.length} bytes base64)`
+                );
               }
-              if (micGainNode) {
-                micGainNode.disconnect();
-              }
-            } catch (disconnectErr) {
-              console.warn(
-                "⚠️ Failed to disconnect previous mic nodes:",
-                (disconnectErr as Error).message
-              );
+              currentSocket.sendAudioInput({
+                data: base64Data,
+              });
+            } catch (err: any) {
+              console.error("❌ Error sending MediaRecorder audio:", err);
             }
-
-            micSourceNode = micAudioContext.createMediaStreamSource(audioStream);
-            micGainNode = micAudioContext.createGain();
-            micGainNode.gain.value = 0.0001; // effectively silent but keeps stream active
-
-            micSourceNode.connect(micGainNode);
-            micGainNode.connect(micAudioContext.destination);
-            console.log("✅ AudioContext pipeline created to keep stream alive");
+          } else {
+            // Queue for later
+            audioChunkQueue.push(base64Data);
+            if (audioChunkQueue.length === 1) {
+              console.log("📥 MediaRecorder chunk queued (socket not ready)");
+            }
           }
-        } catch (audioCtxErr: any) {
-          console.warn("⚠️ Failed to initialize mic AudioContext:", audioCtxErr?.message);
-        }
+        };
+
+        mediaRecorder.onerror = (event: any) => {
+          console.error("❌ MediaRecorder error:", event);
+        };
+
+        mediaRecorder.onstart = () => {
+          console.log("✅ MediaRecorder started");
+          isRecording = true;
+        };
+
+        mediaRecorder.onstop = () => {
+          console.log("⏹️ MediaRecorder stopped");
+          console.log(
+            `📊 Total chunks: ${chunkCount}, Total bytes sent: ${totalBytesSent}`
+          );
+          isRecording = false;
+        };
+
+        // Start recording with 100ms timeslice (Hume recommendation)
+        mediaRecorder.start(100);
+        console.log(
+          "✅ MediaRecorder started with 100ms timeslice (WebM/Opus format)"
+        );
+
+        // Store references for cleanup
+        (window as any).__mediaRecorder = mediaRecorder;
+        (window as any).__mediaStream = mediaStream;
+
+        // Store function to send queued chunks when socket opens
+        (window as any).__sendQueuedAudioChunks = async () => {
+          const currentSocket = socket;
+          if (!currentSocket || (currentSocket as any).readyState !== 1) {
+            return;
+          }
+
+          console.log(
+            `📤 Sending ${audioChunkQueue.length} queued MediaRecorder chunks`
+          );
+          let sentCount = 0;
+          while (audioChunkQueue.length > 0) {
+            const chunk = audioChunkQueue.shift();
+            if (
+              chunk &&
+              currentSocket &&
+              (currentSocket as any).readyState === 1
+            ) {
+              try {
+                currentSocket.sendAudioInput({
+                  data: chunk,
+                });
+                sentCount++;
+              } catch (err: any) {
+                console.error("❌ Error sending queued audio:", err);
+                break;
+              }
+            } else {
+              break;
+            }
+          }
+          console.log(`✅ Sent ${sentCount} queued MediaRecorder chunks`);
+        };
 
         isWaitingForPermission = false;
       } catch (permissionErr: any) {
@@ -628,28 +671,9 @@
         return;
       }
 
-      // For iOS: Don't initialize AudioPlayer yet - it conflicts with microphone!
-      // iOS can't have both mic input and audio output initialized simultaneously
-      // We'll lazy-initialize AudioPlayer when we receive audio from AI
-      const isIOS = browser && /iPad|iPhone|iPod/.test(navigator.userAgent);
-      
-      if (isIOS) {
-        console.log("📱 iOS PWA: Skipping AudioPlayer init to keep microphone alive");
-        console.log("🔊 AudioPlayer will be initialized when AI audio arrives");
-        audioPlayer = null; // Will be lazy-initialized
-      } else {
-        // Non-iOS: Initialize audio player normally
-        console.log("🔄 Initializing audio player...");
-        try {
-        audioPlayer = new EVIWebAudioPlayer();
-        await audioPlayer.init();
-        console.log("✅ Audio player initialized");
-      } catch (audioPlayerErr: any) {
-        console.error("❌ Failed to initialize audio player:", audioPlayerErr);
-        console.warn("⚠️ Continuing without audio player - will retry when audio arrives");
-          audioPlayer = null;
-        }
-      }
+      // Initialize AudioStreamer for playback (lazy initialization when audio arrives)
+      // AudioStreamer uses the same AudioContext pattern as AudioRecorder, compatible with iOS PWA
+      audioStreamer = null; // Will be initialized when first audio arrives
 
       // Get access token from server (still connecting)
       const accessTokenResponse = await fetch("/alpha/api/hume/access-token");
@@ -743,34 +767,41 @@
             "📊 Socket readyState after open event:",
             socket.readyState
           );
-          
-          // If MediaRecorder was started early, update handler and send queued chunks
-          if ((window as any).__sendQueuedAudioChunks && mediaRecorder) {
-            console.log("🔄 Socket ready - updating MediaRecorder handler and sending queued chunks");
-            
-            // Update the ondataavailable handler to send directly now
-            mediaRecorder.ondataavailable = async (event) => {
-              if (event.data.size < 1) return;
-              
-              // Send directly now that socket is ready
-              if (socket && (socket as any).readyState === 1) {
-                try {
-                  const encodedAudioData = await convertBlobToBase64(event.data);
-                  socket.sendAudioInput({ data: encodedAudioData });
-                } catch (err: any) {
-                  console.error("❌ Error sending audio:", err);
-                }
-              }
-            };
-            
+
+          // Mark as ready immediately when socket opens
+          // Hume EVI expects audio to be sent immediately after connection
+          // The I0100 error might be caused by not sending audio quickly enough
+          console.log(
+            "✅ Marking Hume as ready immediately on socket open - sending audio right away"
+          );
+          humeReady = true;
+
+          // Note: Session settings might not be required for EVI v3
+          // The SDK handles audio format automatically based on sendAudioInput format
+          // If needed, session settings would be sent via sendSessionSettings with different syntax
+          // But for now, we'll skip it since the error suggests it's not the right format
+
+          // If MediaRecorder was started early, send queued chunks immediately
+          const currentMediaRecorder = (window as any).__mediaRecorder;
+          if (currentMediaRecorder) {
+            console.log(
+              "🔄 Socket ready - MediaRecorder is running, sending queued chunks"
+            );
+
             // Send any queued chunks
-            (window as any).__sendQueuedAudioChunks();
-            
-            // Clean up
-            delete (window as any).__sendQueuedAudioChunks;
-            delete (window as any).__audioChunkQueue;
+            if (audioChunkQueue.length > 0) {
+              if ((window as any).__sendQueuedAudioChunks) {
+                await (window as any).__sendQueuedAudioChunks();
+              }
+            }
+
+            // MediaRecorder will continue sending chunks via ondataavailable handler
+            // WebM/Opus format - exact same as MediaRecorder!
+            console.log(
+              "✅ MediaRecorder is streaming - chunks will be sent automatically (WebM/Opus format)"
+            );
           }
-          
+
           resolve();
         });
 
@@ -793,68 +824,171 @@
 
       socket.on("message", async (message: any) => {
         try {
+          // Log all message types for debugging (except audio_output to avoid spam)
+          if (message.type && !["audio_output"].includes(message.type)) {
+            console.log(`📨 Received message type: ${message.type}`, message);
+          }
+
+          // Handle error messages from Hume
+          if (message.type === "error" || message.error) {
+            console.error("❌ Hume server error:", message.error || message);
+            console.error(
+              "Error message details:",
+              JSON.stringify(message, null, 2)
+            );
+            // Don't cleanup immediately - let the close handler do it
+            // This allows us to see if there are multiple errors
+          }
+
+          // Handle setup_complete or ready messages - Hume is ready to receive audio
+          if (
+            message.type === "setup_complete" ||
+            message.type === "ready" ||
+            message.type === "session_started"
+          ) {
+            console.log("✅ Hume session ready - audio input can now be sent");
+            humeReady = true;
+
+            // Now that Hume is ready, send any queued audio chunks
+            if (
+              audioChunkQueue.length > 0 &&
+              socket &&
+              (socket as any).readyState === 1
+            ) {
+              console.log(
+                `📤 Sending ${audioChunkQueue.length} queued audio chunks now that Hume is ready`
+              );
+              while (audioChunkQueue.length > 0) {
+                const chunk = audioChunkQueue.shift();
+                if (chunk) {
+                  try {
+                    socket.sendAudioInput({ data: chunk });
+                  } catch (err: any) {
+                    console.error("❌ Error sending queued audio:", err);
+                    break;
+                  }
+                }
+              }
+            }
+
+            // Now that Hume is ready, start sending audio if AudioRecorder is running
+            if (audioRecorder && audioRecorder.recording) {
+              console.log(
+                "🎤 AudioRecorder is running - audio will now be sent to Hume"
+              );
+            }
+          }
+
           // Handle user interruptions - stop audio playback immediately for low latency
           // According to Hume docs: EVI "stops rapidly whenever users interject"
           // https://dev.hume.ai/docs/speech-to-speech-evi/overview
-          if (message.type === "user_interruption" && audioPlayer) {
+          if (message.type === "user_interruption" && audioStreamer) {
             console.log(
               "🛑 User interruption detected, stopping audio playback immediately"
             );
             // Stop audio playback immediately for responsive interruption handling
-            audioPlayer.stop();
+            audioStreamer.stop();
             // Clear any queued audio to prevent delayed playback after interruption
             // This ensures EVI can respond immediately to the user's interjection
           }
 
-          // Handle audio output - use EVIWebAudioPlayer for smooth playback
-          // Enqueue immediately without await for lower latency
+          // Handle audio output - use AudioStreamer for smooth playback
+          // AudioStreamer uses AudioWorklet and is compatible with iOS PWA
           if (message.type === "audio_output") {
-            // Lazy initialize audio player if it wasn't initialized earlier (fallback)
-            if (!audioPlayer) {
-              console.log("🔄 Lazy initializing audio player (fallback)...");
+            // Lazy initialize AudioStreamer if it wasn't initialized earlier
+            if (!audioStreamer) {
+              console.log("🔄 Lazy initializing AudioStreamer...");
               try {
-                audioPlayer = new EVIWebAudioPlayer();
-                await audioPlayer.init();
-                console.log("✅ Audio player initialized lazily");
-                
-                // Try to resume AudioContext if suspended (iOS PWA)
-                try {
-                  // @ts-ignore - accessing internal audioContext if available
-                  const audioContext =
-                    audioPlayer.audioContext || (audioPlayer as any).context;
-                  if (
-                    audioContext &&
-                    typeof audioContext.resume === "function"
-                  ) {
-                    if (audioContext.state === "suspended") {
-                      console.log("🔄 Resuming suspended AudioContext...");
-                      await audioContext.resume();
-                      console.log(
-                        "✅ AudioContext resumed, state:",
-                        audioContext.state
-                      );
-                    }
-                  }
-                } catch (resumeErr: any) {
-                  console.log(
-                    "ℹ️ Could not access/resume AudioContext:",
-                    resumeErr.message
-                  );
-                }
-              } catch (lazyInitErr: any) {
-                console.error(
-                  "❌ Failed to lazy initialize audio player:",
-                  lazyInitErr
+                // Don't specify sampleRate - let browser use default (usually 48kHz)
+                // AudioStreamer will use the context's actual sample rate
+                const ctx = await audioContext({
+                  id: "voice-call-playback",
+                });
+                audioStreamer = new AudioStreamer(ctx);
+                console.log(
+                  `✅ AudioStreamer initialized with sample rate: ${ctx.sampleRate}Hz`
                 );
-                // Continue without audio player - user won't hear audio but call can continue
+              } catch (streamerErr: any) {
+                console.error(
+                  "❌ Failed to initialize AudioStreamer:",
+                  streamerErr
+                );
+                // Continue without audio streamer - user won't hear audio but call can continue
                 return;
               }
             }
-            
+
             console.log("🔊 Received audio output from AI");
-            audioPlayer.enqueue(message).catch((err: any) => {
-              console.error("❌ Error enqueueing audio:", err);
-            });
+
+            try {
+              // Hume's audio_output message likely contains encoded audio (Opus/WebM)
+              // EVIWebAudioPlayer was decoding it - we need to decode it ourselves
+              // The message structure from Hume SDK: { type: "audio_output", ... }
+              // The actual audio data might be in message.data as a Blob or ArrayBuffer
+
+              const audioData =
+                message.data || message.audio || message.payload;
+
+              if (!audioData) {
+                console.warn(
+                  "⚠️ No audio data found in message:",
+                  Object.keys(message)
+                );
+                return;
+              }
+
+              // If it's already a Blob, decode it directly
+              if (audioData instanceof Blob) {
+                console.log("📊 Audio is Blob, decoding...");
+                audioStreamer.addEncodedAudio(audioData).catch((err: any) => {
+                  console.error("❌ Error decoding blob audio:", err);
+                });
+              }
+              // If it's a base64 string, convert to Blob first
+              else if (typeof audioData === "string") {
+                console.log("📊 Audio is base64 string, converting to Blob...");
+                try {
+                  const binaryString = atob(audioData);
+                  const bytes = new Uint8Array(binaryString.length);
+                  for (let i = 0; i < binaryString.length; i++) {
+                    bytes[i] = binaryString.charCodeAt(i);
+                  }
+                  // Assume it's WebM/Opus format (Hume's default)
+                  const blob = new Blob([bytes], {
+                    type: "audio/webm;codecs=opus",
+                  });
+                  audioStreamer.addEncodedAudio(blob).catch((err: any) => {
+                    console.error("❌ Error decoding base64 audio:", err);
+                    // Fallback: try as PCM16 if WebM decode fails
+                    console.log("🔄 Fallback: trying as PCM16...");
+                    audioStreamer.addPCM16(audioData);
+                  });
+                } catch (decodeErr: any) {
+                  console.error(
+                    "❌ Error converting base64 to Blob:",
+                    decodeErr
+                  );
+                }
+              }
+              // If it's an ArrayBuffer, convert to Blob
+              else if (audioData instanceof ArrayBuffer) {
+                console.log("📊 Audio is ArrayBuffer, converting to Blob...");
+                const blob = new Blob([audioData], {
+                  type: "audio/webm;codecs=opus",
+                });
+                audioStreamer.addEncodedAudio(blob).catch((err: any) => {
+                  console.error("❌ Error decoding ArrayBuffer audio:", err);
+                });
+              } else {
+                console.warn("⚠️ Unknown audio format:", {
+                  type: typeof audioData,
+                  constructor: audioData?.constructor?.name,
+                });
+              }
+            } catch (err: any) {
+              console.error("❌ Error processing audio output:", err);
+              console.error("Error details:", err.message, err.stack);
+            }
           }
 
           // Handle assistant messages
@@ -897,6 +1031,12 @@
         console.log("🔌 Hume connection closed");
         console.log("Close event details:", event);
         console.log("Close code:", event.code, "Reason:", event.reason);
+        console.log("📊 Current state when closing:", {
+          isRecording,
+          isConnected,
+          audioRecorderActive: audioRecorder?.recording,
+          audioChunksQueued: audioChunkQueue.length,
+        });
         // Only cleanup if it's not a reconnection attempt
         if (!event.willReconnect) {
           cleanupCall();
@@ -938,13 +1078,19 @@
       // Small delay to ensure socket is fully ready
       await new Promise((resolve) => setTimeout(resolve, 100));
 
-      // If MediaRecorder was already started (iOS PWA), just verify it's running
-      // Otherwise, start it now
-      if (mediaRecorder && mediaRecorder.state === "recording") {
-        console.log("✅ MediaRecorder already running (started early for iOS PWA)");
+      // MediaRecorder should already be running (started early)
+      const currentMediaRecorder = (window as any).__mediaRecorder;
+      if (currentMediaRecorder && currentMediaRecorder.state === "recording") {
+        console.log("✅ MediaRecorder already running (started early)");
       } else {
-        // Start audio capture (non-iOS or fallback)
-      await startAudioCapture();
+        console.warn("⚠️ MediaRecorder not running - this shouldn't happen");
+      }
+
+      // AudioRecorder (AudioWorklet) should also be running to keep stream alive in iOS PWA
+      if (audioRecorder && audioRecorder.recording) {
+        console.log(
+          "✅ AudioRecorder (AudioWorklet) running to keep stream alive in iOS PWA"
+        );
       }
 
       // Connection is complete
@@ -960,7 +1106,7 @@
       isRecording = false;
       isConnecting = false;
       isWaitingForPermission = false;
-      
+
       // Clean up window references if socket connection failed (memory leak fix)
       if ((window as any).__sendQueuedAudioChunks) {
         delete (window as any).__sendQueuedAudioChunks;
@@ -972,7 +1118,7 @@
         }
         delete (window as any).__audioChunkQueue;
       }
-      
+
       // Clean up resources
       cleanupCall();
     }
@@ -1017,7 +1163,9 @@
     // If permission is already granted, getUserMedia succeeds immediately without prompt
     try {
       // Use a very short-lived stream just to check permission
-      const testStream = await acquireAudioStream();
+      const testStream = await navigator.mediaDevices.getUserMedia({
+        audio: true,
+      });
 
       // If we got here without a prompt, permission was already granted
       // Clean up immediately
@@ -1075,7 +1223,9 @@
 
       try {
         // Request permission - this will show the prompt on iOS/other browsers
-      const stream = await acquireAudioStream();
+        const stream = await navigator.mediaDevices.getUserMedia({
+          audio: true,
+        });
 
         // Verify the stream is actually active
         const tracks = stream.getAudioTracks();
@@ -1159,218 +1309,6 @@
     }
   }
 
-  async function startAudioCapture() {
-    if (!browser) {
-      console.error("❌ startAudioCapture: Not in browser");
-      return;
-    }
-
-    try {
-      console.log("🎤 Starting audio capture...");
-
-      // Permission should already be granted (requested earlier in startCall)
-      if (!navigator.mediaDevices) {
-        throw new Error("MediaDevices API not available");
-      }
-
-      // CRITICAL for iOS: NEVER get a new stream - always reuse the existing one!
-      // Getting a new stream causes iOS to close the original mic permission
-      if (audioStream && audioStream.active) {
-        const tracks = audioStream.getAudioTracks();
-        const hasActiveTrack = tracks.some(
-          (t) => t.readyState === "live" && !t.muted
-        );
-
-        if (hasActiveTrack) {
-          console.log("✅ Using existing active audio stream (keeping mic alive)");
-          // Stream is already set - just continue to use it
-        } else {
-          console.log("⚠️ Stream tracks ended - iOS closed the mic");
-          console.log("🔄 Attempting to get fresh stream (may require re-permission)...");
-          audioStream = await getAudioStream();
-        }
-      } else {
-        console.log("⚠️ No active stream - this shouldn't happen!");
-        console.log("🔄 Getting audio stream as fallback...");
-        audioStream = await getAudioStream();
-      }
-
-      console.log("✅ Audio stream ready for capture");
-
-      // Validate the stream has a valid audio track
-      ensureSingleValidAudioTrack(audioStream);
-      console.log("✅ Audio track validated");
-
-      // Determine supported MIME type
-      const mimeTypeResult = getBrowserSupportedMimeType();
-      const mimeType = mimeTypeResult.success
-        ? mimeTypeResult.mimeType
-        : "audio/webm";
-
-      if (mediaRecorder && mediaRecorder.state === "recording") {
-        console.log("🎤 MediaRecorder already running (startAudioCapture bypass)");
-        return;
-      }
-
-      console.log("🎤 Using MIME type:", mimeType);
-
-      // Create media recorder
-      mediaRecorder = new MediaRecorder(audioStream, { mimeType });
-
-      // Track audio chunks sent for debugging
-      let audioChunksSent = 0;
-
-      mediaRecorder.ondataavailable = async (event) => {
-        if (event.data.size < 1) {
-          console.log("ℹ️ Empty audio chunk received, skipping");
-          return;
-        }
-
-        // Check socket is actually open (as per Hume docs)
-        // @ts-ignore - readyState exists on the socket
-        if (!socket) {
-          console.warn("⚠️ Socket not initialized, skipping audio chunk");
-          return;
-        }
-
-        // @ts-ignore - readyState exists on the socket
-        const socketReady = socket.readyState === 1; // WebSocket.OPEN = 1
-        if (!socketReady) {
-          console.warn(
-            "⚠️ Socket not open (state:",
-            socket.readyState,
-            "), skipping audio chunk"
-          );
-          return;
-        }
-
-        try {
-          const encodedAudioData = await convertBlobToBase64(event.data);
-          socket.sendAudioInput({ data: encodedAudioData });
-          audioChunksSent++;
-          // Removed excessive logging - audio chunks are being sent successfully
-        } catch (err: any) {
-          console.error("❌ Error sending audio:", err);
-          // If socket error, stop trying to send
-          if (
-            err.message?.includes("not open") ||
-            err.message?.includes("Socket")
-          ) {
-            console.warn("⚠️ Socket closed, stopping audio capture");
-            isConnected = false;
-            if (mediaRecorder && mediaRecorder.state === "recording") {
-              mediaRecorder.stop();
-            }
-          }
-        }
-      };
-
-      // Send audio chunks every 50ms for lower latency (was 100ms)
-      // Smaller intervals reduce delay between speech and response
-      console.log("🔄 Starting MediaRecorder...");
-      console.log("📊 Pre-start state:", {
-        socketExists: !!socket,
-        socketReady: socket ? (socket as any).readyState : "N/A",
-        streamActive: audioStream.active,
-        tracksCount: audioStream.getTracks().length,
-      });
-
-      mediaRecorder.start(50);
-
-      // Set recording state BEFORE logging to ensure UI updates
-      isRecording = true;
-      // isExpanded is now derived from isRecording || isConnected, so no need to set it here
-
-      console.log(
-        "✅ Recording started - isRecording:",
-        isRecording,
-        "isConnected:",
-        isConnected
-      );
-      console.log("📊 Post-start state:", {
-        mediaRecorderState: mediaRecorder.state,
-        socketReady: socket ? (socket as any).readyState : "N/A",
-        streamActive: audioStream.active,
-      });
-
-      // Verify recording state and audio track status
-      if (mediaRecorder.state === "recording") {
-        console.log("✅ MediaRecorder confirmed in 'recording' state");
-      } else {
-        console.warn(
-          "⚠️ MediaRecorder state:",
-          mediaRecorder.state,
-          "(expected 'recording')"
-        );
-      }
-
-      // Verify audio track is active and sending data
-      const audioTracks = audioStream.getAudioTracks();
-      if (audioTracks.length > 0) {
-        const track = audioTracks[0];
-        console.log("🎤 Audio track status:", {
-          enabled: track.enabled,
-          readyState: track.readyState,
-          muted: track.muted,
-          label: track.label,
-        });
-
-        // Monitor track state changes
-        track.onended = () => {
-          console.warn("⚠️ Audio track ended unexpectedly");
-          if (isRecording) {
-            console.log("🔄 Attempting to restart audio capture...");
-            // Try to restart if we're still supposed to be recording
-            setTimeout(() => {
-              if (isRecording && isConnected) {
-                startAudioCapture().catch((err) => {
-                  console.error("❌ Failed to restart audio capture:", err);
-                });
-              }
-            }, 1000);
-          }
-        };
-
-        track.onmute = () => {
-          console.warn("⚠️ Audio track muted");
-        };
-
-        track.onunmute = () => {
-          console.log("✅ Audio track unmuted");
-        };
-      } else {
-        console.error("❌ No audio tracks found in stream!");
-      }
-
-      // Verify audio player is ready for output
-      if (audioPlayer) {
-        console.log(
-          "🔊 Audio player ready for output (bidirectional communication enabled)"
-        );
-      } else {
-        console.warn(
-          "⚠️ Audio player not initialized - audio output may not work"
-        );
-      }
-
-      console.log(
-        "🎙️ Bidirectional voice call active - ready to speak and listen"
-      );
-    } catch (err: any) {
-      console.error("❌ Failed to start audio capture:", err);
-      console.error("Error details:", err.name, err.message, err.stack);
-      isRecording = false;
-      isConnected = false;
-      lastResponse = `Failed to start audio: ${err.message || "Unknown error"}`;
-
-      // Clean up on error
-      if (audioStream) {
-        audioStream.getTracks().forEach((track) => track.stop());
-        audioStream = null;
-      }
-    }
-  }
-
   /**
    * Clean up resources and close modal
    * Called when connection closes or errors
@@ -1380,92 +1318,54 @@
     if ((window as any).__sendQueuedAudioChunks) {
       delete (window as any).__sendQueuedAudioChunks;
     }
-    if ((window as any).__audioChunkQueue) {
-      // Clear the queue array to free memory
-      const queue = (window as any).__audioChunkQueue;
-      if (Array.isArray(queue)) {
-        queue.length = 0;
-      }
-      delete (window as any).__audioChunkQueue;
-    }
 
-    // Stop media recorder
-    if (mediaRecorder && mediaRecorder.state === "recording") {
+    audioChunkQueue = [];
+
+    // Stop MediaRecorder (WebM/Opus recording)
+    const mediaRecorder = (window as any).__mediaRecorder;
+    const mediaStream = (window as any).__mediaStream;
+    if (mediaRecorder) {
       try {
-        mediaRecorder.stop();
-      } catch (err) {
-        console.error("Error stopping media recorder:", err);
-      }
-    }
-
-    // Stop audio stream tracks
-    if (audioStream) {
-      audioStream.getTracks().forEach((track) => track.stop());
-      audioStream = null;
-    }
-
-    if (micMonitor) {
-      try {
-        micMonitor.srcObject = null;
-        if (micMonitor.parentElement) {
-          micMonitor.parentElement.removeChild(micMonitor);
+        if (mediaRecorder.state !== "inactive") {
+          mediaRecorder.stop();
+          console.log("✅ MediaRecorder stopped");
         }
       } catch (err) {
-        console.warn("⚠️ Failed to clean up mic monitor element:", (err as Error).message);
+        console.error("Error stopping MediaRecorder:", err);
       }
-      micMonitor = null;
+      delete (window as any).__mediaRecorder;
     }
-
-    if (micSourceNode) {
+    if (mediaStream) {
       try {
-        micSourceNode.disconnect();
+        mediaStream.getTracks().forEach((track: MediaStreamTrack) => {
+          track.stop();
+        });
+        console.log("✅ MediaStream tracks stopped");
       } catch (err) {
-        console.warn(
-          "⚠️ Failed to disconnect mic source node:",
-          (err as Error).message
-        );
+        console.error("Error stopping MediaStream tracks:", err);
       }
-      micSourceNode = null;
+      delete (window as any).__mediaStream;
     }
 
-    if (micGainNode) {
+    // Stop AudioRecorder (AudioWorklet - keeps stream alive in iOS PWA)
+    if (audioRecorder) {
       try {
-        micGainNode.disconnect();
+        audioRecorder.stop();
+        console.log("✅ AudioRecorder (AudioWorklet) stopped");
       } catch (err) {
-        console.warn(
-          "⚠️ Failed to disconnect mic gain node:",
-          (err as Error).message
-        );
+        console.error("Error stopping AudioRecorder:", err);
       }
-      micGainNode = null;
+      audioRecorder = null;
     }
 
-    if (micAudioContext) {
+    // Stop AudioStreamer
+    if (audioStreamer) {
       try {
-        micAudioContext.close();
+        audioStreamer.stop();
       } catch (err) {
-        console.warn(
-          "⚠️ Failed to close mic audio context:",
-          (err as Error).message
-        );
+        console.error("Error stopping AudioStreamer:", err);
       }
-      micAudioContext = null;
-    }
-
-    // Clean up permission stream if it exists
-    if (permissionStream) {
-      permissionStream.getTracks().forEach((track) => track.stop());
-      permissionStream = null;
-    }
-
-    // Stop audio player
-    if (audioPlayer) {
-      try {
-        audioPlayer.stop();
-      } catch (err) {
-        console.error("Error stopping audio player:", err);
-      }
-      audioPlayer = null;
+      audioStreamer = null;
     }
 
     // Cancel any pending action message timeout
@@ -1481,6 +1381,7 @@
     isWaitingForPermission = false;
     lastResponse = "";
     actionMessage = null;
+    humeReady = false; // Reset Hume ready state
 
     // Reset store state
     resetVoiceCallState();
