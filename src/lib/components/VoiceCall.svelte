@@ -24,7 +24,6 @@
   // State - using $state for reactivity
   let isRecording = $state(false);
   let isConnected = $state(false);
-  let isExpanded = $state(false);
   let lastResponse = $state("");
   let actionMessage = $state<string | null>(null); // For action tool calls (create/edit/delete)
   let orderConfirmationUI = $state<any>(null); // For confirm_order UI display in mini-modal
@@ -37,7 +36,6 @@
     updateVoiceCallState({
       isRecording,
       isConnected,
-      isExpanded,
       lastResponse,
     });
   });
@@ -74,6 +72,7 @@
   let audioStream: MediaStream | null = null;
   let mediaRecorder: MediaRecorder | null = null;
   let audioPlayer: EVIWebAudioPlayer | null = null;
+  let permissionStream: MediaStream | null = null; // Store stream from permission request if still active
 
   // Client-side tool call handler
   async function handleToolCall(message: any) {
@@ -428,7 +427,6 @@
     if (!browser) return;
 
     try {
-      isExpanded = true;
       lastResponse = "";
 
       console.log("🎙️ Starting Hume voice conversation...");
@@ -442,16 +440,22 @@
 
       // Request microphone permission FIRST (before anything else)
       // This is critical for iOS PWAs - permission must be requested early
-      // We only check/request permission here, but get the stream later when we're ready to use it
-      console.log("🎤 Requesting microphone permission (early)...");
-      const hasPermission = await requestMicrophonePermission();
-      if (!hasPermission) {
-        console.error("❌ Microphone permission not granted - aborting call");
-        lastResponse = "Microphone permission is required to start a voice call.";
-        isExpanded = false;
-        return;
+      // The function returns a stream if it's still active, or null if we need a fresh one
+      console.log("🎤 Requesting microphone permission...");
+      permissionStream = await requestMicrophonePermission();
+      if (permissionStream === null) {
+        // Check if permission was actually denied or just needs a fresh stream
+        const permissionStatus = await checkMicrophonePermission();
+        if (!permissionStatus) {
+          console.error("❌ Microphone permission not granted - aborting call");
+          lastResponse = "Microphone permission is required to start a voice call.";
+          return;
+        }
+        // Permission is granted but stream was ended - we'll get a fresh one in startAudioCapture
+        console.log("✅ Microphone permission granted - will get fresh stream for capture");
+      } else {
+        console.log("✅ Microphone permission granted - reusing active stream");
       }
-      console.log("✅ Microphone permission granted - proceeding with call setup");
 
       // Get access token from server
       const accessTokenResponse = await fetch("/alpha/api/hume/access-token");
@@ -485,7 +489,7 @@
       socket.on("open", async () => {
         console.log("✅ Hume connection opened");
         isConnected = true;
-        isExpanded = true; // Auto-expand when connected
+        // isExpanded is now derived from isRecording || isConnected, so no need to set it here
         // Audio player already initialized above
         
         // Verify socket is really open
@@ -584,113 +588,148 @@
     } catch (err: any) {
       console.error("Failed to start Hume voice:", err);
       lastResponse = `Error: ${err.message || "Failed to start voice call"}`;
-      isExpanded = false;
       isConnected = false;
+      isRecording = false;
     }
   }
 
   /**
    * Check if microphone permission is already granted
    * Returns true if granted, false if not granted or unknown
+   * Uses multiple strategies for maximum compatibility (especially iOS)
    */
   async function checkMicrophonePermission(): Promise<boolean> {
     if (!browser || !navigator.mediaDevices) {
       return false;
     }
 
-    // Check permission status if API is available
+    // Strategy 1: Use Permissions API if available (Chrome, Firefox, etc.)
     if (navigator.permissions && navigator.permissions.query) {
       try {
         const permissionStatus = await navigator.permissions.query({
           name: "microphone" as PermissionName,
         });
         const isGranted = permissionStatus.state === "granted";
-        console.log("🎤 Microphone permission status:", permissionStatus.state);
-        return isGranted;
+        console.log("🎤 Microphone permission status (Permissions API):", permissionStatus.state);
+        if (isGranted) {
+          return true; // Definitely granted
+        }
+        if (permissionStatus.state === "denied") {
+          return false; // Definitely denied - don't ask again
+        }
+        // If "prompt", continue to Strategy 2
       } catch (permErr) {
-        // Permissions API not supported (e.g., Safari/iOS)
-        // We'll need to try getUserMedia to check
-        return false;
+        // Permissions API not supported (e.g., Safari/iOS) - continue to Strategy 2
+        console.log("ℹ️ Permissions API not available, using fallback check");
       }
     }
 
-    // Permissions API not available - assume not granted
-    return false;
+    // Strategy 2: Try to get a stream without user interaction (silent check)
+    // This works on iOS/Safari where Permissions API isn't available
+    // If permission is already granted, getUserMedia succeeds immediately without prompt
+    try {
+      // Use a very short-lived stream just to check permission
+      const testStream = await navigator.mediaDevices.getUserMedia({
+        audio: true,
+      });
+      
+      // If we got here without a prompt, permission was already granted
+      // Clean up immediately
+      testStream.getTracks().forEach(track => {
+        try {
+          track.stop();
+        } catch (e) {
+          // Ignore cleanup errors
+        }
+      });
+      
+      console.log("✅ Microphone permission already granted (silent check succeeded)");
+      return true;
+    } catch (err: any) {
+      // If getUserMedia fails, permission is either denied or not yet granted
+      if (
+        err.name === "NotAllowedError" ||
+        err.name === "PermissionDeniedError"
+      ) {
+        console.log("❌ Microphone permission denied");
+        return false; // Permission denied - don't ask again
+      }
+      // Other errors (NotFoundError, etc.) - assume not granted yet
+      console.log("ℹ️ Microphone permission status unclear:", err.name);
+      return false;
+    }
   }
 
   /**
    * Request microphone permission explicitly (required for iOS PWAs)
-   * Only requests if permission is not already granted
-   * Returns true if permission is granted, false otherwise
-   * Note: We don't keep the stream here - we'll get a fresh one when we're ready to use it
+   * Returns the stream if it's still active, or null if we need to get a new one
+   * Uses event-based validation instead of timeouts for robustness
    */
-  async function requestMicrophonePermission(): Promise<boolean> {
+  async function requestMicrophonePermission(): Promise<MediaStream | null> {
     if (!browser || !navigator.mediaDevices) {
       console.error("❌ MediaDevices API not available");
-      return false;
+      return null;
     }
 
     try {
       // First, check if permission is already granted
       const alreadyGranted = await checkMicrophonePermission();
       if (alreadyGranted) {
-        console.log("✅ Microphone permission already granted - no need to request again");
-        return true;
+        console.log("✅ Microphone permission already granted - will get fresh stream when needed");
+        return null; // Return null to indicate we should get a fresh stream (no prompt needed)
       }
 
-      // Permission not granted - we need to request it
-      // In iOS PWAs, we must call getUserMedia to trigger the permission prompt
-      console.log("🔄 Requesting microphone permission (first time or denied)...");
+      // Permission not granted yet - we need to request it
+      // This will show the permission prompt to the user
+      console.log("🔄 Requesting microphone permission (showing prompt)...");
       
       try {
-        // In iOS PWAs, getUserMedia may create a stream that gets automatically ended
-        // by iOS if the permission prompt is not immediately answered
-        // This causes a "capture failure" error, but it's harmless
-        const testStream = await navigator.mediaDevices.getUserMedia({
+        // Request permission - this will show the prompt on iOS/other browsers
+        const stream = await navigator.mediaDevices.getUserMedia({
           audio: true,
         });
 
-        // Check stream state immediately
-        const tracks = testStream.getTracks();
-        let streamActive = testStream.active && tracks.some(t => t.readyState === 'live');
+        // Verify the stream is actually active
+        const tracks = stream.getAudioTracks();
+        const hasActiveTrack = tracks.length > 0 && tracks.some(t => t.readyState === 'live' && !t.muted);
         
-        // Wait for user to respond to permission prompt (if it was shown)
-        // In iOS PWAs, if permission was "prompt", user needs time to grant it
-        await new Promise(resolve => setTimeout(resolve, 800));
-        
-        // Re-check stream state (iOS may have ended it)
-        streamActive = testStream.active && tracks.some(t => t.readyState === 'live');
-        
-        // Verify permission is now granted
-        const nowGranted = await checkMicrophonePermission();
-        
-        // Only attempt to stop the stream if it's still active
-        // If iOS already ended it, we'll get a "capture failure" error, but that's harmless
-        if (streamActive) {
-          // Stream is still active - try to stop it gracefully
-          tracks.forEach((track) => {
+        if (!hasActiveTrack) {
+          console.log("⚠️ Stream obtained but no active tracks - iOS may have ended it");
+          // Clean up the stream
+          tracks.forEach(track => {
             try {
-              if (track.readyState === 'live') {
-                track.stop();
-              }
+              if (track.readyState === 'live') track.stop();
             } catch (e) {
-              // Track might have been ended by iOS between checks - ignore
-              // This is expected behavior in iOS PWAs
+              // Ignore - track may already be ended
             }
           });
+          return null; // Need to get a fresh stream
         }
+
+        // Verify permission is actually granted
+        const permissionGranted = await checkMicrophonePermission();
+        if (!permissionGranted) {
+          console.log("⚠️ getUserMedia succeeded but permission not granted yet");
+          // Wait a bit for permission to propagate (iOS can be slow)
+          await new Promise(resolve => setTimeout(resolve, 200));
+          const recheckGranted = await checkMicrophonePermission();
+          if (!recheckGranted) {
+            // Still not granted - clean up and return null
+            tracks.forEach(track => {
+              try {
+                if (track.readyState === 'live') track.stop();
+              } catch (e) {
+                // Ignore
+              }
+            });
+            return null;
+          }
+        }
+
+        // Stream is active and permission is granted - we can use this stream!
+        console.log("✅ Microphone permission granted - stream is active and ready");
+        return stream; // Return the active stream for reuse
         
-        // If permission is granted, we're good (regardless of stream state)
-        if (nowGranted) {
-          console.log("✅ Microphone permission granted" + (streamActive ? " (test stream stopped)" : " (stream already ended by iOS - normal)"));
-          return true;
-        } else {
-          // Permission not granted yet, but getUserMedia succeeded
-          // This might mean the user is still deciding or permission was denied
-          // We'll find out when we try to use it later
-          console.log("ℹ️ Permission status unclear - getUserMedia succeeded, will verify when using stream");
-          return true; // Return true - getUserMedia succeeded, so we can proceed
-        }
       } catch (getUserMediaErr: any) {
         // getUserMedia failed - permission denied or other error
         console.error("❌ getUserMedia failed:", getUserMediaErr);
@@ -701,25 +740,25 @@
         ) {
           lastResponse =
             "Microphone permission denied. Please enable microphone access in your browser settings.";
-          return false;
+          return null;
         } else if (
           getUserMediaErr.name === "NotFoundError" ||
           getUserMediaErr.name === "DevicesNotFoundError"
         ) {
           lastResponse =
             "No microphone found. Please connect a microphone and try again.";
-          return false;
+          return null;
         } else {
           lastResponse = `Failed to access microphone: ${
             getUserMediaErr.message || "Unknown error"
           }`;
-          return false;
+          return null;
         }
       }
     } catch (err: any) {
       console.error("❌ Failed to request microphone permission:", err);
       lastResponse = `Failed to access microphone: ${err.message || "Unknown error"}`;
-      return false;
+      return null;
     }
   }
 
@@ -733,18 +772,32 @@
       console.log("🎤 Starting audio capture...");
 
       // Permission should already be granted (requested earlier in startCall)
-      // But double-check to be safe
       if (!navigator.mediaDevices) {
         throw new Error("MediaDevices API not available");
       }
 
-      // Get audio stream now (permission was already granted earlier)
-      // Getting a fresh stream ensures it's active when we use it
-      // In iOS PWAs, streams that sit idle can be terminated
-      console.log("🔄 Getting audio stream...");
-      audioStream = await getAudioStream();
+      // Use the stream from permission request if it's still active, otherwise get a fresh one
+      if (permissionStream && permissionStream.active) {
+        const tracks = permissionStream.getAudioTracks();
+        const hasActiveTrack = tracks.some(t => t.readyState === 'live' && !t.muted);
+        
+        if (hasActiveTrack) {
+          console.log("✅ Reusing active stream from permission request");
+          audioStream = permissionStream;
+          permissionStream = null; // Clear reference - we own it now
+        } else {
+          console.log("⚠️ Permission stream no longer active - getting fresh stream");
+          permissionStream = null;
+          audioStream = await getAudioStream();
+        }
+      } else {
+        console.log("🔄 Getting fresh audio stream...");
+        audioStream = await getAudioStream();
+      }
+      
       console.log("✅ Audio stream obtained");
       
+      // Validate the stream has a valid audio track
       ensureSingleValidAudioTrack(audioStream);
       console.log("✅ Audio track validated");
 
@@ -820,7 +873,7 @@
       
       // Set recording state BEFORE logging to ensure UI updates
       isRecording = true;
-      isExpanded = true; // Auto-expand when recording starts
+      // isExpanded is now derived from isRecording || isConnected, so no need to set it here
       
       console.log("✅ Recording started - isRecording:", isRecording, "isConnected:", isConnected);
       console.log("📊 Post-start state:", {
@@ -914,6 +967,13 @@
     // Stop audio stream tracks
     if (audioStream) {
       audioStream.getTracks().forEach((track) => track.stop());
+      audioStream = null;
+    }
+    
+    // Clean up permission stream if it exists
+    if (permissionStream) {
+      permissionStream.getTracks().forEach((track) => track.stop());
+      permissionStream = null;
     }
 
     // Stop audio player
@@ -935,7 +995,6 @@
     // Reset state
     isRecording = false;
     isConnected = false;
-    isExpanded = false;
     lastResponse = "";
     actionMessage = null;
 
@@ -962,11 +1021,6 @@
     }
   }
 
-  function toggleExpand() {
-    if (isRecording) {
-      isExpanded = !isExpanded;
-    }
-  }
 
   // Cleanup on component destroy
   onDestroy(() => {
@@ -976,8 +1030,8 @@
   });
 </script>
 
-<!-- Action Mini-Modal - Only shown when expanded, positioned directly above navbar -->
-{#if isExpanded}
+<!-- Action Mini-Modal - Only shown when call is actually active (recording or connected) -->
+{#if isRecording || isConnected}
   <div class="voice-transcript-modal">
     <div class="transcript-area">
       {#if orderConfirmationUI}
@@ -996,7 +1050,7 @@
         <p class="action-message">{actionMessage}</p>
       {:else if lastResponse}
         <p class="assistant-response">{lastResponse}</p>
-      {:else}
+      {:else if isRecording || isConnected}
         <p class="placeholder">Speak now...</p>
       {/if}
     </div>
