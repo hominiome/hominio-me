@@ -31,6 +31,9 @@
   let cartUI = $state<any>(null); // For cart UI display in mini-modal (add_to_cart, get_cart)
   let timeSlotSelectionUI = $state<any>(null); // For time slot selection UI display in mini-modal
   let actionMessageTimeout: ReturnType<typeof setTimeout> | null = null; // Track timeout to cancel if new action comes
+  
+  // Store the permission stream to reuse (avoid multiple getUserMedia calls)
+  let permissionStream: MediaStream | null = null;
 
   // Sync state to store for reactive access from parent
   $effect(() => {
@@ -440,6 +443,19 @@
         return;
       }
 
+      // Request microphone permission FIRST (before anything else)
+      // This is critical for iOS PWAs - permission must be requested early
+      // We get the stream here and reuse it later to avoid multiple getUserMedia calls
+      console.log("🎤 Requesting microphone permission (early)...");
+      const permissionStream = await requestMicrophonePermission();
+      if (!permissionStream) {
+        console.error("❌ Microphone permission not granted - aborting call");
+        lastResponse = "Microphone permission is required to start a voice call.";
+        isExpanded = false;
+        return;
+      }
+      console.log("✅ Microphone permission granted - proceeding with call setup");
+
       // Get access token from server
       const accessTokenResponse = await fetch("/alpha/api/hume/access-token");
       if (!accessTokenResponse.ok) {
@@ -561,11 +577,12 @@
   /**
    * Request microphone permission explicitly (required for iOS PWAs)
    * This must be called before getUserMedia to ensure permission prompt appears
+   * Returns the stream so we can reuse it instead of calling getUserMedia again
    */
-  async function requestMicrophonePermission(): Promise<boolean> {
+  async function requestMicrophonePermission(): Promise<MediaStream | null> {
     if (!browser || !navigator.mediaDevices) {
       console.error("❌ MediaDevices API not available");
-      return false;
+      return null;
     }
 
     try {
@@ -581,10 +598,9 @@
             permissionStatus.state
           );
 
-          // If already granted, we're good
+          // If already granted, we still need to get a stream
           if (permissionStatus.state === "granted") {
             console.log("✅ Microphone permission already granted");
-            return true;
           }
         } catch (permErr) {
           // Permissions API not supported (e.g., Safari/iOS), continue to getUserMedia
@@ -598,15 +614,14 @@
       // This is required for iOS PWAs - the permission prompt won't appear otherwise
       // We need to call this BEFORE the actual audio capture starts
       console.log("🔄 Requesting microphone permission...");
-      const testStream = await navigator.mediaDevices.getUserMedia({
+      const stream = await navigator.mediaDevices.getUserMedia({
         audio: true,
       });
 
-      // Immediately stop the test stream (we just needed the permission prompt)
-      testStream.getTracks().forEach((track) => track.stop());
-
-      console.log("✅ Microphone permission granted");
-      return true;
+      // Store the stream to reuse (don't stop it yet - we'll use it for recording)
+      permissionStream = stream;
+      console.log("✅ Microphone permission granted and stream obtained");
+      return stream;
     } catch (err: any) {
       console.error("❌ Failed to get microphone permission:", err);
 
@@ -629,25 +644,39 @@
         }`;
       }
 
-      return false;
+      return null;
     }
   }
 
   async function startAudioCapture() {
-    if (!browser) return;
+    if (!browser) {
+      console.error("❌ startAudioCapture: Not in browser");
+      return;
+    }
 
     try {
-      // Request microphone permission first (required for iOS PWAs)
-      const hasPermission = await requestMicrophonePermission();
-      if (!hasPermission) {
-        console.error("❌ Microphone permission not granted");
-        isRecording = false;
-        return;
+      console.log("🎤 Starting audio capture...");
+
+      // Permission should already be granted (requested earlier in startCall)
+      // But double-check to be safe
+      if (!navigator.mediaDevices) {
+        throw new Error("MediaDevices API not available");
       }
 
-      // Get audio stream
-      audioStream = await getAudioStream();
+      // Use the permission stream we already obtained (reuse to avoid multiple getUserMedia calls)
+      // This is important for iOS PWAs where multiple calls can cause issues
+      if (permissionStream && permissionStream.active) {
+        console.log("🔄 Reusing permission stream...");
+        audioStream = permissionStream;
+        permissionStream = null; // Clear reference after use
+      } else {
+        console.log("🔄 Getting new audio stream (permission stream not available)...");
+        audioStream = await getAudioStream();
+      }
+      console.log("✅ Audio stream obtained");
+      
       ensureSingleValidAudioTrack(audioStream);
+      console.log("✅ Audio track validated");
 
       // Determine supported MIME type
       const mimeTypeResult = getBrowserSupportedMimeType();
@@ -692,13 +721,33 @@
 
       // Send audio chunks every 50ms for lower latency (was 100ms)
       // Smaller intervals reduce delay between speech and response
+      console.log("🔄 Starting MediaRecorder...");
       mediaRecorder.start(50);
+      
+      // Set recording state BEFORE logging to ensure UI updates
       isRecording = true;
       isExpanded = true; // Auto-expand when recording starts
-      console.log("🎤 Recording started");
-    } catch (err) {
-      console.error("Failed to start audio capture:", err);
+      
+      console.log("✅ Recording started - isRecording:", isRecording, "isConnected:", isConnected);
+      
+      // Verify recording state
+      if (mediaRecorder.state === "recording") {
+        console.log("✅ MediaRecorder confirmed in 'recording' state");
+      } else {
+        console.warn("⚠️ MediaRecorder state:", mediaRecorder.state, "(expected 'recording')");
+      }
+    } catch (err: any) {
+      console.error("❌ Failed to start audio capture:", err);
+      console.error("Error details:", err.name, err.message, err.stack);
       isRecording = false;
+      isConnected = false;
+      lastResponse = `Failed to start audio: ${err.message || 'Unknown error'}`;
+      
+      // Clean up on error
+      if (audioStream) {
+        audioStream.getTracks().forEach((track) => track.stop());
+        audioStream = null;
+      }
     }
   }
 
