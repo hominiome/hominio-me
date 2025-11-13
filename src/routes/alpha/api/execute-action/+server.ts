@@ -130,40 +130,16 @@ const actionHandlers: Record<string, (params: any) => Promise<{ result: any; ui?
     };
   },
 
-  async list_spa_beauty(params: { category?: string; view?: string } = {}) {
-    const { category } = params;
+  async list_wellness(params: { view?: string } = {}) {
+    // ALWAYS return ALL wellness services - no category filtering
+    // Wellness includes: massage, facial, sauna, wellness, and all beauty treatments
     
-    // Map German category names to JSON keys
-    const categoryMap: Record<string, keyof typeof spaBeautyData.categories> = {
-      'massage': 'massage',
-      'massagen': 'massage',
-      'facial': 'facial',
-      'gesichtsbehandlung': 'facial',
-      'gesichtsbehandlungen': 'facial',
-      'wellness': 'wellness',
-      'sauna': 'wellness',
-      'dampfbad': 'wellness'
-    };
+    const services: any[] = [];
     
-    let services: any[] = [];
-    let selectedCategory: string | null = null;
-    
-    if (category) {
-      const normalizedCategory = category.toLowerCase().trim();
-      const categoryKey = categoryMap[normalizedCategory];
-      
-      if (categoryKey && spaBeautyData.categories[categoryKey]) {
-        services = spaBeautyData.categories[categoryKey];
-        selectedCategory = categoryKey.charAt(0).toUpperCase() + categoryKey.slice(1);
-      } else {
-        services = [];
-      }
-    } else {
-      // Return all services from all categories
-      Object.values(spaBeautyData.categories).forEach(categoryServices => {
-        services.push(...categoryServices);
-      });
-    }
+    // Collect all services from all categories
+    Object.values(spaBeautyData.categories).forEach(categoryServices => {
+      services.push(...categoryServices);
+    });
     
     // Format prices and add available slots info
     const formattedServices = services.map(service => ({
@@ -174,16 +150,22 @@ const actionHandlers: Record<string, (params: any) => Promise<{ result: any; ui?
       availableSlotsCount: service.availableSlots.filter((slot: any) => slot.available).length
     }));
     
-    const output = { services: formattedServices, category: selectedCategory };
+    const output = { services: formattedServices };
     
     // Use native Svelte component instead of Mitosis
-    const ui = createSpaBeautyListComponent(formattedServices, selectedCategory);
+    const ui = createSpaBeautyListComponent(formattedServices, null); // No category - show all
     
     return {
       result: output,
       ui,
-      view: 'spa-beauty-list'
+      view: 'wellness-list'
     };
+  },
+
+  // Alias for backward compatibility - redirect to list_wellness
+  async list_spa_beauty(params: { category?: string; view?: string } = {}) {
+    // Redirect to list_wellness (ignore category parameter)
+    return this.list_wellness(params);
   },
 
   async add_to_cart(params: { items: Array<{ id: string; quantity?: number; timeSlot?: string; pickupTime?: string; pickupAddress?: string; destinationAddress?: string; estimatedDistance?: number; deliveryTime?: string }>; view?: string }) {
@@ -199,10 +181,10 @@ const actionHandlers: Record<string, (params: any) => Promise<{ result: any; ui?
       allMenuItems.push(...categoryItems);
     });
     
-    // Collect all SPA/Beauty services from all categories
-    const allSpaServices: any[] = [];
+    // Collect all wellness services from all categories
+    const allWellnessServices: any[] = [];
     Object.values(spaBeautyData.categories).forEach(categoryServices => {
-      allSpaServices.push(...categoryServices);
+      allWellnessServices.push(...categoryServices);
     });
     
     // Collect all Taxi services
@@ -218,12 +200,12 @@ const actionHandlers: Record<string, (params: any) => Promise<{ result: any; ui?
     const cartItems: CartItem[] = items.map(orderItem => {
       // Try to find in menu first
       let foundItem = allMenuItems.find(item => item.id === orderItem.id);
-      let itemType: 'menu' | 'spa-beauty' | 'taxi' | 'room-service' = 'menu';
+      let itemType: 'menu' | 'wellness' | 'taxi' | 'room-service' = 'menu';
       
-      // If not found in menu, try SPA/Beauty services
+      // If not found in menu, try wellness services
       if (!foundItem) {
-        foundItem = allSpaServices.find(item => item.id === orderItem.id);
-        itemType = 'spa-beauty';
+        foundItem = allWellnessServices.find(item => item.id === orderItem.id);
+        itemType = 'wellness';
       }
       
       // If not found, try Taxi services
@@ -269,8 +251,8 @@ const actionHandlers: Record<string, (params: any) => Promise<{ result: any; ui?
         type: itemType
       };
       
-      // Add time slot for SPA/Beauty services (if provided)
-      if (itemType === 'spa-beauty') {
+      // Add time slot for wellness services (if provided)
+      if (itemType === 'wellness') {
         cartItem.duration = foundItem.duration;
         if (orderItem.timeSlot) {
           cartItem.timeSlot = orderItem.timeSlot;
@@ -318,19 +300,19 @@ const actionHandlers: Record<string, (params: any) => Promise<{ result: any; ui?
     // Get updated cart
     const cart = getCartServer();
     
-    // Check if any SPA/Beauty services were added without time slots
-    const addedSpaItemsWithoutSlots = cartItems.filter(item => 
-      item.type === 'spa-beauty' && !item.timeSlot
+    // Check if any wellness services were added without time slots
+    const addedWellnessItemsWithoutSlots = cartItems.filter(item => 
+      item.type === 'wellness' && !item.timeSlot
     );
     
-    // If SPA items without slots were added, show time slot selection UI for the first one
-    if (addedSpaItemsWithoutSlots.length > 0) {
-      const firstService = addedSpaItemsWithoutSlots[0];
-      const allSpaServices: any[] = [];
+    // If wellness items without slots were added, show time slot selection UI for the first one
+    if (addedWellnessItemsWithoutSlots.length > 0) {
+      const firstService = addedWellnessItemsWithoutSlots[0];
+      const allWellnessServices: any[] = [];
       Object.values(spaBeautyData.categories).forEach(categoryServices => {
-        allSpaServices.push(...categoryServices);
+        allWellnessServices.push(...categoryServices);
       });
-      const serviceData = allSpaServices.find(s => s.id === firstService.id);
+      const serviceData = allWellnessServices.find(s => s.id === firstService.id);
       
       if (serviceData) {
         const output = {
@@ -385,19 +367,19 @@ const actionHandlers: Record<string, (params: any) => Promise<{ result: any; ui?
   async get_cart(params: { view?: string } = {}) {
     const cart = getCartServer();
     
-    // Check if there are SPA/Beauty services without time slots
-    const spaItemsWithoutSlots = cart.items.filter(item => 
-      item.type === 'spa-beauty' && !item.timeSlot
+    // Check if there are wellness services without time slots
+    const wellnessItemsWithoutSlots = cart.items.filter(item => 
+      item.type === 'wellness' && !item.timeSlot
     );
     
-    // If there are SPA items without slots, show time slot selection UI for the first one
-    if (spaItemsWithoutSlots.length > 0) {
-      const firstService = spaItemsWithoutSlots[0];
-      const allSpaServices: any[] = [];
+    // If there are wellness items without slots, show time slot selection UI for the first one
+    if (wellnessItemsWithoutSlots.length > 0) {
+      const firstService = wellnessItemsWithoutSlots[0];
+      const allWellnessServices: any[] = [];
       Object.values(spaBeautyData.categories).forEach(categoryServices => {
-        allSpaServices.push(...categoryServices);
+        allWellnessServices.push(...categoryServices);
       });
-      const serviceData = allSpaServices.find(s => s.id === firstService.id);
+      const serviceData = allWellnessServices.find(s => s.id === firstService.id);
       
       if (serviceData) {
         const output = {
@@ -485,7 +467,7 @@ const actionHandlers: Record<string, (params: any) => Promise<{ result: any; ui?
     
     // Update the cart item with the selected time slot
     const cart = getCartServer();
-    const cartItemIndex = cart.items.findIndex(item => item.id === serviceId && item.type === 'spa-beauty' && !item.timeSlot);
+    const cartItemIndex = cart.items.findIndex(item => item.id === serviceId && item.type === 'wellness' && !item.timeSlot);
     
     if (cartItemIndex >= 0) {
       // Update the cart item
@@ -544,24 +526,24 @@ const actionHandlers: Record<string, (params: any) => Promise<{ result: any; ui?
       throw new Error('Cart is empty. Add items to cart before confirming order.');
     }
     
-    // Check if SPA/Beauty services have time slots
-    const spaItemsWithoutSlots = cart.items.filter(item => 
-      item.type === 'spa-beauty' && !item.timeSlot
+    // Check if wellness services have time slots
+    const wellnessItemsWithoutSlots = cart.items.filter(item => 
+      item.type === 'wellness' && !item.timeSlot
     );
     
-    if (spaItemsWithoutSlots.length > 0) {
-      const serviceNames = spaItemsWithoutSlots.map(item => item.name).join(', ');
+    if (wellnessItemsWithoutSlots.length > 0) {
+      const serviceNames = wellnessItemsWithoutSlots.map(item => item.name).join(', ');
       // Get available slots for the first service without slot
-      const firstService = spaItemsWithoutSlots[0];
-      const allSpaServices: any[] = [];
+      const firstService = wellnessItemsWithoutSlots[0];
+      const allWellnessServices: any[] = [];
       Object.values(spaBeautyData.categories).forEach(categoryServices => {
-        allSpaServices.push(...categoryServices);
+        allWellnessServices.push(...categoryServices);
       });
-      const serviceData = allSpaServices.find(s => s.id === firstService.id);
+      const serviceData = allWellnessServices.find(s => s.id === firstService.id);
       const availableSlots = serviceData 
         ? serviceData.availableSlots.filter((s: any) => s.available).map((s: any) => s.time).join(', ')
         : 'keine verfügbar';
-      throw new Error(`Time slots are required for SPA/Beauty services: ${serviceNames}. Available slots for "${firstService.name}": ${availableSlots}. Please select time slots first using select_time_slot.`);
+      throw new Error(`Time slots are required for wellness services: ${serviceNames}. Available slots for "${firstService.name}": ${availableSlots}. Please select time slots first using select_time_slot.`);
     }
     
     // Build order from cart

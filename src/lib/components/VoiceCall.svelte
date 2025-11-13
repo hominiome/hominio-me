@@ -479,29 +479,10 @@
         mediaStream = await navigator.mediaDevices.getUserMedia(audioConstraints);
         console.log("✅ MediaStream obtained, track state:", mediaStream.getAudioTracks()[0]?.readyState);
 
-        // CRITICAL FOR iOS PWA: Create a MUTED audio element to consume stream IMMEDIATELY
-        // This is simpler and more reliable than AudioContext in iOS PWA
-        // iOS PWA closes streams that aren't consumed within milliseconds
-        let immediateAudioElement: HTMLAudioElement | null = null;
-        try {
-          immediateAudioElement = document.createElement("audio");
-          immediateAudioElement.muted = true; // Silent - just consuming the stream
-          immediateAudioElement.autoplay = true;
-          immediateAudioElement.srcObject = mediaStream;
-          // Don't append to DOM - just keep reference
-          console.log("✅ Muted audio element created to consume stream immediately (iOS PWA compatible)");
-        } catch (err) {
-          console.warn("⚠️ Failed to create immediate audio element (non-critical):", err);
-        }
-        
-        // Store reference for cleanup
-        let immediateAudioContext: AudioContext | null = null;
-        let immediateSource: MediaStreamAudioSourceNode | null = null;
-        let immediateGain: GainNode | null = null;
-
         // CRITICAL FOR iOS PWA: MediaRecorder MUST start IMMEDIATELY after getUserMedia()
         // iOS PWA closes the stream if it's not actively consumed within milliseconds
-        // We must start MediaRecorder BEFORE AudioRecorder to ensure immediate consumption
+        // DO NOT create any other stream consumers (audio elements, AudioContext, etc.) in iOS PWA
+        // Multiple consumers cause "capture failure" errors
         
         // Get browser-supported MIME type
         const mimeTypes = [
@@ -687,10 +668,6 @@
         // Store references for cleanup
         (window as any).__mediaRecorder = mediaRecorder;
         (window as any).__mediaStream = mediaStream;
-        (window as any).__immediateAudioElement = immediateAudioElement;
-        (window as any).__immediateAudioContext = immediateAudioContext;
-        (window as any).__immediateSource = immediateSource;
-        (window as any).__immediateGain = immediateGain;
 
         // Store function to send queued chunks when socket opens
         (window as any).__sendQueuedAudioChunks = async () => {
@@ -1400,49 +1377,6 @@
       }
       delete (window as any).__mediaRecorder;
     }
-    // Clean up immediate audio element (iOS PWA stream consumer)
-    const immediateAudioElement = (window as any).__immediateAudioElement;
-    if (immediateAudioElement) {
-      try {
-        immediateAudioElement.pause();
-        immediateAudioElement.srcObject = null;
-        console.log("✅ Immediate audio element cleaned up");
-      } catch (err) {
-        console.error("Error cleaning up immediate audio element:", err);
-      }
-      delete (window as any).__immediateAudioElement;
-    }
-
-    // Clean up immediate AudioContext (if used)
-    const immediateAudioContext = (window as any).__immediateAudioContext;
-    const immediateSource = (window as any).__immediateSource;
-    const immediateGain = (window as any).__immediateGain;
-    if (immediateSource) {
-      try {
-        immediateSource.disconnect();
-      } catch (err) {
-        console.error("Error disconnecting immediate source:", err);
-      }
-      delete (window as any).__immediateSource;
-    }
-    if (immediateGain) {
-      try {
-        immediateGain.disconnect();
-      } catch (err) {
-        console.error("Error disconnecting immediate gain:", err);
-      }
-      delete (window as any).__immediateGain;
-    }
-    if (immediateAudioContext) {
-      try {
-        immediateAudioContext.close();
-        console.log("✅ Immediate AudioContext closed");
-      } catch (err) {
-        console.error("Error closing immediate AudioContext:", err);
-      }
-      delete (window as any).__immediateAudioContext;
-    }
-
     if (mediaStream) {
       try {
         mediaStream.getTracks().forEach((track: MediaStreamTrack) => {
