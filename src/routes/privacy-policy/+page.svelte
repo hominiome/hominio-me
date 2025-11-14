@@ -119,7 +119,7 @@
 
 	<p>
 		Phone: +49 89 38466851<br />
-		E-mail: hello@hominio.me
+		E-mail: hello@visioncreator.earth
 	</p>
 	<p>
 		The controller is the natural person or legal entity that single-handedly or jointly with others
