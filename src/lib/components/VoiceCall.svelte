@@ -812,6 +812,7 @@
    * Called when connection closes or errors
    */
   async function cleanupCall() {
+    if (!browser) return; // Prevent SSR errors
     console.log("🧹 Cleaning up call resources...");
 
     // Clean up window references for queued audio chunks (memory leak fix)
@@ -899,6 +900,7 @@
 
   // Cleanup on component destroy
   onDestroy(async () => {
+    if (!browser) return; // Prevent SSR errors
     console.log("💥 Component destroying, performing full cleanup...");
     await stopCall(); // Perform a normal "soft" cleanup first
 

@@ -13,7 +13,7 @@
   <div class="image-display">
     <img
       src={imageUrl}
-      alt="Notification image"
+      alt="Notification content"
       class="notification-image"
       onerror={() => {
         imageLoadFailed = true;

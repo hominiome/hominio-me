@@ -275,7 +275,12 @@
     {@const Component = DisplayComponent()}
     {@const props = getComponentProps()}
     {#if Component}
-      <div class="display-component-wrapper" onclick={(e) => e.stopPropagation()}>
+      <div 
+        class="display-component-wrapper" 
+        onclick={(e) => e.stopPropagation()} 
+        onkeydown={(e) => e.stopPropagation()}
+        role="presentation"
+      >
         {#if notification.displayComponent === "ImageDisplay"}
           <Component imageUrl={props.imageUrl} />
         {/if}
@@ -283,7 +288,14 @@
     {/if}
   {/if}
 
-  <div class="notification-content-wrapper" onclick={(e) => e.stopPropagation()} role="dialog" aria-label="Notification">
+  <div 
+    class="notification-content-wrapper" 
+    onclick={(e) => e.stopPropagation()} 
+    onkeydown={(e) => e.stopPropagation()}
+    role="dialog" 
+    aria-label="Notification"
+    tabindex="-1"
+  >
     <NotificationItem
       {notification}
       onMarkRead={handleMarkRead}

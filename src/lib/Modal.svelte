@@ -119,6 +119,7 @@
     aria-label="Modal dialog"
     tabindex="-1"
   >
+    <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
     <div
       class="rounded-3xl pt-10 px-8 @md:px-12 pb-0 @xs:px-6 @xs:pt-7 w-full max-w-[700px] @md:max-w-[800px] relative shadow-[0_-4px_24px_rgba(0,0,0,0.15)] flex flex-col items-center overflow-y-auto overflow-x-hidden transition-transform duration-300 ease-out mx-[6px] @md:mx-auto"
       class:translate-y-full={!open}
@@ -126,6 +127,8 @@
       class:modal-bottom={!canClose}
       style="max-height: calc(95vh - 72px); {canClose ? 'margin-top: 5vh;' : 'margin-top: auto;'} margin-bottom: 0; background-color: {modalBgColor};"
       onclick={handleModalContentClick}
+      onkeydown={(e) => e.stopPropagation()}
+      role="document"
     >
       <!-- Content (Svelte 5: using snippet prop instead of slot) -->
       <div class="w-full flex-1 pb-6 @xs:pb-5 min-h-0">
