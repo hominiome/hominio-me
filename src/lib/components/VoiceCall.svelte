@@ -620,6 +620,12 @@
         (window as any).__mediaRecorder = mediaRecorder;
         (window as any).__mediaStream = stream;
 
+        // On iOS PWA, introduce a tiny delay after starting the recorder
+        // but before connecting the socket, to avoid race conditions.
+        if (isIOSPWA) {
+          await new Promise(resolve => setTimeout(resolve, 50));
+        }
+
         (window as any).__sendQueuedAudioChunks = async () => {
           const currentSocket = socket;
           if (!currentSocket || (currentSocket as any).readyState !== 1 || audioChunkQueue.length === 0) {
@@ -770,26 +776,9 @@
             cleanupCall(); // Trigger a full cleanup
         };
 
-        // For iOS PWA, immediately create and connect the keep-alive graph to stabilize it
-        if (isIOSPWA) {
-          try {
-            console.log("iOS PWA: Creating Web Audio API keep-alive graph...");
-            keepAliveContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-            if (keepAliveContext.state === 'suspended') {
-              await keepAliveContext.resume();
-            }
-            keepAliveSource = keepAliveContext.createMediaStreamSource(globalMediaStream);
-            const gainNode = keepAliveContext.createGain();
-            gainNode.gain.value = 0; // Ensure it's silent
-            keepAliveSource.connect(gainNode);
-            gainNode.connect(keepAliveContext.destination);
-            console.log("✅ iOS PWA: Web Audio API keep-alive graph connected and stream stabilized.");
-          } catch (e) {
-            console.error("❌ iOS PWA: Failed to create Web Audio keep-alive graph. Capture may still fail.", e);
-            // If this fails, the stream is unstable. We should stop.
-            throw new Error("Failed to create PWA keep-alive audio graph.");
-          }
-        }
+        // For iOS PWA, we are trying a "Record First" strategy without any additional keep-alives,
+        // as they seem to be triggering the capture failure themselves. The MediaRecorder will be the
+        // sole consumer responsible for keeping the stream alive.
       } else {
         console.log("🎤 Reusing existing global MediaStream.");
       }
