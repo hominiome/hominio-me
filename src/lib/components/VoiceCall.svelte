@@ -614,17 +614,41 @@
           isRecording = false;
         };
 
-        mediaRecorder.start(100);
-        console.log("✅ MediaRecorder capturing started with 100ms timeslice");
+        // On iOS PWA, wait for the first data chunk to prove the stream is actively being consumed
+        // before proceeding with socket connection. This should prevent iOS from killing the stream.
+        let firstChunkReceived = false;
+        if (isIOSPWA) {
+          const originalHandler = mediaRecorder.ondataavailable;
+          const firstChunkPromise = new Promise<void>((resolve) => {
+            const timeout = setTimeout(() => {
+              console.warn("⚠️ iOS PWA: Timeout waiting for first audio chunk. Proceeding anyway.");
+              resolve();
+            }, 500);
+            
+            mediaRecorder.ondataavailable = async (event: BlobEvent) => {
+              if (!firstChunkReceived && event.data.size > 0) {
+                firstChunkReceived = true;
+                clearTimeout(timeout);
+                console.log("✅ iOS PWA: First audio chunk received. Stream is stable.");
+                resolve();
+              }
+              // Always call the original handler
+              if (originalHandler) {
+                await originalHandler(event);
+              }
+            };
+          });
+          
+          mediaRecorder.start(100);
+          console.log("✅ MediaRecorder capturing started with 100ms timeslice");
+          await firstChunkPromise;
+        } else {
+          mediaRecorder.start(100);
+          console.log("✅ MediaRecorder capturing started with 100ms timeslice");
+        }
 
         (window as any).__mediaRecorder = mediaRecorder;
         (window as any).__mediaStream = stream;
-
-        // On iOS PWA, introduce a tiny delay after starting the recorder
-        // but before connecting the socket, to avoid race conditions.
-        if (isIOSPWA) {
-          await new Promise(resolve => setTimeout(resolve, 50));
-        }
 
         (window as any).__sendQueuedAudioChunks = async () => {
           const currentSocket = socket;
@@ -728,8 +752,8 @@
           const timeout = setTimeout(() => reject(new Error("Socket connection timeout")), 10000);
           const onOpen = async () => {
             clearTimeout(timeout);
-            socket.removeEventListener("open", onOpen);
-            socket.removeEventListener("error", onError);
+            socket.off("open", onOpen);
+            socket.off("error", onError);
             console.log("✅ Hume connection opened");
             isConnected = true;
             if ((window as any).__sendQueuedAudioChunks) {
@@ -739,12 +763,12 @@
           };
           const onError = (error: Error) => {
             clearTimeout(timeout);
-            socket.removeEventListener("open", onOpen);
-            socket.removeEventListener("error", onError);
+            socket.off("open", onOpen);
+            socket.off("error", onError);
             reject(error);
           };
-          socket.addEventListener("open", onOpen);
-          socket.addEventListener("error", onError);
+          socket.on("open", onOpen);
+          socket.on("error", onError);
         });
       }
 
