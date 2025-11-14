@@ -788,30 +788,45 @@
       const mediaStream = await navigator.mediaDevices.getUserMedia(mediaConstraints);
       console.log("✅ MediaStream obtained");
       
-      const audioTrack = mediaStream.getAudioTracks()[0];
+      const audioTrack = mediaStream.getTracks()[0];
       if (audioTrack) {
         console.log("🎤 Audio track label:", audioTrack.label);
       }
 
+      // New Web Audio API Keep-Alive
       if (isIOSPWA) {
-        const immediateAudioElement = new Audio();
-        immediateAudioElement.srcObject = mediaStream;
-        immediateAudioElement.muted = true;
-        immediateAudioElement.setAttribute('playsinline', 'true');
-        document.body.appendChild(immediateAudioElement);
-        (window as any).__immediateAudioElement = immediateAudioElement;
-
         try {
-          await immediateAudioElement.play();
-          console.log("✅ iOS PWA: Stream consumption successful via HTMLAudioElement.play()");
-          await proceedWithStream(mediaStream);
-        } catch (playErr) {
-          console.warn("⚠️ iOS PWA: Keep-alive audio .play() failed. Proceeding anyway...", playErr);
-          await proceedWithStream(mediaStream);
+          console.log("iOS PWA: Creating Web Audio API keep-alive graph...");
+          // Use a specific window property to avoid conflicts
+          const pwaAudioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+          (window as any).__pwaKeepAliveContext = pwaAudioContext;
+
+          // Resume context if needed
+          if (pwaAudioContext.state === 'suspended') {
+            await pwaAudioContext.resume();
+          }
+
+          const source = pwaAudioContext.createMediaStreamSource(mediaStream);
+          (window as any).__pwaKeepAliveSource = source; // Store source for disconnection
+
+          const gainNode = pwaAudioContext.createGain();
+          gainNode.gain.setValueAtTime(0, pwaAudioContext.currentTime); // Mute the output
+
+          // Connect source to a silent gain node and then to the destination
+          source.connect(gainNode);
+          gainNode.connect(pwaAudioContext.destination);
+
+          console.log("✅ iOS PWA: Web Audio API keep-alive graph connected. Stream is now stable.");
+        } catch (e) {
+          console.error("❌ iOS PWA: Failed to create Web Audio keep-alive graph. Capture may still fail.", e);
+          // Proceed anyway, but the stream is likely to fail
         }
-      } else {
-        await proceedWithStream(mediaStream);
       }
+
+      // With the stream stabilized by the Web Audio graph, we can now proceed.
+      // The HTMLAudioElement workaround is no longer needed.
+      await proceedWithStream(mediaStream);
+
     } catch (err: any) {
       console.error("❌ Failed to start Hume voice:", err);
       lastResponse = `Error: ${err.message || "Failed to start voice call"}`;
@@ -857,7 +872,24 @@
       delete (window as any).__mediaStream;
     }
     
-    // Clean up immediate audio element (iOS PWA workaround)
+    // Clean up Web Audio API keep-alive context (iOS PWA)
+    const pwaAudioContext = (window as any).__pwaKeepAliveContext;
+    if (pwaAudioContext) {
+      try {
+        const source = (window as any).__pwaKeepAliveSource;
+        if (source) {
+          source.disconnect();
+        }
+        await pwaAudioContext.close();
+        console.log("✅ iOS PWA: Keep-alive AudioContext closed.");
+      } catch (err) {
+        console.error("Error closing keep-alive AudioContext:", err);
+      }
+      delete (window as any).__pwaKeepAliveContext;
+      delete (window as any).__pwaKeepAliveSource;
+    }
+
+    // Clean up immediate audio element (iOS PWA workaround) - This is now legacy, but cleanup is safe
     const immediateAudioElement = (window as any).__immediateAudioElement;
     if (immediateAudioElement) {
       try {
