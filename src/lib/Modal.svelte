@@ -119,6 +119,7 @@
     aria-label="Modal dialog"
     tabindex="-1"
   >
+    <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
     <div
       class="rounded-3xl pt-10 px-8 @md:px-12 pb-0 @xs:px-6 @xs:pt-7 w-full max-w-[700px] @md:max-w-[800px] relative shadow-[0_-4px_24px_rgba(0,0,0,0.15)] flex flex-col items-center overflow-y-auto overflow-x-hidden transition-transform duration-300 ease-out mx-[6px] @md:mx-auto"
       class:translate-y-full={!open}
