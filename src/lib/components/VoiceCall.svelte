@@ -503,162 +503,65 @@
 
   // // Helper to send text input directly to Hume (without speaking)
   // async function sendTextInput(text: string) {
-  //   // If not connected, start the call first
-  //   if (!socket || !isConnected) {
-  //     console.log("📞 Auto-starting call to send text input...");
-  //     await startCall();
-
-  //     // Wait for connection to be established (poll with timeout)
-  //     let attempts = 0;
-  //     while ((!socket || !isConnected) && attempts < 50) {
-  //       await new Promise((resolve) => setTimeout(resolve, 100));
-  //       attempts++;
-  //     }
-
-  //     if (!socket || !isConnected) {
-  //       console.error("❌ Failed to establish connection for text input");
-  //       return;
-  //     }
-  //   }
-
-  //   // Send the text input
-  //   // @ts-ignore - sendJson exists but not in types
-  //   socket.sendJson({
-  //     type: "user_input",
-  //     text,
-  //   });
   //   console.log(`📝 Text input sent: "${text}"`);
   // }
 
   async function startCall() {
     if (!browser) return;
 
-    try {
-      lastResponse = "";
-      isConnecting = true;
-      isWaitingForPermission = true;
+    // Reset state for new call
+    lastResponse = "";
+    isConnecting = true;
+    isWaitingForPermission = true;
+    
+    // Cleanup any previous call remnants, but do it silently without logging "Call cleaned up" yet
+    // because the new call is just starting.
+    const silentCleanup = () => {
+        // This is a subset of cleanupCall, without the logging and state resets
+        // that would be confusing at the start of a call.
+        if (socket) {
+            socket.close();
+            socket = null;
+        }
+        const mediaRecorder = (window as any).__mediaRecorder;
+        if (mediaRecorder && mediaRecorder.state !== "inactive") {
+            mediaRecorder.stop();
+        }
+        const mediaStream = (window as any).__mediaStream;
+        if (mediaStream) {
+            mediaStream.getTracks().forEach((track: MediaStreamTrack) => track.stop());
+        }
+        const immediateAudioElement = (window as any).__immediateAudioElement;
+        if (immediateAudioElement) {
+            immediateAudioElement.srcObject = null;
+            if (immediateAudioElement.parentNode) {
+                immediateAudioElement.parentNode.removeChild(immediateAudioElement);
+            }
+        }
+        if (audioStreamer) audioStreamer.stop();
+        stopIOSPWAAudio();
+        
+        // Clear window refs
+        delete (window as any).__mediaRecorder;
+        delete (window as any).__mediaStream;
+        delete (window as any).__immediateAudioElement;
+        delete (window as any).__sendQueuedAudioChunks;
+    }
+    silentCleanup();
 
+
+    try {
       console.log("🎙️ Starting Hume voice conversation...");
 
       if (!HUME_CONFIG_ID) {
-        console.error("❌ HUME_CONFIG_ID not configured");
-        lastResponse =
-          "Error: Voice configuration not set up. Please configure HUME_CONFIG_ID.";
-        isConnecting = false;
-        isWaitingForPermission = false;
-        return;
+        throw new Error("HUME_CONFIG_ID not configured.");
       }
+      
+      // This function contains the logic that runs AFTER the stream is stabilized.
+      const proceedWithStream = async (stream: MediaStream) => {
+        isWaitingForPermission = false; // Permission phase is over
 
-      // Request microphone permission FIRST (before anything else)
-      // This is critical for iOS PWAs - permission must be requested early
-      // AND we must start using it immediately or iOS will close it!
-      console.log("🎤 Requesting microphone permission...");
-
-      // OPTIMIZED: Use MediaRecorder for WebM/Opus format + AudioWorklet to keep stream alive in iOS PWA
-      // MediaRecorder gives us the exact same format as before (WebM/Opus)
-      // AudioWorklet runs in parallel to keep the stream alive in iOS PWA standalone mode
-      let mediaRecorder: MediaRecorder | null = null;
-      let mediaStream: MediaStream | null = null;
-
-      try {
-        // CRITICAL iOS PWA FIX: DON'T initialize AudioContext before getUserMedia
-        // iOS PWA kills the mic stream if AudioContext exists at all (even before getUserMedia)
-        // Solution: Skip AudioContext initialization in iOS PWA - will use HTMLAudioElement fallback
-        const isIOSPWA = (window.navigator as any).standalone === true;
-        console.log(`📱 iOS PWA mode: ${isIOSPWA}`);
-        
-        // iOS PWA: Skip AudioContext - it conflicts with getUserMedia
-        // We'll use HTMLAudioElement fallback for playback instead
-        if (isIOSPWA) {
-          console.log("⚠️ iOS PWA: Skipping AudioContext initialization (conflicts with getUserMedia)");
-          console.log("💡 Will use HTMLAudioElement fallback for audio playback");
-        }
-        
-        // CRITICAL iOS PWA: Unlock audio playback BEFORE getUserMedia in same user gesture
-        // iOS allows both audio.play() and getUserMedia() in the same user gesture
-        // We unlock audio first, then get microphone - both in same gesture context
-        let audioUnlockPromise: Promise<void> | null = null;
-        if (isIOSPWA) {
-          try {
-            const unlockAudio = new Audio();
-            unlockAudio.src = 'data:audio/wav;base64,UklGRigAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=';
-            unlockAudio.volume = 0;
-            audioUnlockPromise = unlockAudio.play().then(() => {
-              iosPWAAudioUnlocked = true;
-              console.log("✅ iOS PWA: Audio playback unlocked (silent audio played in user gesture context)");
-            }).catch((err: any) => {
-              console.warn("⚠️ iOS PWA: Failed to unlock audio playback:", err);
-              // Continue anyway - will try again when audio arrives
-            });
-          } catch (err: any) {
-            console.warn("⚠️ iOS PWA: Failed to create unlock audio:", err);
-          }
-        }
-        
-        // Get microphone stream (happens in same user gesture as audio unlock)
-        // CRITICAL iOS PWA FIX: Request AUDIO ONLY with minimal constraints
-        // The video workaround doesn't work in iOS PWA standalone mode (WKWebView)
-        // Based on Chad Phillips' Safari WebRTC guide: use simple constraints
-        const mediaConstraints = isIOSPWA
-          ? {
-              // iOS PWA: Minimal audio-only constraints (WKWebView requirement)
-              audio: true,
-            }
-          : {
-              // Full audio constraints for other browsers
-              audio: {
-                channelCount: 1,
-                echoCancellation: true,
-                noiseSuppression: true,
-                autoGainControl: true,
-              },
-            };
-        
-        mediaStream = await navigator.mediaDevices.getUserMedia(mediaConstraints);
-        console.log("✅ MediaStream obtained, track state:", mediaStream.getAudioTracks()[0]?.readyState);
-        
-        // Log audio track settings for debugging potential device issues (e.g., Bluetooth)
-        const audioTrack = mediaStream.getAudioTracks()[0];
-        if (audioTrack) {
-          console.log("🎤 Audio track settings:", JSON.stringify(audioTrack.getSettings(), null, 2));
-          console.log("🎤 Audio track label:", audioTrack.label);
-        }
-        
-        // CRITICAL iOS PWA WORKAROUND: Consume stream IMMEDIATELY with HTMLAudioElement
-        // Based on WebKit bug reports: Stream must be consumed by DOM element immediately
-        // This prevents iOS PWA from closing the stream with "capture failure"
-        let immediateAudioElement: HTMLAudioElement | null = null;
-        if (isIOSPWA) {
-          try {
-            // Create audio element and attach stream IMMEDIATELY
-            immediateAudioElement = new Audio();
-            immediateAudioElement.srcObject = mediaStream;
-            immediateAudioElement.muted = true; // Mute to avoid feedback
-            immediateAudioElement.setAttribute('playsinline', 'true'); // Required for iOS, good practice
-
-            // Append to DOM (required for iOS PWA to consider it "visible")
-            document.body.appendChild(immediateAudioElement);
-
-            // Explicitly call play() inside the user gesture. This is the most reliable way
-            // to start media playback/consumption on iOS. `autoplay` is not reliable.
-            // We don't need to await this; the goal is just to start consumption.
-            immediateAudioElement.play().catch(err => {
-              // This can fail if another audio element is already playing, which is fine.
-              // The main goal is to signal to the OS that we are using the stream.
-              console.warn("⚠️ iOS PWA: immediateAudioElement.play() threw an error. This might be harmless.", err);
-            });
-
-            console.log("✅ iOS PWA: Stream consumption initiated via HTMLAudioElement.play()");
-          } catch (err: any) {
-            console.warn("⚠️ iOS PWA: Failed to create immediate audio element:", err);
-          }
-        }
-        
-        // CRITICAL iOS PWA: Start MediaRecorder IMMEDIATELY after getUserMedia
-        // iOS PWA closes the stream if it's not consumed immediately
-        // Audio unlock happens in parallel (don't wait for it)
-
-        // Use MediaRecorder for ALL platforms (iOS PWA workaround makes it work)
+        // Use MediaRecorder for ALL platforms
         const mimeTypes = [
           "audio/webm;codecs=opus",
           "audio/webm",
@@ -673,889 +576,246 @@
             break;
           }
         }
+        console.log("🎤 Using MediaRecorder, MIME type:", selectedMimeType);
 
-        console.log("🎤 Using MediaRecorder (WebM/Opus), MIME type:", selectedMimeType);
-
-        // Create MediaRecorder on the mic stream (WebM/Opus format)
-        mediaRecorder = new MediaRecorder(mediaStream, {
+        const mediaRecorder = new MediaRecorder(stream, {
           mimeType: selectedMimeType,
         });
 
-        // Track chunk statistics
         let chunkCount = 0;
         let totalBytesSent = 0;
-        let firstChunkTime = 0;
 
-        // Handle MediaRecorder data (WebM/Opus format)
         mediaRecorder.ondataavailable = async (event: BlobEvent) => {
           if (event.data.size === 0) {
             console.warn("⚠️ Empty audio chunk received");
-          return;
-        }
+            return;
+          }
 
           chunkCount++;
-          const chunkTime = Date.now();
-
-          // Convert Blob to base64 (exactly like MediaRecorder implementation)
           const base64Data = await new Promise<string>((resolve, reject) => {
             const reader = new FileReader();
             reader.onloadend = () => {
-              const base64 =
-                (reader.result as string).split(",")[1] ||
-                (reader.result as string);
+              const base64 = (reader.result as string).split(",")[1] || (reader.result as string);
               resolve(base64);
             };
             reader.onerror = reject;
             reader.readAsDataURL(event.data);
           });
-
-          // Detailed logging for first few chunks (like MediaRecorder)
-          if (chunkCount <= 5) {
-            const blobSize = event.data.size;
-            const base64Length = base64Data.length;
-            const audioTrack = mediaStream?.getAudioTracks()[0];
-            const settings = audioTrack?.getSettings();
-
-            console.log(`📊 MediaRecorder Chunk #${chunkCount}:`, {
-              blobSize,
-              base64Length,
-              mimeType: event.data.type,
-              sampleRate: settings?.sampleRate,
-              channelCount: settings?.channelCount,
-              duration: chunkTime - (firstChunkTime || chunkTime),
-              firstChunk: chunkCount === 1,
-            });
-      
-            // Log first chunk in detail
-            if (chunkCount === 1) {
-              firstChunkTime = chunkTime;
-              // Try to decode and analyze the blob
-              const arrayBuffer = await event.data.arrayBuffer();
-              const uint8Array = new Uint8Array(arrayBuffer);
-              console.log("📊 First chunk binary analysis:", {
-                arrayBufferSize: arrayBuffer.byteLength,
-                uint8ArrayLength: uint8Array.length,
-                firstBytes: Array.from(uint8Array.slice(0, 20)),
-                lastBytes: Array.from(uint8Array.slice(-20)),
-                // Check if it's WebM (starts with 0x1A 0x45 0xDF 0xA3)
-                isWebM:
-                  uint8Array[0] === 0x1a &&
-                  uint8Array[1] === 0x45 &&
-                  uint8Array[2] === 0xdf &&
-                  uint8Array[3] === 0xa3,
-                // Check if it's OGG (starts with "OggS")
-                isOGG:
-                  uint8Array[0] === 0x4f &&
-                  uint8Array[1] === 0x67 &&
-                  uint8Array[2] === 0x67 &&
-                  uint8Array[3] === 0x53,
-              });
-            }
-          }
-
+          
           totalBytesSent += base64Data.length;
 
-          // Send to socket if ready (no rate limiting - MediaRecorder handles timing)
           const currentSocket = socket;
-          const socketReady =
-            currentSocket && (currentSocket as any).readyState === 1;
-
-          if (socketReady) {
+          if (currentSocket && (currentSocket as any).readyState === 1) {
             try {
-              // Log every 20th chunk to verify streaming
-              if (chunkCount % 20 === 0) {
-                console.log(
-                  `📤 Sending MediaRecorder chunk #${chunkCount} (${base64Data.length} bytes base64)`
-                );
-              }
-              currentSocket.sendAudioInput({
-                data: base64Data,
-              });
+              currentSocket.sendAudioInput({ data: base64Data });
             } catch (err: any) {
               console.error("❌ Error sending MediaRecorder audio:", err);
             }
           } else {
-            // Queue for later
             audioChunkQueue.push(base64Data);
-            if (audioChunkQueue.length === 1) {
-              console.log("📥 MediaRecorder chunk queued (socket not ready)");
-            }
           }
         };
 
-        mediaRecorder.onerror = (event: any) => {
-          console.error("❌ MediaRecorder error:", event);
-        };
-
+        mediaRecorder.onerror = (event: any) => console.error("❌ MediaRecorder error:", event);
         mediaRecorder.onstart = () => {
           console.log("✅ MediaRecorder started");
           isRecording = true;
         };
-
         mediaRecorder.onstop = () => {
           console.log("⏹️ MediaRecorder stopped");
-          console.log(
-            `📊 Total chunks: ${chunkCount}, Total bytes sent: ${totalBytesSent}`
-          );
+          console.log(`📊 Total chunks: ${chunkCount}, Total bytes sent: ${totalBytesSent}`);
           isRecording = false;
         };
 
-        // Start MediaRecorder immediately
         mediaRecorder.start(100);
-        console.log("✅ MediaRecorder started with 100ms timeslice (iOS PWA critical - stream now actively consumed)");
-        
-        // Wait for audio unlock to complete (if iOS PWA) - happens in parallel with MediaRecorder
-        // Both getUserMedia and audio.play() happen in same user gesture, so this should work
-        if (isIOSPWA && audioUnlockPromise) {
-          // Don't await - let it complete in background, but log when done
-          audioUnlockPromise.then(() => {
-            console.log("✅ iOS PWA: Audio playback unlocked (MediaRecorder already running)");
-          }).catch((err: any) => {
-            console.warn("⚠️ iOS PWA: Audio unlock completed with warning:", err);
-          });
-        }
+        console.log("✅ MediaRecorder capturing started with 100ms timeslice");
 
-        // For non-iOS PWA: Initialize AudioContext after MediaRecorder (lazy init works in Safari)
-        if (!isIOSPWA && !audioStreamer) {
-          console.log("🔊 Initializing AudioStreamer (non-PWA mode - lazy init OK)");
-          try {
-            const ctx = await audioContext({
-              id: "voice-call-playback",
-            });
-            audioStreamer = new AudioStreamer(ctx);
-            console.log(`✅ AudioStreamer initialized with sample rate: ${ctx.sampleRate}Hz`);
-          } catch (streamerErr: any) {
-            console.error("❌ Failed to initialize AudioStreamer:", streamerErr);
-            // Continue - will try again when audio arrives
-          }
-        } else if (isIOSPWA) {
-          console.log(`✅ AudioStreamer state: ${audioStreamer ? 'pre-initialized (iOS PWA)' : 'failed to pre-initialize'}`);
-        }
-
-        // Store references for cleanup
         (window as any).__mediaRecorder = mediaRecorder;
-        (window as any).__mediaStream = mediaStream;
-        if (immediateAudioElement) {
-          (window as any).__immediateAudioElement = immediateAudioElement;
-        }
+        (window as any).__mediaStream = stream;
 
-        // Store function to send queued chunks when socket opens
         (window as any).__sendQueuedAudioChunks = async () => {
           const currentSocket = socket;
-          if (!currentSocket || (currentSocket as any).readyState !== 1) {
+          if (!currentSocket || (currentSocket as any).readyState !== 1 || audioChunkQueue.length === 0) {
             return;
           }
-
-          console.log(
-            `📤 Sending ${audioChunkQueue.length} queued MediaRecorder chunks`
-          );
-          let sentCount = 0;
+          console.log(`📤 Sending ${audioChunkQueue.length} queued MediaRecorder chunks`);
           while (audioChunkQueue.length > 0) {
             const chunk = audioChunkQueue.shift();
-            if (
-              chunk &&
-              currentSocket &&
-              (currentSocket as any).readyState === 1
-            ) {
+            if (chunk) {
               try {
-                currentSocket.sendAudioInput({
-                  data: chunk,
-                });
-                sentCount++;
+                currentSocket.sendAudioInput({ data: chunk });
               } catch (err: any) {
                 console.error("❌ Error sending queued audio:", err);
                 break;
               }
-            } else {
-              break;
             }
           }
-          console.log(`✅ Sent ${sentCount} queued MediaRecorder chunks`);
         };
-
-        isWaitingForPermission = false;
-      } catch (permissionErr: any) {
-        console.error("❌ Microphone permission denied:", permissionErr);
-        isWaitingForPermission = false;
-        lastResponse =
-          "Microphone permission is required to start a voice call.";
-        isConnecting = false;
-        return;
-      }
-
-      // Initialize AudioStreamer for playback (lazy initialization when audio arrives)
-      // AudioStreamer uses the same AudioContext pattern as AudioRecorder, compatible with iOS PWA
-      // Don't reset audioStreamer - it should be pre-initialized during getUserMedia
-      // If it's null, it will be initialized during the call setup
-
-      // Get access token from server (still connecting)
-      const accessTokenResponse = await fetch("/alpha/api/hume/access-token");
-      if (!accessTokenResponse.ok) {
-        const errorData = await accessTokenResponse.json();
-        throw new Error(errorData.error || "Failed to get access token");
-      }
-
-      const { accessToken } = await accessTokenResponse.json();
-      console.log("✅ Access token received");
-
-      // Initialize Hume client
-      console.log("🔄 Initializing Hume client...");
-      const client = new HumeClient({ accessToken });
-      console.log("✅ Hume client initialized");
-
-      // Connect to EVI WebSocket
-      console.log("🔄 Connecting to Hume EVI WebSocket...");
-      console.log("📊 Config ID:", HUME_CONFIG_ID ? "Set" : "Missing");
-
-      try {
-        socket = await client.empathicVoice.chat.connect({
-          configId: HUME_CONFIG_ID,
-        });
+        
+        const accessTokenResponse = await fetch("/alpha/api/hume/access-token");
+        if (!accessTokenResponse.ok) {
+          const errorData = await accessTokenResponse.json();
+          throw new Error(errorData.error || "Failed to get access token");
+        }
+        const { accessToken } = await accessTokenResponse.json();
+        console.log("✅ Access token received");
+        
+        const client = new HumeClient({ accessToken });
+        socket = await client.empathicVoice.chat.connect({ configId: HUME_CONFIG_ID });
         console.log("✅ Socket created, waiting for open event...");
-      } catch (socketConnectErr: any) {
-        console.error("❌ Failed to create socket:", socketConnectErr);
-        console.error(
-          "Socket connect error details:",
-          socketConnectErr.message,
-          socketConnectErr.stack
-        );
-        throw socketConnectErr; // Re-throw to be caught by outer try-catch
+        
+        setupSocketListeners();
+        await waitForSocketOpen();
+        
+        isConnecting = false;
+        console.log("🎙️ Hume voice call started - bidirectional communication should be active");
       }
-
-      // Check initial socket state
-      // @ts-ignore - readyState exists on the socket
-      console.log(
-        "📊 Socket initial readyState:",
-        socket.readyState,
-        "(0 = CONNECTING, 1 = OPEN, 2 = CLOSING, 3 = CLOSED)"
-      );
-
-      // Set up event listeners BEFORE waiting for open
-      // Use a promise-based approach with timeout to detect if socket hangs
-      let socketOpened = false;
-      let socketOpenTimeout: ReturnType<typeof setTimeout> | null = null;
-      let preOpenErrorHandler: ((error: Error) => void) | null = null;
-
-      // Helper function to safely remove event listeners
-      const removeErrorHandler = (handler: ((error: Error) => void) | null) => {
-        if (!handler) return;
-        // Try different methods to remove the listener
-        if (typeof socket.off === "function") {
-          socket.off("error", handler);
-        } else if (typeof socket.removeListener === "function") {
-          socket.removeListener("error", handler);
-        } else if (typeof socket.removeEventListener === "function") {
-          socket.removeEventListener("error", handler);
-        }
-        // If none of the methods exist, we can't remove it, but that's okay
-        // The handler will just not be called if the socket is already closed/errored
-      };
-
-      const socketOpenPromise = new Promise<void>((resolve, reject) => {
-        socketOpenTimeout = setTimeout(() => {
-          if (!socketOpened) {
-            console.error("❌ Socket open timeout after 10 seconds");
-            // Remove the pre-open error handler since we're timing out
-            removeErrorHandler(preOpenErrorHandler);
-            preOpenErrorHandler = null;
-            reject(new Error("Socket connection timeout"));
-          }
-        }, 10000); // 10 second timeout
-
-        socket.on("open", async () => {
-          socketOpened = true;
-          if (socketOpenTimeout) {
-            clearTimeout(socketOpenTimeout);
-            socketOpenTimeout = null;
-          }
-          // Remove the pre-open error handler since socket is now open
-          removeErrorHandler(preOpenErrorHandler);
-          preOpenErrorHandler = null;
-          console.log("✅ Hume connection opened");
-          isConnected = true;
-
-          // Verify socket is really open
-          // @ts-ignore - readyState exists on the socket
-          console.log(
-            "📊 Socket readyState after open event:",
-            socket.readyState
-          );
-
-          // Mark as ready immediately when socket opens
-          // Hume EVI expects audio to be sent immediately after connection
-          // The I0100 error might be caused by not sending audio quickly enough
-          console.log(
-            "✅ Marking Hume as ready immediately on socket open - sending audio right away"
-          );
-          humeReady = true;
-
-          // Note: Session settings might not be required for EVI v3
-          // The SDK handles audio format automatically based on sendAudioInput format
-          // If needed, session settings would be sent via sendSessionSettings with different syntax
-          // But for now, we'll skip it since the error suggests it's not the right format
-
-          // If MediaRecorder was started early, send queued chunks immediately
-          const currentMediaRecorder = (window as any).__mediaRecorder;
-          if (currentMediaRecorder) {
-            console.log(
-              "🔄 Socket ready - MediaRecorder is running, sending queued chunks"
-            );
-
-            // Send any queued chunks
-            if (audioChunkQueue.length > 0) {
-              if ((window as any).__sendQueuedAudioChunks) {
-                await (window as any).__sendQueuedAudioChunks();
-              }
+      
+      const setupSocketListeners = () => {
+         socket.on("message", async (message: any) => {
+          try {
+            if (message.type && !["audio_output"].includes(message.type)) {
+              console.log(`📨 Received message type: ${message.type}`, message);
             }
-
-            // MediaRecorder will continue sending chunks via ondataavailable handler
-            // WebM/Opus format - exact same as MediaRecorder!
-            console.log(
-              "✅ MediaRecorder is streaming - chunks will be sent automatically (WebM/Opus format)"
-            );
-          }
-
-          resolve();
-        });
-
-        // Store reference to pre-open error handler so we can remove it later
-        preOpenErrorHandler = (error: Error) => {
-          // Don't set socketOpened = true for errors - only for successful open
-          if (socketOpenTimeout) {
-            clearTimeout(socketOpenTimeout);
-            socketOpenTimeout = null;
-          }
-          console.error("❌ Socket error before open:", error);
-          // Remove this handler since we're rejecting
-          removeErrorHandler(preOpenErrorHandler);
-          preOpenErrorHandler = null;
-          reject(error);
-        };
-
-        socket.on("error", preOpenErrorHandler);
-      });
-
-      socket.on("message", async (message: any) => {
-        try {
-          // Log all message types for debugging (except audio_output to avoid spam)
-          if (message.type && !["audio_output"].includes(message.type)) {
-            console.log(`📨 Received message type: ${message.type}`, message);
-          }
-
-          // Handle error messages from Hume
-          if (message.type === "error" || message.error) {
-            console.error("❌ Hume server error:", message.error || message);
-            console.error(
-              "Error message details:",
-              JSON.stringify(message, null, 2)
-            );
-            // Don't cleanup immediately - let the close handler do it
-            // This allows us to see if there are multiple errors
-          }
-
-          // Handle setup_complete or ready messages - Hume is ready to receive audio
-          if (
-            message.type === "setup_complete" ||
-            message.type === "ready" ||
-            message.type === "session_started"
-          ) {
-            console.log("✅ Hume session ready - audio input can now be sent");
-            humeReady = true;
-
-            // Now that Hume is ready, send any queued audio chunks
-            if (
-              audioChunkQueue.length > 0 &&
-              socket &&
-              (socket as any).readyState === 1
-            ) {
-              console.log(
-                `📤 Sending ${audioChunkQueue.length} queued audio chunks now that Hume is ready`
-              );
-              while (audioChunkQueue.length > 0) {
-                const chunk = audioChunkQueue.shift();
-                if (chunk) {
-                  try {
-                    socket.sendAudioInput({ data: chunk });
-                  } catch (err: any) {
-                    console.error("❌ Error sending queued audio:", err);
-                    break;
-                  }
-                }
-              }
+            if (message.type === "error" || message.error) {
+              console.error("❌ Hume server error:", message.error || message);
             }
-
-            // Now that Hume is ready, start sending audio if AudioRecorder is running
-            if (audioRecorder && audioRecorder.recording) {
-              console.log(
-                "🎤 AudioRecorder is running - audio will now be sent to Hume"
-              );
+            if (message.type === "user_interruption") {
+              console.log("🛑 User interruption detected, stopping audio playback");
+              const isIOSPWA = (window.navigator as any).standalone === true;
+              if (isIOSPWA) stopIOSPWAAudio();
+              if (audioStreamer) audioStreamer.stop();
             }
-          }
-
-          // Handle user interruptions - stop audio playback immediately for low latency
-          // According to Hume docs: EVI "stops rapidly whenever users interject"
-          // https://dev.hume.ai/docs/speech-to-speech-evi/overview
-          if (message.type === "user_interruption") {
-            console.log("🛑 User interruption detected, stopping audio playback immediately");
-            
-            const isIOSPWA = (window.navigator as any).standalone === true;
-            
-            // Stop iOS PWA audio queue
-            if (isIOSPWA) {
-              stopIOSPWAAudio();
-            }
-            
-            // Stop AudioStreamer (non-PWA)
-            if (audioStreamer) {
-              audioStreamer.stop();
-            }
-            
-            // Clear any queued audio to prevent delayed playback after interruption
-            // This ensures EVI can respond immediately to the user's interjection
-          }
-
-          // Handle audio output
-          if (message.type === "audio_output") {
-            const isIOSPWA = (window.navigator as any).standalone === true;
-            
-            // iOS PWA: Use HTMLAudioElement fallback (AudioContext conflicts with getUserMedia)
-            if (isIOSPWA && !audioStreamer) {
+            if (message.type === "audio_output") {
               const audioData = message.data || message.audio || message.payload;
-              if (!audioData) {
-                console.warn("⚠️ No audio data found in message");
-                return;
-              }
+              if (!audioData) return;
               
-              try {
-                // Convert to Blob and queue for sequential playback
-                let blob: Blob;
-                if (audioData instanceof Blob) {
-                  blob = audioData;
-                } else if (typeof audioData === "string") {
-                  const binaryString = atob(audioData);
-                  const bytes = new Uint8Array(binaryString.length);
-                  for (let i = 0; i < binaryString.length; i++) {
-                    bytes[i] = binaryString.charCodeAt(i);
-                  }
-                  blob = new Blob([bytes], { type: "audio/webm;codecs=opus" });
-                } else if (audioData instanceof ArrayBuffer) {
-                  blob = new Blob([audioData], { type: "audio/webm;codecs=opus" });
-                } else {
-                  console.warn("⚠️ Unknown audio format");
-                  return;
-                }
-                
-                // Add to queue
-                iosPWAAudioQueue.push(blob);
-                console.log(`🔊 iOS PWA: Queued audio chunk (queue length: ${iosPWAAudioQueue.length})`);
-                
-                // Start playing if not already playing
-                if (!iosPWAAudioPlaying) {
-                  playIOSPWAAudioQueue();
-                }
-                
-                return;
-              } catch (err: any) {
-                console.error("❌ Error queuing audio for iOS PWA:", err);
-                return;
-              }
-            }
-            
-            // Non-iOS PWA: Use AudioStreamer (AudioContext works fine)
-            if (!audioStreamer) {
-              console.error("❌ AudioStreamer not initialized - audio playback unavailable");
-              // Continue without audio streamer - user won't hear audio but call can continue
-              return;
-            }
-
-            console.log("🔊 Received audio output from AI");
-
-            try {
-              // Hume's audio_output message likely contains encoded audio (Opus/WebM)
-              // EVIWebAudioPlayer was decoding it - we need to decode it ourselves
-              // The message structure from Hume SDK: { type: "audio_output", ... }
-              // The actual audio data might be in message.data as a Blob or ArrayBuffer
-
-              const audioData =
-                message.data || message.audio || message.payload;
-
-              if (!audioData) {
-                console.warn(
-                  "⚠️ No audio data found in message:",
-                  Object.keys(message)
-                );
-                return;
-              }
-
-              // If it's already a Blob, decode it directly
-              if (audioData instanceof Blob) {
-                console.log("📊 Audio is Blob, decoding...");
-                audioStreamer.addEncodedAudio(audioData).catch((err: any) => {
-                  console.error("❌ Error decoding blob audio:", err);
-                });
-              }
-              // If it's a base64 string, convert to Blob first
+              const isIOSPWA = (window.navigator as any).standalone === true;
+              let blob: Blob;
+              if (audioData instanceof Blob) blob = audioData;
               else if (typeof audioData === "string") {
-                console.log("📊 Audio is base64 string, converting to Blob...");
-                try {
-                  const binaryString = atob(audioData);
-                  const bytes = new Uint8Array(binaryString.length);
-                  for (let i = 0; i < binaryString.length; i++) {
-                    bytes[i] = binaryString.charCodeAt(i);
-                  }
-                  // Assume it's WebM/Opus format (Hume's default)
-                  const blob = new Blob([bytes], {
-                    type: "audio/webm;codecs=opus",
-                  });
-                  audioStreamer.addEncodedAudio(blob).catch((err: any) => {
-                    console.error("❌ Error decoding base64 audio:", err);
-                    // Fallback: try as PCM16 if WebM decode fails
-                    console.log("🔄 Fallback: trying as PCM16...");
-                    audioStreamer.addPCM16(audioData);
-                  });
-                } catch (decodeErr: any) {
-                  console.error(
-                    "❌ Error converting base64 to Blob:",
-                    decodeErr
-                  );
-                }
+                const binaryString = atob(audioData);
+                const bytes = new Uint8Array(binaryString.length);
+                for (let i = 0; i < binaryString.length; i++) bytes[i] = binaryString.charCodeAt(i);
+                blob = new Blob([bytes], { type: "audio/webm;codecs=opus" });
+              } else if (audioData instanceof ArrayBuffer) {
+                blob = new Blob([audioData], { type: "audio/webm;codecs=opus" });
+              } else return;
+              
+              if (isIOSPWA) {
+                iosPWAAudioQueue.push(blob);
+                if (!iosPWAAudioPlaying) playIOSPWAAudioQueue();
+              } else if (audioStreamer) {
+                audioStreamer.addEncodedAudio(blob).catch(err => console.error("Error decoding audio", err));
               }
-              // If it's an ArrayBuffer, convert to Blob
-              else if (audioData instanceof ArrayBuffer) {
-                console.log("📊 Audio is ArrayBuffer, converting to Blob...");
-                const blob = new Blob([audioData], {
-                  type: "audio/webm;codecs=opus",
-                });
-                audioStreamer.addEncodedAudio(blob).catch((err: any) => {
-                  console.error("❌ Error decoding ArrayBuffer audio:", err);
-                });
-              } else {
-                console.warn("⚠️ Unknown audio format:", {
-                  type: typeof audioData,
-                  constructor: audioData?.constructor?.name,
-                });
-              }
-            } catch (err: any) {
-              console.error("❌ Error processing audio output:", err);
-              console.error("Error details:", err.message, err.stack);
             }
+            if (message.type === "assistant_message" && message.message?.content) {
+              lastResponse = message.message.content;
+            }
+            if (message.type === "tool_call") {
+              await handleToolCall(message);
+            }
+          } catch (err: any) {
+            console.error("❌ Error handling message:", err);
           }
-
-          // Handle assistant messages
-          if (
-            message.type === "assistant_message" &&
-            message.message?.content
-          ) {
-            lastResponse = message.message.content;
-            console.log("🤖 Assistant:", message.message.content);
-          }
-
-          // Handle user messages
-          if (message.type === "user_message" && message.message?.content) {
-            console.log("🎤 User:", message.message.content);
-          }
-
-          // Handle tool calls
-          if (message.type === "tool_call") {
-            console.log("🔧 Tool call received:", message.name);
-            await handleToolCall(message);
-          }
-        } catch (err: any) {
-          console.error("❌ Error handling message:", err);
-          // Don't let message handler errors close the socket
-        }
-      });
-
-      // Error handler for errors AFTER socket is open
-      // The preOpenErrorHandler in socketOpenPromise handles errors BEFORE open
-      // This handler will only be active after socketOpenPromise resolves (socket is open)
-      socket.on("error", (error: Error) => {
-        // This handler only runs for errors AFTER socket is open
-        // The preOpenErrorHandler is removed once socket opens or promise rejects
-        console.error("❌ Hume error (after open):", error);
-        console.error("Error details:", error.message, error.stack);
-        cleanupCall();
-      });
-
-      socket.on("close", (event: any) => {
-        console.log("🔌 Hume connection closed");
-        console.log("Close event details:", event);
-        console.log("Close code:", event.code, "Reason:", event.reason);
-        console.log("📊 Current state when closing:", {
-          isRecording,
-          isConnected,
-          audioRecorderActive: audioRecorder?.recording,
-          audioChunksQueued: audioChunkQueue.length,
         });
-        // Only cleanup if it's not a reconnection attempt
-        if (!event.willReconnect) {
+        socket.on("error", (error: Error) => {
+          console.error("❌ Hume error:", error);
           cleanupCall();
-        } else {
-          console.log("🔄 Socket will reconnect, not cleaning up");
-        }
-      });
-
-      // Wait for connection to open
-      // Use our own promise with timeout instead of tillSocketOpen() which might hang
-      console.log("⏳ Waiting for socket to open...");
-      try {
-        await socketOpenPromise;
-        console.log("✅ Socket connection ready (via open event)");
-      } catch (err: any) {
-        // Fallback: try tillSocketOpen() if our promise fails
-        console.log("⚠️ Open event promise failed, trying tillSocketOpen()...");
-        try {
-          await socket.tillSocketOpen();
-          console.log("✅ Socket connection ready (via tillSocketOpen)");
-        } catch (tillErr: any) {
-          console.error("❌ Both socket open methods failed:", tillErr);
-          throw new Error(
-            `Socket failed to open: ${err.message || tillErr.message}`
-          );
-        }
-      }
-
-      // Verify socket is actually open before starting audio capture
-      // @ts-ignore - readyState exists on the socket
-      const socketState = socket.readyState;
-      console.log("📊 Socket readyState:", socketState, "(1 = OPEN)");
-
-      if (socketState !== 1) {
-        console.error("❌ Socket not open! State:", socketState);
-        throw new Error(`Socket not open (state: ${socketState})`);
-      }
-
-      // Small delay to ensure socket is fully ready
-      await new Promise((resolve) => setTimeout(resolve, 100));
-
-      // MediaRecorder should already be running (started early)
-      const currentMediaRecorder = (window as any).__mediaRecorder;
-      if (currentMediaRecorder && currentMediaRecorder.state === "recording") {
-        console.log("✅ MediaRecorder already running (started early)");
-      } else {
-        console.warn("⚠️ MediaRecorder not running - this shouldn't happen");
-      }
-
-      // AudioRecorder (AudioWorklet) should also be running to keep stream alive in iOS PWA
-      if (audioRecorder && audioRecorder.recording) {
-        console.log(
-          "✅ AudioRecorder (AudioWorklet) running to keep stream alive in iOS PWA"
-        );
-      }
-
-      // Connection is complete
-      isConnecting = false;
-
-      console.log(
-        "🎙️ Hume voice call started - bidirectional communication should be active"
-      );
-    } catch (err: any) {
-      console.error("Failed to start Hume voice:", err);
-      lastResponse = `Error: ${err.message || "Failed to start voice call"}`;
-      isConnected = false;
-      isRecording = false;
-      isConnecting = false;
-      isWaitingForPermission = false;
-
-      // Clean up window references if socket connection failed (memory leak fix)
-      if ((window as any).__sendQueuedAudioChunks) {
-        delete (window as any).__sendQueuedAudioChunks;
-      }
-      if ((window as any).__audioChunkQueue) {
-        const queue = (window as any).__audioChunkQueue;
-        if (Array.isArray(queue)) {
-          queue.length = 0;
-        }
-        delete (window as any).__audioChunkQueue;
-      }
-
-      // Clean up resources
-      cleanupCall();
-    }
-  }
-
-  /**
-   * Check if microphone permission is already granted
-   * Returns true if granted, false if not granted or unknown
-   * Uses multiple strategies for maximum compatibility (especially iOS)
-   */
-  async function checkMicrophonePermission(): Promise<boolean> {
-    if (!browser || !navigator.mediaDevices) {
-      return false;
-    }
-
-    // Strategy 1: Use Permissions API if available (Chrome, Firefox, etc.)
-    if (navigator.permissions && navigator.permissions.query) {
-      try {
-        const permissionStatus = await navigator.permissions.query({
-          name: "microphone" as PermissionName,
         });
-        const isGranted = permissionStatus.state === "granted";
-        console.log(
-          "🎤 Microphone permission status (Permissions API):",
-          permissionStatus.state
-        );
-        if (isGranted) {
-          return true; // Definitely granted
-        }
-        if (permissionStatus.state === "denied") {
-          return false; // Definitely denied - don't ask again
-        }
-        // If "prompt", continue to Strategy 2
-      } catch (permErr) {
-        // Permissions API not supported (e.g., Safari/iOS) - continue to Strategy 2
-        console.log("ℹ️ Permissions API not available, using fallback check");
-      }
-    }
-
-    // Strategy 2: Try to get a stream without user interaction (silent check)
-    // This works on iOS/Safari where Permissions API isn't available
-    // If permission is already granted, getUserMedia succeeds immediately without prompt
-    try {
-      // Use a very short-lived stream just to check permission
-      const testStream = await navigator.mediaDevices.getUserMedia({
-        audio: true,
-      });
-
-      // If we got here without a prompt, permission was already granted
-      // Clean up immediately
-      testStream.getTracks().forEach((track) => {
-        try {
-          track.stop();
-        } catch (e) {
-          // Ignore cleanup errors
-        }
-      });
-
-      console.log(
-        "✅ Microphone permission already granted (silent check succeeded)"
-      );
-      return true;
-    } catch (err: any) {
-      // If getUserMedia fails, permission is either denied or not yet granted
-      if (
-        err.name === "NotAllowedError" ||
-        err.name === "PermissionDeniedError"
-      ) {
-        console.log("❌ Microphone permission denied");
-        return false; // Permission denied - don't ask again
-      }
-      // Other errors (NotFoundError, etc.) - assume not granted yet
-      console.log("ℹ️ Microphone permission status unclear:", err.name);
-      return false;
-    }
-  }
-
-  /**
-   * Request microphone permission explicitly (required for iOS PWAs)
-   * Returns the stream if it's still active, or null if we need to get a new one
-   * Uses event-based validation instead of timeouts for robustness
-   */
-  async function requestMicrophonePermission(): Promise<MediaStream | null> {
-    if (!browser || !navigator.mediaDevices) {
-      console.error("❌ MediaDevices API not available");
-      return null;
-    }
-
-    try {
-      // First, check if permission is already granted
-      const alreadyGranted = await checkMicrophonePermission();
-      if (alreadyGranted) {
-        console.log(
-          "✅ Microphone permission already granted - will get fresh stream when needed"
-        );
-        return null; // Return null to indicate we should get a fresh stream (no prompt needed)
-      }
-
-      // Permission not granted yet - we need to request it
-      // This will show the permission prompt to the user
-      console.log("🔄 Requesting microphone permission (showing prompt)...");
-
-      try {
-        // Request permission - this will show the prompt on iOS/other browsers
-        const stream = await navigator.mediaDevices.getUserMedia({
-          audio: true,
+        socket.on("close", (event: any) => {
+          console.log("🔌 Hume connection closed", event);
+          if (!event.willReconnect) cleanupCall();
         });
-
-        // Verify the stream is actually active
-        const tracks = stream.getAudioTracks();
-        const hasActiveTrack =
-          tracks.length > 0 &&
-          tracks.some((t) => t.readyState === "live" && !t.muted);
-
-        if (!hasActiveTrack) {
-          console.log(
-            "⚠️ Stream obtained but no active tracks - iOS may have ended it"
-          );
-          // Clean up the stream
-          tracks.forEach((track) => {
-            try {
-              if (track.readyState === "live") track.stop();
-            } catch (e) {
-              // Ignore - track may already be ended
+      }
+      
+      const waitForSocketOpen = () => {
+        return new Promise<void>((resolve, reject) => {
+          if (socket?.readyState === 1) return resolve();
+          const timeout = setTimeout(() => reject(new Error("Socket connection timeout")), 10000);
+          const onOpen = async () => {
+            clearTimeout(timeout);
+            socket.removeEventListener("open", onOpen);
+            socket.removeEventListener("error", onError);
+            console.log("✅ Hume connection opened");
+            isConnected = true;
+            if ((window as any).__sendQueuedAudioChunks) {
+              await (window as any).__sendQueuedAudioChunks();
             }
-          });
-          return null; // Need to get a fresh stream
-        }
+            resolve();
+          };
+          const onError = (error: Error) => {
+            clearTimeout(timeout);
+            socket.removeEventListener("open", onOpen);
+            socket.removeEventListener("error", onError);
+            reject(error);
+          };
+          socket.addEventListener("open", onOpen);
+          socket.addEventListener("error", onError);
+        });
+      }
 
-        // Verify permission is actually granted
-        const permissionGranted = await checkMicrophonePermission();
-        if (!permissionGranted) {
-          console.log(
-            "⚠️ getUserMedia succeeded but permission not granted yet"
-          );
-          // Wait a bit for permission to propagate (iOS can be slow)
-          await new Promise((resolve) => setTimeout(resolve, 200));
-          const recheckGranted = await checkMicrophonePermission();
-          if (!recheckGranted) {
-            // Still not granted - clean up and return null
-            tracks.forEach((track) => {
-              try {
-                if (track.readyState === "live") track.stop();
-              } catch (e) {
-                // Ignore
-              }
-            });
-            return null;
-          }
-        }
+      console.log("🎤 Requesting microphone permission...");
+      const isIOSPWA = (window.navigator as any).standalone === true;
+      console.log(`📱 iOS PWA mode: ${isIOSPWA}`);
 
-        // Stream is active and permission is granted - we can use this stream!
-        console.log(
-          "✅ Microphone permission granted - stream is active and ready"
-        );
-        return stream; // Return the active stream for reuse
-      } catch (getUserMediaErr: any) {
-        // getUserMedia failed - permission denied or other error
-        console.error("❌ getUserMedia failed:", getUserMediaErr);
-
-        if (
-          getUserMediaErr.name === "NotAllowedError" ||
-          getUserMediaErr.name === "PermissionDeniedError"
-        ) {
-          lastResponse =
-            "Microphone permission denied. Please enable microphone access in your browser settings.";
-          return null;
-        } else if (
-          getUserMediaErr.name === "NotFoundError" ||
-          getUserMediaErr.name === "DevicesNotFoundError"
-        ) {
-          lastResponse =
-            "No microphone found. Please connect a microphone and try again.";
-          return null;
-        } else {
-          lastResponse = `Failed to access microphone: ${
-            getUserMediaErr.message || "Unknown error"
-          }`;
-          return null;
+      if (!isIOSPWA && !audioStreamer) {
+        try {
+          const ctx = await audioContext({ id: "voice-call-playback" });
+          audioStreamer = new AudioStreamer(ctx);
+          console.log(`✅ AudioStreamer initialized`);
+        } catch (streamerErr: any) {
+          console.error("❌ Failed to initialize AudioStreamer:", streamerErr);
         }
+      } else if (isIOSPWA) {
+        const unlockAudio = new Audio('data:audio/wav;base64,UklGRigAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=');
+        unlockAudio.volume = 0;
+        unlockAudio.play().then(() => {
+            iosPWAAudioUnlocked = true;
+            console.log("✅ iOS PWA: Audio playback unlocked");
+        }).catch(err => console.warn("⚠️ iOS PWA: Audio unlock failed", err));
+      }
+
+      const mediaConstraints = {
+        audio: isIOSPWA ? true : {
+          channelCount: 1,
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+        },
+      };
+      
+      const mediaStream = await navigator.mediaDevices.getUserMedia(mediaConstraints);
+      console.log("✅ MediaStream obtained");
+      
+      const audioTrack = mediaStream.getAudioTracks()[0];
+      if (audioTrack) {
+        console.log("🎤 Audio track label:", audioTrack.label);
+      }
+
+      if (isIOSPWA) {
+        const immediateAudioElement = new Audio();
+        immediateAudioElement.srcObject = mediaStream;
+        immediateAudioElement.muted = true;
+        immediateAudioElement.setAttribute('playsinline', 'true');
+        document.body.appendChild(immediateAudioElement);
+        (window as any).__immediateAudioElement = immediateAudioElement;
+
+        try {
+          await immediateAudioElement.play();
+          console.log("✅ iOS PWA: Stream consumption successful via HTMLAudioElement.play()");
+          await proceedWithStream(mediaStream);
+        } catch (playErr) {
+          console.warn("⚠️ iOS PWA: Keep-alive audio .play() failed. Proceeding anyway...", playErr);
+          await proceedWithStream(mediaStream);
+        }
+      } else {
+        await proceedWithStream(mediaStream);
       }
     } catch (err: any) {
-      console.error("❌ Failed to request microphone permission:", err);
-      lastResponse = `Failed to access microphone: ${
-        err.message || "Unknown error"
-      }`;
-      return null;
+      console.error("❌ Failed to start Hume voice:", err);
+      lastResponse = `Error: ${err.message || "Failed to start voice call"}`;
+      cleanupCall();
     }
   }
 
