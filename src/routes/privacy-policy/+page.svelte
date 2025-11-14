@@ -118,7 +118,7 @@
 	</p>
 
 	<p>
-		Phone: +49 89 559 26086<br />
+		Phone: +49 89 38466851<br />
 		E-mail: hello@hominio.me
 	</p>
 	<p>
