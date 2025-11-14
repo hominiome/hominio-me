@@ -617,16 +617,28 @@
         mediaStream = await navigator.mediaDevices.getUserMedia(mediaConstraints);
         console.log("✅ MediaStream obtained, track state:", mediaStream.getAudioTracks()[0]?.readyState);
         
-        // Wait for audio unlock to complete (if iOS PWA)
-        // Both getUserMedia and audio.play() happen in same user gesture, so this should work
-        if (isIOSPWA && audioUnlockPromise) {
+        // CRITICAL iOS PWA WORKAROUND: Consume stream IMMEDIATELY with HTMLAudioElement
+        // Based on WebKit bug reports: Stream must be consumed by DOM element immediately
+        // This prevents iOS PWA from closing the stream with "capture failure"
+        let immediateAudioElement: HTMLAudioElement | null = null;
+        if (isIOSPWA) {
           try {
-            await audioUnlockPromise;
-            console.log("✅ iOS PWA: Both microphone and audio playback unlocked in same user gesture");
+            // Create audio element and attach stream IMMEDIATELY
+            immediateAudioElement = new Audio();
+            immediateAudioElement.srcObject = mediaStream;
+            immediateAudioElement.muted = true; // Mute to avoid feedback
+            immediateAudioElement.autoplay = true;
+            // Append to DOM (required for iOS PWA)
+            document.body.appendChild(immediateAudioElement);
+            console.log("✅ iOS PWA: Stream consumed immediately with HTMLAudioElement (keeps stream alive)");
           } catch (err: any) {
-            console.warn("⚠️ iOS PWA: Audio unlock completed with warning:", err);
+            console.warn("⚠️ iOS PWA: Failed to create immediate audio element:", err);
           }
         }
+        
+        // CRITICAL iOS PWA: Start MediaRecorder IMMEDIATELY after getUserMedia
+        // iOS PWA closes the stream if it's not consumed immediately
+        // Audio unlock happens in parallel (don't wait for it)
 
         // Use MediaRecorder for ALL platforms (iOS PWA workaround makes it work)
         const mimeTypes = [
@@ -772,7 +784,18 @@
 
         // Start MediaRecorder immediately
         mediaRecorder.start(100);
-        console.log("✅ MediaRecorder started with 100ms timeslice");
+        console.log("✅ MediaRecorder started with 100ms timeslice (iOS PWA critical - stream now actively consumed)");
+        
+        // Wait for audio unlock to complete (if iOS PWA) - happens in parallel with MediaRecorder
+        // Both getUserMedia and audio.play() happen in same user gesture, so this should work
+        if (isIOSPWA && audioUnlockPromise) {
+          // Don't await - let it complete in background, but log when done
+          audioUnlockPromise.then(() => {
+            console.log("✅ iOS PWA: Audio playback unlocked (MediaRecorder already running)");
+          }).catch((err: any) => {
+            console.warn("⚠️ iOS PWA: Audio unlock completed with warning:", err);
+          });
+        }
 
         // For non-iOS PWA: Initialize AudioContext after MediaRecorder (lazy init works in Safari)
         if (!isIOSPWA && !audioStreamer) {
@@ -794,6 +817,9 @@
         // Store references for cleanup
         (window as any).__mediaRecorder = mediaRecorder;
         (window as any).__mediaStream = mediaStream;
+        if (immediateAudioElement) {
+          (window as any).__immediateAudioElement = immediateAudioElement;
+        }
 
         // Store function to send queued chunks when socket opens
         (window as any).__sendQueuedAudioChunks = async () => {
@@ -1551,7 +1577,22 @@
         console.error("Error stopping MediaStream tracks:", err);
       }
       delete (window as any).__mediaStream;
+    }
+    
+    // Clean up immediate audio element (iOS PWA workaround)
+    const immediateAudioElement = (window as any).__immediateAudioElement;
+    if (immediateAudioElement) {
+      try {
+        immediateAudioElement.srcObject = null;
+        if (immediateAudioElement.parentNode) {
+          immediateAudioElement.parentNode.removeChild(immediateAudioElement);
+        }
+        console.log("✅ Immediate audio element removed from DOM");
+      } catch (err) {
+        console.error("Error removing immediate audio element:", err);
       }
+      delete (window as any).__immediateAudioElement;
+    }
 
     // Stop AudioRecorder (AudioWorklet - keeps stream alive in iOS PWA)
     if (audioRecorder) {
