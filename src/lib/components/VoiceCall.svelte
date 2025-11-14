@@ -617,6 +617,13 @@
         mediaStream = await navigator.mediaDevices.getUserMedia(mediaConstraints);
         console.log("✅ MediaStream obtained, track state:", mediaStream.getAudioTracks()[0]?.readyState);
         
+        // Log audio track settings for debugging potential device issues (e.g., Bluetooth)
+        const audioTrack = mediaStream.getAudioTracks()[0];
+        if (audioTrack) {
+          console.log("🎤 Audio track settings:", JSON.stringify(audioTrack.getSettings(), null, 2));
+          console.log("🎤 Audio track label:", audioTrack.label);
+        }
+        
         // CRITICAL iOS PWA WORKAROUND: Consume stream IMMEDIATELY with HTMLAudioElement
         // Based on WebKit bug reports: Stream must be consumed by DOM element immediately
         // This prevents iOS PWA from closing the stream with "capture failure"
@@ -627,10 +634,21 @@
             immediateAudioElement = new Audio();
             immediateAudioElement.srcObject = mediaStream;
             immediateAudioElement.muted = true; // Mute to avoid feedback
-            immediateAudioElement.autoplay = true;
-            // Append to DOM (required for iOS PWA)
+            immediateAudioElement.setAttribute('playsinline', 'true'); // Required for iOS, good practice
+
+            // Append to DOM (required for iOS PWA to consider it "visible")
             document.body.appendChild(immediateAudioElement);
-            console.log("✅ iOS PWA: Stream consumed immediately with HTMLAudioElement (keeps stream alive)");
+
+            // Explicitly call play() inside the user gesture. This is the most reliable way
+            // to start media playback/consumption on iOS. `autoplay` is not reliable.
+            // We don't need to await this; the goal is just to start consumption.
+            immediateAudioElement.play().catch(err => {
+              // This can fail if another audio element is already playing, which is fine.
+              // The main goal is to signal to the OS that we are using the stream.
+              console.warn("⚠️ iOS PWA: immediateAudioElement.play() threw an error. This might be harmless.", err);
+            });
+
+            console.log("✅ iOS PWA: Stream consumption initiated via HTMLAudioElement.play()");
           } catch (err: any) {
             console.warn("⚠️ iOS PWA: Failed to create immediate audio element:", err);
           }
