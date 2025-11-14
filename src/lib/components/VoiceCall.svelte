@@ -40,6 +40,12 @@
     });
   });
 
+  // --- Persistent Audio Resources ---
+  let globalMediaStream: MediaStream | null = null;
+  let keepAliveContext: AudioContext | null = null;
+  let keepAliveSource: MediaStreamAudioSourceNode | null = null;
+  // ------------------------------------
+
   // Helper to determine if action is a view tool (shows UI) or action tool (shows compact message)
   function isViewTool(action: string): boolean {
     return (
@@ -509,16 +515,14 @@
   async function startCall() {
     if (!browser) return;
 
-    // Reset state for new call
+    // Reset UI state for new call, but keep persistent audio resources running
     lastResponse = "";
     isConnecting = true;
     isWaitingForPermission = true;
     
-    // Cleanup any previous call remnants, but do it silently without logging "Call cleaned up" yet
-    // because the new call is just starting.
-    const silentCleanup = () => {
-        // This is a subset of cleanupCall, without the logging and state resets
-        // that would be confusing at the start of a call.
+    // Perform a "soft" cleanup: close any existing socket and stop the recorder
+    // but LEAVE the globalMediaStream and its keep-alive graph running.
+    const softCleanup = () => {
         if (socket) {
             socket.close();
             socket = null;
@@ -527,28 +531,11 @@
         if (mediaRecorder && mediaRecorder.state !== "inactive") {
             mediaRecorder.stop();
         }
-        const mediaStream = (window as any).__mediaStream;
-        if (mediaStream) {
-            mediaStream.getTracks().forEach((track: MediaStreamTrack) => track.stop());
-        }
-        const immediateAudioElement = (window as any).__immediateAudioElement;
-        if (immediateAudioElement) {
-            immediateAudioElement.srcObject = null;
-            if (immediateAudioElement.parentNode) {
-                immediateAudioElement.parentNode.removeChild(immediateAudioElement);
-            }
-        }
-        if (audioStreamer) audioStreamer.stop();
-        stopIOSPWAAudio();
-        
-        // Clear window refs
         delete (window as any).__mediaRecorder;
-        delete (window as any).__mediaStream;
-        delete (window as any).__immediateAudioElement;
         delete (window as any).__sendQueuedAudioChunks;
+        audioChunkQueue = [];
     }
-    silentCleanup();
-
+    softCleanup();
 
     try {
       console.log("🎙️ Starting Hume voice conversation...");
@@ -719,13 +706,13 @@
             console.error("❌ Error handling message:", err);
           }
         });
-        socket.on("error", (error: Error) => {
+        socket.on("error", async (error: Error) => {
           console.error("❌ Hume error:", error);
-          cleanupCall();
+          await cleanupCall();
         });
-        socket.on("close", (event: any) => {
+        socket.on("close", async (event: any) => {
           console.log("🔌 Hume connection closed", event);
-          if (!event.willReconnect) cleanupCall();
+          if (!event.willReconnect) await cleanupCall();
         });
       }
       
@@ -755,82 +742,68 @@
         });
       }
 
-      console.log("🎤 Requesting microphone permission...");
       const isIOSPWA = (window.navigator as any).standalone === true;
-      console.log(`📱 iOS PWA mode: ${isIOSPWA}`);
 
-      if (!isIOSPWA && !audioStreamer) {
-        try {
-          const ctx = await audioContext({ id: "voice-call-playback" });
-          audioStreamer = new AudioStreamer(ctx);
-          console.log(`✅ AudioStreamer initialized`);
-        } catch (streamerErr: any) {
-          console.error("❌ Failed to initialize AudioStreamer:", streamerErr);
-        }
-      } else if (isIOSPWA) {
-        const unlockAudio = new Audio('data:audio/wav;base64,UklGRigAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=');
-        unlockAudio.volume = 0;
-        unlockAudio.play().then(() => {
-            iosPWAAudioUnlocked = true;
-            console.log("✅ iOS PWA: Audio playback unlocked");
-        }).catch(err => console.warn("⚠️ iOS PWA: Audio unlock failed", err));
-      }
+      // --- Step 1: Get or Reuse a Persistent, Stabilized MediaStream ---
+      if (!globalMediaStream || !globalMediaStream.active) {
+        console.log("🎤 No active global stream. Requesting new one...");
+        isWaitingForPermission = true;
+        
+        const mediaConstraints = {
+          audio: isIOSPWA ? true : {
+            channelCount: 1,
+            echoCancellation: true,
+            noiseSuppression: true,
+            autoGainControl: true,
+          },
+        };
 
-      const mediaConstraints = {
-        audio: isIOSPWA ? true : {
-          channelCount: 1,
-          echoCancellation: true,
-          noiseSuppression: true,
-          autoGainControl: true,
-        },
-      };
-      
-      const mediaStream = await navigator.mediaDevices.getUserMedia(mediaConstraints);
-      console.log("✅ MediaStream obtained");
-      
-      const audioTrack = mediaStream.getTracks()[0];
-      if (audioTrack) {
-        console.log("🎤 Audio track label:", audioTrack.label);
-      }
+        // Get the new stream
+        globalMediaStream = await navigator.mediaDevices.getUserMedia(mediaConstraints);
+        console.log("✅ MediaStream obtained");
+        
+        // Add a listener to detect if the track ends unexpectedly
+        globalMediaStream.getAudioTracks()[0].onended = () => {
+            console.error("❌ CRITICAL: The global MediaStreamTrack has ended unexpectedly! The microphone may have been disconnected or permission revoked.");
+            // We'll try to recover by nullifying the stream, so the next call will re-request it.
+            globalMediaStream = null;
+            cleanupCall(); // Trigger a full cleanup
+        };
 
-      // New Web Audio API Keep-Alive
-      if (isIOSPWA) {
-        try {
-          console.log("iOS PWA: Creating Web Audio API keep-alive graph...");
-          // Use a specific window property to avoid conflicts
-          const pwaAudioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-          (window as any).__pwaKeepAliveContext = pwaAudioContext;
-
-          // Resume context if needed
-          if (pwaAudioContext.state === 'suspended') {
-            await pwaAudioContext.resume();
+        // For iOS PWA, immediately create and connect the keep-alive graph to stabilize it
+        if (isIOSPWA) {
+          try {
+            console.log("iOS PWA: Creating Web Audio API keep-alive graph...");
+            keepAliveContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+            if (keepAliveContext.state === 'suspended') {
+              await keepAliveContext.resume();
+            }
+            keepAliveSource = keepAliveContext.createMediaStreamSource(globalMediaStream);
+            const gainNode = keepAliveContext.createGain();
+            gainNode.gain.value = 0; // Ensure it's silent
+            keepAliveSource.connect(gainNode);
+            gainNode.connect(keepAliveContext.destination);
+            console.log("✅ iOS PWA: Web Audio API keep-alive graph connected and stream stabilized.");
+          } catch (e) {
+            console.error("❌ iOS PWA: Failed to create Web Audio keep-alive graph. Capture may still fail.", e);
+            // If this fails, the stream is unstable. We should stop.
+            throw new Error("Failed to create PWA keep-alive audio graph.");
           }
-
-          const source = pwaAudioContext.createMediaStreamSource(mediaStream);
-          (window as any).__pwaKeepAliveSource = source; // Store source for disconnection
-
-          const gainNode = pwaAudioContext.createGain();
-          gainNode.gain.setValueAtTime(0, pwaAudioContext.currentTime); // Mute the output
-
-          // Connect source to a silent gain node and then to the destination
-          source.connect(gainNode);
-          gainNode.connect(pwaAudioContext.destination);
-
-          console.log("✅ iOS PWA: Web Audio API keep-alive graph connected. Stream is now stable.");
-        } catch (e) {
-          console.error("❌ iOS PWA: Failed to create Web Audio keep-alive graph. Capture may still fail.", e);
-          // Proceed anyway, but the stream is likely to fail
         }
+      } else {
+        console.log("🎤 Reusing existing global MediaStream.");
       }
+      
+      isWaitingForPermission = false;
 
-      // With the stream stabilized by the Web Audio graph, we can now proceed.
-      // The HTMLAudioElement workaround is no longer needed.
-      await proceedWithStream(mediaStream);
+      // --- Step 2: Proceed with the now-stable stream ---
+      // This function contains the logic that runs AFTER the stream is stabilized.
+      await proceedWithStream(globalMediaStream);
 
     } catch (err: any) {
       console.error("❌ Failed to start Hume voice:", err);
       lastResponse = `Error: ${err.message || "Failed to start voice call"}`;
-      cleanupCall();
+      await cleanupCall(); // Full cleanup on any failure in the start process
     }
   }
 
@@ -838,7 +811,9 @@
    * Clean up resources and close modal
    * Called when connection closes or errors
    */
-  function cleanupCall() {
+  async function cleanupCall() {
+    console.log("🧹 Cleaning up call resources...");
+
     // Clean up window references for queued audio chunks (memory leak fix)
     if ((window as any).__sendQueuedAudioChunks) {
       delete (window as any).__sendQueuedAudioChunks;
@@ -846,65 +821,23 @@
 
     audioChunkQueue = [];
 
-    // Stop MediaRecorder (WebM/Opus recording)
+    // Stop MediaRecorder
     const mediaRecorder = (window as any).__mediaRecorder;
-    const mediaStream = (window as any).__mediaStream;
     if (mediaRecorder) {
       try {
         if (mediaRecorder.state !== "inactive") {
               mediaRecorder.stop();
-          console.log("✅ MediaRecorder stopped");
         }
       } catch (err) {
         console.error("Error stopping MediaRecorder:", err);
       }
       delete (window as any).__mediaRecorder;
     }
-    if (mediaStream) {
-      try {
-        mediaStream.getTracks().forEach((track: MediaStreamTrack) => {
-          track.stop();
-        });
-        console.log("✅ MediaStream tracks stopped");
-      } catch (err) {
-        console.error("Error stopping MediaStream tracks:", err);
-      }
-      delete (window as any).__mediaStream;
-    }
     
-    // Clean up Web Audio API keep-alive context (iOS PWA)
-    const pwaAudioContext = (window as any).__pwaKeepAliveContext;
-    if (pwaAudioContext) {
-      try {
-        const source = (window as any).__pwaKeepAliveSource;
-        if (source) {
-          source.disconnect();
-        }
-        await pwaAudioContext.close();
-        console.log("✅ iOS PWA: Keep-alive AudioContext closed.");
-      } catch (err) {
-        console.error("Error closing keep-alive AudioContext:", err);
-      }
-      delete (window as any).__pwaKeepAliveContext;
-      delete (window as any).__pwaKeepAliveSource;
-    }
+    // Note: We DO NOT stop the globalMediaStream tracks here.
+    // That is only done in onDestroy for a full teardown.
 
-    // Clean up immediate audio element (iOS PWA workaround) - This is now legacy, but cleanup is safe
-    const immediateAudioElement = (window as any).__immediateAudioElement;
-    if (immediateAudioElement) {
-      try {
-        immediateAudioElement.srcObject = null;
-        if (immediateAudioElement.parentNode) {
-          immediateAudioElement.parentNode.removeChild(immediateAudioElement);
-        }
-        console.log("✅ Immediate audio element removed from DOM");
-      } catch (err) {
-        console.error("Error removing immediate audio element:", err);
-      }
-      delete (window as any).__immediateAudioElement;
-    }
-
-    // Stop AudioRecorder (AudioWorklet - keeps stream alive in iOS PWA)
+    // Stop AudioRecorder (legacy, if present)
     if (audioRecorder) {
       try {
         audioRecorder.stop();
@@ -915,7 +848,7 @@
       audioRecorder = null;
     }
 
-    // Stop AudioStreamer
+    // Stop AudioStreamer for playback
     if (audioStreamer) {
       try {
         audioStreamer.stop();
@@ -925,7 +858,7 @@
       audioStreamer = null;
     }
     
-    // Clear iOS PWA audio queue
+    // Clear iOS PWA audio playback queue
     stopIOSPWAAudio();
 
     // Cancel any pending action message timeout
@@ -945,8 +878,6 @@
 
     // Reset store state
     resetVoiceCallState();
-
-    console.log("🧹 Call cleaned up");
   }
 
   async function stopCall() {
@@ -956,20 +887,42 @@
         socket.close();
       } else {
         // No socket, clean up directly
-        cleanupCall();
+        await cleanupCall();
       }
       console.log("⏹️ Hume voice call stopped by user");
     } catch (err) {
       console.error("Failed to stop Hume voice:", err);
       // Ensure cleanup even on error
-      cleanupCall();
+      await cleanupCall();
     }
   }
 
   // Cleanup on component destroy
-  onDestroy(() => {
-    if (socket || isRecording || isConnected) {
-      stopCall();
+  onDestroy(async () => {
+    console.log("💥 Component destroying, performing full cleanup...");
+    await stopCall(); // Perform a normal "soft" cleanup first
+
+    // Now, perform the "hard" cleanup of persistent resources
+    if (keepAliveSource) {
+      keepAliveSource.disconnect();
+      keepAliveSource = null;
+    }
+    if (keepAliveContext) {
+      try {
+        await keepAliveContext.close();
+        console.log("✅ Web Audio keep-alive context closed.");
+      } catch (e) {
+        console.error("Error closing Web Audio keep-alive context", e);
+      }
+      keepAliveContext = null;
+    }
+    if (globalMediaStream) {
+      globalMediaStream.getTracks().forEach(track => {
+        track.onended = null; // Remove listener
+        track.stop();
+      });
+      globalMediaStream = null;
+      console.log("🧹 Global MediaStream stopped on component destroy.");
     }
   });
 </script>
