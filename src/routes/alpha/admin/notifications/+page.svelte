@@ -195,7 +195,7 @@
         </div>
 
         <div class="form-group">
-          <label>Newsletter Image (Optional)</label>
+          <label for="imageUrlInput">Newsletter Image (Optional)</label>
           <p class="form-help">
             Upload an image or enter an image URL. If provided, the image will
             be displayed at the top of the notification modal.
@@ -210,6 +210,7 @@
           />
           <div class="url-input-wrapper">
             <input
+              id="imageUrlInput"
               type="url"
               bind:value={imageUrl}
               placeholder="Or enter image URL directly"

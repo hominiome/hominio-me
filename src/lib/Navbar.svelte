@@ -233,7 +233,7 @@
                 onclick={() => onStopCall?.()}
                 aria-label="Stop call"
                 size="sm"
-                class="!rounded-full call-button"
+                class="!rounded-full aspect-square"
                 disabled={isConnecting}
               >
                 {#if isConnecting}
@@ -252,7 +252,7 @@
                 onclick={() => onStartCall?.()}
                 aria-label={isWaitingForPermission ? "Waiting for permission" : isConnecting ? "Connecting" : "Start call"}
                 size="sm"
-                class="!rounded-full call-button"
+                class="!rounded-full aspect-square"
                 disabled={isConnecting || isWaitingForPermission}
               >
                 {#if isConnecting || isWaitingForPermission}
@@ -610,11 +610,6 @@
   }
 
   /* Call button styling - ensure perfect circle, match nav link height */
-  .call-button {
-    aspect-ratio: 1 / 1 !important; /* Force perfect circle */
-    border-radius: 50% !important; /* Fully rounded */
-  }
-  
   /* Ensure the Button component inside is a perfect circle */
   .footer-nav-center :global(button) {
     aspect-ratio: 1 / 1 !important; /* Force perfect circle */

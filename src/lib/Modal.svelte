@@ -126,6 +126,8 @@
       class:modal-bottom={!canClose}
       style="max-height: calc(95vh - 72px); {canClose ? 'margin-top: 5vh;' : 'margin-top: auto;'} margin-bottom: 0; background-color: {modalBgColor};"
       onclick={handleModalContentClick}
+      onkeydown={(e) => e.stopPropagation()}
+      role="document"
     >
       <!-- Content (Svelte 5: using snippet prop instead of slot) -->
       <div class="w-full flex-1 pb-6 @xs:pb-5 min-h-0">
